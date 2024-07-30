@@ -1,6 +1,5 @@
 
 
-
 def generate_L1_data(CPGS_xml, scene_info, proper_arguments, emccd_detect_arguments): 
     '''
 
@@ -37,17 +36,20 @@ def generate_L1_data(CPGS_xml, scene_info, proper_arguments, emccd_detect_argume
     
     '''
 
-    cpgs_info = open_CPGS_dict(cpgs_xml)
+    cpgs_info = open_CPGS_dict(CPGS_xml)
 
-    convolved_scene = convolve_2d_scene(scene_info, proper_arguments, cpgs_info)
+    #We convolve a 2D input scene with off-axis PSFS
+    convolved_scene_list = convolve_2d_scene(scene_info, proper_arguments, cpgs_info)
 
-    scene_with_sources = place_point_sources(convolved_scene, scene_info, proper_arguments, cpgs_info)
+    #We inject point-source companions. We either use this function for spectral mode
+    #or we have a separate function for spectral mode enabled by a switch here. 
+    scenes_with_sources = place_point_sources(convolved_scene_list, scene_info, proper_arguments, cpgs_info)
 
-    scene_with_psf = generate_host_star_psf(scene_with_sources, scene_info, proper_arguments)
+    #We generate a PSF for the host star - at this point we will split them off into separate exposures
+    scene_list = generate_host_star_psf(scenes_with_sources, scene_info, proper_arguments)
 
-    emccd_scene = simulate_detector(scene_with_psf, emccd_detect_arguments)
-
-    #TODO: Look into when to split into multiple scenes.
+    #Up to now the scene should be in physics units (such as mJy/s or photons/s), now we convert them into detector counts
+    emccd_scene = simulate_detector(scene_list, emccd_detect_arguments)
 
     return emccd_scene
 
@@ -55,7 +57,7 @@ def generate_L1_data(CPGS_xml, scene_info, proper_arguments, emccd_detect_argume
 def open_CPGS_dict(cpgs_xml):
     '''
 
-    Function that opens a CGPS file, returns a dictionary with relevant info
+    Function that opens a CGPS xml file, returns a dictionary with relevant info
 
     '''
     cpgs_dict = {}
@@ -66,26 +68,38 @@ def open_CPGS_dict(cpgs_xml):
 def convolve_2d_scene(scene_info, proper_arguments, cpgs_info):
     '''
     
-    Function that convolves a background scene with off-axis PSFs 
+    Function that convolves a background scene with spatially varying off-axis PSFs. 
+    It returns a list of scenes corresponding to each frame. Might include multiple roll angles. 
+    
+    MMB Notes: 
+    - This function will likely be the most time-consuming if we run it every time. We may want to 
+    have the default option be to generate a set of PSFs ahead for each mode 
+    of time and store them for easy use. 
+    - This should be able to handle polarized inputs. 
 
-    scene_info: a dictionary entry "scene_hdu" that contains an HDU 
-    with a 2D image and a header that contains the pixel scale and center
+    Arguments: 
+    scene_info: Includes a dictionary entry "scene_hdu" that contains a (possibly oversampled) HDU
+    with a 2D image and a header that contains the pixel scale and center. 
 
     proper_arguments and cpgs_info collectively contain rest info we need to generate off-axis
     PSFs (TBD)
 
+    Returns:  
+    A list of HDUs with the convolved scenes
+
     '''
-    convolved_hdu = None
-    return convolved_hdu
+    convolved_hdulist = None
+    return convolved_hdulist
 
 
-def place_point_sources(background_scene, scene_info, proper_arguments, cpgs_info):
+def place_point_sources(background_scene_list, scene_info, proper_arguments, cpgs_info):
     '''
     
-    Function that inserts individual off-axis PSFs 
+    Function that inserts individual off-axis PSFs to each input scene. The scenes will be different exposures 
+    in an L1 dataset, and may include multiple rolls. 
 
     Arguments:
-    background_scene: a HDU with a 2D image and a header that contains the pixel scale and center
+    background_scene_list: a list of HDUs with a 2D image and a header that contains the pixel scale and center
     scene_info: a dictionary with an entry called "point_source_info" that contains a list of point-source 
     brightnesses and locations
     
@@ -100,7 +114,11 @@ def place_point_sources(background_scene, scene_info, proper_arguments, cpgs_inf
 def generate_host_star_psf(scene_with_sources, scene_info, proper_arguments):
     '''
 
-    Function that generates a PSF of the host star 
+    Function that generates a PSF of the host star and places it into each input scece. The input
+    scenes will be different exposures in an L1 dataset, and may include multiple rolls.
+    
+    The function should be able to generate PSFs on the fly, 
+    or use a set of pre-generated PSFs, such as the available Observing Scenarios (OS9, OS11, etc.). 
 
     Arguments: (Max, edit these descriptions as necessary)
     scene_with_sources: a HDU with a 2D image and a header that contains the placed point sources 
@@ -113,13 +131,14 @@ def generate_host_star_psf(scene_with_sources, scene_info, proper_arguments):
     return host_star_psf_hdu
 
 
-def simulate_detector(scene_with_psf, emccd_detect_arguments):
+def simulate_detector(scenes_with_psf, emccd_detect_arguments):
     '''
     
-    Function that simulates the detector given EMCCD detect arguments and 2D image with PSF
+    Function that simulates the detector images for each scene
+    given EMCCD detect arguments and 2D image with PSF
 
     Arguments: (Max, edit these descriptions as necessary)
-    scene_with_psf: a HDU with a 2D image and a header that contains PSF
+    scenes_with_psf: a HDU with a 2D image and a header that contains PSF
     
     emccd_detect_arguments contains rest info we need to simulate the detector (TBD)
     '''
