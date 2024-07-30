@@ -1,4 +1,8 @@
 
+### Scene - Make it a structured class. 
+### Observation class - generated from CPGS. Contains proper_arguments, emccd_detect_arguments. A Scene can be an attribute of the Observation class. 
+### Dataset Object
+
 
 def generate_L1_data(CPGS_xml, scene_info, proper_arguments, emccd_detect_arguments): 
     '''
@@ -38,6 +42,13 @@ def generate_L1_data(CPGS_xml, scene_info, proper_arguments, emccd_detect_argume
 
     cpgs_info = open_CPGS_dict(CPGS_xml)
 
+    ## TODO: ADD headers? 
+    ## TODO: Make these three steps independent of each other and pass them to simulate_detector (default each one to None)
+    ## Each of convolve_2d_scene, place_point_sources, generate_host_star_psf should return a dataset with 2D images in the detector plane
+    ## e.g. polarimetry and spectroscopy modes will generate 2D images. 
+    ## 
+
+
     #We convolve a 2D input scene with off-axis PSFS
     convolved_scene_list = convolve_2d_scene(scene_info, proper_arguments, cpgs_info)
 
@@ -52,6 +63,18 @@ def generate_L1_data(CPGS_xml, scene_info, proper_arguments, emccd_detect_argume
     emccd_scene = simulate_detector(scene_list, emccd_detect_arguments)
 
     return emccd_scene
+
+def setup_default_instrument(CPGS_xml): 
+    '''
+
+    Given the CPGS setup, generate a default set of proper arguments and emccd_detect arguments
+
+    '''
+    proper_dict = {}
+    emccd_dict = {}
+
+    return proper_dict, emccd_dict
+
 
 
 def open_CPGS_dict(cpgs_xml):
