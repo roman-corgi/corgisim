@@ -4,7 +4,7 @@ import astropy.units as u
 from IPython.display import display
 
 
-def generating_prfs(resolution_elem):
+def generating_prfs(iwa, owa, sampling_theta, resolution_elem):
     ''' 
     Function to generate PRF including making a sampling grid
     that the PRFs will be generated on
@@ -17,8 +17,6 @@ def generating_prfs(resolution_elem):
 
     prf_pixelscale_lamD = resolution_elem #Pixel scale in units of lambda/diameter
 
-    iwa = 3 #smallest angle from optical axis where measurements are taken
-    owa = 9 #largest angle from optical axis where measurements are taken
 
     #Create the sampling grid the PSFs will be made on
     sampling1 = 0.1 #Fine sampling interval for the innermost region
@@ -31,7 +29,6 @@ def generating_prfs(resolution_elem):
     r_offsets = np.hstack([offsets1, offsets2, offsets3]) #Combined array of all radial offsets
     nr = len(r_offsets) #Total number of radial offsets
 
-    sampling_theta = 5 #Angular sampling interval in degrees
     thetas = np.arange(0,360,sampling_theta) * u.deg #Array of angular offsets from 0 to 360 degrees w/ specified interval
     nth = len(thetas) #Total number of angular offsets
 
