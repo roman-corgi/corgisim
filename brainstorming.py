@@ -70,6 +70,7 @@ def setup_default_instrument(CPGS_xml):
     Given the CPGS setup, generate a default set of proper arguments and emccd_detect arguments
 
     '''
+    
     proper_dict = {}
     emccd_dict = {}
 
