@@ -19,11 +19,9 @@ from cgi_phasec_poppy.imshows import *
 
 from importlib import reload
 
-proper.prop_use_fftw(DISABLE=False)
-
-def convolve_2d_scene(iwa, owa, sampling_theta, resolution_elem,
-                      n_lam, c_lam, bandwidth, options, prf_width,
-                      image_file, sampling_plot=False):
+#Potentially update so that all input parameters are a part of CPGS_xml file?
+def convolve_2d_scene(iwa, owa, sampling_theta, resolution_elem, n_lam, c_lam,
+                      bandwidth, options, prf_width, scene_info, sampling_plot=False):
     
     def generating_prfs():
         ''' 
@@ -46,81 +44,87 @@ def convolve_2d_scene(iwa, owa, sampling_theta, resolution_elem,
         save_path = path to save the FITS file containing all PRFs
 
         '''
-        #Create the sampling grid the PSFs will be made on
-        sampling1 = 0.1  #Fine sampling interval for the innermost region
-        sampling2 = 0.2  #Coarser sampling interval for the intermediate region
-        sampling3 = resolution_elem  #Sampling interval for the outer region
-        offsets1 = np.arange(0, iwa + 1, sampling1)  #Region from center to about inner w.a.
-        offsets2 = np.arange(iwa + 1, owa, sampling2)  #Region from about inner w.a. to outer w.a.
-        offsets3 = np.arange(owa, 15 + sampling3, sampling3)  #Region from the outer w.a. to beyond
+        # Create the sampling grid the PSFs will be made on
+        sampling1 = 0.1  # Fine sampling interval for the innermost region
+        sampling2 = 0.2  # Coarser sampling interval for the intermediate region
+        sampling3 = resolution_elem  # Sampling interval for the outer region
+        offsets1 = np.arange(0, iwa + 1, sampling1)  # Region from center to about inner w.a.
+        offsets2 = np.arange(iwa + 1, owa, sampling2)  # Region from about inner w.a. to outer w.a.
+        offsets3 = np.arange(owa, 15 + sampling3, sampling3)  # Region from the outer w.a. to beyond
 
-        r_offsets = np.hstack([offsets1, offsets2, offsets3])  #Combined array of all radial offsets
-        nr = len(r_offsets)  #Total number of radial offsets
+        r_offsets = np.hstack([offsets1, offsets2, offsets3])  # Combined array of all radial offsets
+        nr = len(r_offsets)  # Total number of radial offsets
 
-        thetas = np.arange(0, 360, sampling_theta) * u.deg  #Array of angular offsets from 0 to 360 degrees w/ specified interval
-        nth = len(thetas)  #Total number of angular offsets
+        thetas = np.arange(0, 360, sampling_theta) * u.deg  # Array of angular offsets from 0 to 360 degrees w/ specified interval
+        nth = len(thetas)  # Total number of angular offsets
 
-        #Total number of PRFs required for the grid
-        #Calculated based on the number of radial and angular offsets
+        # Total number of PRFs required for the grid
+        # Calculated based on the number of radial and angular offsets
         prfs_required = (nr - 1) * nth + 1
         display(prfs_required)
 
-        #Plots the field angles for grid
+        # Plots the field angles for grid
         theta_offsets = []
         for r in r_offsets[1:]:
             theta_offsets.append(thetas.to(u.radian).value)
         theta_offsets = np.array(theta_offsets)
         theta_offsets.shape
 
-        #Generating PRFs
+        # Generating PRFs
         minlam = c_lam * (1 - bandwidth / 2)
         maxlam = c_lam * (1 + bandwidth / 2)
         lam_array = np.linspace(minlam, maxlam, n_lam)
         lam_array = np.array([c_lam])
 
- 
-        psfs_array = np.zeros(shape=((len(r_offsets)-1)*len(thetas) + 1, prf_width, prf_width))
+        psfs_array = np.zeros(shape=(15, prf_width, prf_width))  # Modify to save only 15 PRFs
 
         count = 0
         start = time.time()
         for i, r in enumerate(r_offsets):
             for j, th in enumerate(thetas):
+                if count >= psfs_array.shape[0]:
+                    break  # Ensure we don't go out of bounds
+                
                 xoff = r * np.cos(th)
                 yoff = r * np.sin(th)
                 options.update({'source_x_offset': xoff.value, 'source_y_offset': yoff.value})
-            
+
                 (wfs, pxscls_m) = proper.prop_run_multi('roman_phasec', lam_array, prf_width, QUIET=True, PASSVALUE=options)
 
-                prfs = np.abs(wfs)**2
-                prf = np.sum(prfs, axis=0) / n_lam 
+                prfs = np.abs(wfs) ** 2
+                prf = np.sum(prfs, axis=0) / n_lam
 
                 psfs_array[count] = prf
                 count += 1
 
-                if r < r_offsets[1]: 
-                    break #Skip first set of PSFs if radial offset is 0 at the start
+                if r < r_offsets[1]:
+                    break  # skip first set of PSFs if radial offset is 0 at the start
 
-        #Saves all PRFs to a single FITS file
+        # Normalize PRFs
+        for k in range(psfs_array.shape[0]):
+            psfs_array[k] /= np.sum(psfs_array[k])
+
+        # Saves all PRFs to a single FITS file
         hdu = fits.PrimaryHDU(psfs_array)
         hdul = fits.HDUList([hdu])
         hdul.writeto("prfs.fits", overwrite=True)
 
-        #Optional plotting embedded function for sampling PRFs
+        # Optional embedded function to plot sampling PRFs
         def sampling_plots_prfs():
             fig = plt.figure(dpi=125, figsize=(4, 4))
 
             ax1 = plt.subplot(111, projection='polar')
             ax1.plot(theta_offsets, r_offsets[1:], '.')
             ax1.set_yticklabels([])
-            ax1.set_rticks([iwa, owa, max(r_offsets)])  #Less radial ticks
-            ax1.set_rlabel_position(55)  #Move radial labels away from plotted line
+            ax1.set_rticks([iwa, owa, max(r_offsets)])  # Less radial ticks
+            ax1.set_rlabel_position(55)  # Move radial labels away from plotted line
             ax1.set_thetagrids(thetas[::2].value)
             ax1.grid(axis='x', visible=True, color='black', linewidth=1)
             ax1.grid(axis='y', color='black', linewidth=1)
             ax1.set_title('Distribution of PRFs', va='bottom')
             ax1.set_axisbelow(False)
 
-            #Plots 2 band images
+            # Plots 2 band images
             (wfs, pxscls_m) = proper.prop_run_multi('roman_phasec', lam_array, prf_width, QUIET=False, PASSVALUE=options)
             prf_pixelscale_m = pxscls_m[0] * u.m / u.pix
 
@@ -134,36 +138,36 @@ def convolve_2d_scene(iwa, owa, sampling_theta, resolution_elem,
 
         return psfs_array
 
-    #Generates the PRFs
+    # Generate the PRFs
     prfs_array = generating_prfs()
     npsf = prfs_array.shape[1]
 
-    #Convert units
+    # Convert units
     mas_per_lamD = (c_lam / bandwidth * u.radian).to(u.mas)
     iwa_mas = iwa * mas_per_lamD
     owa_mas = owa * mas_per_lamD
     psf_pixelscale_mas = resolution_elem * mas_per_lamD / u.pix
 
-    #Loads the input image
-    input_image = fits.getdata(image_file)
+    # Load the input image
+    input_image = fits.getdata(scene_info)
     px = input_image.shape[0] // 2 - npsf // 2
     py = px + npsf
 
-    #Extract the region to convolve
+    # Extract the region to convolve
     disk = input_image[px:py, px:py]
 
-    #Performs the convolution
+    # Perform the convolution
     disk_sim = np.zeros_like(disk)
-    for prf in prfs_array: #1D to 2D 
-        disk_sim += np.reshape(np.convolve(disk.flatten(), prf.flatten(), mode='same'), (npsf, npsf))
+    for prf in prfs_array:
+        disk_sim += convolve2d(disk, prf, mode='same')
 
-    #Saves convolved image
+    # Save the convolved image
     hdu = fits.PrimaryHDU(disk_sim)
     hdul = fits.HDUList([hdu])
-    output_file = f'test_convolved.fits' #Need to rename when finalized
+    output_file = f'test_convolved.fits'
     hdul.writeto(output_file, overwrite=True)
 
-    #For plotting the result
+    # Plot the result
     xpix = (np.arange(-npsf // 2, npsf // 2) * psf_pixelscale_mas.value) / 1000
     ypix = (np.arange(-npsf // 2, npsf // 2) * psf_pixelscale_mas.value) / 1000
 
