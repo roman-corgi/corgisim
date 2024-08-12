@@ -1,10 +1,13 @@
+import numpy as np
+from scipy.signal import convolve2d
 import astropy.io.fits as fits
 import astropy.units as u
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
+from scipy.ndimage import rotate
+import time
 
 from IPython.display import clear_output, display
-import time
 from pathlib import Path
 import copy
 
@@ -19,18 +22,67 @@ from cgi_phasec_poppy.imshows import *
 
 from importlib import reload
 
-proper.prop_use_fftw(DISABLE=False)
+
+#Incorporate Dataset class and import it and calling save (for file path)
+#Look into Image and how we can use that to set up our scene from the CPGS file
+
+def find_closest_prf(xoff, yoff, prfs, r_offsets_mas, thetas, verbose=True):
+    '''
+    Find the closest PRF based on the provided offsets.
+
+    Arguments:
+    xoff = off x-axis
+    yoff = off y-axis
+    prfs = amount of interpolated prfs
+    r_offsets_mas = the radial offsets 
+    thetas = anglular offsets
+    verbose = print current action while function is running
+    '''
+    r = np.sqrt(xoff**2 + yoff**2)
+    r = r * u.deg  # Assuming `r` should be in degrees for comparison
+    theta = np.arctan2(yoff, xoff) * u.rad  # Convert theta to Quantity
+
+    if theta < 0:
+        theta += 360 * u.deg
+
+    # Find closest radial offset
+    r_offsets_mas_value = r_offsets_mas.value  # Convert to numpy array of floats
+    r_value = r.to(u.mas).value  # Convert r to milliarcseconds for comparison
+    kr = np.argmin(np.abs(r_offsets_mas_value - r_value))
+    if kr > (len(r_offsets_mas) - 1):
+        kr = len(r_offsets_mas) - 1
+
+    # Find closest theta
+    thetas_value = thetas.value  # Convert to numpy array of floats
+    theta_value = theta.to(u.deg).value  # Convert theta to degrees for comparison
+    kth = np.argmin(np.abs(thetas_value - theta_value))
+    theta_diff = theta - thetas[kth]  # Difference in angles
+
+    if kr == 0:
+        kpsf = 0
+    else:
+        kpsf = 1 + kth + (len(thetas)) * (kr - 1)
+
+    if verbose:
+        print(f'Desired r={r:.2f}, radial index={kr:d}, closest available r={r_offsets_mas[kr]:.2f}')
+        print(f'Desired th={theta:.2f}, theta index={kth:d}, closest available th={thetas[kth]:.2f}, difference={theta_diff:.2f}')
+        print(f'PSF index = {kpsf:d}')
+
+    closest_psf = prfs[kpsf]
+    interpped_psf = rotate(closest_psf, -theta_diff.to(u.deg).value, reshape=False, order=1)
+
+    return interpped_psf
 
 
-def generating_prfs(fine_sampling, coarse_sampling, iwa, owa,
-                    sampling_theta, resolution_elem, n_lam,
-                    c_lam, bandwidth, options, prf_width, 
+
+def generating_prfs(fine_sampling, coarse_sampling, iwa, owa, sampling_theta, 
+                    resolution_elem, n_lam, c_lam, bandwidth, options, prf_width, 
                     sampling_plot=False, save_path="prfs.fits"):
     ''' 
     Function to generate PRF including optional argument to
     make a sampling grid that the PRFs will be generated on
 
-    Arguments (to be revised):
+    Arguments:
     iwa = inner working angle
     owa = outer working angle
     sampling_theta = used for sampling grid
@@ -46,51 +98,51 @@ def generating_prfs(fine_sampling, coarse_sampling, iwa, owa,
     save_path = path to save the FITS file containing all PRFs
 
     '''
+    #Calculate conversion factors
+    mas_per_lamD = (c_lam / bandwidth * u.radian).to(u.mas)  # Assuming D is 2.3631 meters
+
     #Create the sampling grid the PSFs will be made on
-    sampling1 = fine_sampling  #sampling interval for the innermost region
-    sampling2 = coarse_sampling  #sampling interval for the intermediate region
-    sampling3 = resolution_elem  #sampling interval for the outer region
-    offsets1 = np.arange(0, iwa + 1, sampling1)  #Region from center to about inner w.a.
-    offsets2 = np.arange(iwa + 1, owa, sampling2)  #Region from about inner w.a. to outer w.a.
-    offsets3 = np.arange(owa, 15 + sampling3, sampling3)  #Region from the outer w.a. to beyond
+    sampling1 = fine_sampling  # Fine sampling interval for the innermost region
+    sampling2 = coarse_sampling  # Coarser sampling interval for the intermediate region
+    sampling3 = resolution_elem  # Sampling interval for the outer region
+    offsets1 = np.arange(0, iwa + 1, sampling1)  # Region from center to about inner w.a.
+    offsets2 = np.arange(iwa + 1, owa, sampling2)  # Region from about inner w.a. to outer w.a.
+    offsets3 = np.arange(owa, 15 + sampling3, sampling3)  # Region from the outer w.a. to beyond
 
-    r_offsets = np.hstack([offsets1, offsets2, offsets3])  #Combined array of all radial offsets
-    nr = len(r_offsets)  #Total number of radial offsets
+    r_offsets = np.hstack([offsets1, offsets2, offsets3])  # Combined array of all radial offsets
+    r_offsets_mas = r_offsets * mas_per_lamD  # Convert to milliarcseconds
 
-    thetas = np.arange(0, 360, sampling_theta) * u.deg  #Array of angular offsets from 0 to 360 degrees w/ specified interval
-    nth = len(thetas)  #Total number of angular offsets
+    thetas = np.arange(0, 360, sampling_theta) * u.deg  # Array of angular offsets from 0 to 360 degrees w/ specified interval
+
+    nr = len(r_offsets)  # Total number of radial offsets
+    nth = len(thetas)  # Total number of angular offsets
 
     #Total number of PRFs required for the grid
-    #Calculated based on the number of radial and angular offsets
     prfs_required = (nr - 1) * nth + 1
-    display(prfs_required)
+    print(prfs_required)
 
-    #Plots the field angles for grid
-    theta_offsets = []
-    for r in r_offsets[1:]:
-        theta_offsets.append(thetas.to(u.radian).value)
-    theta_offsets = np.array(theta_offsets)
-    theta_offsets.shape
-
-    #Generates the PRFs
+    #Generating PRFs
     minlam = c_lam * (1 - bandwidth / 2)
     maxlam = c_lam * (1 + bandwidth / 2)
     lam_array = np.linspace(minlam, maxlam, n_lam)
-    lam_array = np.array([c_lam])
-
+    lam_array = np.array([c_lam])  # Assuming a single wavelength for simplicity
 
     psfs_array = np.zeros(shape=((len(r_offsets)-1)*len(thetas) + 1, prf_width, prf_width)) 
+    interpolated_psfs_array = np.zeros_like(psfs_array)
+
+    x_offsets = []
+    y_offsets = []
 
     count = 0
     start = time.time()
     for i, r in enumerate(r_offsets):
         for j, th in enumerate(thetas):
             if count >= psfs_array.shape[0]:
-                break
+                break  # Ensure we don't go out of bounds
             
-            xoff = r * np.cos(th)
-            yoff = r * np.sin(th)
-            options.update({'source_x_offset': xoff.value, 'source_y_offset': yoff.value})
+            xoff = r * np.cos(th.to(u.rad).value)
+            yoff = r * np.sin(th.to(u.rad).value)
+            options.update({'source_x_offset': xoff, 'source_y_offset': yoff})
 
             (wfs, pxscls_m) = proper.prop_run_multi('roman_phasec', lam_array, prf_width, QUIET=True, PASSVALUE=options)
 
@@ -98,25 +150,43 @@ def generating_prfs(fine_sampling, coarse_sampling, iwa, owa,
             prf = np.sum(prfs, axis=0) / n_lam
 
             psfs_array[count] = prf
+            x_offsets.append(xoff)
+            y_offsets.append(yoff)
+
             count += 1
 
             if r < r_offsets[1]:
-                break  #skips first set of PSFs if radial offset is 0 at the start
+                break  # skip first set of PSFs if radial offset is 0 at the start
 
-    #Saves all PRFs to a single FITS file
-    hdu = fits.PrimaryHDU(psfs_array)
-    hdul = fits.HDUList([hdu])
+    #Save PRFs to a FITS file
+    hdu1 = fits.PrimaryHDU(psfs_array)
+    hdul = fits.HDUList([hdu1])
     hdul.writeto(save_path, overwrite=True)
 
-    #Optional to embed function to plot sampling PRFs
+    #Interpolate PRFs
+    prfs = fits.getdata(save_path)  # Load the original PRFs
+    interpolated_psfs_array = np.zeros_like(psfs_array)
+    
+    for i, (xoff, yoff) in enumerate(zip(x_offsets, y_offsets)):
+        interpolated_psf = find_closest_psf(xoff, yoff, prfs, r_offsets_mas, thetas)
+        interpolated_psfs_array[i] = interpolated_psf
+
+    #Update FITS file with interpolated PRFs
+    hdu2 = fits.ImageHDU(interpolated_psfs_array, name='Interpolated_PRFs')
+    hdul = fits.open(save_path, mode='update')
+    hdul.append(hdu2)
+    hdul.flush()
+    hdul.close()
+
+    #Optional embedded function to plot sampling PRFs
     def sampling_plots_prfs():
         fig = plt.figure(dpi=125, figsize=(4, 4))
 
         ax1 = plt.subplot(111, projection='polar')
-        ax1.plot(theta_offsets, r_offsets[1:], '.')
+        ax1.plot(thetas.value, r_offsets[1:], '.')
         ax1.set_yticklabels([])
-        ax1.set_rticks([iwa, owa, max(r_offsets)])  #Less radial ticks
-        ax1.set_rlabel_position(55)  #Move radial labels away from plotted line
+        ax1.set_rticks([iwa, owa, max(r_offsets)])  # Less radial ticks
+        ax1.set_rlabel_position(55)  # Move radial labels away from plotted line
         ax1.set_thetagrids(thetas[::2].value)
         ax1.grid(axis='x', visible=True, color='black', linewidth=1)
         ax1.grid(axis='y', color='black', linewidth=1)
@@ -128,12 +198,13 @@ def generating_prfs(fine_sampling, coarse_sampling, iwa, owa,
         prf_pixelscale_m = pxscls_m[0] * u.m / u.pix
 
         patches = [Circle((0, 0), iwa, color='c', fill=False), Circle((0, 0), owa, color='c', fill=False)]
-        imshow2(prf, prf, ' ', ' ',
+        imshow2(prf, prf, 'HLC PSF: Band 1', 'HLC PSF: Band 1',
                 lognorm1=True, lognorm2=True,
                 pxscl1=prf_pixelscale_m.to(u.mm / u.pix), pxscl2=resolution_elem, patches2=patches)
 
     if sampling_plot:
         sampling_plots_prfs()
+
 
 
 def convolve_2d_scene(prf_file, scene_info):
