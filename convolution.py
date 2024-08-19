@@ -253,8 +253,7 @@ def convolve_2d_scene(prf_file, scene_info):
         -> mode = same: output size will be the same as the input image size.
 
         The code accumulates the results of convolving the input image with
-        each PSF, providing a composite image that represents the combined
-        effect of all PSFs.
+        each PSF, providing a convolved image of the combined PSFs.
         '''
 
     #Saves convolved image to fits
