@@ -5,7 +5,9 @@ from astropy.io import fits
 
 class Dataset():
     """
-    A sequence of data of the same kind. Can be indexed and looped over
+    A sequence of data of the same kind. Can be indexed and looped over. 
+
+    Based on the same class from corgidrp, but stripped down. 
 
     Args:
         frames_or_filepaths (list): list of either filepaths or data objects (e.g., Image class)
@@ -75,28 +77,6 @@ class Dataset():
 
         for filename, frame in zip(filenames, self.frames):
             frame.save(filename=filename, filedir=filedir)
-
-    def update_after_processing_step(self, history_entry, new_all_data=None, header_entries = None):
-        """
-        Updates the dataset after going through a processing step
-
-        Args:
-            history_entry (str): a description of what processing was done. Mention reference files used.
-            new_all_data (np.array): (optional) Array of new data. Needs to be the same shape as `all_data`
-            header_entries (dict): (optional) a dictionary {} of ext_hdr and err_hdr entries to add or update
-        """
-        # update data if necessary
-        if new_all_data is not None:
-            if new_all_data.shape != self.all_data.shape:
-                raise ValueError("The shape of new_all_data is {0}, whereas we are expecting {1}".format(new_all_data.shape, self.all_data.shape))
-            self.all_data[:] = new_all_data # specific operation overwrites the existing data rather than changing pointers
-
-        # update history and header entries
-        for img in self.frames:
-            img.ext_hdr['HISTORY'] = history_entry
-            if header_entries:
-                for key, value in header_entries.items():
-                    img.ext_hdr[key] = value
                     
     def copy(self, copy_data=True):
         """
