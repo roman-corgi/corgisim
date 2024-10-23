@@ -1,13 +1,13 @@
 
 
-def Scene():
+class Scene():
     '''
     
     A class that defines the an astrophysical scene
     - Information about the host star (brightness, spectral type, etc.)
     - A list of point sources (brightness, location, spectra?, etc.)
     - A 2D background scene that will be convolved with the off-axis PSFs
-        - This could cotain a
+        - Format needs to be determined. Likely a fits hdu with specific header keywords. 
 
     Arguments: 
         host_star_properties: A dictionary that contains information about the host star, such as: 
