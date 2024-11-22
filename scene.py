@@ -21,3 +21,22 @@ class Scene():
         self.host_star_dict = host_star_properties
         self.point_source_list = point_source_info
         self.background_scene = background_scene_hdu
+
+        #The following three attributes will hold astropy HDUs with the simulated images.
+        self.host_star_image = None
+        self.point_source_image = None
+        self.background_scene = None
+
+        #This will be basically the sum of the above three images.
+        self.total_scene = None
+
+
+    def add_photon_noise(): 
+        '''
+        Function that adds photon noise to the scene. 
+        '''
+        pass
+
+
+### Notes: 
+## Polarization will be handled by including format data in the HDUs. 
