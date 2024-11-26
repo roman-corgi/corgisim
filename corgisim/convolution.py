@@ -1,3 +1,7 @@
+#This file contains the functions to generate PRFs and convolve them with a scene
+#Written by DevonTax Grace at UCSB Summer 2024 - Based on notebooks by Kian Milani
+#It might be incorporated into instrument.py
+
 import numpy as np
 from scipy.signal import convolve2d
 import astropy.io.fits as fits

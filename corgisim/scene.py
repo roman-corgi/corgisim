@@ -17,10 +17,10 @@ class Scene():
         background_scene: An astropy HDU that contains a background scene as data and a header full of relevant information, such as: 
             pixel_scale, etc. 
     '''
-    def __init__(self, host_star_properties=None, point_source_info=None, background_scene_hdu=None):
+    def __init__(self, host_star_properties=None, point_source_info=None, twoD_scene_hdu=None):
         self.host_star_dict = host_star_properties
         self.point_source_list = point_source_info
-        self.background_scene = background_scene_hdu
+        self.twoD_scene = twoD_scene_hdu
 
 
 
@@ -38,10 +38,11 @@ class Simulated_Scene():
         #The following three attributes will hold astropy HDUs with the simulated images.
         self.host_star_image = None
         self.point_source_image = None
-        self.background_image = None
+        self.twoD_image = None
 
         #This will be basically the sum of the above three images at the right location on the detector
         self.total_image = None
+
 
 
 ### Notes: 

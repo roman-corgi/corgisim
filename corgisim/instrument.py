@@ -3,25 +3,26 @@
 
 class CGI_optics():
     '''
-    A class that defines the current configuration of CGI. 
+    A class that defines the current configuration of the CGI optics, including the telescope
+    and the coronagraph.
 
     It should include basically everything about the instrument configuration. 
 
     Will likely be fairly similar to Jorge's corgisims_core class. 
 
-    CGI_optics needs to know the roll angle of the telescope? 
+    It will need to know the telescope roll angle. 
 
     '''
 
-    def __init__(self, proper_keywords, ):
+    def __init__(self, proper_keywords):
         '''
 
-        Initialize the class with keyword two dictionaries that define the PROPER and EMCCD_DETECT input parameters. 
+        Initialize the class a keyword dictionary that defines the setup of cgisim/PROPER 
+        and other relevant information (such as the telescope roll angle).
 
 
         Initialize the class with two dictionaries: 
         - proper_keywords: A dictionary with the keywords that are used to set up the proper model
-        - emccd_keywords: A dictionary with the keywords that are used to set up the emccd model
         '''
 
     def get_psf(self, scene, on_the_fly=False, oversample = 1, return_oversample = False):
@@ -29,13 +30,13 @@ class CGI_optics():
         
         Function that provides an on-axis PSF for the current configuration of CGI.
 
-        It should take the input scene from scene.host_star_properties and return a scene object with 
-        the host_star_image attribute populated with an astropy HDU that contains a noiseless on-axis PSF, 
-        and associated metadata in the header. This on-axis PSF should be either generated on the fly, or 
-        picked from a pregenerated library (e.g. OS11 or something cached locally). 
+        It should take the host star properties from scene.host_star_properties and return a 
+        Simulated_scene object with the host_star_image attribute populated with an astropy HDU 
+        that contains a noiseless on-axis PSF, and associated metadata in the header. This on-axis 
+        PSF should be either generated on the fly, or picked from a pregenerated library (e.g. OS11 
+        or something cached locally). 
 
         TODO: Figure out the default output units. Current candidate is photoelectrons/s. 
-
 
         Arguments: 
         scene: A corgisim.scene.Scene object that contains the scene to be simulated.
@@ -44,7 +45,8 @@ class CGI_optics():
         return_oversample: A boolean that defines whether the function should return the oversampled PSF or not.
 
         Returns:
-        output_scene: A scene object with the host_star_image attribute populated with an astropy HDU that contains a noiseless on-axis PSF.
+        corgisim.scene.Simulated_Scene: A scene object with the host_star_image attribute populated with an astropy
+                                        HDU that contains a noiseless on-axis PSF.
 
         '''
 
@@ -53,13 +55,13 @@ class CGI_optics():
         '''
         Function that simulates a 2D scene with the current configuration of CGI. 
 
-        It should take the input scene from scene.background_scene (an hdu) and convolve it with a 
+        It should take the image data from the HDU from scene.background_scene and convolve it with a 
         set of off-axis PSFs (also known as PRFs in some circles), and return an updated scene object with the
-        background_scene attribute populated with an astropy HDU that contains the simulated scene and associated metadata
-        in the header.
+        background_scene attribute populated with an astropy HDU that contains the simulated scene and associated 
+        metadata in the header.
 
-        The off-axis PSFs should be either generated on the fly, or read in from a set of pre-generated PSFs. The convolution 
-        should be flux conserving. 
+        The off-axis PSFs should be either generated on the fly, or read in from a set of pre-generated PSFs. The 
+        convolution should be flux conserving. 
 
         TODO: Figure out the default output units. Current candidate is photoelectrons/s.
 
@@ -70,7 +72,8 @@ class CGI_optics():
         return_oversample: A boolean that defines whether the function should return the oversampled PSFs or not.
 
         Returns: 
-        OUT OF DATE: A 2D numpy array that contains the simulated scene. 
+        corgisim.scene.Simulated_Scene: A scene object with the background_scene attribute populated with an astropy
+                                        HDU that contains the simulated scene.
         '''
 
 
@@ -84,7 +87,9 @@ class CGI_optics():
         The off-axis PSFs should be either generated on the fly, or read in from a set of pre-generated PSFs. 
 
         TODO: Figure out the default output units. Current candidate is photoelectrons/s.
-        TODO: We may want this to generate "far away" point sources whose diffraction spikes still end up in our scene. 
+        TODO: We may want this to generate "far away" point sources whose diffraction spikes still 
+                end up in our scene. We'll only want to simulate the part of the scene that ends up on the detector.
+                How do we do that with corgisim/proper?
 
         Arguments: 
         scene: A corgisim.scene.Scene object that contains the scene to be simulated.
@@ -95,8 +100,6 @@ class CGI_optics():
         Returns: 
         A 2D numpy array that contains the scene with the injected point sources. 
         '''
-
-
     
 class CGI_detector(): 
     
@@ -109,7 +112,7 @@ class CGI_detector():
         '''
     
     
-    def place_scene_on_detector(self, scene, ):
+    def place_scene_on_detector(self, scene):
         '''
         Function that places the simulated scene on the detector. 
 
