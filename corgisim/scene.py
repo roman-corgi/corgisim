@@ -45,5 +45,15 @@ class Simulated_Scene():
 
 
 
-### Notes: 
-## Polarization will be handled by including format data in the HDUs. 
+def combine_simulated_scenes_list(scene_list):
+    '''
+    Function that takes a list of Simulated_Scene objects and combines them into a single Simulated_Scene object. 
+
+    Arguments: 
+        scene_list: A list of corgisim.scene.Simulated_Scene objects.
+
+
+    Returns:
+        corgisim.scene.Simulated_Scene: A scene object with the host_star_image, point_source_image, and background_scene attributes
+                                        populated with the sum of the input scenes.
+    '''
