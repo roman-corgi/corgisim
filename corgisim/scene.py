@@ -24,7 +24,7 @@ class Scene():
 
 
 
-class Simulated_Scene(): 
+class SimulatedScene(): 
     '''
     A class that defines a simulated scene. 
 
