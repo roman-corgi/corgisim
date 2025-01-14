@@ -6,6 +6,8 @@ from astropy.io import fits
 ### Set up a scene. ###
 #######################
 
+####add to test
+
 #Define the host star properties
 host_star_properties = {'v_mag': 1, 'spectral_type': 'G2V', 'ra': 0, 'dec': 0}
 
