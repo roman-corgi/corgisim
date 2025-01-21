@@ -3,6 +3,7 @@ import proper
 import numpy as np
 from astropy.io import fits
 import roman_preflight_proper
+from corgisim import scene
 
 class CorgiOptics():
     '''
@@ -35,7 +36,7 @@ class CorgiOptics():
 
         print("CorgiOptics initialized with proper keywords.")
 
-    def get_psf(self, scene, sim_scene, on_the_fly=False, oversample = 1, return_oversample = False):
+    def get_psf(self, input_scene, on_the_fly=False, oversample = 1, return_oversample = False):
         '''
         
         Function that provides an on-axis PSF for the current configuration of CGI.
@@ -51,7 +52,7 @@ class CorgiOptics():
                 and put the output of this function into the host_star_image attribute.
 
         Arguments: 
-        scene: A corgisim.scene.Scene object that contains the scene to be simulated.
+        input_scene: A corgisim.scene.Scene object that contains the scene to be simulated.
         on_the_fly: A boolean that defines whether the PSF should be generated on the fly.
         oversample: An integer that defines the oversampling factor of the detector when generating the PSF
         return_oversample: A boolean that defines whether the function should return the oversampled PSF or not.
@@ -62,7 +63,7 @@ class CorgiOptics():
 
         '''
         ### calculate the star flux at the given wavelenghts in unit of W/m^2/nm
-        host_star_flux = fstar(lam=self.lambda_m, teff=scene.host_star_Teff, rs=scene.host_star_Rs, d=scene.host_star_Dist)
+        host_star_flux = fstar(lam=self.lambda_m, teff=input_scene.host_star_Teff, rs=input_scene.host_star_Rs, d=input_scene.host_star_Dist)
        
         ### convert star flux W/m^2/nm to photons/m^2/nm
         host_star_photons = power2photon(self.lambda_m, host_star_flux)
@@ -84,10 +85,12 @@ class CorgiOptics():
             (fields, sampling) = proper.prop_run_multi('roman_preflight', self.lambda_m/1e3, self.proper_keywords['npsf'], QUIET=self.proper_keywords['if_quiet'],PRINT_INTENSITY=self.proper_keywords['if_print_intensity'],PASSVALUE=self.proper_keywords)
             images = np.abs(fields)**2
             image = np.sum(images *  collected_photons_l[:, np.newaxis, np.newaxis],0)
+
+        sim_scene = scene.SimulatedScene(input_scene)
         
         sim_scene.host_star_image =  image
 
-        return 
+        return sim_scene
 
 
     def simulate_2D_scene(self, scene, on_the_fly=False, oversample = 1, return_oversample = False):

@@ -19,7 +19,7 @@ def run_sim():
 
     #Create a Scene object that holds all this information
     base_scene = scene.Scene(host_star_properties)
-    sim_scene = scene.SimulatedScene(base_scene)
+    #sim_scene = scene.SimulatedScene(base_scene)
 
     ####setup the wavelength for the simulation, nlam=1 for monochromatic image, nlam>1 for broadband image
     lam0 = 575  # unit nm
@@ -50,7 +50,7 @@ def run_sim():
                        'npsf':npsf, 'if_quiet':0, 'if_print_intensity':1 }
 
     optics = instrument.CorgiOptics(lam_array, proper_keywords=proper_keywords)
-    optics.get_psf(base_scene, sim_scene)
+    sim_scene = optics.get_psf(base_scene)
 
     print('Final_intensity_get:', np.sum(sim_scene.host_star_image, dtype = np.float64))
 
