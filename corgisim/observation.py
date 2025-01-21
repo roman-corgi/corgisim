@@ -11,6 +11,6 @@ def generate_observation_sequence(scene, cgi_optics, cgi_detector, exp_time, n_f
     Arguments: 
     scene
     '''
-    pass
+    
 
 
