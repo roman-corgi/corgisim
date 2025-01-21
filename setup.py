@@ -28,7 +28,7 @@ setup(
       author="Jingwen Zhang, Max Millar-Blanchaer,...",
       #author_email = "",
       description="xxxx",
-      license = "BSD",
+      license = "xxxx",
       platforms=["any"],
       url="",
       ext_modules = ext_modules
