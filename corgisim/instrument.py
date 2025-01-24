@@ -89,7 +89,17 @@ class CorgiOptics():
 
         sim_scene = scene.SimulatedScene(input_scene)
         
-        sim_scene.host_star_image = create_hdu(image)
+        header_info = {'wvl_c':np.median(self.lambda_m),
+                    's_teff':input_scene.host_star_Teff,
+                    's_rad':input_scene.host_star_Rs,
+                    's_dis':input_scene.host_star_Dist,
+                    }
+        keys_to_include_in_header = ['cor_type', 'use_errors','polaxis','final_sampling_lam0', 'use_dm1','use_dm2','use_fpm',
+                            'use_lyot_stop','use_field_stop','npsf']  # Specify keys to include
+        subset = {key: self.proper_keywords[key] for key in keys_to_include_in_header if key in self.proper_keywords}
+        header_info.update(subset)
+
+        sim_scene.host_star_image = create_hdu(image,header_info =header_info)
 
         return sim_scene
 
@@ -251,25 +261,27 @@ def create_hdu(data, header_info=None):
         - hdu (fits.PrimaryHDU): Astropy HDU object containing the data and header_info
         """
         # Create the Primary HDU with the data
-        primary_hdu = fits.PrimaryHDU()
+        ##primary_hdu = fits.PrimaryHDU()
         # Create an Image HDU with data
-        image_hdu = fits.ImageHDU(data)
+        ##image_hdu = fits.ImageHDU(data)
         # Combine them into an HDUList
-        hdul = fits.HDUList([primary_hdu, image_hdu])
+        ##hdul = fits.HDUList([primary_hdu, image_hdu])
 
         ####read default header and pass into the hdu
-        file_path = pkg_resources.resource_filename("corgisim.data", "data/CGI_0000000000000000014_20221004T2359351_L1_.fits")
-        with fits.open(file_path) as hdul_default:
-            primary_header = hdul_default[0].header
-            image_header = hdul_default[1].header
+        ##file_path = pkg_resources.resource_filename("corgisim.data", "data/CGI_0000000000000000014_20221004T2359351_L1_.fits")
+        ##with fits.open(file_path) as hdul_default:
+        ##    primary_header = hdul_default[0].header
+        #3    image_header = hdul_default[1].header
 
-        hdul[0].header = primary_header  # Primary HDU header
-        hdul[1].header = image_header    # Image HDU header
+        ##hdul[0].header = primary_header  # Primary HDU header
+        ##hdul[1].header = image_header    # Image HDU header
+        hdul = fits.PrimaryHDU(data)
 
         if header_info is not None:
         # Add customerized header info to the header
-            for key, value in header_info():
-                hdul[1].header[key] = value
+            #print(header_info)
+            for key, value in header_info.items():
+                hdul.header[key] = value
             
         return hdul
 

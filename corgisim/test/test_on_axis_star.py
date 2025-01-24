@@ -53,13 +53,13 @@ def run_sim():
     optics = instrument.CorgiOptics(lam_array, proper_keywords=proper_keywords)
     sim_scene = optics.get_psf(base_scene)
 
-    image = sim_scene.host_star_image[1].data
+    image = sim_scene.host_star_image.data
 
     print('Final_intensity_get:', np.sum(image, dtype = np.float64))
     #print(sim_scene.host_star_image[1].header)
 
     fig = plt.figure()
-    plt.imshow(sim_scene.host_star_image[1].data)
+    plt.imshow(image)
     plt.colorbar()
     plt.show()
 
