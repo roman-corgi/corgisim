@@ -4,6 +4,7 @@ import numpy as np
 from astropy.io import fits
 import roman_preflight_proper
 from corgisim import scene
+import pkg_resources
 
 class CorgiOptics():
     '''
@@ -88,7 +89,7 @@ class CorgiOptics():
 
         sim_scene = scene.SimulatedScene(input_scene)
         
-        sim_scene.host_star_image =  image
+        sim_scene.host_star_image = create_hdu(image)
 
         return sim_scene
 
@@ -236,3 +237,39 @@ def power2photon(wvl, power):
     photonum=power / h / fre
 
     return photonum
+
+
+def create_hdu(data, header_info=None):
+        """
+        Create an Astropy HDU for the PSF with metadata.
+
+        Parameters:
+        - data (numpy.ndarray): 2D array representing the PSF.
+        - header_info (dict): Dictionary of metadata to include in the header.
+
+        Returns:
+        - hdu (fits.PrimaryHDU): Astropy HDU object containing the data and header_info
+        """
+        # Create the Primary HDU with the data
+        primary_hdu = fits.PrimaryHDU()
+        # Create an Image HDU with data
+        image_hdu = fits.ImageHDU(data)
+        # Combine them into an HDUList
+        hdul = fits.HDUList([primary_hdu, image_hdu])
+
+        ####read default header and pass into the hdu
+        file_path = pkg_resources.resource_filename("corgisim.data", "data/CGI_0000000000000000014_20221004T2359351_L1_.fits")
+        with fits.open(file_path) as hdul_default:
+            primary_header = hdul_default[0].header
+            image_header = hdul_default[1].header
+
+        hdul[0].header = primary_header  # Primary HDU header
+        hdul[1].header = image_header    # Image HDU header
+
+        if header_info is not None:
+        # Add customerized header info to the header
+            for key, value in header_info():
+                hdul[1].header[key] = value
+            
+        return hdul
+

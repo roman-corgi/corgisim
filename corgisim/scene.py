@@ -119,32 +119,7 @@ class SimulatedScene():
 
         #This will be basically the sum of the above three images at the right location on the detector
         self.total_image = None
-
-    def create_hdu(self, data, header_info):
-        """
-        Create an Astropy HDU for the PSF with metadata.
-
-        Parameters:
-        - data (numpy.ndarray): 2D array representing the PSF.
-        - header_info (dict): Dictionary of metadata to include in the header.
-
-        Returns:
-        - hdu (fits.PrimaryHDU): Astropy HDU object containing the data and header_info
-        """
-        # Create the Primary HDU with the data
-        hdu = fits.PrimaryHDU(data)
         
-        # Add metadata to the header
-        for key, value in header_info():
-            hdu.header[key] = value
-
-        self.hdu = hdu
-        
-        return 
-
-        
-
-
 
 
 def combine_simulated_scenes_list(scene_list):
