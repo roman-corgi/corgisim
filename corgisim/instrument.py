@@ -280,8 +280,13 @@ def create_hdu(data, header_info=None):
         if header_info is not None:
         # Add customerized header info to the header
             #print(header_info)
+            hdul.header['COMMENT'] = "This FITS file contains simulated data."
+            hdul.header['COMMENT'] = "Header includes stellar properties and other simulation details."
+
             for key, value in header_info.items():
-                hdul.header[key] = value
+                comment = key+' : '+str(value)
+                hdul.header.add_comment(comment)
+                #hdul.header[key] = value
             
         return hdul
 

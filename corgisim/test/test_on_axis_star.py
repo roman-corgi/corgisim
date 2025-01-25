@@ -56,7 +56,7 @@ def run_sim():
     image = sim_scene.host_star_image.data
 
     print('Final_intensity_get:', np.sum(image, dtype = np.float64))
-    #print(sim_scene.host_star_image[1].header)
+    #print(sim_scene.host_star_image.header)
 
     fig = plt.figure()
     plt.imshow(image)
