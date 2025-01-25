@@ -16,7 +16,7 @@ def run_sim():
     
     #Define the host star properties
     #host_star_properties = {'v_mag': 1, 'spectral_type': 'G2V', 'ra': 0, 'dec': 0}
-    host_star_properties = {'Teff': 5770, 'Dist':1, 'Rs':1}
+    host_star_properties = {'Teff': 5770, 'Dist':10, 'Rs':1}
 
     #Create a Scene object that holds all this information
     base_scene = scene.Scene(host_star_properties)
@@ -47,7 +47,7 @@ def run_sim():
     npsf = 256
     final_sampling = 0.1
     proper_keywords ={'cor_type':'hlc', 'use_errors':2, 'polaxis':10, 'final_sampling_lam0':final_sampling,\
-                       'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':0, 'use_lyot_stop':0,  'use_field_stop':0,\
+                       'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1,\
                        'npsf':npsf, 'if_quiet':0, 'if_print_intensity':1 }
 
     optics = instrument.CorgiOptics(lam_array, proper_keywords=proper_keywords)
@@ -60,7 +60,9 @@ def run_sim():
 
     fig = plt.figure()
     plt.imshow(sim_scene.host_star_image[1].data)
-    plt.colorbar()
+    co = plt.colorbar()
+    co.set_label(r'$\rm Counts\ [photons\ nm^{-1}\ s^{-1}]$')
+    plt.title('On-axis sun-like star at 10 pc')
     plt.show()
 
 
