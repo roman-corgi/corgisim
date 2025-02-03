@@ -19,7 +19,7 @@ class CorgiOptics():
 
     '''
 
-    def __init__(self, lambda_m, proper_keywords, diam = 2.363114):
+    def __init__(self, lambda_nm, proper_keywords, diam = 2.363114):
         '''
 
         Initialize the class a keyword dictionary that defines the setup of cgisim/PROPER 
@@ -27,10 +27,10 @@ class CorgiOptics():
 
 
         Initialize the class with two dictionaries: 
-        - lambda_m (float or array): the wavelength for the simulation
+        - lambda_nm (float or array): the wavelength for the simulation
         - proper_keywords: A dictionary with the keywords that are used to set up the proper model
         '''
-        self.lambda_m = lambda_m ## wavelength in nm
+        self.lambda_nm = lambda_nm ## wavelength in nm
         self.diam = diam  ## diameter of Roman primary meter, default is 2.36114 meter
         self.area = (self.diam/2)**2 * np.pi ### collecting area in unit of m^2
         self.proper_keywords = proper_keywords  # Store the keywords for later use
@@ -64,26 +64,26 @@ class CorgiOptics():
 
         '''
         ### calculate the star flux at the given wavelenghts in unit of W/m^2/nm
-        host_star_flux = fstar(lam=self.lambda_m, teff=input_scene.host_star_Teff, rs=input_scene.host_star_Rs, d=input_scene.host_star_Dist)
+        host_star_flux = fstar(lam=self.lambda_nm, teff=input_scene.host_star_Teff, rs=input_scene.host_star_Rs, d=input_scene.host_star_Dist)
        
         ### convert star flux W/m^2/nm to photons/m^2/nm
-        host_star_photons = power2photon(self.lambda_m, host_star_flux)
+        host_star_photons = power2photon(self.lambda_nm, host_star_flux)
         
         ### calculate the photons collected by the telescope in unit of photons/s/nm
         collected_photons = host_star_photons * self.area 
         
-        nlam = len(self.lambda_m)
+        nlam = len(self.lambda_nm)
         if  nlam ==1:
             ####simulate monochramtic image, output image is in the unit of photons/s/nm
-            (fields, sampling) = proper.prop_run('roman_preflight', self.lambda_m[0]/1e3,self.proper_keywords['npsf'], QUIET=self.proper_keywords['if_quiet'],PRINT_INTENSITY=self.proper_keywords['if_print_intensity'],PASSVALUE=self.proper_keywords)
+            (fields, sampling) = proper.prop_run('roman_preflight', self.lambda_nm[0]/1e3,self.proper_keywords['npsf'], QUIET=self.proper_keywords['if_quiet'],PRINT_INTENSITY=self.proper_keywords['if_print_intensity'],PASSVALUE=self.proper_keywords)
             image = np.abs(fields)**2  * collected_photons 
 
         if  nlam > 1:
             ####simulate broadband image, output image is in the unit of photons/s 
-            dl = np.append(np.diff(self.lambda_m),np.diff(self.lambda_m)[0])
+            dl = np.append(np.diff(self.lambda_nm),np.diff(self.lambda_nm)[0])
             collected_photons_l =  collected_photons * dl ###photons/s in each wavelength interval
             
-            (fields, sampling) = proper.prop_run_multi('roman_preflight', self.lambda_m/1e3, self.proper_keywords['npsf'], QUIET=self.proper_keywords['if_quiet'],PRINT_INTENSITY=self.proper_keywords['if_print_intensity'],PASSVALUE=self.proper_keywords)
+            (fields, sampling) = proper.prop_run_multi('roman_preflight', self.lambda_nm/1e3, self.proper_keywords['npsf'], QUIET=self.proper_keywords['if_quiet'],PRINT_INTENSITY=self.proper_keywords['if_print_intensity'],PASSVALUE=self.proper_keywords)
             images = np.abs(fields)**2
             image = np.sum(images *  collected_photons_l[:, np.newaxis, np.newaxis],0)
 
