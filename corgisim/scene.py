@@ -115,6 +115,7 @@ class SimulatedScene():
         self.host_star_image = None
         self.point_source_image = None
         self.twoD_image = None
+        self.host_star_image_on_detector = None
 
 
         #This will be basically the sum of the above three images at the right location on the detector

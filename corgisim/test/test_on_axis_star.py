@@ -38,7 +38,8 @@ def run_sim():
     if nlam ==1:
         ####simulate monochramtic image
         lam_array = np.array([lam0])
-
+    
+    print('Begin the simulation at wavelength:'+ str(lam_array))
 
     cases = ['3e-8']       
     rootname = 'hlc_ni_' + cases[0]
@@ -55,15 +56,29 @@ def run_sim():
     sim_scene = optics.get_psf(base_scene)
 
     image = sim_scene.host_star_image[1].data
+    emccd_keywords ={'em_gain':10.0, 'full_well_image':60000.0, 'full_well_serial':100000.0,\
+                     'dark_rate':0.000014, 'cic_noise':0.016, 'read_noise':120, 'bias':0,'qe':1.0, 'cr_rate':0,\
+                     'pixel_pitch':13e-6, 'e_per_dn':1.0, 'numel_gain_register':604, 'nbits':14,\
+                     'use_traps' : False,'date4traps':2028.0, 'exptime':3600}
+
+    detector = instrument.CorgiDetector(emccd_keywords=emccd_keywords)
+    sim_scene = detector.generate_detector_image(sim_scene)
+    image2 = sim_scene.host_star_image_on_detector[1].data
 
     print('Final_intensity_get:', np.sum(image, dtype = np.float64))
     #print(sim_scene.host_star_image[1].header)
 
-    fig = plt.figure()
+    fig1 = plt.figure()
     plt.imshow(sim_scene.host_star_image[1].data)
     co = plt.colorbar()
     co.set_label(r'$\rm Counts\ [photons\ nm^{-1}\ s^{-1}]$')
     plt.title('On-axis sun-like star at 10 pc')
+
+    fig2 = plt.figure()
+    plt.imshow(image2)
+    co = plt.colorbar()
+    co.set_label(r'$\rm Counts\ [photons\ s^{-1}]$')
+    plt.title('On-axis sun-like star at 10 pc on detector')
     plt.show()
 
 
@@ -111,17 +126,33 @@ def run_sim_multi():
 
     optics = instrument.CorgiOptics(lam_array, proper_keywords=proper_keywords)
     sim_scene = optics.get_psf(base_scene)
-
     image = sim_scene.host_star_image[1].data
+
+    emccd_keywords ={'em_gain':1000.0, 'full_well_image':60000.0, 'full_well_serial':100000.0,\
+                     'dark_rate':0.00056, 'cic_noise':0.01, 'read_noise':100.0, 'bias':0,'qe':1.0, 'cr_rate':0,\
+                     'pixel_pitch':13e-6, 'e_per_dn':1.0, 'numel_gain_register':604, 'nbits':14,\
+                     'use_traps' : False,'date4traps':2028.0, 'exptime':3600}
+    detector = instrument.CorgiDetector(emccd_keywords=emccd_keywords)
+    sim_scene = detector.generate_detector_image(sim_scene)
+    image2 = sim_scene.host_star_image_on_detector[1].data
+
 
     print('Final_intensity_get:', np.sum(image, dtype = np.float64))
     #print(sim_scene.host_star_image[1].header)
 
-    fig = plt.figure()
-    plt.imshow(sim_scene.host_star_image[1].data)
+    fig1 = plt.figure()
+    plt.imshow(image)
     co = plt.colorbar()
     co.set_label(r'$\rm Counts\ [photons\ s^{-1}]$')
     plt.title('On-axis sun-like star at 10 pc')
+
+
+    fig2 = plt.figure()
+    plt.imshow(image2)
+    co = plt.colorbar()
+    co.set_label(r'$\rm Counts\ [photons\ s^{-1}]$')
+    plt.title('On-axis sun-like star at 10 pc on detector')
+
     plt.show()
 
 
