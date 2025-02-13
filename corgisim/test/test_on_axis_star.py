@@ -129,9 +129,9 @@ def run_sim_multi():
     image = sim_scene.host_star_image[1].data
 
     emccd_keywords ={'em_gain':1000.0, 'full_well_image':60000.0, 'full_well_serial':100000.0,\
-                     'dark_rate':0.00056, 'cic_noise':0.01, 'read_noise':100.0, 'bias':0,'qe':1.0, 'cr_rate':0,\
+                     'dark_rate':0.00056, 'cic_noise':0.01, 'read_noise':100.0, 'bias':0, 'cr_rate':0,\
                      'pixel_pitch':13e-6, 'e_per_dn':1.0, 'numel_gain_register':604, 'nbits':14,\
-                     'use_traps' : False,'date4traps':2028.0, 'exptime':3600}
+                     'use_traps' : False,'date4traps':2028.0, 'exptime':3600, 'wvl':lam0}
     detector = instrument.CorgiDetector(emccd_keywords=emccd_keywords)
     sim_scene = detector.generate_detector_image(sim_scene)
     image2 = sim_scene.host_star_image_on_detector[1].data

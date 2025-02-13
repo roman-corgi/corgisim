@@ -163,8 +163,12 @@ class CorgiDetector():
         '''
         self.emccd_keywords = emccd_keywords  # Store the keywords for later use
         self.exptime = emccd_keywords['exptime'] ##expsoure time in second
+
+        ### pull out the quantum efficency
+        qe = self.EMCCD_quantum_efficiency(emccd_keywords['wvl'])
+
         self.emccd = self.define_EMCCD(em_gain=emccd_keywords['em_gain'], full_well_image=emccd_keywords['full_well_image'], full_well_serial=emccd_keywords['full_well_serial'],
-                     dark_rate=emccd_keywords['dark_rate'], cic_noise=emccd_keywords['cic_noise'], read_noise=emccd_keywords['read_noise'], bias=emccd_keywords['bias'],qe=emccd_keywords['qe'], cr_rate=emccd_keywords['cr_rate'], 
+                     dark_rate=emccd_keywords['dark_rate'], cic_noise=emccd_keywords['cic_noise'], read_noise=emccd_keywords['read_noise'], bias=emccd_keywords['bias'],qe=qe, cr_rate=emccd_keywords['cr_rate'], 
                      pixel_pitch=emccd_keywords['pixel_pitch'], e_per_dn=emccd_keywords['e_per_dn'], numel_gain_register=emccd_keywords['numel_gain_register'], nbits=emccd_keywords['nbits'],
                      use_traps = emccd_keywords['use_traps'],date4traps=emccd_keywords['date4traps'])
     
@@ -222,7 +226,48 @@ class CorgiDetector():
         
         return emccd
 
+    def EMCCD_quantum_efficacy(self, lam_nm=None):
+        """
+        Get the EMCCD quantum efficiency at a given wavelength.
 
+        This function retrieves the quantum efficiency at different wavelengths 
+        from the Roman-IPAC website and finds the value nearest to the given wavelength.
+
+        Args:
+            lam_nm (int, optional): The target wavelength in nanometers.
+
+        Returns:
+            float: The quantum efficiency at the nearest available wavelength.
+        """
+        QE_from_ipac = {'442': 0.628,
+                        '450': 0.695,
+                        '488': 0.779,
+                        '580': 0.837,
+                        '685': 0.727,
+                        '730': 0.640,
+                        '830': 0.412,
+                        '885': 0.264,
+                        '950': 0.116,
+                        '980': 0.068}
+
+        nearest_QE = find_nearest_value(QE_from_ipac, lam_nm)
+        return nearest_QE
+
+
+
+def find_nearest_value(d, target):
+    """
+    Find the nearest key in a dictionary based on numerical proximity.
+
+    Args:
+        d (dict): A dictionary with string keys representing numbers.
+        target (int): The target number to find the closest match for.
+
+    Returns:
+        float: The value corresponding to the nearest key.
+    """
+    nearest_key = min(d.keys(), key=lambda k: abs(int(k) - target))
+    return d[nearest_key]
 
 
 
