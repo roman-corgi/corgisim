@@ -5,6 +5,8 @@ from astropy.io import fits
 import roman_preflight_proper
 from corgisim import scene
 import pkg_resources
+from emccd_detect.emccd_detect import EMCCDDetectBase
+
 
 class CorgiOptics():
     '''
@@ -159,7 +161,13 @@ class CorgiDetector():
         Arguments: 
         emccd_keywords: A dictionary with the keywords that are used to set up the emccd model
         '''
-        pass
+        self.emccd_keywords = emccd_keywords  # Store the keywords for later use
+        self.exptime = emccd_keywords['exptime'] ##expsoure time in second
+        self.emccd = self.define_EMCCD(em_gain=emccd_keywords['em_gain'], full_well_image=emccd_keywords['full_well_image'], full_well_serial=emccd_keywords['full_well_serial'],
+                     dark_rate=emccd_keywords['dark_rate'], cic_noise=emccd_keywords['cic_noise'], read_noise=emccd_keywords['read_noise'], bias=emccd_keywords['bias'],qe=emccd_keywords['qe'], cr_rate=emccd_keywords['cr_rate'], 
+                     pixel_pitch=emccd_keywords['pixel_pitch'], e_per_dn=emccd_keywords['e_per_dn'], numel_gain_register=emccd_keywords['numel_gain_register'], nbits=emccd_keywords['nbits'],
+                     use_traps = emccd_keywords['use_traps'],date4traps=emccd_keywords['date4traps'])
+    
     
 
     def generate_detector_image(self, simulated_scene):
@@ -174,7 +182,10 @@ class CorgiDetector():
         Returns:
         A corgisim.scene.Scene object that contains the detector image in the 
         '''
-        pass
+        Im_noisy = self.emccd.sim_sub_frame(simulated_scene.host_star_image[1].data, self.exptime).astype(float)
+        simulated_scene.host_star_image_on_detector = create_hdu(Im_noisy)
+
+        return simulated_scene
 
     def place_scene_on_detector(self, scene):
         '''
@@ -189,6 +200,27 @@ class CorgiDetector():
         Likely an intermediate step that typical users won't touch. 
         '''
         pass
+    def define_EMCCD(self, em_gain=1000.0, full_well_image=60000.0, full_well_serial=100000.0,
+                     dark_rate=0.00056, cic_noise=0.01, read_noise=100.0, bias=0,qe=1.0, cr_rate=0, 
+                     pixel_pitch=13e-6, e_per_dn=1.0, numel_gain_register=604, nbits=14,
+                     use_traps = False,date4traps=2028.0):
+
+        "Create a emccd object"
+        emccd = EMCCDDetectBase( em_gain=em_gain, full_well_image=full_well_image, full_well_serial=full_well_serial,
+                             dark_current=dark_rate, cic=cic_noise, read_noise=read_noise, bias=bias,
+                             qe=qe, cr_rate=cr_rate, pixel_pitch=pixel_pitch, eperdn=e_per_dn,
+                             numel_gain_register=numel_gain_register, nbits=nbits )
+        
+        if use_traps: 
+            from cgisim.rcgisim import model_for_Roman
+            from arcticpy.roe import ROE
+            from arcticpy.ccd import CCD
+            traps = model_for_Roman( date4traps )  
+            ccd = CCD(well_fill_power=0.58, full_well_depth=full_well_image)
+            roe = ROE()
+            emccd.update_cti( ccd=ccd, roe=roe, traps=traps, express=1 )
+        
+        return emccd
 
 
 
