@@ -91,7 +91,8 @@ class CorgiOptics():
         self.diam = diam  ## diameter of Roman primary in cm, default is 236.114 cm
         # Effective collecting area in unit of cm^2, 
         # 30.3% central obscuration of the telescope entrance pupil (diameter ratio) from IPAC-Roman website
-        self.area = (self.diam/2)**2 * np.pi - (self.diam/2*0.303)**2 * np.pi 
+        #self.area = (self.diam/2)**2 * np.pi - (self.diam/2*0.303)**2 * np.pi
+        self.area =  35895.212    # primary effective area from cgisim cm^2 
         self.grid_dim_out = proper_keywords['output_dim'] # number of grid in output image in one dimension
         self.proper_keywords = proper_keywords  # Store the keywords for PROPER package
         self.proper_keywords['lam0']=self.lam0_um
