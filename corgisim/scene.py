@@ -272,6 +272,7 @@ class SimulatedScene():
 
         #The following three attributes will hold astropy HDUs with the simulated images.
         self.host_star_image = None
+        self.host_star_image_on_detector = None
         self.point_source_image = None
         self.twoD_image = None
 
