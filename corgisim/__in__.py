@@ -1,13 +1,4 @@
-#from .convolution import *
-#from .data import *
-from .instrument import *
-#from .observation import *
-from .scene import *
-#import os
 
-
-#import warnings
-#warnings.filterwarnings("ignore")
 
 
 
