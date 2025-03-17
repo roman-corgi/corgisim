@@ -1,7 +1,7 @@
 import proper
 import numpy as np
 import re
-from synphot.models import BlackBodyNorm1D, Box1D
+from synphot.models import BlackBodyNorm1D, Box1D, ConstFlux1D
 from synphot import units, SourceSpectrum, SpectralElement, Observation
 from synphot.units import validate_wave_unit, convert_flux, VEGAMAG
 import cgisim
@@ -55,7 +55,29 @@ class Scene():
         ### used to store and retrieve the wavelength and stellar flux.
         self.stellar_spectrum = self.get_stellar_spectrum( self._host_star_sptype, self._host_star_Vmag, magtype =self._host_star_magtype)
 
-        self._point_source_list = point_source_info
+        #self._point_source_list = point_source_info
+        # Extract V-band magnitude and magnitude type from point source info
+        self._point_source_Vmag = point_source_info['Vmag']
+        if point_source_info['magtype'] != host_star_properties['magtype']:
+            raise ValueError('Please use the same magnitude type for host star and companion(s).')
+        self._point_source_magtype = point_source_info['magtype']  # Type of magnitude ('vegamag' or 'ABmag')
+        
+
+        # Extract optional custom spectrum, if provided
+        if 'Custom_Spectrum' in point_source_info:
+            self._point_source_spectrum = point_source_info['Custom_Spectrum']
+        else:
+            self._point_source_spectrum = None
+
+        self.point_source_x = point_source_info['position_x']
+        self.point_source_y = point_source_info['position_y']
+
+        # Generate the off-axis source spectrum using provided parameters
+        self.off_axis_source_spectrum = self.get_off_axis_source_spectrum(self._point_source_Vmag,
+                                                                         spectrum=self._point_source_spectrum,
+                                                                         magtype=self._point_source_magtype)
+
+        
         self._twoD_scene = twoD_scene_hdu
 
         
@@ -99,7 +121,7 @@ class Scene():
             value (str): The host star apparent magnitude
         
         """
-        self._host_star_appmag = float(value)
+        self._host_star_Vmag = float(value)
 
     @property
     def host_star_magtype(self):
@@ -120,6 +142,46 @@ class Scene():
         
         """
         self._host_star_magtype = float(value)
+
+    @property
+    def point_source_Vmag(self):
+        """
+        A Method returns point_source apparent magnitude
+        Returns:
+            sptype (float):  point_source apparent magnitude
+        """
+        return self._point_source_Vmag
+
+                
+    @host_star_Vmag.setter
+    def point_source_Vmag(self, value):
+        """
+        Setter method to validate and set the point_source magnitude.
+        Args:
+            value (str): The host star apparent magnitude
+        
+        """
+        self._point_source_Vmag = float(value)
+
+    @property
+    def point_source_magtype(self):
+        """
+        A Method returns type of magnitude
+        Returns:
+            magtype (str):  type of magnitude
+        """
+        return self._point_source_magtype
+
+                
+    @point_source_magtype.setter
+    def point_source_Vmag(self, value):
+        """
+        Setter method to validate and set the type of magnitude.
+        Args:
+            value (str): The type of magnitude
+        
+        """
+        self._point_source_magtype = float(value)
 
 
     def get_stellar_spectrum(self, sptype, magnitude, magtype = 'vegamag' ):
@@ -248,11 +310,78 @@ class Scene():
             # read vega spetrum
             vega_spec = SourceSpectrum.from_vega()
             # sp_scale has the same units as sp
-            sp_scale = sp.normalize(renorm_val= magnitude * VEGAMAG ,band=v_band,vegaspec = vega_spec )
+            sp_scale = sp.normalize(renorm_val= magnitude * VEGAMAG, band=v_band,vegaspec = vega_spec )
         if magtype == 'ABmag':
             raise ValueError("AB magnitude system has not been implemented yet. Please use Vega magnitudes instead.")
 
         return sp_scale
+
+   
+
+    def get_off_axis_source_spectrum(self, vmag, spectrum=None, magtype='vegamag'):
+        """
+        Generate an off-axis source spectrum or list of spectra scaled to a given V-band magnitude(s).
+
+        Parameters
+        ----------
+        vmag : float or array-like
+            The desired V-band magnitude(s) of the off-axis source. If an array-like
+            is provided, a list of scaled spectra will be returned.
+        spectrum : Custom input spectrum for the source. If None, a flat spectrum 
+             will be used and scaled to match `vmag`.
+        magtype : {'vegamag'}, optional
+            The magnitude system used for scaling. Currently, only 'vegamag' is supported.
+
+        Returns
+        -------
+        synphot.SourceSpectrum or list of synphot.SourceSpectrum
+            A `SourceSpectrum` object scaled to the desired V magnitude, or a list 
+            of such objects if `vmag` is an array-like.
+        """
+        if spectrum is not None:
+            raise ValueError("Custom spectra for off-axis sources have not been implemented yet.")
+
+        else:
+            # Create flat spectrum in PHOTLAM
+            pp = SourceSpectrum(ConstFlux1D, amplitude=1 * units.PHOTLAM)
+
+        # Ensure vmag is iterable for unified processing
+        if np.isscalar(vmag):
+            vmag = [vmag]  # Convert scalar to single-element list for uniform handling
+            return_list = False
+        else:
+            return_list = True
+
+        # Define the V-band filter
+        v_band = SpectralElement.from_filter('johnson_v')
+
+        # Check magtype
+        if magtype == 'vegamag':
+            # Load Vega spectrum
+            vega_spec = SourceSpectrum.from_vega()
+        elif magtype == 'ABmag':
+            raise ValueError("AB magnitude system has not been implemented yet. Please use Vega magnitudes instead.")
+        else:
+            raise ValueError(f"Unknown magnitude type '{magtype}'. Currently, only 'vegamag' is supported.")
+
+        # Scale for each magnitude
+        scaled_spectra = []
+        for m in vmag:
+            pp_scale = pp.normalize(renorm_val=m * units.VEGAMAG,
+                            band=v_band,
+                            vegaspec=vega_spec)
+            scaled_spectra.append(pp_scale)
+
+        # Return a single SourceSpectrum if input was scalar, returen a list of SourceSpectrum if input was a array
+        if not return_list:
+            return scaled_spectra[0]
+        else:
+            return scaled_spectra
+
+
+
+            
+     
 
     
 

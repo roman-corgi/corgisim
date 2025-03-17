@@ -77,6 +77,7 @@ class CorgiOptics():
 
         self.cgi_mode = cgi_mode
         self.bandpass = bandpass 
+
         # get mode and bandpass parameters:
         info_dir = cgisim.lib_dir + '/cgisim_info_dir/'
         mode_data, bandpass_data = cgisim.cgisim_read_mode( cgi_mode, proper_keywords['cor_type'], bandpass, info_dir )
@@ -109,6 +110,13 @@ class CorgiOptics():
         if "integrate_pixels" in kwargs: self.integrate_pixels = kwargs.get("integrate_pixels")
         self.nd = 0  # integer: 1, 3, or 4 (0 = no ND, the default); this is the ND filter identifier, NOT the amount of ND
         if "nd" in kwargs: self.nd = kwargs.get("nd")
+
+        # Initialize the bandpass class (from synphot)
+        # bp: wavelegth is in unit of angstrom
+        # bp: throughput is unitless, including transmission, reflectivity and EMCCD quantum efficiency 
+        self.bp = self.setup_bandpass(self.cgi_mode, self.bandpass, self.nd)
+
+
 
         if 'if_quiet'in kwargs:self.quiet = kwargs.get("if_quiet")
 
@@ -145,14 +153,11 @@ class CorgiOptics():
         '''
         
         if self.cgi_mode == 'excam':
-            # Initialize the bandpass class (from synphot)
-            # bp: wavelegth is in unit of angstrom
-            # bp: throughput is unitless, including transmission, reflectivity and EMCCD quantum efficiency 
-            bp = self.setup_bandpass(self.cgi_mode, self.bandpass, self.nd)
+            
             # Compute the observed stellar spectrum within the defined bandpass
             # obs: wavelegth is in unit of angstrom
             # obs: flux is in unit of photons/s/cm^2/angstrom
-            obs = Observation(input_scene.stellar_spectrum, bp)
+            obs = Observation(input_scene.stellar_spectrum, self.bp)
             
 
             if self.integrate_pixels:
@@ -275,8 +280,7 @@ class CorgiOptics():
         '''
         pass
 
-
-    def inject_point_sources(self, scene, on_the_fly=False, oversample = 1, return_oversample = False):
+    def inject_point_sources(self, input_scene, on_the_fly=False, oversample = 7, return_oversample = False):
         '''
         Function that injects point sources into the scene. 
 
@@ -301,7 +305,83 @@ class CorgiOptics():
         Returns: 
         A 2D numpy array that contains the scene with the injected point sources. 
         '''
-        pass
+        if self.cgi_mode == 'excam':
+
+
+            # Extract point source spectra and positions
+            point_source_spectra = input_scene.off_axis_source_spectrum
+            point_source_x = input_scene.point_source_x
+            point_source_y = input_scene.point_source_y
+
+            # Ensure all inputs are lists for uniform processing
+            if not isinstance(point_source_spectra, list):
+                point_source_spectra = [point_source_spectra]
+            if not isinstance(point_source_x, list):
+                point_source_x = [point_source_x]
+            if not isinstance(point_source_y, list):
+                point_source_y = [point_source_y]
+
+            # Ensure all lists have the same length
+            if not (len(point_source_spectra) == len(point_source_x) == len(point_source_y)):
+                raise ValueError(
+                    f"Mismatch in input lengths: {len(point_source_spectra)} spectra, "
+                    f"{len(point_source_x)} x-positions, {len(point_source_y)} y-positions. "
+                    "Each point source must have a corresponding (x, y) position.")
+
+            # Compute the observed  spectrum for each off-axis source
+            obs_point_source = [Observation(spectrum, self.bp) for spectrum in point_source_spectra]
+            
+            if self.integrate_pixels:
+                oversampling_factor = 7
+            else:
+                oversampling_factor = 1
+
+            grid_dim_out_tem = self.grid_dim_out * oversampling_factor
+            sampling_um_tem = self.sampling_um / oversampling_factor
+            
+            point_source_image = []
+            for j in range(len(point_source_spectra )):
+            
+                proper_keywords_comp = self.proper_keywords.copy()
+                proper_keywords_comp.update({'output_dim': grid_dim_out_tem,
+                                            'final_sampling_m': sampling_um_tem * 1e-6,
+                                            'source_x_offset': point_source_x[j],
+                                            'source_y_offset': point_source_y[j]})
+
+                (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE= proper_keywords_comp ,QUIET=True)
+                images_tem = np.abs(fields)**2
+
+                # Initialize the image array based on whether oversampling is returned
+                images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
+                images = np.zeros(images_shape, dtype=float)
+
+                for i in range(images_tem.shape[0]):
+                    if return_oversample:
+                        ##return the oversampled PSF, default 7 grid per pixel
+                        images[i,:,:] +=  images_tem[i,:,:]
+                    else:
+                        ## integrate oversampled PSF back to one grid per pixel
+                        images[i,:,:] +=  images_tem[i,:,:].reshape((self.grid_dim_out,oversampling_factor,self.grid_dim_out,oversampling_factor)).mean(3).mean(1) * oversampling_factor**2
+
+                    dlam_um = self.lam_um[1]-self.lam_um[0]
+                    lam_um_l = (self.lam_um[i]- 0.5*dlam_um) * 1e4 ## unit of anstrom
+                    lam_um_u = (self.lam_um[i]+ 0.5*dlam_um) * 1e4 ## unit of anstrom
+                    # ares in unit of cm^2
+                    # counts in unit of photos/s
+                    counts = self.polarizer_transmission * obs_point_source[j].countrate(area=self.area, waverange=[lam_um_l, lam_um_u])
+
+                    images[i,:,:] = images[i,:,:] * counts
+
+                image = np.sum(images, axis=0)
+                point_source_image.append(image) 
+            
+       
+        if self.cgi_mode in ['spec', 'lowfs', 'excam_efield']:
+            raise ValueError(f"The mode '{self.cgi_mode}' has not been implemented yet!")
+    
+        # Return a single image if only one source, otherwise return a list
+        return np.sum(point_source_image,axis=0)
+
     
 class CorgiDetector(): 
     
