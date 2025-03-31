@@ -305,7 +305,7 @@ class CorgiOptics():
     
 class CorgiDetector(): 
     
-    def __init__(self, exptime ,emccd_keywords):
+    def __init__(self ,emccd_keywords):
         '''
         Initialize the class with a dictionary that defines the EMCCD_DETECT input parameters. 
 
@@ -313,13 +313,13 @@ class CorgiDetector():
         emccd_keywords: A dictionary with the keywords that are used to set up the emccd model
         '''
         self.emccd_keywords = emccd_keywords  # Store the keywords for later use
-        self.exptime = exptime ##expsoure time in second
+        #self.exptime = exptime ##expsoure time in second
 
 
         self.emccd = self.define_EMCCD(emccd_keywords=self.emccd_keywords)
     
 
-    def generate_detector_image(self, simulated_scene, full_frame= False, loc_x=None, loc_y=None):
+    def generate_detector_image(self, simulated_scene, exptime, full_frame= False, loc_x=None, loc_y=None):
         '''
         Function that generates a detector image from the input image, using emccd_detect. 
 
@@ -330,15 +330,16 @@ class CorgiDetector():
         full_frame: if generated full_frame image in detetor
         loc_x (int): The horizontal coordinate (in pixels) of the left edge where the sub_frame will be inserted, needed when full_frame=True
         loc_y (int): The vertical coordinate (in pixels) of the bottom edge where the sub_frame will be inserted, needed when full_frame=True
-        
+        exptime: exptime in second
+
         Returns:
         A corgisim.scene.Scene object that contains the detector image in the 
         '''
         if full_frame:
             flux_map = self.place_scene_on_detector( simulated_scene.host_star_image.data, loc_x, loc_y)
-            Im_noisy = self.emccd.sim_full_frame(flux_map, self.exptime).astype(float)
+            Im_noisy = self.emccd.sim_full_frame(flux_map, exptime).astype(float)
         else:
-            Im_noisy = self.emccd.sim_sub_frame(simulated_scene.host_star_image.data, self.exptime).astype(float)
+            Im_noisy = self.emccd.sim_sub_frame(simulated_scene.host_star_image.data, exptime).astype(float)
 
         simulated_scene.host_star_image_on_detector = create_hdu(Im_noisy)
 

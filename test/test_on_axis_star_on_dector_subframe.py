@@ -43,8 +43,8 @@ def run_sim_multi():
     gain =1000
     emccd_keywords ={'em_gain':gain}
     exptime = 30
-    detector = instrument.CorgiDetector(exptime, emccd_keywords)
-    sim_scene = detector.generate_detector_image(sim_scene)
+    detector = instrument.CorgiDetector( emccd_keywords)
+    sim_scene = detector.generate_detector_image(sim_scene,exptime)
     image2 = sim_scene.host_star_image_on_detector.data
 
 
