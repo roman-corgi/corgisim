@@ -37,8 +37,9 @@ class CorgiOptics():
         - bandpass (str): pre-difined bandpass for Roman-CGI
         - diam (float) in meter: diameter of the primaru mirror, the default value is 2.363114 meter
         - proper_keywords: A dictionary with the keywords that are used to set up the proper model
-        - oversample:
-        - return_oversample
+        - oversample: An integer that defines the oversampling factor of the detector when generating the image
+        - return_oversample: A boolean that defines whether the function should return the oversampled image or not.
+    
 
         Raises:
         - ValueError: If `cgi_mode` or `cor_type` is invalid.
@@ -151,9 +152,7 @@ class CorgiOptics():
         Arguments: 
         input_scene: A corgisim.scene.Scene object that contains the scene to be simulated.
         on_the_fly: A boolean that defines whether the PSF should be generated on the fly.
-        oversample: An integer that defines the oversampling factor of the detector when generating the PSF
-        return_oversample: A boolean that defines whether the function should return the oversampled PSF or not.
-
+        
         Returns:
         corgisim.scene.Simulated_Scene: A scene object with the host_star_image attribute populated with an astropy
                                         HDU that contains a noiseless on-axis PSF.
@@ -278,9 +277,7 @@ class CorgiOptics():
         Arguments: 
         scene: A corgisim.scene.Scene object that contains the scene to be simulated.
         on_the_fly: A boolean that defines whether the PSFs should be generated on the fly.
-        oversample: An integer that defines the oversampling factor of the detector when generating the PSFs
-        return_oversample: A boolean that defines whether the function should return the oversampled PSFs or not.
-
+        
         Returns: 
         corgisim.scene.Simulated_Scene: A scene object with the background_scene attribute populated with an astropy
                                         HDU that contains the simulated scene.
@@ -306,8 +303,7 @@ class CorgiOptics():
         Arguments: 
         scene: A corgisim.scene.Scene object that contains the scene to be simulated.
         on_the_fly: A boolean that defines whether the PSFs should be generated on the fly.
-        oversample: An integer that defines the oversampling factor of the detector when generating the PSFs
-        return_oversample: A boolean that defines whether the function should return the oversampled PSFs or not.
+        
 
         Returns: 
         A 2D numpy array that contains the scene with the injected point sources. 
