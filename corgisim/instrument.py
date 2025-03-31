@@ -350,8 +350,8 @@ class CorgiOptics():
                 proper_keywords_comp = self.proper_keywords.copy()
                 proper_keywords_comp.update({'output_dim': grid_dim_out_tem,
                                             'final_sampling_m': sampling_um_tem * 1e-6,
-                                            'source_x_offset': point_source_x[j],
-                                            'source_y_offset': point_source_y[j]})
+                                            'source_x_offset_mas': point_source_x[j],
+                                            'source_y_offset_mas': point_source_y[j]})
 
                 (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE= proper_keywords_comp ,QUIET=True)
                 images_tem = np.abs(fields)**2

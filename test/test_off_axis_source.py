@@ -25,8 +25,11 @@ def run_sim():
     cor_type = 'hlc_band1'
 
     mag_companion = [25,25]
-    dx= [3,-3]
-    dy= [3,-3]
+    ####550nm/2.3m = 29.4 mas
+    ###we used sep = 3 lambda/D here 
+    ###the position of companions in unit of mas
+    dx= [3*49.3,-3*49.3]
+    dy= [3*49.3,-3*49.3]
     
     info_dir = cgisim.lib_dir + '/cgisim_info_dir/'
 
@@ -62,8 +65,8 @@ def run_sim():
     image_comp = []
     for i in range(len(mag_companion )):
 
-        params['source_x_offset']=dx[i]
-        params['source_y_offset']=dy[i]
+        params['source_x_offset_mas']=dx[i]
+        params['source_y_offset_mas']=dy[i]
         comp_sim_allpol, comp_counts = cgisim.rcgisim( cgi_mode, cor_type, bandpass,  polaxis_cgisim, params, 
         star_spectrum=sptype, star_vmag=mag_companion[i] )
 
