@@ -153,7 +153,7 @@ class Scene():
         return self._point_source_Vmag
 
                 
-    @host_star_Vmag.setter
+    @point_source_Vmag.setter
     def point_source_Vmag(self, value):
         """
         Setter method to validate and set the point_source magnitude.
@@ -174,7 +174,7 @@ class Scene():
 
                 
     @point_source_magtype.setter
-    def point_source_Vmag(self, value):
+    def point_source_magtype(self, value):
         """
         Setter method to validate and set the type of magnitude.
         Args:

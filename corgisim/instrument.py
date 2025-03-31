@@ -134,7 +134,7 @@ class CorgiOptics():
         print("CorgiOptics initialized with proper keywords.")
      
 
-    def get_psf(self, input_scene, on_the_fly=False):
+    def get_psf(self, input_scene, sim_scene=None, on_the_fly=False):
         '''
         
         Function that provides an on-axis PSF for the current configuration of CGI.
@@ -208,7 +208,8 @@ class CorgiOptics():
             raise ValueError(f"The mode '{self.cgi_mode}' has not been implemented yet!")
         
         # Initialize SimulatedScene class to restore the output psf
-        sim_scene = scene.SimulatedScene(input_scene)
+        if sim_scene == None:
+            sim_scene = scene.SimulatedScene(input_scene)
         
         # Prepare header information for the output HDU FITS file
         header_info = {'wvl_c_um':self.lam0_um,
@@ -284,7 +285,7 @@ class CorgiOptics():
         '''
         pass
 
-    def inject_point_sources(self, input_scene, on_the_fly=False):
+    def inject_point_sources(self, input_scene, sim_scene=None, on_the_fly=False):
         '''
         Function that injects point sources into the scene. 
 
@@ -302,6 +303,7 @@ class CorgiOptics():
 
         Arguments: 
         scene: A corgisim.scene.Scene object that contains the scene to be simulated.
+        sim_scene: A corgisim.SimulatedScene object to contains the simylated scene.
         on_the_fly: A boolean that defines whether the PSFs should be generated on the fly.
         
 
@@ -381,9 +383,30 @@ class CorgiOptics():
        
         if self.cgi_mode in ['spec', 'lowfs', 'excam_efield']:
             raise ValueError(f"The mode '{self.cgi_mode}' has not been implemented yet!")
-    
-        # Return a single image if only one source, otherwise return a list
-        return np.sum(point_source_image,axis=0)
+        
+        if sim_scene == None:
+            sim_scene = scene.SimulatedScene(input_scene)
+
+        # Prepare header information for the output HDU FITS file
+        npl = len(input_scene.point_source_Vmag)
+        header_info = {'wvl_c_um': self.lam0_um,
+                            'pl_magtype': input_scene.point_source_magtype}
+
+        ##update the brightness and position for ith companion
+        for i in range(npl):
+            header_info[f'pl_Vmag_{i}'] = input_scene.point_source_Vmag[i]
+            header_info[f'position_x_{i}'] = input_scene.point_source_x[i]
+            header_info[f'position_y_{i}'] = input_scene.point_source_y[i]
+                            
+                # Define specific keys from self.proper_keywords to include in the header            
+        keys_to_include_in_header = ['cor_type', 'use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
+                            'use_lyot_stop','use_field_stop','output_dim']  # Specify keys to include
+        subset = {key: self.proper_keywords[key] for key in keys_to_include_in_header if key in self.proper_keywords}
+        header_info.update(subset)
+        # Create the HDU object with the generated header information
+        sim_scene.point_source_image = create_hdu(np.sum(point_source_image,axis=0),header_info =header_info)
+
+        return sim_scene
 
     
 class CorgiDetector(): 
