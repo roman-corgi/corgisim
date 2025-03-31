@@ -25,7 +25,7 @@ class CorgiOptics():
 
     '''
 
-    def __init__(self, cgi_mode = None, bandpass= None,  diam = 236.3114, proper_keywords=None, **kwargs):
+    def __init__(self, cgi_mode = None, bandpass= None,  diam = 236.3114, proper_keywords=None, oversampling_factor = 7, return_oversample = False, **kwargs):
         '''
 
         Initialize the class a keyword dictionary that defines the setup of cgisim/PROPER 
@@ -37,6 +37,8 @@ class CorgiOptics():
         - bandpass (str): pre-difined bandpass for Roman-CGI
         - diam (float) in meter: diameter of the primaru mirror, the default value is 2.363114 meter
         - proper_keywords: A dictionary with the keywords that are used to set up the proper model
+        - oversample:
+        - return_oversample
 
         Raises:
         - ValueError: If `cgi_mode` or `cor_type` is invalid.
@@ -106,8 +108,14 @@ class CorgiOptics():
         else:
             self.polarizer_transmission = 1.0
 
-        self.integrate_pixels = True ## whether to subsamping the pixels and integrate them
-        if "integrate_pixels" in kwargs: self.integrate_pixels = kwargs.get("integrate_pixels")
+        #self.integrate_pixels = True ## whether to subsamping the pixels and integrate them
+        #if "integrate_pixels" in kwargs: self.integrate_pixels = kwargs.get("integrate_pixels")
+        
+        ## setup if to oversampling the image and if return the oversample
+        self.oversampling_factor = oversampling_factor
+        self.return_oversample = return_oversample
+
+
         self.nd = 0  # integer: 1, 3, or 4 (0 = no ND, the default); this is the ND filter identifier, NOT the amount of ND
         if "nd" in kwargs: self.nd = kwargs.get("nd")
 
@@ -125,7 +133,7 @@ class CorgiOptics():
         print("CorgiOptics initialized with proper keywords.")
      
 
-    def get_psf(self, input_scene, on_the_fly=False, oversampling_factor = 7, return_oversample = False):
+    def get_psf(self, input_scene, on_the_fly=False):
         '''
         
         Function that provides an on-axis PSF for the current configuration of CGI.
@@ -159,14 +167,13 @@ class CorgiOptics():
             # obs: flux is in unit of photons/s/cm^2/angstrom
             obs = Observation(input_scene.stellar_spectrum, self.bp)
             
+            #if self.integrate_pixels:
+                #oversampling_factor = 7
+            #else:
+                #oversampling_factor = 1
 
-            if self.integrate_pixels:
-                oversampling_factor = 7
-            else:
-                oversampling_factor = 1
-
-            grid_dim_out_tem = self.grid_dim_out * oversampling_factor
-            sampling_um_tem = self.sampling_um / oversampling_factor
+            grid_dim_out_tem = self.grid_dim_out * self.oversampling_factor
+            sampling_um_tem = self.sampling_um / self.oversampling_factor
 
             self.proper_keywords['output_dim']=grid_dim_out_tem
             self.proper_keywords['final_sampling_m']=sampling_um_tem *1e-6
@@ -176,16 +183,16 @@ class CorgiOptics():
             images_tem = np.abs(fields)**2
 
             # Initialize the image array based on whether oversampling is returned
-            images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
+            images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if self.return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
             images = np.zeros(images_shape, dtype=float)
 
             for i in range(images_tem.shape[0]):
-                if return_oversample:
+                if self.return_oversample:
                     ##return the oversampled PSF, default 7 grid per pixel
                     images[i,:,:] +=  images_tem[i,:,:]
                 else:
                     ## integrate oversampled PSF back to one grid per pixel
-                    images[i,:,:] +=  images_tem[i,:,:].reshape((self.grid_dim_out,oversampling_factor,self.grid_dim_out,oversampling_factor)).mean(3).mean(1) * oversampling_factor**2
+                    images[i,:,:] +=  images_tem[i,:,:].reshape((self.grid_dim_out,self.oversampling_factor,self.grid_dim_out,self.oversampling_factor)).mean(3).mean(1) * self.oversampling_factor**2
 
                 dlam_um = self.lam_um[1]-self.lam_um[0]
                 lam_um_l = (self.lam_um[i]- 0.5*dlam_um) * 1e4 ## unit of anstrom
@@ -252,7 +259,7 @@ class CorgiOptics():
         return bp
 
 
-    def simulate_2D_scene(self, scene, on_the_fly=False, oversample = 1, return_oversample = False):
+    def simulate_2D_scene(self, scene, on_the_fly=False):
         '''
         Function that simulates a 2D scene with the current configuration of CGI. 
 
@@ -280,7 +287,7 @@ class CorgiOptics():
         '''
         pass
 
-    def inject_point_sources(self, input_scene, on_the_fly=False, oversample = 7, return_oversample = False):
+    def inject_point_sources(self, input_scene, on_the_fly=False):
         '''
         Function that injects point sources into the scene. 
 
@@ -331,13 +338,13 @@ class CorgiOptics():
             # Compute the observed  spectrum for each off-axis source
             obs_point_source = [Observation(spectrum, self.bp) for spectrum in point_source_spectra]
             
-            if self.integrate_pixels:
-                oversampling_factor = 7
-            else:
-                oversampling_factor = 1
+            #if self.integrate_pixels:
+                #oversampling_factor = 7
+            #else:
+                #oversampling_factor = 1
 
-            grid_dim_out_tem = self.grid_dim_out * oversampling_factor
-            sampling_um_tem = self.sampling_um / oversampling_factor
+            grid_dim_out_tem = self.grid_dim_out * self.oversampling_factor
+            sampling_um_tem = self.sampling_um / self.oversampling_factor
             
             point_source_image = []
             for j in range(len(point_source_spectra )):
@@ -352,16 +359,16 @@ class CorgiOptics():
                 images_tem = np.abs(fields)**2
 
                 # Initialize the image array based on whether oversampling is returned
-                images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
+                images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if self.return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
                 images = np.zeros(images_shape, dtype=float)
 
                 for i in range(images_tem.shape[0]):
-                    if return_oversample:
+                    if self.return_oversample:
                         ##return the oversampled PSF, default 7 grid per pixel
                         images[i,:,:] +=  images_tem[i,:,:]
                     else:
                         ## integrate oversampled PSF back to one grid per pixel
-                        images[i,:,:] +=  images_tem[i,:,:].reshape((self.grid_dim_out,oversampling_factor,self.grid_dim_out,oversampling_factor)).mean(3).mean(1) * oversampling_factor**2
+                        images[i,:,:] +=  images_tem[i,:,:].reshape((self.grid_dim_out,self.oversampling_factor,self.grid_dim_out,self.oversampling_factor)).mean(3).mean(1) * self.oversampling_factor**2
 
                     dlam_um = self.lam_um[1]-self.lam_um[0]
                     lam_um_l = (self.lam_um[i]- 0.5*dlam_um) * 1e4 ## unit of anstrom
