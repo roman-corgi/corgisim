@@ -1,6 +1,4 @@
 
-
-
 __all__ = ['convolution', 'data', 'instrument', 'observation', 'scene',]
 
 __version__ = '0.1'
