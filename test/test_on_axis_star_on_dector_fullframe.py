@@ -40,7 +40,7 @@ def run_sim_multi():
     sim_scene = optics.get_psf(base_scene)
     image = sim_scene.host_star_image.data
     
-    gain =1000
+    gain =500
     emccd_keywords ={'em_gain':gain}
     exptime = 3000
 

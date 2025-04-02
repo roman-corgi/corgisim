@@ -427,51 +427,39 @@ class CorgiDetector():
         
         '''
         # Initialize emccd_keywords safely
-        if emccd_keywords is None:
-            emccd_keywords = {}
-
+        #if emccd_keywords is None:
         # default parameters for RMCCD on Roman-CGI, except QE, which set to 1 (already accounted for in counts)
-        full_well_serial = 100000.0         # full well for serial register; 90K is requirement, 100K is CBE
-        full_well_image = 60000.0                 # image full well; 50K is requirement, 60K is CBE
-        dark_rate = 0.00056                 # e-/pix/s; 1.0 is requirement, 0.00042/0.00056 is CBE for 0/5 years
-        cic_noise = 0.01                    # e-/pix/frame; 0.1 is requirement, 0.01 is CBE
-        read_noise = 100.0                  # e-/pix/frame; 125 is requirement, 100 is CBE
-        cr_rate = 0                         # hits/cm^2/s (0 for none, 5 for L2) 
-        em_gain = 1000.0                       # EM gain
-        bias = 0
-        pixel_pitch = 13e-6                 # detector pixel size in meters
-        apply_smear = True                  # (LOWFS only) Apply fast readout smear?  
-        e_per_dn = 1.0                      # post-multiplied electrons per data unit
-        nbits = 14                          # ADC bits
-        numel_gain_register = 604           # Number of gain register elements 
-        use_traps = False                       # include CTI impact of traps
-        date = 2028.0                       # decimal year of observation
+        emccd_keywords_default = {'full_well_serial': 100000.0,         # full well for serial register; 90K is requirement, 100K is CBE
+                                  'full_well_image': 60000.0,                 # image full well; 50K is requirement, 60K is CBE
+                                  'dark_rate': 0.00056,                  # e-/pix/s; 1.0 is requirement, 0.00042/0.00056 is CBE for 0/5 years
+                                  'cic_noise': 0.01,                    # e-/pix/frame; 0.1 is requirement, 0.01 is CBE
+                                  'read_noise': 100.0,                  # e-/pix/frame; 125 is requirement, 100 is CBE
+                                  'cr_rate': 0,                         # hits/cm^2/s (0 for none, 5 for L2) 
+                                  'em_gain': 1000.0 ,                      # EM gain
+                                  'bias': 0,
+                                  'pixel_pitch': 13e-6 ,                # detector pixel size in meters
+                                  'apply_smear': True ,                 # (LOWFS only) Apply fast readout smear?  
+                                  'e_per_dn':1.0  ,                    # post-multiplied electrons per data unit
+                                  'nbits': 14  ,                        # ADC bits
+                                  'numel_gain_register': 604,           # Number of gain register elements 
+                                  'use_traps': False,                    # include CTI impact of traps
+                                  'date4traps': 2028.0}                        # decimal year of observation}
 
-        if 'full_well_serial' in emccd_keywords: full_well_serial = emccd_keywords['full_well_serial'] 
-        if 'full_well_image' in emccd_keywords: full_well_image = emccd_keywords['full_well_image'] 
-        if 'dark_rate' in emccd_keywords: dark_rate = emccd_keywords['dark_rate']
-        if 'cic_noise' in emccd_keywords: cic_noise = emccd_keywords['cic_noise']
-        if 'read_noise' in emccd_keywords: read_noise = emccd_keywords['read_noise']
-        if 'cr_rate' in emccd_keywords: cr_rate = emccd_keywords['cr_rate']
-        if 'em_gain' in emccd_keywords: em_gain = emccd_keywords['em_gain']
-        if 'bias' in emccd_keywords: bias = emccd_keywords['bias']
-        if 'e_per_dn' in emccd_keywords: e_per_dn = emccd_keywords['e_per_dn']
-        if 'nbits' in emccd_keywords: nbits = emccd_keywords['nbits']
-        if 'numel_gain_register' in emccd_keywords: numel_gain_register = emccd_keywords['numel_gain_register']
-        if 'use_traps' in emccd_keywords: emccd_keywords = emccd_keywords['use_traps']
-        if 'date' in emccd_keywords: date = emccd_keywords['date']
-        if 'qe' in emccd_keywords:
-            raise Warning("Quantum efficiency has been added in the bandpass throughput; it must be enforced as 1 here.")
+        if emccd_keywords is not None:                    
+            if 'qe' in emccd_keywords.keys():
+                raise Warning("Quantum efficiency has been added in the bandpass throughput; it must be enforced as 1 here.")
+            # Override default parameters with user-specified ones
+            for key, value in emccd_keywords.items():
+                if key in emccd_keywords_default:
+                    emccd_keywords_default[key] = value
 
         
-
-
-        emccd = EMCCDDetect( em_gain=em_gain, full_well_image=full_well_image, full_well_serial=full_well_serial,
-                             dark_current=dark_rate, cic=cic_noise, read_noise=read_noise, bias=bias,
-                             qe=1.0, cr_rate=cr_rate, pixel_pitch=pixel_pitch, eperdn=e_per_dn,
-                             numel_gain_register=numel_gain_register, nbits=nbits )
+        emccd = EMCCDDetect( em_gain=emccd_keywords_default['em_gain'], full_well_image=emccd_keywords_default['full_well_image'], full_well_serial=emccd_keywords_default['full_well_serial'],
+                             dark_current=emccd_keywords_default['dark_rate'], cic=emccd_keywords_default['cic_noise'], read_noise=emccd_keywords_default['read_noise'], bias=emccd_keywords_default['bias'],
+                             qe=1.0, cr_rate=emccd_keywords_default['cr_rate'], pixel_pitch=emccd_keywords_default['pixel_pitch'], eperdn=emccd_keywords_default['e_per_dn'],
+                             numel_gain_register=emccd_keywords_default['numel_gain_register'], nbits=emccd_keywords_default['nbits'] )
         
-        if use_traps: 
+        if emccd_keywords_default['use_traps']: 
             raise ValueError(f"The part to simulate CTI effects using trap models has not been implemented yet!")
         
             #from cgisim.rcgisim import model_for_Roman
