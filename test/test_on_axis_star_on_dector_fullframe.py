@@ -40,14 +40,14 @@ def run_sim_multi():
     sim_scene = optics.get_psf(base_scene)
     image = sim_scene.host_star_image.data
     
-    gain =1000
+    gain =500
     emccd_keywords ={'em_gain':gain}
     exptime = 3000
 
-    detector = instrument.CorgiDetector(exptime, emccd_keywords)
+    detector = instrument.CorgiDetector( emccd_keywords)
     #print('aaa',detector.emccd.meta.geom )
-    sim_scene = detector.generate_detector_image(sim_scene, full_frame=True,loc_x=300, loc_y=300)
-    image2 = sim_scene.host_star_image_on_detector.data
+    sim_scene = detector.generate_detector_image(sim_scene, exptime,full_frame=True,loc_x=300, loc_y=300)
+    image2 = sim_scene.image_on_detector.data
 
 
     print('Final_intensity_get:', np.sum(image, dtype = np.float64))
