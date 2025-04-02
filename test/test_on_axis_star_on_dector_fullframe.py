@@ -47,7 +47,7 @@ def run_sim_multi():
     detector = instrument.CorgiDetector( emccd_keywords)
     #print('aaa',detector.emccd.meta.geom )
     sim_scene = detector.generate_detector_image(sim_scene, exptime,full_frame=True,loc_x=300, loc_y=300)
-    image2 = sim_scene.host_star_image_on_detector.data
+    image2 = sim_scene.image_on_detector.data
 
 
     print('Final_intensity_get:', np.sum(image, dtype = np.float64))

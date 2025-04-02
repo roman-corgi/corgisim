@@ -272,13 +272,14 @@ class SimulatedScene():
 
         #The following three attributes will hold astropy HDUs with the simulated images.
         self.host_star_image = None
-        self.host_star_image_on_detector = None
+        #self.host_star_image_on_detector = None
         self.point_source_image = None
         self.twoD_image = None
 
 
         #This will be basically the sum of the above three images at the right location on the detector
         self.total_image = None
+        self.image_on_detector = None
 
 
     def combine_simulated_scenes_list(scene_list):

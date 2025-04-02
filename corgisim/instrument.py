@@ -335,13 +335,33 @@ class CorgiDetector():
         Returns:
         A corgisim.scene.Scene object that contains the detector image in the 
         '''
+        # List of possible image components (in order of addition)
+
+        img = None
+        components = [simulated_scene.host_star_image,
+                      simulated_scene.point_source_image,
+                      simulated_scene.twoD_image]
+        
+        ###check wich components is not None, and combine exsiting simulated scene
+        for component in components:
+            if component is not None:
+                data = component.data
+                if img is None:
+                    img = data.copy()  # initialize from first valid image
+                else:
+                    img += data
+
+        if img is None:
+            raise ValueError('No valid simulated scene to put on detector')
+      
+
         if full_frame:
-            flux_map = self.place_scene_on_detector( simulated_scene.host_star_image.data, loc_x, loc_y)
+            flux_map = self.place_scene_on_detector( img , loc_x, loc_y)
             Im_noisy = self.emccd.sim_full_frame(flux_map, exptime).astype(float)
         else:
-            Im_noisy = self.emccd.sim_sub_frame(simulated_scene.host_star_image.data, exptime).astype(float)
+            Im_noisy = self.emccd.sim_sub_frame(img, exptime).astype(float)
 
-        simulated_scene.host_star_image_on_detector = create_hdu(Im_noisy)
+        simulated_scene.image_on_detector = create_hdu(Im_noisy)
 
         return simulated_scene
 

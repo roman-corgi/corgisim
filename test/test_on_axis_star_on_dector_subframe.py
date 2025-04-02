@@ -45,7 +45,7 @@ def run_sim_multi():
     exptime = 30
     detector = instrument.CorgiDetector( emccd_keywords)
     sim_scene = detector.generate_detector_image(sim_scene,exptime)
-    image2 = sim_scene.host_star_image_on_detector.data
+    image2 = sim_scene.image_on_detector.data
 
 
     print('Final_intensity_get:', np.sum(image, dtype = np.float64))
