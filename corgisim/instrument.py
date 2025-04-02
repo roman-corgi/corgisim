@@ -328,8 +328,8 @@ class CorgiDetector():
         Arguments:
         total_scene: a corgisim.scene.Scene object that contains the scene to be simulated in the total_scene attribute.
         full_frame: if generated full_frame image in detetor
-        loc_x (int): The horizontal coordinate (in pixels) of the left edge where the sub_frame will be inserted, needed when full_frame=True
-        loc_y (int): The vertical coordinate (in pixels) of the bottom edge where the sub_frame will be inserted, needed when full_frame=True
+        loc_x (int): The horizontal coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True
+        loc_y (int): The vertical coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True
         exptime: exptime in second
 
         Returns:
