@@ -10,6 +10,7 @@ from synphot.models import BlackBodyNorm1D, Box1D,Empirical1D
 from synphot import units, SourceSpectrum, SpectralElement, Observation
 from synphot.units import validate_wave_unit, convert_flux, VEGAMAG
 import matplotlib.pyplot as plt
+from emccd_detect.emccd_detect import EMCCDDetectBase, EMCCDDetect
 
 class CorgiOptics():
     '''
@@ -304,17 +305,21 @@ class CorgiOptics():
     
 class CorgiDetector(): 
     
-    def __init__(self, emccd_keywords):
+    def __init__(self ,emccd_keywords):
         '''
         Initialize the class with a dictionary that defines the EMCCD_DETECT input parameters. 
 
         Arguments: 
         emccd_keywords: A dictionary with the keywords that are used to set up the emccd model
         '''
-        pass
+        self.emccd_keywords = emccd_keywords  # Store the keywords for later use
+        #self.exptime = exptime ##expsoure time in second
+
+
+        self.emccd = self.define_EMCCD(emccd_keywords=self.emccd_keywords)
     
 
-    def generate_detector_image(self, simulated_scene):
+    def generate_detector_image(self, simulated_scene, exptime, full_frame= False, loc_x=None, loc_y=None):
         '''
         Function that generates a detector image from the input image, using emccd_detect. 
 
@@ -322,25 +327,170 @@ class CorgiDetector():
 
         Arguments:
         total_scene: a corgisim.scene.Scene object that contains the scene to be simulated in the total_scene attribute.
-        
+        full_frame: if generated full_frame image in detetor
+        loc_x (int): The horizontal coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True
+        loc_y (int): The vertical coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True
+        exptime: exptime in second
+
         Returns:
         A corgisim.scene.Scene object that contains the detector image in the 
         '''
-        pass
+        # List of possible image components (in order of addition)
 
-    def place_scene_on_detector(self, scene):
+        img = None
+        components = [simulated_scene.host_star_image,
+                      simulated_scene.point_source_image,
+                      simulated_scene.twoD_image]
+        
+        ###check wich components is not None, and combine exsiting simulated scene
+        for component in components:
+            if component is not None:
+                data = component.data
+                if img is None:
+                    img = data.copy()  # initialize from first valid image
+                else:
+                    img += data
+
+        if img is None:
+            raise ValueError('No valid simulated scene to put on detector')
+      
+
+        if full_frame:
+            flux_map = self.place_scene_on_detector( img , loc_x, loc_y)
+            Im_noisy = self.emccd.sim_full_frame(flux_map, exptime).astype(float)
+        else:
+            Im_noisy = self.emccd.sim_sub_frame(img, exptime).astype(float)
+
+        simulated_scene.image_on_detector = create_hdu(Im_noisy)
+
+        return simulated_scene
+
+    def place_scene_on_detector(self, sub_frame, loc_x, loc_y):
+        """
+        Place the simulated scene onto the detector centered at a specified point.
+
+        This method inserts a sub-frame (the simulated scene) into a larger 1024x1024 detector array,
+        where the (loc_x, loc_y) coordinates represent the center of the sub_frame in the detector's
+        coordinate system. The rest of the detector frame is padded with zeros. The resulting image is used
+        later to generate an astropy HDU with associated metadata via the emccd_detect function.
+
+        Note:
+            This function is an intermediate step in the simulation pipeline and is generally not modified by
+            end users.
+
+        Args:
+            sub_frame (numpy.ndarray): A 2D array representing the simulated scene to be placed on the detector.
+            loc_x (int): The horizontal coordinate (in pixels) of the center where the sub_frame will be inserted.
+            loc_y (int): The vertical coordinate (in pixels) of the center where the sub_frame will be inserted.
+
+        Returns:
+            numpy.ndarray: A 1024x1024 2D array (detector frame) with the sub_frame placed at the specified 
+                        center location and the remaining areas padded with zeros.
+
+        Raises:
+            ValueError: If the sub_frame, when placed at the specified location, exceeds the bounds of the 1024x1024 detector
+                        array or if negative indices result.
+        """
+        # Create the large 1024x1024 array filled with zeros
+        full_frame = np.zeros((1024, 1024))
+
+        N_pix_x = sub_frame.shape[0]
+        N_pix_y = sub_frame.shape[1]
+
+        # Compute the indices for placing the sub-frame centered at (loc_x, loc_y)
+        x_start = loc_x - N_pix_x // 2
+        x_end = x_start + N_pix_x
+        y_start = loc_y - N_pix_y // 2
+        y_end = y_start + N_pix_y
+
+        # Check for out-of-bounds placement
+        if x_start < 0 or y_start < 0 or x_end > 1024 or y_end > 1024:
+            raise ValueError('The subframe cannot be placed in the given location without exceeding detector bounds.')
+
+        # Insert the small array into the large array
+        full_frame[x_start:x_end, y_start:y_end] = sub_frame
+
+        return full_frame
+
+
+
+    def define_EMCCD(self, emccd_keywords=None ):
+
         '''
-        Function that places the simulated scene on the detector. 
+        Create and configure an EMCCD detector object with optional CTI simulation.
 
-        It should take the input scene from scene.total_scene and return an updated scene object with the
-        detector_image attribute populated with an astropy HDU that contains the simulated scene on the detector and associated metadata
-        in the header.
+        This method initializes an EMCCD detector object using the provided parameters.
+        Optionally, if CTI (Charge Transfer Inefficiency) simulation is required, it updates
+        the detector object using a trap model.
 
-        The detector_image should be generated by using the emccd_detect function.
+        Args:
+        # default values match requirements, except QE, which is year 0 curve (already accounted for in counts)
+        em_gain (float, optional): EM gain, default 1000.
+        full_well_image (float, optional): image full well; 50K is requirement, 60K is CBE
+        full_well_serial (float, optional): full well for serial register; 90K is requirement, 100K is CBE
+        dark_rate (float, optional): Dark current rate, e-/pix/s; 1.0 is requirement, 0.00042/0.00056 is CBE for 0/5 years
+        cic_noise (float, optional): Clock-induced charge noise, e-/pix/frame; Defaults to 0.01.
+        read_noise (float, optional): Read noise, e-/pix/frame; 125 is requirement, 100 is CBE
+        bias (int, optional): Bias level (in digital numbers). Defaults to 0.
+        qe (float): Quantum efficiency, set to 1 here, because already counted in counts
+        cr_rate (int, optional): Cosmic ray event rate, hits/cm^2/s (0 for none, 5 for L2) 
+        pixel_pitch (float, optional): Pixel pitch (in meters). Defaults to 13e-6.
+        e_per_dn (float, optional): post-multiplied electrons per data unit
+        numel_gain_register (int, optional): Number of elements in the gain register. Defaults to 604.
+        nbits (int, optional): Number of bits in the analog-to-digital converter. Defaults to 14.
+        use_traps (bool, optional): Flag indicating whether to simulate CTI effects using trap models. Defaults to False.
+        date4traps (float, optional): Decimal year of observation; only applicable if `use_traps` is True. Defaults to 2028.0.
 
-        Likely an intermediate step that typical users won't touch. 
+        Returns:
+        emccd (EMCCDDetectBase): A configured EMCCD detector object. If `use_traps` is True, the detector's CTI is updated
+                         using the corresponding trap model.
+        
         '''
-        pass
+        # Initialize emccd_keywords safely
+        #if emccd_keywords is None:
+        # default parameters for RMCCD on Roman-CGI, except QE, which set to 1 (already accounted for in counts)
+        emccd_keywords_default = {'full_well_serial': 100000.0,         # full well for serial register; 90K is requirement, 100K is CBE
+                                  'full_well_image': 60000.0,                 # image full well; 50K is requirement, 60K is CBE
+                                  'dark_rate': 0.00056,                  # e-/pix/s; 1.0 is requirement, 0.00042/0.00056 is CBE for 0/5 years
+                                  'cic_noise': 0.01,                    # e-/pix/frame; 0.1 is requirement, 0.01 is CBE
+                                  'read_noise': 100.0,                  # e-/pix/frame; 125 is requirement, 100 is CBE
+                                  'cr_rate': 0,                         # hits/cm^2/s (0 for none, 5 for L2) 
+                                  'em_gain': 1000.0 ,                      # EM gain
+                                  'bias': 0,
+                                  'pixel_pitch': 13e-6 ,                # detector pixel size in meters
+                                  'apply_smear': True ,                 # (LOWFS only) Apply fast readout smear?  
+                                  'e_per_dn':1.0  ,                    # post-multiplied electrons per data unit
+                                  'nbits': 14  ,                        # ADC bits
+                                  'numel_gain_register': 604,           # Number of gain register elements 
+                                  'use_traps': False,                    # include CTI impact of traps
+                                  'date4traps': 2028.0}                        # decimal year of observation}
+
+        if emccd_keywords is not None:                    
+            if 'qe' in emccd_keywords.keys():
+                raise Warning("Quantum efficiency has been added in the bandpass throughput; it must be enforced as 1 here.")
+            # Override default parameters with user-specified ones
+            for key, value in emccd_keywords.items():
+                if key in emccd_keywords_default:
+                    emccd_keywords_default[key] = value
+
+        
+        emccd = EMCCDDetect( em_gain=emccd_keywords_default['em_gain'], full_well_image=emccd_keywords_default['full_well_image'], full_well_serial=emccd_keywords_default['full_well_serial'],
+                             dark_current=emccd_keywords_default['dark_rate'], cic=emccd_keywords_default['cic_noise'], read_noise=emccd_keywords_default['read_noise'], bias=emccd_keywords_default['bias'],
+                             qe=1.0, cr_rate=emccd_keywords_default['cr_rate'], pixel_pitch=emccd_keywords_default['pixel_pitch'], eperdn=emccd_keywords_default['e_per_dn'],
+                             numel_gain_register=emccd_keywords_default['numel_gain_register'], nbits=emccd_keywords_default['nbits'] )
+        
+        if emccd_keywords_default['use_traps']: 
+            raise ValueError(f"The part to simulate CTI effects using trap models has not been implemented yet!")
+        
+            #from cgisim.rcgisim import model_for_Roman
+            #from arcticpy.roe import ROE
+            #from arcticpy.ccd import CCD
+            #traps = model_for_Roman( date4traps )  
+            #ccd = CCD(well_fill_power=0.58, full_well_depth=full_well_image)
+            #roe = ROE()
+            #emccd.update_cti( ccd=ccd, roe=roe, traps=traps, express=1 )
+        
+        return emccd
 
 
 def create_hdu(data, header_info=None):
