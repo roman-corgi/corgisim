@@ -18,18 +18,32 @@ class Scene():
     Arguments: 
         host_star_properties (dict): A dictionary that contains information about the host star, including: 
             - "Vmag" (float): The V-band magnitude of the host star.
-            - "spectral_type" (str): The spectral type of the host star. 
-                f"Spectral types must follow the format: '<Class><Subclass>[<Luminosity Class>]'.\n"
-                f"- Valid spectral classes: {', '.join(valid_classes)}\n"
-                f"- Valid subclasses: Integer from 0 to 9, optionally with a decimal (e.g., 3.5)\n"
-                f"- Valid luminosity classes (optional): {valid_luminosity_classes}\n"
-                f"\nExample valid spectral types: 'G2V', 'M5III', 'A0', 'T7', 'L3.5V', 'B2IV'."
+            - "spectral_type" (str): Spectral type of the host star. Must follow the format: "<Class><Subclass>[<Luminosity Class>]".
+                Valid components include:
+                - Spectral classes: O, B, A, F, G, K, M, L, T, Y
+                - Subclasses: Integer from 0 to 9, optionally with a decimal (e.g., 3.5)
+                - Luminosity classes (optional): I, II, III, IV, V, VI, VII
+                - Example valid spectral types: "G2V", "M5III", "A0", "T7", "L3.5V", "B2IV"
             - "magtype" (str): the magnitude type: 
                 'vegamag' for Vega magnitude system.
                 'ABmag' for AB magnitude system
 
-        point_sources_info (list): A list of dictionaries that contain information about the point sources, such as:
-            brightness, location, spectra?, etc.
+        point_sources_info (list): A list of dictionaries, each representing an off-axis point source in the scene. Each dictionary must contain:
+            - "Vmag" (float): The apparent V-band magnitude of the source.
+            - "magtype" (str): The photometric system used for the magnitude. Must be one of:
+                - "vegamag": Vega magnitude system
+                - "ABmag": AB magnitude system
+            - "position_x" (float): 
+                X-coordinate of the source position in mas, relative to the host star.
+            - "position_y" (float): 
+                Y-coordinate of the source position in mas, relative to the host star.
+            - "Custom_Spectrum" (optional): 
+                A custom spectrum for the source. If provided, this spectrum will override the default spectrum generated based on Vmag.
+            Notes:
+                - The coordinates should be provided in the same reference frame and orientation as the background scene (typically North-up, East-left).
+                - All magnitudes must be consistent with their respective magnitude type.
+                - If no custom spectrum is provided, a default flat spectrum will be generated based on the V-band magnitude.
+
         background_scene (HDUList): An astropy HDU that contains a background scene as data and a header full of relevant information, such as: 
             pixel_scale, etc. 
 
@@ -323,7 +337,7 @@ class Scene():
         vmag : list of float
             Desired V-band magnitudes for the off-axis sources.
         magtype : list of str
-            Magnitude system used for each source. Must be 'vegamag' for all entries.
+            Magnitude system used for each source. 
         spectrum : list or None, optional
             Custom input spectra. If None, flat spectra will be used and scaled to match `vmag`.
             Custom spectra are not yet supported and will raise an error if provided.
