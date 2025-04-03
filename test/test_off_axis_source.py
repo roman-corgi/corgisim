@@ -35,7 +35,9 @@ def run_sim():
 
     #Define the host star properties
     host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype': 'vegamag'}
-    point_source_info = {'Vmag': mag_companion, 'magtype': 'vegamag','position_x':dx , 'position_y':dy}
+    point_source_info = [{'Vmag': mag_companion[0], 'magtype': 'vegamag','position_x':dx[0] , 'position_y':dy[0]},
+                         {'Vmag': mag_companion[1], 'magtype': 'vegamag','position_x':dx[1] , 'position_y':dy[1]}]
+
 
     #Create a Scene object that holds all this information
     base_scene = scene.Scene(host_star_properties, point_source_info)
@@ -79,42 +81,44 @@ def run_sim():
 
     ####################################make the plots
     ##if past the test, we will make the plots
-    fig = plt.figure(figsize=(12,8))
-    plt.subplot(231)
-    plt.imshow(image_star_corgi)
-    plt.title('Host star Vmag=8, CorgiSim')
+    if_plot = False
+    if if_plot:
+        fig = plt.figure(figsize=(12,8))
+        plt.subplot(231)
+        plt.imshow(image_star_corgi)
+        plt.title('Host star Vmag=8, CorgiSim')
 
-    co = plt.colorbar(shrink=0.7)
-    plt.subplot(232)
-    plt.imshow(image_comp_corgi)
-    plt.title('Companion Vmag=25, CorgiSim')
+        co = plt.colorbar(shrink=0.7)
+        plt.subplot(232)
+        plt.imshow(image_comp_corgi)
+        plt.title('Companion Vmag=25, CorgiSim')
 
-    co = plt.colorbar(shrink=0.7)
+        co = plt.colorbar(shrink=0.7)
 
-    plt.subplot(233)
-    plt.imshow(image_star_corgi+image_comp_corgi)
-    plt.title('Combined Image, CorgiSim')
+        plt.subplot(233)
+        plt.imshow(image_star_corgi+image_comp_corgi)
+        plt.title('Combined Image, CorgiSim')
 
-    co = plt.colorbar(shrink=0.7)
+        co = plt.colorbar(shrink=0.7)
 
-    plt.subplot(234)
-    plt.imshow(image_star_cgi)
-    plt.title('Host star Vmag=8, CgiSim')
-    co = plt.colorbar(shrink=0.7)
+        plt.subplot(234)
+        plt.imshow(image_star_cgi)
+        plt.title('Host star Vmag=8, CgiSim')
+        co = plt.colorbar(shrink=0.7)
 
-    plt.subplot(235)
-    plt.imshow(image_comp_cgi )
-    plt.title('Companion Vmag=25, CgiSim')
+        plt.subplot(235)
+        plt.imshow(image_comp_cgi )
+        plt.title('Companion Vmag=25, CgiSim')
 
-    co = plt.colorbar(shrink=0.7)
+        co = plt.colorbar(shrink=0.7)
 
-    plt.subplot(236)
-    plt.imshow(image_star_corgi+image_comp_corgi )
-    plt.title('Combined Image, CgiSim')
-    co = plt.colorbar(shrink=0.7)
+        plt.subplot(236)
+        plt.imshow(image_star_cgi+image_comp_cgi )
+        plt.title('Combined Image, CgiSim')
+        co = plt.colorbar(shrink=0.7)
 
-    plt.show()
-    
+        plt.show()
+        
 
 if __name__ == '__main__':
     run_sim()
