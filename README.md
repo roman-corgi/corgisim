@@ -5,7 +5,7 @@ A simulation suite for the Nancy Grace Roman Space Telescope Coronagraphic Instr
 
 ### Install Proper
 Proper is an optical propagation library that is needed for CGISim to function
-Go to the [Proper website](https://sourceforge.net/projects/pralias python=python3oper-library/) and download proper_v3.3.2_python.zip
+Go to the [Proper website](https://sourceforge.net/projects/proper-library/) and download proper_v3.3.2_python.zip
 Unzip it in you working directory
 Enter the directory that contains setup.py and run the following: 
 ```
@@ -34,7 +34,7 @@ pip install -e .
 
 Go to corgisim/test/ and run 
 ```
-python3 test_install.py
+python test_installation.py
 ```
 
 ### Troubleshooting
