@@ -29,6 +29,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install pytest
         pip install unzip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt .; fi
     - name: Download and install Proper
       run: |
         wget https://sourceforge.net/projects/proper-library/files/proper_v3.3.2_python.zip && unzip proper_v3.3.2_python.zip
@@ -43,11 +44,11 @@ jobs:
         cd ..        
     - name: Download and install CGISim
       run: |
-        wget https://sourceforge.net/projects/cgisim/files/ cgisim_v4.0.zip  && unzip  cgisim_v4.0.zip
+        wget https://sourceforge.net/projects/cgisim/files/cgisim_v4.0.zip  && unzip  cgisim_v4.0.zip
         cd  cgisim_v4.0/
         python -m pip install .
         cd ..        
 
     - name: Test with pytest
       run: |
-        pytest
+        pytest ./test/

@@ -4,7 +4,6 @@ import numpy as np
 from astropy.io import fits
 import roman_preflight_proper
 from corgisim import scene
-import pkg_resources
 import cgisim
 from synphot.models import BlackBodyNorm1D, Box1D,Empirical1D
 from synphot import units, SourceSpectrum, SpectralElement, Observation
