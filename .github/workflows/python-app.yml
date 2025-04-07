@@ -5,9 +5,9 @@ name: Python application
 
 on:
   push:
-    branches: [ "main, setup-continuous-integration" ]
+    branches: [ "main"]
   pull_request:
-    branches: [ "main, setup-continuous-integration" ]
+    branches: [ "main"]
 
 permissions:
   contents: read
