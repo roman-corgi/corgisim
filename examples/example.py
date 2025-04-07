@@ -49,5 +49,3 @@ total_scene = scene.combine_simulated_scence_list([simulated_scene_with_psf, sce
 ### Simulate the readout ###
 ############################
 final_image = detector.generate_detector_image(total_scene)
-
-
