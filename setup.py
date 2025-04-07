@@ -14,8 +14,6 @@ setup(
       version = "0.0.1",
       packages=find_packages(),
 
-      install_requires = ['numpy>=1.8', 'scipy>=0.19', 'astropy>=1.3', 'PyPROPER3>=3.3', 'Pytest','synphot','cgisim'],
-
       package_data = {
         '': ['*.*']
       },
