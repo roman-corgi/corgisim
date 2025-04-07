@@ -3,4 +3,3 @@ numpy
 scipy
 pytest
 synphot
-pkg_resources
