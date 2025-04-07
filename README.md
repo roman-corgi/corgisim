@@ -44,4 +44,3 @@ ImportError: Unable to run roman_preflight prescription. Stopping.
 ```
 it means that the program cannot locate roman_preflight_compact.py and/or roman_preflight.py. The error is described in page two of roman_preflight_proper_public_v2.0.pdf.
 roman_preflight_compact.py and roman_preflight.py need to be copied in the same directory as the script you are trying to run (i.e. /corgisim/test/ if you are trying to run a test, corgisim/examples/if you are trying to run an example)
-These files should not be tracked on Github
