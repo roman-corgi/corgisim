@@ -3,3 +3,4 @@ numpy
 scipy
 pytest
 synphot==1.5.0
+emccd_detect==2.4.0
