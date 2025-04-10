@@ -24,7 +24,7 @@ class CorgiOptics():
 
     '''
 
-    def __init__(self, cgi_mode = None, bandpass= None,  diam = 236.3114, proper_keywords=None, **kwargs):
+    def __init__(self, cgi_mode = None, bandpass= None,  diam = 236.3114, proper_keywords=None, oversampling_factor = 7, return_oversample = False, **kwargs):
         '''
 
         Initialize the class a keyword dictionary that defines the setup of cgisim/PROPER 
@@ -36,6 +36,9 @@ class CorgiOptics():
         - bandpass (str): pre-difined bandpass for Roman-CGI
         - diam (float) in meter: diameter of the primaru mirror, the default value is 2.363114 meter
         - proper_keywords: A dictionary with the keywords that are used to set up the proper model
+        - oversample: An integer that defines the oversampling factor of the detector when generating the image
+        - return_oversample: A boolean that defines whether the function should return the oversampled image or not.
+    
 
         Raises:
         - ValueError: If `cgi_mode` or `cor_type` is invalid.
@@ -76,6 +79,7 @@ class CorgiOptics():
 
         self.cgi_mode = cgi_mode
         self.bandpass = bandpass 
+
         # get mode and bandpass parameters:
         info_dir = cgisim.lib_dir + '/cgisim_info_dir/'
         mode_data, bandpass_data = cgisim.cgisim_read_mode( cgi_mode, proper_keywords['cor_type'], bandpass, info_dir )
@@ -104,10 +108,23 @@ class CorgiOptics():
         else:
             self.polarizer_transmission = 1.0
 
-        self.integrate_pixels = True ## whether to subsamping the pixels and integrate them
-        if "integrate_pixels" in kwargs: self.integrate_pixels = kwargs.get("integrate_pixels")
+        #self.integrate_pixels = True ## whether to subsamping the pixels and integrate them
+        #if "integrate_pixels" in kwargs: self.integrate_pixels = kwargs.get("integrate_pixels")
+        
+        ## setup if to oversampling the image and if return the oversample
+        self.oversampling_factor = oversampling_factor
+        self.return_oversample = return_oversample
+
+
         self.nd = 0  # integer: 1, 3, or 4 (0 = no ND, the default); this is the ND filter identifier, NOT the amount of ND
         if "nd" in kwargs: self.nd = kwargs.get("nd")
+
+        # Initialize the bandpass class (from synphot)
+        # bp: wavelegth is in unit of angstrom
+        # bp: throughput is unitless, including transmission, reflectivity and EMCCD quantum efficiency 
+        self.bp = self.setup_bandpass(self.cgi_mode, self.bandpass, self.nd)
+
+
 
         if 'if_quiet'in kwargs:self.quiet = kwargs.get("if_quiet")
 
@@ -116,7 +133,7 @@ class CorgiOptics():
         print("CorgiOptics initialized with proper keywords.")
      
 
-    def get_psf(self, input_scene, on_the_fly=False, oversampling_factor = 7, return_oversample = False):
+    def get_psf(self, input_scene, sim_scene=None, on_the_fly=False):
         '''
         
         Function that provides an on-axis PSF for the current configuration of CGI.
@@ -134,9 +151,7 @@ class CorgiOptics():
         Arguments: 
         input_scene: A corgisim.scene.Scene object that contains the scene to be simulated.
         on_the_fly: A boolean that defines whether the PSF should be generated on the fly.
-        oversample: An integer that defines the oversampling factor of the detector when generating the PSF
-        return_oversample: A boolean that defines whether the function should return the oversampled PSF or not.
-
+        
         Returns:
         corgisim.scene.Simulated_Scene: A scene object with the host_star_image attribute populated with an astropy
                                         HDU that contains a noiseless on-axis PSF.
@@ -144,23 +159,19 @@ class CorgiOptics():
         '''
         
         if self.cgi_mode == 'excam':
-            # Initialize the bandpass class (from synphot)
-            # bp: wavelegth is in unit of angstrom
-            # bp: throughput is unitless, including transmission, reflectivity and EMCCD quantum efficiency 
-            bp = self.setup_bandpass(self.cgi_mode, self.bandpass, self.nd)
+            
             # Compute the observed stellar spectrum within the defined bandpass
             # obs: wavelegth is in unit of angstrom
             # obs: flux is in unit of photons/s/cm^2/angstrom
-            obs = Observation(input_scene.stellar_spectrum, bp)
+            obs = Observation(input_scene.stellar_spectrum, self.bp)
             
+            #if self.integrate_pixels:
+                #oversampling_factor = 7
+            #else:
+                #oversampling_factor = 1
 
-            if self.integrate_pixels:
-                oversampling_factor = 7
-            else:
-                oversampling_factor = 1
-
-            grid_dim_out_tem = self.grid_dim_out * oversampling_factor
-            sampling_um_tem = self.sampling_um / oversampling_factor
+            grid_dim_out_tem = self.grid_dim_out * self.oversampling_factor
+            sampling_um_tem = self.sampling_um / self.oversampling_factor
 
             self.proper_keywords['output_dim']=grid_dim_out_tem
             self.proper_keywords['final_sampling_m']=sampling_um_tem *1e-6
@@ -170,16 +181,16 @@ class CorgiOptics():
             images_tem = np.abs(fields)**2
 
             # Initialize the image array based on whether oversampling is returned
-            images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
+            images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if self.return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
             images = np.zeros(images_shape, dtype=float)
 
             for i in range(images_tem.shape[0]):
-                if return_oversample:
+                if self.return_oversample:
                     ##return the oversampled PSF, default 7 grid per pixel
                     images[i,:,:] +=  images_tem[i,:,:]
                 else:
                     ## integrate oversampled PSF back to one grid per pixel
-                    images[i,:,:] +=  images_tem[i,:,:].reshape((self.grid_dim_out,oversampling_factor,self.grid_dim_out,oversampling_factor)).mean(3).mean(1) * oversampling_factor**2
+                    images[i,:,:] +=  images_tem[i,:,:].reshape((self.grid_dim_out,self.oversampling_factor,self.grid_dim_out,self.oversampling_factor)).mean(3).mean(1) * self.oversampling_factor**2
 
                 dlam_um = self.lam_um[1]-self.lam_um[0]
                 lam_um_l = (self.lam_um[i]- 0.5*dlam_um) * 1e4 ## unit of anstrom
@@ -196,7 +207,8 @@ class CorgiOptics():
             raise ValueError(f"The mode '{self.cgi_mode}' has not been implemented yet!")
         
         # Initialize SimulatedScene class to restore the output psf
-        sim_scene = scene.SimulatedScene(input_scene)
+        if sim_scene == None:
+            sim_scene = scene.SimulatedScene(input_scene)
         
         # Prepare header information for the output HDU FITS file
         header_info = {'wvl_c_um':self.lam0_um,
@@ -246,7 +258,7 @@ class CorgiOptics():
         return bp
 
 
-    def simulate_2D_scene(self, scene, on_the_fly=False, oversample = 1, return_oversample = False):
+    def simulate_2D_scene(self, scene, on_the_fly=False):
         '''
         Function that simulates a 2D scene with the current configuration of CGI. 
 
@@ -265,17 +277,14 @@ class CorgiOptics():
         Arguments: 
         scene: A corgisim.scene.Scene object that contains the scene to be simulated.
         on_the_fly: A boolean that defines whether the PSFs should be generated on the fly.
-        oversample: An integer that defines the oversampling factor of the detector when generating the PSFs
-        return_oversample: A boolean that defines whether the function should return the oversampled PSFs or not.
-
+        
         Returns: 
         corgisim.scene.Simulated_Scene: A scene object with the background_scene attribute populated with an astropy
                                         HDU that contains the simulated scene.
         '''
         pass
 
-
-    def inject_point_sources(self, scene, on_the_fly=False, oversample = 1, return_oversample = False):
+    def inject_point_sources(self, input_scene, sim_scene=None, on_the_fly=False):
         '''
         Function that injects point sources into the scene. 
 
@@ -293,14 +302,111 @@ class CorgiOptics():
 
         Arguments: 
         scene: A corgisim.scene.Scene object that contains the scene to be simulated.
+        sim_scene: A corgisim.SimulatedScene object to contains the simylated scene.
         on_the_fly: A boolean that defines whether the PSFs should be generated on the fly.
-        oversample: An integer that defines the oversampling factor of the detector when generating the PSFs
-        return_oversample: A boolean that defines whether the function should return the oversampled PSFs or not.
+        
 
         Returns: 
         A 2D numpy array that contains the scene with the injected point sources. 
         '''
-        pass
+        if self.cgi_mode == 'excam':
+
+
+            # Extract point source spectra and positions
+            point_source_spectra = input_scene.off_axis_source_spectrum
+            point_source_x = input_scene.point_source_x
+            point_source_y = input_scene.point_source_y
+
+            # Ensure all inputs are lists for uniform processing
+            if not isinstance(point_source_spectra, list):
+                point_source_spectra = [point_source_spectra]
+            if not isinstance(point_source_x, list):
+                point_source_x = [point_source_x]
+            if not isinstance(point_source_y, list):
+                point_source_y = [point_source_y]
+
+            # Ensure all lists have the same length
+            if not (len(point_source_spectra) == len(point_source_x) == len(point_source_y)):
+                raise ValueError(
+                    f"Mismatch in input lengths: {len(point_source_spectra)} spectra, "
+                    f"{len(point_source_x)} x-positions, {len(point_source_y)} y-positions. "
+                    "Each point source must have a corresponding (x, y) position.")
+
+            # Compute the observed  spectrum for each off-axis source
+            obs_point_source = [Observation(spectrum, self.bp) for spectrum in point_source_spectra]
+            
+            #if self.integrate_pixels:
+                #oversampling_factor = 7
+            #else:
+                #oversampling_factor = 1
+
+            grid_dim_out_tem = self.grid_dim_out * self.oversampling_factor
+            sampling_um_tem = self.sampling_um / self.oversampling_factor
+            
+            point_source_image = []
+            for j in range(len(point_source_spectra )):
+            
+                proper_keywords_comp = self.proper_keywords.copy()
+                proper_keywords_comp.update({'output_dim': grid_dim_out_tem,
+                                            'final_sampling_m': sampling_um_tem * 1e-6,
+                                            'source_x_offset_mas': point_source_x[j],
+                                            'source_y_offset_mas': point_source_y[j]})
+
+                (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE= proper_keywords_comp ,QUIET=True)
+                images_tem = np.abs(fields)**2
+
+                # Initialize the image array based on whether oversampling is returned
+                images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if self.return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
+                images = np.zeros(images_shape, dtype=float)
+
+                for i in range(images_tem.shape[0]):
+                    if self.return_oversample:
+                        ##return the oversampled PSF, default 7 grid per pixel
+                        images[i,:,:] +=  images_tem[i,:,:]
+                    else:
+                        ## integrate oversampled PSF back to one grid per pixel
+                        images[i,:,:] +=  images_tem[i,:,:].reshape((self.grid_dim_out,self.oversampling_factor,self.grid_dim_out,self.oversampling_factor)).mean(3).mean(1) * self.oversampling_factor**2
+
+                    dlam_um = self.lam_um[1]-self.lam_um[0]
+                    lam_um_l = (self.lam_um[i]- 0.5*dlam_um) * 1e4 ## unit of anstrom
+                    lam_um_u = (self.lam_um[i]+ 0.5*dlam_um) * 1e4 ## unit of anstrom
+                    # ares in unit of cm^2
+                    # counts in unit of photos/s
+                    counts = self.polarizer_transmission * obs_point_source[j].countrate(area=self.area, waverange=[lam_um_l, lam_um_u])
+
+                    images[i,:,:] = images[i,:,:] * counts
+
+                image = np.sum(images, axis=0)
+                point_source_image.append(image) 
+            
+       
+        if self.cgi_mode in ['spec', 'lowfs', 'excam_efield']:
+            raise ValueError(f"The mode '{self.cgi_mode}' has not been implemented yet!")
+        
+        if sim_scene == None:
+            sim_scene = scene.SimulatedScene(input_scene)
+
+        # Prepare header information for the output HDU FITS file
+        npl = len(input_scene.point_source_Vmag)
+        header_info = {'wvl_c_um': self.lam0_um,
+                            'pl_magtype': input_scene.point_source_magtype}
+
+        ##update the brightness and position for ith companion
+        for i in range(npl):
+            header_info[f'pl_Vmag_{i}'] = input_scene.point_source_Vmag[i]
+            header_info[f'position_x_{i}'] = input_scene.point_source_x[i]
+            header_info[f'position_y_{i}'] = input_scene.point_source_y[i]
+                            
+                # Define specific keys from self.proper_keywords to include in the header            
+        keys_to_include_in_header = ['cor_type', 'use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
+                            'use_lyot_stop','use_field_stop','output_dim']  # Specify keys to include
+        subset = {key: self.proper_keywords[key] for key in keys_to_include_in_header if key in self.proper_keywords}
+        header_info.update(subset)
+        # Create the HDU object with the generated header information
+        sim_scene.point_source_image = create_hdu(np.sum(point_source_image,axis=0),header_info =header_info)
+
+        return sim_scene
+
     
 class CorgiDetector(): 
     
