@@ -41,6 +41,5 @@ build:
     python: "3.12"
   jobs:
     pre_build:
-     - pwd
-     - ls
-     - sphinx-apidoc -o source/ ../corgisim/
+
+     - sphinx-apidoc -o source/ corgisim/
