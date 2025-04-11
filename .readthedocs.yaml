@@ -32,7 +32,7 @@ sphinx:
 # See https://docs.readthedocs.io/en/stable/guides/reproducible-builds.html
 python:
   install:
-    - requirements: docs/requirements.txt
+    - requirements: requirements.txt
     - method: pip
       path: .
 build:
@@ -41,5 +41,5 @@ build:
     python: "3.12"
   jobs:
     pre_build:
-
+     - pip install -r docs/requirements.txt
      - sphinx-apidoc -o source/ corgisim/
