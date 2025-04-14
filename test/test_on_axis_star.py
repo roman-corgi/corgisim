@@ -12,19 +12,21 @@ import cgisim
 ### Set up a scene. ###
 #######################
 
-def test_on_star_axis():
+def test_on_axis_star():
     print('testrun')
     
     #Define the host star properties
     #host_star_properties = {'v_mag': 1, 'spectral_type': 'G2V', 'ra': 0, 'dec': 0}
     Vmag = 8
-    sptype = 'G0V'
+    sptype_corgisim = 'G0V'
+    sptype_cgisim = 'g0v'
+
     cgi_mode = 'excam'
     bandpass = '1b'
     cor_type = 'hlc_band1'
     
     #### simulate using corgisim
-    host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype':'vegamag'}
+    host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype_corgisim, 'magtype':'vegamag'}
     #Create a Scene object that holds all this information
     base_scene = scene.Scene(host_star_properties)
     ####setup the wavelength for the simulation, nlam=1 for monochromatic image, nlam>1 for broadband image 
@@ -46,38 +48,39 @@ def test_on_star_axis():
     polaxis_cgisim = -10
     params = {'use_errors':1, 'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2}
     a0_sim_allpol, a0_counts = cgisim.rcgisim( cgi_mode, cor_type, bandpass,  polaxis_cgisim, params, 
-        star_spectrum=sptype, star_vmag=Vmag )
+        star_spectrum=sptype_cgisim, star_vmag=Vmag )
     print(a0_counts, np.sum(a0_sim_allpol, dtype = np.float64))
+    if_plot = False
+    if if_plot:
+        fig = plt.figure(figsize=(10,4))
+        plt.subplot(121)
+        plt.imshow(image)
+        
+        co = plt.colorbar(shrink=0.7)
+        co.set_label(r'$\rm Counts\ [photons\ s^{-1}]$')
+        plt.xlabel('X (Pixel)')
+        plt.ylabel('X (Pixel)')
+        plt.title(f"On-axis star: {sptype_corgisim} and {Vmag} mag (corgisim)")
 
-    fig = plt.figure(figsize=(10,4))
-    plt.subplot(121)
-    plt.imshow(image)
-    
-    co = plt.colorbar(shrink=0.7)
-    co.set_label(r'$\rm Counts\ [photons\ s^{-1}]$')
-    plt.xlabel('X (Pixel)')
-    plt.ylabel('X (Pixel)')
-    plt.title(f"On-axis star: {sptype} and {Vmag} mag (corgisim)")
+        plt.subplot(122)
+        plt.imshow(a0_sim_allpol)
+        co = plt.colorbar(shrink=0.7)
+        co.set_label(r'$\rm Counts\ [photons\ s^{-1}]$')
+        plt.xlabel('X (Pixel)')
+        plt.ylabel('X (Pixel)')
+        plt.title(f"On-axis star: {sptype_cgisim} and {Vmag} mag (cgisim)")
 
-    plt.subplot(122)
-    plt.imshow(a0_sim_allpol)
-    co = plt.colorbar(shrink=0.7)
-    co.set_label(r'$\rm Counts\ [photons\ s^{-1}]$')
-    plt.xlabel('X (Pixel)')
-    plt.ylabel('X (Pixel)')
-    plt.title(f"On-axis star: {sptype} and {Vmag} mag (cgisim)")
-
-    plt.subplots_adjust(wspace=0.3)
-    plt.show()
+        plt.subplots_adjust(wspace=0.3)
+        plt.show()
 
 
-    exit()
+        exit()
 
     
 
 if __name__ == '__main__':
     #run_sim()
-    test_on_star_axis()
+    test_on_axis_star()
 
 
 
