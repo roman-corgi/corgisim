@@ -26,7 +26,7 @@ def run_sim():
     fig1= plt.figure(figsize=(15,12))
 
     for i in range(len(sptype)):
-        cgisim_lam, cgisim_sp = cgisim.cgisim_read_spectrum(sptype[i], info_dir ) 
+        cgisim_lam, cgisim_sp = cgisim.cgisim_read_spectrum(sptype[i].lower(), info_dir ) 
         cgisim_sp_scale = cgisim.cgisim_renormalize_spectrum( cgisim_lam, cgisim_sp, mag, 'V', info_dir )
         
     

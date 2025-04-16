@@ -74,7 +74,7 @@ def run_sim():
     polaxis_cgisim = -10
     params = {'use_errors':1, 'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2}
     image_star_cgi, a0_counts = cgisim.rcgisim( cgi_mode, cor_type, bandpass,  polaxis_cgisim, params, 
-        star_spectrum=sptype, star_vmag=Vmag )
+        star_spectrum=sptype.lower(), star_vmag=Vmag )
     
     image_comp = []
     for i in range(len(mag_companion )):
@@ -82,7 +82,7 @@ def run_sim():
         params['source_x_offset_mas']=dx[i]
         params['source_y_offset_mas']=dy[i]
         comp_sim_allpol, comp_counts = cgisim.rcgisim( cgi_mode, cor_type, bandpass,  polaxis_cgisim, params, 
-        star_spectrum=sptype, star_vmag=mag_companion[i] )
+        star_spectrum=sptype.lower(), star_vmag=mag_companion[i] )
 
         image_comp.append(comp_sim_allpol)
         a0_counts= a0_counts+comp_counts 
