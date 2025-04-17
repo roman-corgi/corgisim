@@ -14,7 +14,7 @@ from astropy import units as u
 
 
 #@pytest.mark.parametrize("interp_method", ['linear', 'cubic'])
-def run_sim():
+def test_off_axis_source():
     print('This is a test file to check if the simulated off-axis sources from corgisim agree with those from cgisim')
     
     #### simulate using corgisim
@@ -146,5 +146,5 @@ def run_sim():
         
 
 if __name__ == '__main__':
-    run_sim()
+    test_off_axis_source()
   

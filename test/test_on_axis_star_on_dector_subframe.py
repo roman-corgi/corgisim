@@ -12,7 +12,7 @@ import cgisim
 ### Set up a scene. ###
 #######################
 
-def run_sim_multi():
+def test_on_axis_star_on_detector_subframe():
     print('testrun')
     
     #Define the host star properties
@@ -112,15 +112,15 @@ def run_sim_multi():
 
         plt.subplots_adjust(wspace=0.4, hspace=0.2)
         plt.show()
+        exit()
 
-
-    exit()
+    
 
     
 
 if __name__ == '__main__':
     #run_sim()
-    run_sim_multi()
+    test_on_axis_star_on_detector_subframe()
 
 
 
