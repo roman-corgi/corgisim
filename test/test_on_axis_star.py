@@ -18,15 +18,13 @@ def test_on_axis_star():
     #Define the host star properties
     #host_star_properties = {'v_mag': 1, 'spectral_type': 'G2V', 'ra': 0, 'dec': 0}
     Vmag = 8
-    sptype_corgisim = 'G0V'
-    sptype_cgisim = 'g0v'
-
+    sptype = 'G0V'
     cgi_mode = 'excam'
     bandpass = '1b'
     cor_type = 'hlc_band1'
     
     #### simulate using corgisim
-    host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype_corgisim, 'magtype':'vegamag'}
+    host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype':'vegamag'}
     #Create a Scene object that holds all this information
     base_scene = scene.Scene(host_star_properties)
     ####setup the wavelength for the simulation, nlam=1 for monochromatic image, nlam>1 for broadband image 
@@ -61,7 +59,7 @@ def test_on_axis_star():
         co.set_label(r'$\rm Counts\ [photons\ s^{-1}]$')
         plt.xlabel('X (Pixel)')
         plt.ylabel('X (Pixel)')
-        plt.title(f"On-axis star: {sptype_corgisim} and {Vmag} mag (corgisim)")
+        plt.title(f"On-axis star: {sptype} and {Vmag} mag (corgisim)")
 
         plt.subplot(122)
         plt.imshow(a0_sim_allpol)
@@ -69,7 +67,7 @@ def test_on_axis_star():
         co.set_label(r'$\rm Counts\ [photons\ s^{-1}]$')
         plt.xlabel('X (Pixel)')
         plt.ylabel('X (Pixel)')
-        plt.title(f"On-axis star: {sptype_cgisim} and {Vmag} mag (cgisim)")
+        plt.title(f"On-axis star: {sptype} and {Vmag} mag (cgisim)")
 
         plt.subplots_adjust(wspace=0.3)
         plt.show()
