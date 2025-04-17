@@ -39,7 +39,7 @@ def test_off_axis_source_spectrum():
 
         #sp=base_scene.stellar_spectrum
         #sp2=sp(cgisim_lam ).value
-        pp = base_scene.off_axis_source_spectrum 
+        pp = base_scene.off_axis_source_spectrum[0] 
         
         pp_test = pp(550).value
         analitical_value = 952.3* 10**(-0.4 * (mag-0.03))
