@@ -48,7 +48,8 @@ def test_on_axis_star():
     polaxis_cgisim = -10
     params = {'use_errors':1, 'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2}
     a0_sim_allpol, a0_counts = cgisim.rcgisim( cgi_mode, cor_type, bandpass,  polaxis_cgisim, params, 
-        star_spectrum=sptype_cgisim, star_vmag=Vmag )
+        star_spectrum=sptype.lower(), star_vmag=Vmag )
+
     print(a0_counts, np.sum(a0_sim_allpol, dtype = np.float64))
     if_plot = False
     if if_plot:
