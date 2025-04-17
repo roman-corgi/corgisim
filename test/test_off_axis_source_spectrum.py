@@ -32,7 +32,7 @@ def test_off_axis_source_spectrum():
     
         #Define the host star properties
         host_star_properties = {'Vmag': mag, 'spectral_type': sptype[i], 'magtype': 'vegamag'}
-        point_source_info = {'Vmag': mag, 'magtype': 'vegamag','position_x':4 , 'position_y':4}
+        point_source_info = [{'Vmag': mag, 'magtype': 'vegamag','position_x':4 , 'position_y':4}]
 
         #Create a Scene object that holds all this information
         base_scene = scene.Scene(host_star_properties, point_source_info)
