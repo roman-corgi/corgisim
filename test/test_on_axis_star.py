@@ -12,7 +12,7 @@ import cgisim
 ### Set up a scene. ###
 #######################
 
-def run_sim_multi():
+def test_on_axis_star():
     print('testrun')
     
     #Define the host star properties
@@ -47,37 +47,39 @@ def run_sim_multi():
     params = {'use_errors':1, 'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2}
     a0_sim_allpol, a0_counts = cgisim.rcgisim( cgi_mode, cor_type, bandpass,  polaxis_cgisim, params, 
         star_spectrum=sptype.lower(), star_vmag=Vmag )
+
     print(a0_counts, np.sum(a0_sim_allpol, dtype = np.float64))
+    if_plot = False
+    if if_plot:
+        fig = plt.figure(figsize=(10,4))
+        plt.subplot(121)
+        plt.imshow(image)
+        
+        co = plt.colorbar(shrink=0.7)
+        co.set_label(r'$\rm Counts\ [photons\ s^{-1}]$')
+        plt.xlabel('X (Pixel)')
+        plt.ylabel('X (Pixel)')
+        plt.title(f"On-axis star: {sptype} and {Vmag} mag (corgisim)")
 
-    fig = plt.figure(figsize=(10,4))
-    plt.subplot(121)
-    plt.imshow(image)
-    
-    co = plt.colorbar(shrink=0.7)
-    co.set_label(r'$\rm Counts\ [photons\ s^{-1}]$')
-    plt.xlabel('X (Pixel)')
-    plt.ylabel('X (Pixel)')
-    plt.title(f"On-axis star: {sptype} and {Vmag} mag (corgisim)")
+        plt.subplot(122)
+        plt.imshow(a0_sim_allpol)
+        co = plt.colorbar(shrink=0.7)
+        co.set_label(r'$\rm Counts\ [photons\ s^{-1}]$')
+        plt.xlabel('X (Pixel)')
+        plt.ylabel('X (Pixel)')
+        plt.title(f"On-axis star: {sptype} and {Vmag} mag (cgisim)")
 
-    plt.subplot(122)
-    plt.imshow(a0_sim_allpol)
-    co = plt.colorbar(shrink=0.7)
-    co.set_label(r'$\rm Counts\ [photons\ s^{-1}]$')
-    plt.xlabel('X (Pixel)')
-    plt.ylabel('X (Pixel)')
-    plt.title(f"On-axis star: {sptype} and {Vmag} mag (cgisim)")
-
-    plt.subplots_adjust(wspace=0.3)
-    plt.show()
+        plt.subplots_adjust(wspace=0.3)
+        plt.show()
 
 
-    exit()
+        exit()
 
     
 
 if __name__ == '__main__':
     #run_sim()
-    run_sim_multi()
+    test_on_axis_star()
 
 
 
