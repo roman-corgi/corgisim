@@ -38,9 +38,10 @@ def run_sim_multi():
    
     optics = instrument.CorgiOptics(cgi_mode, bandpass, proper_keywords=proper_keywords, if_quiet=True, integrate_pixels=True)
     sim_scene = optics.get_psf(base_scene)
-    image = sim_scene.host_star_image.data
+    image = sim_scene.host_star_image[1].data
     print('Final_intensity_get:', np.sum(image, dtype = np.float64))
     #print(sim_scene.host_star_image[1].header)
+    #print(sim_scene.host_star_image[0].header)
 
     ########################  simulate using cgisim
     polaxis_cgisim = -10
@@ -49,26 +50,27 @@ def run_sim_multi():
         star_spectrum=sptype.lower(), star_vmag=Vmag )
     print(a0_counts, np.sum(a0_sim_allpol, dtype = np.float64))
 
-    fig = plt.figure(figsize=(10,4))
-    plt.subplot(121)
-    plt.imshow(image)
     
-    co = plt.colorbar(shrink=0.7)
-    co.set_label(r'$\rm Counts\ [photons\ s^{-1}]$')
-    plt.xlabel('X (Pixel)')
-    plt.ylabel('X (Pixel)')
-    plt.title(f"On-axis star: {sptype} and {Vmag} mag (corgisim)")
+    # fig = plt.figure(figsize=(10,4))
+    # plt.subplot(121)
+    # plt.imshow(image)
+    
+    # co = plt.colorbar(shrink=0.7)
+    # co.set_label(r'$\rm Counts\ [photons\ s^{-1}]$')
+    # plt.xlabel('X (Pixel)')
+    # plt.ylabel('X (Pixel)')
+    # plt.title(f"On-axis star: {sptype} and {Vmag} mag (corgisim)")
 
-    plt.subplot(122)
-    plt.imshow(a0_sim_allpol)
-    co = plt.colorbar(shrink=0.7)
-    co.set_label(r'$\rm Counts\ [photons\ s^{-1}]$')
-    plt.xlabel('X (Pixel)')
-    plt.ylabel('X (Pixel)')
-    plt.title(f"On-axis star: {sptype} and {Vmag} mag (cgisim)")
+    # plt.subplot(122)
+    # plt.imshow(a0_sim_allpol)
+    # co = plt.colorbar(shrink=0.7)
+    # co.set_label(r'$\rm Counts\ [photons\ s^{-1}]$')
+    # plt.xlabel('X (Pixel)')
+    # plt.ylabel('X (Pixel)')
+    # plt.title(f"On-axis star: {sptype} and {Vmag} mag (cgisim)")
 
-    plt.subplots_adjust(wspace=0.3)
-    plt.show()
+    # plt.subplots_adjust(wspace=0.3)
+    # plt.show()
 
 
     exit()

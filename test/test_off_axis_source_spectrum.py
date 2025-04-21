@@ -32,7 +32,7 @@ def run_sim():
     
         #Define the host star properties
         host_star_properties = {'Vmag': mag, 'spectral_type': sptype[i], 'magtype': 'vegamag'}
-        point_source_info = {'Vmag': mag, 'magtype': 'vegamag','position_x':4 , 'position_y':4}
+        point_source_info = [{'Vmag': mag, 'magtype': 'vegamag','position_x':4 , 'position_y':4}]
 
         #Create a Scene object that holds all this information
         base_scene = scene.Scene(host_star_properties, point_source_info)
@@ -41,7 +41,7 @@ def run_sim():
         #sp2=sp(cgisim_lam ).value
         pp = base_scene.off_axis_source_spectrum 
         
-        pp_test = pp(550).value
+        pp_test = pp[0](550).value
         analitical_value = 952.3* 10**(-0.4 * (mag-0.03))
         #print(pp_test,analitical_value )
 

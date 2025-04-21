@@ -10,6 +10,8 @@ from synphot import units, SourceSpectrum, SpectralElement, Observation
 from synphot.units import validate_wave_unit, convert_flux, VEGAMAG
 import matplotlib.pyplot as plt
 from emccd_detect.emccd_detect import EMCCDDetectBase, EMCCDDetect
+from corgidrp import mocks
+import os
 
 class CorgiOptics():
     '''
@@ -211,7 +213,7 @@ class CorgiOptics():
             sim_scene = scene.SimulatedScene(input_scene)
         
         # Prepare header information for the output HDU FITS file
-        header_info = {'wvl_c_um':self.lam0_um,
+        sim_info = {'wvl_c_um':self.lam0_um,
                     's_sptype':input_scene.host_star_sptype,
                     's_Vmag':input_scene.host_star_Vmag,
                     's_magtype':input_scene.host_star_magtype,
@@ -220,9 +222,9 @@ class CorgiOptics():
         keys_to_include_in_header = ['cor_type', 'use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
                             'use_lyot_stop','use_field_stop','output_dim']  # Specify keys to include
         subset = {key: self.proper_keywords[key] for key in keys_to_include_in_header if key in self.proper_keywords}
-        header_info.update(subset)
+        sim_info.update(subset)
         # Create the HDU object with the generated header information
-        sim_scene.host_star_image = create_hdu(image,header_info =header_info)
+        sim_scene.host_star_image = create_hdu(image,sim_info =sim_info)
 
         return sim_scene
 
@@ -388,22 +390,22 @@ class CorgiOptics():
 
         # Prepare header information for the output HDU FITS file
         npl = len(input_scene.point_source_Vmag)
-        header_info = {'wvl_c_um': self.lam0_um,
+        sim_info = {'wvl_c_um': self.lam0_um,
                             'pl_magtype': input_scene.point_source_magtype}
 
         ##update the brightness and position for ith companion
         for i in range(npl):
-            header_info[f'pl_Vmag_{i}'] = input_scene.point_source_Vmag[i]
-            header_info[f'position_x_{i}'] = input_scene.point_source_x[i]
-            header_info[f'position_y_{i}'] = input_scene.point_source_y[i]
+            sim_info[f'pl_Vmag_{i}'] = input_scene.point_source_Vmag[i]
+            sim_info[f'position_x_{i}'] = input_scene.point_source_x[i]
+            sim_info[f'position_y_{i}'] = input_scene.point_source_y[i]
                             
                 # Define specific keys from self.proper_keywords to include in the header            
         keys_to_include_in_header = ['cor_type', 'use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
                             'use_lyot_stop','use_field_stop','output_dim']  # Specify keys to include
         subset = {key: self.proper_keywords[key] for key in keys_to_include_in_header if key in self.proper_keywords}
-        header_info.update(subset)
+        sim_info.update(subset)
         # Create the HDU object with the generated header information
-        sim_scene.point_source_image = create_hdu(np.sum(point_source_image,axis=0),header_info =header_info)
+        sim_scene.point_source_image = create_hdu(np.sum(point_source_image,axis=0), sim_info =sim_info)
 
         return sim_scene
 
@@ -431,14 +433,14 @@ class CorgiDetector():
         The input_image probably has to be in electrons. 
 
         Arguments:
-        total_scene: a corgisim.scene.Scene object that contains the scene to be simulated in the total_scene attribute.
+        simulated_scene: a corgisim.scene.SimulatedScen object that contains the noise-free scene from CorgiOptics
         full_frame: if generated full_frame image in detetor
         loc_x (int): The horizontal coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True
         loc_y (int): The vertical coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True
         exptime: exptime in second
 
         Returns:
-        A corgisim.scene.Scene object that contains the detector image in the 
+        A corgisim.scene.SimulatedScene object that contains the detector image in the 
         '''
         # List of possible image components (in order of addition)
 
@@ -450,7 +452,7 @@ class CorgiDetector():
         ###check wich components is not None, and combine exsiting simulated scene
         for component in components:
             if component is not None:
-                data = component.data
+                data = component[1].data
                 if img is None:
                     img = data.copy()  # initialize from first valid image
                 else:
@@ -598,45 +600,69 @@ class CorgiDetector():
         return emccd
 
 
-def create_hdu(data, header_info=None):
+def create_hdu(data, sim_info=None):
         """
-        Create an Astropy HDU for the PSF with metadata.
+        Create an Astropy HDUList containing a simulated image with appropriate headers. 
+        This function uses `mock.py` from `corgidrp` to generate default L1 headers for both
+        the primary and image HDUs. In addition to the standard headers, it also stores
+        custom header comments in the primary HDU to track the simulation setup.
 
         Parameters:
-        - data (numpy.ndarray): 2D array representing the PSF.
-        - header_info (dict): Dictionary of metadata to include in the header.
+        - data (numpy.ndarray): 2D array representing the simulated image.
+        - sim_info (dict, optional): Additional key-value pairs to include in the primary header.
+        These could describe stellar properties, simulation setup, etc.
 
         Returns:
-        - hdu (fits.PrimaryHDU): Astropy HDU object containing the data and header_info
+        - hdul (astropy.io.fits.HDUList): A FITS HDUList with two components:
+            [0] Primary HDU: contains global header (no image data)
+            [1] ImageHDU: contains the image and its own header
         """
+        
         # Create the Primary HDU with the data
-        ##primary_hdu = fits.PrimaryHDU()
+        primary_hdu = fits.PrimaryHDU()
         # Create an Image HDU with data
-        ##image_hdu = fits.ImageHDU(data)
+        image_hdu = fits.ImageHDU(data)
         # Combine them into an HDUList
-        ##hdul = fits.HDUList([primary_hdu, image_hdu])
+        hdul = fits.HDUList([primary_hdu, image_hdu])
 
         ####read default header and pass into the hdu
-        #ile_path = pkg_resources.resource_filename("corgisim.data", "data/CGI_0000000000000000014_20221004T2359351_L1_.fits")
-        #with fits.open(file_path) as hdul_default:
-        #    primary_header = hdul_default[0].header
-        #    image_header = hdul_default[1].header
+        prihdr, exthdr = mocks.create_default_L1_headers()
+    
+        hdul[0].header =  prihdr  # Primary HDU header
+        hdul[1].header = exthdr    # Image HDU header
 
-        #hdul[0].header = primary_header  # Primary HDU header
-        #hdul[1].header = image_header    # Image HDU header
-        hdul = fits.PrimaryHDU(data)
+        if sim_info is not None:
+        # Add descriptive comments to the primary header
+          
+            primary_hdu.header['COMMENT'] = "This FITS file contains simulated data."
+            primary_hdu.header['COMMENT'] = "Primary header includes stellar properties and simulation details."
 
-        if header_info is not None:
-        # Add customerized header info to the header
-            #print(header_info)
-            hdul.header['COMMENT'] = "This FITS file contains simulated data."
-            hdul.header['COMMENT'] = "Header includes stellar properties and other simulation details."
-
-            for key, value in header_info.items():
+            for key, value in sim_info.items():
                 comment = key+' : '+str(value)
-                hdul.header.add_comment(comment)
-                #hdul.header[key] = value
+                primary_hdu.header.add_comment(comment)
+              
             
         return hdul
+
+
+
+def save_hdu_to_fits(hdul, outdir=None, overwrite=True):
+    """
+    Save an Astropy HDUList to a FITS file.
+
+    Parameters:
+    - hdul (astropy.io.fits.HDUList): The HDUList object to be saved.
+    - filename (str): Output filename for the FITS file .
+    - overwrite (bool): If True, overwrite the file if it already exists. Default is True.
+    """
+    if outdir is None:
+        outdir = os.getcwd()
+
+    os.makedirs(outdir, exist_ok=True)  # Ensure the output directory exists
+    filename = os.path.join(outdir, 'simulated_L1.fits')
+
+    hdul.writeto(filename, overwrite=overwrite)
+    print(f"Saved FITS file to: {filename}")
+
             
 
