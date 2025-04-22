@@ -11,7 +11,7 @@ from synphot.units import validate_wave_unit, convert_flux, VEGAMAG
 import matplotlib.pyplot as plt
 from emccd_detect.emccd_detect import EMCCDDetectBase, EMCCDDetect
 from corgidrp import mocks
-import os
+
 
 class CorgiOptics():
     '''
@@ -212,17 +212,26 @@ class CorgiOptics():
         if sim_scene == None:
             sim_scene = scene.SimulatedScene(input_scene)
         
-        # Prepare header information for the output HDU FITS file
-        sim_info = {'wvl_c_um':self.lam0_um,
-                    's_sptype':input_scene.host_star_sptype,
-                    's_Vmag':input_scene.host_star_Vmag,
-                    's_magtype':input_scene.host_star_magtype,
-                    }
+        
+        # Prepare additional information to be added as COMMENT headers in the primary HDU.
+        # These are different from the default L1 headers, but extra comments that are used to track simulation-specific details.
+        sim_info = {'host_star_sptype':input_scene.host_star_sptype,
+                    'host_star_Vmag':input_scene.host_star_Vmag,
+                    'host_star_magtype':input_scene.host_star_magtype,
+                    'cgi_mode':self.cgi_mode,
+                    'cor_type': self.proper_keywords['cor_type'],
+                    'bandpass':self.bandpass,
+                    'over_sampling_factor':self.oversampling_factor,
+                    'return_oversample': self.return_oversample,
+                    'output_dim': self.grid_dim_out,
+                    'nd_filter':self.nd}
+
         # Define specific keys from self.proper_keywords to include in the header            
-        keys_to_include_in_header = ['cor_type', 'use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
-                            'use_lyot_stop','use_field_stop','output_dim']  # Specify keys to include
+        keys_to_include_in_header = ['use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
+                            'use_lyot_stop','use_field_stop']  # Specify keys to include
         subset = {key: self.proper_keywords[key] for key in keys_to_include_in_header if key in self.proper_keywords}
         sim_info.update(subset)
+        sim_info['includ_dectector_noise'] = 'False'
         # Create the HDU object with the generated header information
         sim_scene.host_star_image = create_hdu(image,sim_info =sim_info)
 
@@ -388,22 +397,32 @@ class CorgiOptics():
         if sim_scene == None:
             sim_scene = scene.SimulatedScene(input_scene)
 
-        # Prepare header information for the output HDU FITS file
+        # Prepare additional information to be added as COMMENT headers in the primary HDU.
+        # These are different from the default L1 headers, but extra comments that are used to track simulation-specific details.
         npl = len(input_scene.point_source_Vmag)
-        sim_info = {'wvl_c_um': self.lam0_um,
-                            'pl_magtype': input_scene.point_source_magtype}
-
+        sim_info = {'num_off_axis_source': npl}
         ##update the brightness and position for ith companion
         for i in range(npl):
             sim_info[f'pl_Vmag_{i}'] = input_scene.point_source_Vmag[i]
-            sim_info[f'position_x_{i}'] = input_scene.point_source_x[i]
-            sim_info[f'position_y_{i}'] = input_scene.point_source_y[i]
+            sim_info[f'pl_magtype_{i}']= input_scene.point_source_magtype[i]
+            sim_info[f'position_x_mas_{i}'] = input_scene.point_source_x[i]
+            sim_info[f'position_y_mas_{i}'] = input_scene.point_source_y[i]
+
+        # Third: global simulation settings
+        sim_info['cgi_mode'] = self.cgi_mode
+        sim_info['cor_type'] = self.proper_keywords.get('cor_type')
+        sim_info['bandpass'] = self.bandpass
+        sim_info['over_sampling_factor'] = self.oversampling_factor
+        sim_info['return_oversample'] = self.return_oversample
+        sim_info['output_dim'] = self.grid_dim_out
+        sim_info['nd_filter'] = self.nd
                             
                 # Define specific keys from self.proper_keywords to include in the header            
-        keys_to_include_in_header = ['cor_type', 'use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
-                            'use_lyot_stop','use_field_stop','output_dim']  # Specify keys to include
+        keys_to_include_in_header = [ 'use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
+                            'use_lyot_stop','use_field_stop']  # Specify keys to include
         subset = {key: self.proper_keywords[key] for key in keys_to_include_in_header if key in self.proper_keywords}
         sim_info.update(subset)
+        sim_info['includ_dectector_noise'] = 'False'
         # Create the HDU object with the generated header information
         sim_scene.point_source_image = create_hdu(np.sum(point_source_image,axis=0), sim_info =sim_info)
 
@@ -449,7 +468,7 @@ class CorgiDetector():
                       simulated_scene.point_source_image,
                       simulated_scene.twoD_image]
         
-        ###check wich components is not None, and combine exsiting simulated scene
+        ###check witch components is not None, and combine exsiting simulated scene
         for component in components:
             if component is not None:
                 data = component[1].data
@@ -633,9 +652,8 @@ def create_hdu(data, sim_info=None):
 
         if sim_info is not None:
         # Add descriptive comments to the primary header
-          
-            primary_hdu.header['COMMENT'] = "This FITS file contains simulated data."
-            primary_hdu.header['COMMENT'] = "Primary header includes stellar properties and simulation details."
+            primary_hdu.header['COMMENT'] = "Additional COMMENT headers below contain simulation-specific details."
+            primary_hdu.header['COMMENT'] = "These are separate from the default L1 headers provided by the DRP."
 
             for key, value in sim_info.items():
                 comment = key+' : '+str(value)

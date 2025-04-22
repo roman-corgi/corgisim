@@ -5,6 +5,7 @@ from synphot.models import BlackBodyNorm1D, Box1D, ConstFlux1D
 from synphot import units, SourceSpectrum, SpectralElement, Observation
 from synphot.units import validate_wave_unit, convert_flux, VEGAMAG
 import cgisim
+import os
 
 class Scene():
     ''' 
@@ -424,23 +425,38 @@ class SimulatedScene():
         '''
         pass
 
-    def save_hdu_to_fits(hdul, outdir=None, overwrite=True):
+    def save_hdu_to_fits(self, hdul, outdir=None, overwrite=True, write_as_L1=False, filename=None):
         """
         Save an Astropy HDUList to a FITS file.
 
         Parameters:
         - hdul (astropy.io.fits.HDUList): The HDUList object to be saved.
-        - filename (str): Output filename for the FITS file .
+        - outdir (str, optional): Output directory. Defaults to the current working directory.
         - overwrite (bool): If True, overwrite the file if it already exists. Default is True.
+        - write_as_L1 (bool): If True, the file will be named according to the L1 naming convention.
+        - filename (str, optional): Name of the output FITS file (without ".fits" extension). 
+                                    Required if write_as_L1 is False.
         """
         if outdir is None:
             outdir = os.getcwd()
 
-        os.makedirs(outdir, exist_ok=True)  # Ensure the output directory exists
-        filename = os.path.join(outdir, 'simulated_L1.fits')
+        os.makedirs(outdir, exist_ok=True)
 
-        hdul.writeto(filename, overwrite=overwrite)
-        print(f"Saved FITS file to: {filename}")
+        # Handle naming logic
+        if write_as_L1:
+            # TODO: replace with actual L1 naming convention logic
+            filename = "L1_output"
+        else:
+            if filename is None:
+                raise ValueError("Filename must be provided when write_as_L1 is False.")
+
+        # Construct full file path
+        filepath = os.path.join(outdir, f"{filename}.fits")
+        
+        # Write the HDUList to file
+        hdul.writeto(filepath, overwrite=overwrite)
+        print(f"Saved FITS file to: {filepath}")
+
 
 
 def sort_sptype(typestr):

@@ -52,7 +52,10 @@ def test_on_axis_star_on_detector_fullframe():
 
 
 
-    instrument.save_hdu_to_fits(sim_scene.image_on_detector, outdir='/Users/jingwenzhang/Desktop/corgisim/examples')
+    #instrument.save_hdu_to_fits(sim_scene.image_on_detector, outdir='/Users/jingwenzhang/Desktop/corgisim/examples')
+    #instrument.save_hdu_to_fits(sim_scene.image_on_detector)
+    #sim_scene.save_hdu_to_fits(sim_scene.host_star_image, filename='host_star_psf')
+    
     print('Final_intensity_get:', np.sum(image, dtype = np.float64))
     
 
