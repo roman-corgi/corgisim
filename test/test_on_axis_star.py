@@ -62,16 +62,16 @@ def test_on_axis_star():
         plt.ylabel('X (Pixel)')
         plt.title(f"On-axis star: {sptype} and {Vmag} mag (corgisim)")
 
-    plt.subplot(122)
-    plt.imshow(a0_sim_allpol)
-    co = plt.colorbar(shrink=0.7)
-    co.set_label(r'$\rm Counts\ [photons\ s^{-1}]$')
-    plt.xlabel('X (Pixel)')
-    plt.ylabel('X (Pixel)')
-    plt.title(f"On-axis star: {sptype} and {Vmag} mag (cgisim)")
+        plt.subplot(122)
+        plt.imshow(a0_sim_allpol)
+        co = plt.colorbar(shrink=0.7)
+        co.set_label(r'$\rm Counts\ [photons\ s^{-1}]$')
+        plt.xlabel('X (Pixel)')
+        plt.ylabel('X (Pixel)')
+        plt.title(f"On-axis star: {sptype} and {Vmag} mag (cgisim)")
 
-    plt.subplots_adjust(wspace=0.3)
-    plt.show()
+        plt.subplots_adjust(wspace=0.3)
+        plt.show()
 
 
         exit()
