@@ -14,7 +14,7 @@ def test_install():
     # Copy the prescription files
     path_directory = os.path.dirname(os.path.abspath(__file__))
 
-    if not (os.path.isfile(path_directory + '/roman_preflight.py')):
+    if not (os.path.isfile( path_directory + '/roman_preflight.py')):
         prescription_file = roman_preflight_proper.lib_dir + '/roman_preflight.py'
         shutil.copy( prescription_file, path_directory )
 
@@ -52,7 +52,7 @@ def test_install():
     assert isinstance(optics, instrument.CorgiOptics)
 
     sim_scene = optics.get_psf(base_scene)
-    image = sim_scene.host_star_image.data
+    image = sim_scene.host_star_image[1].data
 
     gain =1000
     emccd_keywords ={'em_gain':gain}
