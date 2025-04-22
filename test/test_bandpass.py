@@ -12,7 +12,7 @@ from synphot import units, SourceSpectrum, SpectralElement, Observation
 
 
 #@pytest.mark.parametrize("interp_method", ['linear', 'cubic'])
-def run_sim():
+def test_bandpass():
     print('testrun')
 
     #Define the host star properties
@@ -42,11 +42,11 @@ def run_sim():
     #print(bp.equivwidth())
     
     #sp_rn.plot()
-    bp.plot()
+    #bp.plot()
  
-    plt.show()
+    #plt.show()
   
   
     
 if __name__ == '__main__':
-    run_sim()
+    test_bandpass()

@@ -12,7 +12,7 @@ import cgisim
 ### Set up a scene. ###
 #######################
 
-def run_sim_multi():
+def test_on_axis_star_on_detector_subframe():
     print('testrun')
     
     #Define the host star properties
@@ -57,13 +57,13 @@ def run_sim_multi():
     polaxis_cgisim = -10
     params = {'use_errors':1, 'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2}
     a0_sim_allpol, a0_counts = cgisim.rcgisim( cgi_mode, cor_type, bandpass,  polaxis_cgisim, params, 
-        star_spectrum=sptype, star_vmag=Vmag )
+        star_spectrum=sptype.lower(), star_vmag=Vmag )
     print(a0_counts, np.sum(a0_sim_allpol, dtype = np.float64))
 
 
     ################################
     a0_sim_allpol_ccd, a0_counts_ccd = cgisim.rcgisim( cgi_mode, cor_type, bandpass,  polaxis_cgisim, params, ccd={'gain':gain,'exptime':exptime},
-        star_spectrum=sptype, star_vmag=Vmag )
+        star_spectrum=sptype.lower(), star_vmag=Vmag )
 
     # Use pytest.approx to check similarity within a tolerance
     assert  image  == pytest.approx(a0_sim_allpol, rel=0.5)
@@ -112,15 +112,15 @@ def run_sim_multi():
 
         plt.subplots_adjust(wspace=0.4, hspace=0.2)
         plt.show()
+        exit()
 
-
-    exit()
+    
 
     
 
 if __name__ == '__main__':
     #run_sim()
-    run_sim_multi()
+    test_on_axis_star_on_detector_subframe()
 
 
 
