@@ -13,7 +13,7 @@ import cgisim
 ### Set up a scene. ###
 #######################
 
-def run_sim_multi():
+def test_on_axis_star_on_detector_fullframe():
     print('testrun')
     
     #Define the host star properties
@@ -58,39 +58,41 @@ def run_sim_multi():
 
     #print(sim_scene.host_star_image[1].header)
     ####################################################################
-    fig = plt.figure(figsize=(8,4))
-    plt.subplot(111)
-    
-    plt.imshow(image2, origin='lower')
-    #plt.scatter(1088,13,c='red',s=10)
-    #plt.text(1088,13,'[1088,13]',c='red')
+    if_plot = False
+    if if_plot:
+        fig = plt.figure(figsize=(8,4))
+        plt.subplot(111)
+        
+        plt.imshow(image2, origin='lower')
+        #plt.scatter(1088,13,c='red',s=10)
+        #plt.text(1088,13,'[1088,13]',c='red')
 
-    #plt.scatter(2111,13,c='red',s=10)
-    #plt.text(2111-300,13,'[2111,13]',c='red')
+        #plt.scatter(2111,13,c='red',s=10)
+        #plt.text(2111-300,13,'[2111,13]',c='red')
 
-    #plt.scatter(1088,1036,c='red',s=10)
-    #plt.text(1088,1036-60,'[1088,1036]',c='red')
+        #plt.scatter(1088,1036,c='red',s=10)
+        #plt.text(1088,1036-60,'[1088,1036]',c='red')
 
-    #plt.scatter(2111,1036,c='red',s=10)
-    #plt.text(2111-400,1036-60,'[2111,1036]',c='red')
-    
-    co = plt.colorbar(shrink=0.7)
-    co.set_label(r'$\rm Counts\ [photons\ s^{-1}]$')
-    plt.xlabel('X (Pixel)')
-    plt.ylabel('X (Pixel)')
-    plt.title(f"On-axis star on EMCCD: {sptype} and {Vmag} mag (corgisim)")
+        #plt.scatter(2111,1036,c='red',s=10)
+        #plt.text(2111-400,1036-60,'[2111,1036]',c='red')
+        
+        co = plt.colorbar(shrink=0.7)
+        co.set_label(r'$\rm Counts\ [photons\ s^{-1}]$')
+        plt.xlabel('X (Pixel)')
+        plt.ylabel('X (Pixel)')
+        plt.title(f"On-axis star on EMCCD: {sptype} and {Vmag} mag (corgisim)")
 
-    plt.subplots_adjust(wspace=0.4, hspace=0.2)
-    plt.show()
+        plt.subplots_adjust(wspace=0.4, hspace=0.2)
+        plt.show()
 
 
-    exit()
+        exit()
 
     
 
 if __name__ == '__main__':
     #run_sim()
-    run_sim_multi()
+    test_on_axis_star_on_detector_fullframe()
 
 
 

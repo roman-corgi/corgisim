@@ -14,7 +14,7 @@ from astropy import units as u
 
 
 #@pytest.mark.parametrize("interp_method", ['linear', 'cubic'])
-def run_sim():
+def test_off_axis_source_spectrum():
     print('Test if the off axis flat spectrum is correct by comparing with analitical model')
 
     mag = 18
@@ -39,7 +39,7 @@ def run_sim():
 
         #sp=base_scene.stellar_spectrum
         #sp2=sp(cgisim_lam ).value
-        pp = base_scene.off_axis_source_spectrum 
+        pp = base_scene.off_axis_source_spectrum[0] 
         
         pp_test = pp[0](550).value
         analitical_value = 952.3* 10**(-0.4 * (mag-0.03))
@@ -67,5 +67,5 @@ def run_sim():
     
 
 if __name__ == '__main__':
-    run_sim()
+    test_off_axis_source_spectrum()
   

@@ -14,7 +14,7 @@ from astropy import units as u
 
 
 #@pytest.mark.parametrize("interp_method", ['linear', 'cubic'])
-def run_sim():
+def test_stellar_spectrum():
     print('Test if the stellar spectrum is correct by comparing with stellar spectum from cgisim')
 
     mag = 5
@@ -25,7 +25,7 @@ def run_sim():
     fig1= plt.figure(figsize=(15,12))
 
     for i in range(len(sptype)):
-        cgisim_lam, cgisim_sp = cgisim.cgisim_read_spectrum(sptype[i], info_dir ) 
+        cgisim_lam, cgisim_sp = cgisim.cgisim_read_spectrum(sptype[i].lower(), info_dir ) 
         cgisim_sp_scale = cgisim.cgisim_renormalize_spectrum( cgisim_lam, cgisim_sp, mag, 'V', info_dir )
         
     
@@ -55,5 +55,5 @@ def run_sim():
     
 
 if __name__ == '__main__':
-    run_sim()
+    test_stellar_spectrum()
   
