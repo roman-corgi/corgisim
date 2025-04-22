@@ -58,7 +58,16 @@ def test_off_axis_source_on_detector_fullframe():
     #image_comp_corgi = sim_scene.point_source_image[1].data 
     #tot_counts_corgi = np.sum(image_comp_corgi+image_star_corgi, dtype = np.float64)
     #sim_scene.save_hdu_to_fits(sim_scene.host_star_image, filename='host_star_psf')
-    sim_scene.save_hdu_to_fits(sim_scene.point_source_image, filename='point_source_image')
+    #sim_scene.save_hdu_to_fits(sim_scene.point_source_image, filename='point_source_image')
+
+    gain =1000
+    emccd_keywords ={'em_gain':gain}
+    exptime = 100
+
+    detector = instrument.CorgiDetector( emccd_keywords)
+    #print('aaa',detector.emccd.meta.geom )
+    sim_scene = detector.generate_detector_image(sim_scene, exptime,full_frame=True,loc_x=300, loc_y=300)
+    sim_scene.save_hdu_to_fits(sim_scene.image_on_detector, filename='image_on_detector')
     
     
 

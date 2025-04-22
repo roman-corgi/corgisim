@@ -464,11 +464,13 @@ class CorgiDetector():
         # List of possible image components (in order of addition)
 
         img = None
+        sim_info = {}
         components = [simulated_scene.host_star_image,
                       simulated_scene.point_source_image,
                       simulated_scene.twoD_image]
         
         ###check witch components is not None, and combine exsiting simulated scene
+        ### read comment header from components is not None to track sim_info
         for component in components:
             if component is not None:
                 data = component[1].data
@@ -476,6 +478,16 @@ class CorgiDetector():
                     img = data.copy()  # initialize from first valid image
                 else:
                     img += data
+
+                # Collect COMMENT headers if available
+                if 'COMMENT' in component[0].header:
+                    comment_lines = component[0].header['COMMENT']
+                    
+                for line in comment_lines:
+                    if ':' in line:
+                        key, val = line.split(':', 1)
+                        sim_info[key.strip()] = val.strip()
+                        
 
         if img is None:
             raise ValueError('No valid simulated scene to put on detector')
@@ -487,7 +499,14 @@ class CorgiDetector():
         else:
             Im_noisy = self.emccd.sim_sub_frame(img, exptime).astype(float)
 
-        simulated_scene.image_on_detector = create_hdu(Im_noisy)
+        # Prepare additional information to be added as COMMENT headers in the primary HDU.
+        # These are different from the default L1 headers, but extra comments that are used to track simulation-specific details.
+        sim_info['includ_dectector_noise'] = 'True'
+        subset = {key: self.emccd_keywords[key] for key in self.emccd_keywords}
+        sim_info.update(subset)
+
+
+        simulated_scene.image_on_detector = create_hdu(Im_noisy, sim_info=sim_info)
 
         return simulated_scene
 
