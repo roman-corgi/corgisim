@@ -646,23 +646,7 @@ def create_hdu(data, sim_info=None):
 
 
 
-def save_hdu_to_fits(hdul, outdir=None, overwrite=True):
-    """
-    Save an Astropy HDUList to a FITS file.
 
-    Parameters:
-    - hdul (astropy.io.fits.HDUList): The HDUList object to be saved.
-    - filename (str): Output filename for the FITS file .
-    - overwrite (bool): If True, overwrite the file if it already exists. Default is True.
-    """
-    if outdir is None:
-        outdir = os.getcwd()
-
-    os.makedirs(outdir, exist_ok=True)  # Ensure the output directory exists
-    filename = os.path.join(outdir, 'simulated_L1.fits')
-
-    hdul.writeto(filename, overwrite=overwrite)
-    print(f"Saved FITS file to: {filename}")
 
             
 
