@@ -62,14 +62,16 @@ def test_off_axis_source_on_detector_fullframe():
 
     gain =1000
     emccd_keywords ={'em_gain':gain}
-    exptime = 100
+    exptime = 3000
 
     detector = instrument.CorgiDetector( emccd_keywords)
     #print('aaa',detector.emccd.meta.geom )
     sim_scene = detector.generate_detector_image(sim_scene, exptime,full_frame=True,loc_x=300, loc_y=300)
-    sim_scene.save_hdu_to_fits(sim_scene.image_on_detector, filename='image_on_detector')
     
-    
+    ### save the file
+    #sim_scene.save_hdu_to_fits(sim_scene.image_on_detector, write_as_L1=True)
+  
+ 
 
 if __name__ == '__main__':
     #run_sim()
