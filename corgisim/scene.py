@@ -6,6 +6,7 @@ from synphot import units, SourceSpectrum, SpectralElement, Observation
 from synphot.units import validate_wave_unit, convert_flux, VEGAMAG
 import cgisim
 import os
+from datetime import datetime, timezone, timedelta
 
 class Scene():
     ''' 
@@ -444,8 +445,17 @@ class SimulatedScene():
 
         # Handle naming logic
         if write_as_L1:
-            # TODO: replace with actual L1 naming convention logic
-            filename = "L1_output"
+            #following the name convention for L1 product
+            if (hdul[1].data.shape[0] != 1200) or (hdul[1].data.shape[1] != 2200):
+                raise ValueError("Only full frame image can be save as L1 products")
+                
+            if filename is not None:
+                raise Warning("The provided filename is overridden for L1 products.")
+            prihdr = hdul[0].header
+            exthdr = hdul[1].header
+
+            time_in_name = isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
+            filename = f"CGI_{prihdr['VISITID']}_{time_in_name}_L1_.fits"
         else:
             if filename is None:
                 raise ValueError("Filename must be provided when write_as_L1 is False.")
@@ -509,3 +519,37 @@ def is_valid_spectral_type(spectral_type):
         raise ValueError(error_message)
 
     return bool(match)
+
+
+
+def isotime_to_yyyymmddThhmmsss(timestr):
+    """
+    Format an ISO time string into a custom format yyyymmddThhmmsss
+
+    Parameters
+    ----------
+    timestr : str
+        ISO time (e.g., '2025-04-25T23:18:04.786184+00:00').
+
+    Returns
+    -------
+    str
+        Time formatted as 'yyyymmddThhmmsss' (e.g., '20250425T2318048').
+    """
+    # Parse the input ISO format time
+    t = datetime.fromisoformat(timestr)
+
+    # Round to nearest 0.1 second
+    microsecond = t.microsecond
+    tenth_sec = round(microsecond / 1e5)  # how many tenths
+    t = t.replace(microsecond=0)  # reset microseconds
+
+    if tenth_sec == 10:
+        # carry over 1 second if rounding goes to 10
+        t += timedelta(seconds=1)
+        tenth_sec = 0
+
+    # Format as yyyymmddThhmmsss
+    out = t.strftime("%Y%m%dT%H%M%S") + str(tenth_sec)
+    return out
+

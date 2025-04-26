@@ -233,6 +233,7 @@ class CorgiOptics():
         sim_info.update(subset)
         sim_info['includ_dectector_noise'] = 'False'
         # Create the HDU object with the generated header information
+
         sim_scene.host_star_image = create_hdu(image,sim_info =sim_info)
 
         return sim_scene
@@ -424,7 +425,8 @@ class CorgiOptics():
         sim_info.update(subset)
         sim_info['includ_dectector_noise'] = 'False'
         # Create the HDU object with the generated header information
-        sim_scene.point_source_image = create_hdu(np.sum(point_source_image,axis=0), sim_info =sim_info)
+
+        sim_scene.point_source_image = create_hdu( np.sum(point_source_image,axis=0), sim_info =sim_info)
 
         return sim_scene
 
@@ -495,18 +497,25 @@ class CorgiDetector():
 
         if full_frame:
             flux_map = self.place_scene_on_detector( img , loc_x, loc_y)
-            Im_noisy = self.emccd.sim_full_frame(flux_map, exptime).astype(float)
+            Im_noisy = self.emccd.sim_full_frame(flux_map, exptime).astype(np.uint16)
         else:
-            Im_noisy = self.emccd.sim_sub_frame(img, exptime).astype(float)
+            Im_noisy = self.emccd.sim_sub_frame(img, exptime).astype(np.uint16)
 
         # Prepare additional information to be added as COMMENT headers in the primary HDU.
         # These are different from the default L1 headers, but extra comments that are used to track simulation-specific details.
         sim_info['includ_dectector_noise'] = 'True'
-        subset = {key: self.emccd_keywords[key] for key in self.emccd_keywords}
+        subset = {key: self.emccd_keywords_default[key] for key in self.emccd_keywords_default}
         sim_info.update(subset)
 
-
-        simulated_scene.image_on_detector = create_hdu(Im_noisy, sim_info=sim_info)
+       
+        # Create the HDU object with the generated header information
+        if full_frame:
+            sim_info['position_on_detector_x'] = loc_x
+            sim_info['position_on_detector_y'] = loc_y
+            header_info = {'EXPTIME': exptime,'EMGAIN_C':self.emccd_keywords_default['em_gain']  }
+            simulated_scene.image_on_detector = create_hdu(Im_noisy, sim_info=sim_info, header_info = header_info, write_as_L1=True)
+        else:
+            simulated_scene.image_on_detector = create_hdu(Im_noisy, sim_info=sim_info, write_as_L1=False)
 
         return simulated_scene
 
@@ -594,7 +603,7 @@ class CorgiDetector():
         # Initialize emccd_keywords safely
         #if emccd_keywords is None:
         # default parameters for RMCCD on Roman-CGI, except QE, which set to 1 (already accounted for in counts)
-        emccd_keywords_default = {'full_well_serial': 100000.0,         # full well for serial register; 90K is requirement, 100K is CBE
+        self.emccd_keywords_default = {'full_well_serial': 100000.0,         # full well for serial register; 90K is requirement, 100K is CBE
                                   'full_well_image': 60000.0,                 # image full well; 50K is requirement, 60K is CBE
                                   'dark_rate': 0.00056,                  # e-/pix/s; 1.0 is requirement, 0.00042/0.00056 is CBE for 0/5 years
                                   'cic_noise': 0.01,                    # e-/pix/frame; 0.1 is requirement, 0.01 is CBE
@@ -615,16 +624,16 @@ class CorgiDetector():
                 raise Warning("Quantum efficiency has been added in the bandpass throughput; it must be enforced as 1 here.")
             # Override default parameters with user-specified ones
             for key, value in emccd_keywords.items():
-                if key in emccd_keywords_default:
-                    emccd_keywords_default[key] = value
+                if key in self.emccd_keywords_default:
+                    self.emccd_keywords_default[key] = value
 
+    
+        emccd = EMCCDDetect( em_gain=self.emccd_keywords_default['em_gain'], full_well_image=self.emccd_keywords_default['full_well_image'], full_well_serial=self.emccd_keywords_default['full_well_serial'],
+                             dark_current=self.emccd_keywords_default['dark_rate'], cic=self.emccd_keywords_default['cic_noise'], read_noise=self.emccd_keywords_default['read_noise'], bias=self.emccd_keywords_default['bias'],
+                             qe=1.0, cr_rate=self.emccd_keywords_default['cr_rate'], pixel_pitch=self.emccd_keywords_default['pixel_pitch'], eperdn=self.emccd_keywords_default['e_per_dn'],
+                             numel_gain_register=self.emccd_keywords_default['numel_gain_register'], nbits=self.emccd_keywords_default['nbits'] )
         
-        emccd = EMCCDDetect( em_gain=emccd_keywords_default['em_gain'], full_well_image=emccd_keywords_default['full_well_image'], full_well_serial=emccd_keywords_default['full_well_serial'],
-                             dark_current=emccd_keywords_default['dark_rate'], cic=emccd_keywords_default['cic_noise'], read_noise=emccd_keywords_default['read_noise'], bias=emccd_keywords_default['bias'],
-                             qe=1.0, cr_rate=emccd_keywords_default['cr_rate'], pixel_pitch=emccd_keywords_default['pixel_pitch'], eperdn=emccd_keywords_default['e_per_dn'],
-                             numel_gain_register=emccd_keywords_default['numel_gain_register'], nbits=emccd_keywords_default['nbits'] )
-        
-        if emccd_keywords_default['use_traps']: 
+        if self.emccd_keywords_default['use_traps']: 
             raise ValueError(f"The part to simulate CTI effects using trap models has not been implemented yet!")
         
             #from cgisim.rcgisim import model_for_Roman
@@ -638,36 +647,56 @@ class CorgiDetector():
         return emccd
 
 
-def create_hdu(data, sim_info=None):
+def create_hdu(data, sim_info=None, header_info = None, write_as_L1=False):
         """
-        Create an Astropy HDUList containing a simulated image with appropriate headers. 
-        This function uses `mock.py` from `corgidrp` to generate default L1 headers for both
-        the primary and image HDUs. In addition to the standard headers, it also stores
-        custom header comments in the primary HDU to track the simulation setup.
+        Create an Astropy HDUList containing a simulated image with appropriate headers.
+        - The primary HDU contains a global header (without image data).
+        - The image HDU contains the 2D image array and its own header.
 
-        Parameters:
-        - data (numpy.ndarray): 2D array representing the simulated image.
-        - sim_info (dict, optional): Additional key-value pairs to include in the primary header.
-        These could describe stellar properties, simulation setup, etc.
+        If `write_as_L1` is True, default L1 headers from `corgidrp.mocks` are applied.
+        Custom simulation information (`sim_info`) can also be appended to the primary header as comments.
 
-        Returns:
-        - hdul (astropy.io.fits.HDUList): A FITS HDUList with two components:
-            [0] Primary HDU: contains global header (no image data)
-            [1] ImageHDU: contains the image and its own header
+        Parameters
+        ----------
+        data : numpy.ndarray
+            2D array representing the simulated image.
+        sim_info : dict, optional
+            Additional key-value pairs describing simulation setup or stellar properties,
+            to be included as comments in the primary header.
+        header_info : dict, optional
+            Dictionary containing header keywords such as 'EXPTIME' and 'EMGAIN_C' to override defaults
+            when writing as an L1 product.
+        write_as_L1 : bool, default False
+            If True, use default L1 headers from `corgidrp` and format the headers accordingly.
+
+        Returns
+        -------
+        hdul : astropy.io.fits.HDUList
+            A FITS HDUList with two components:
+            [0] Primary HDU: global header (no data)
+            [1] ImageHDU: image data and associated header
         """
-        
+         
         # Create the Primary HDU with the data
         primary_hdu = fits.PrimaryHDU()
         # Create an Image HDU with data
         image_hdu = fits.ImageHDU(data)
         # Combine them into an HDUList
         hdul = fits.HDUList([primary_hdu, image_hdu])
+        if write_as_L1:
+            ####read default header and pass into the hdu
+            prihdr, exthdr = mocks.create_default_L1_headers()
 
-        ####read default header and pass into the hdu
-        prihdr, exthdr = mocks.create_default_L1_headers()
-    
-        hdul[0].header =  prihdr  # Primary HDU header
-        hdul[1].header = exthdr    # Image HDU header
+            ###populate values into headers
+            prihdr['SIMPLE'] = True
+            prihdr['ORIGIN'] = 'CorgiSim' 
+            if header_info is not None:
+                exthdr['EXPTIME'] = header_info['EXPTIME']
+                exthdr['EMGAIN_C'] = header_info['EMGAIN_C']
+        
+            hdul[0].header =  prihdr  # Primary HDU header
+            hdul[1].header = exthdr    # Image HDU header
+
 
         if sim_info is not None:
         # Add descriptive comments to the primary header
@@ -677,8 +706,7 @@ def create_hdu(data, sim_info=None):
             for key, value in sim_info.items():
                 comment = key+' : '+str(value)
                 primary_hdu.header.add_comment(comment)
-              
-            
+                  
         return hdul
 
 
