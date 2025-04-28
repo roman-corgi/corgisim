@@ -455,7 +455,7 @@ class SimulatedScene():
             exthdr = hdul[1].header
 
             time_in_name = isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
-            filename = f"CGI_{prihdr['VISITID']}_{time_in_name}_L1_.fits"
+            filename = f"CGI_{prihdr['VISITID']}_{time_in_name}_L1_"
         else:
             if filename is None:
                 raise ValueError("Filename must be provided when write_as_L1 is False.")
