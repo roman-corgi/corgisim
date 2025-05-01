@@ -52,7 +52,7 @@ def test_install():
     assert isinstance(optics, instrument.CorgiOptics)
 
     sim_scene = optics.get_psf(base_scene)
-    image = sim_scene.host_star_image[1].data
+    image = sim_scene.host_star_image.data
 
     gain =1000
     emccd_keywords ={'em_gain':gain}
