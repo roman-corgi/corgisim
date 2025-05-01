@@ -1,4 +1,3 @@
-from corgisim.scene import isotime_to_yyyymmddThhmmsss
 from corgisim import scene
 from corgisim import instrument
 from astropy.io import fits
@@ -10,6 +9,7 @@ import pytest
 import cgisim
 import os
 import corgisim
+from corgisim import outputs
 
 def test_L1_product_fits_format():
     """Test the headers of saved L1 product FITS file
@@ -64,12 +64,12 @@ def test_L1_product_fits_format():
     ### save the L1 product fits file to test/testdata folder
     local_path = corgisim.lib_dir
     outdir = os.path.join(local_path.split('corgisim')[0], 'corgisim/test/testdata')
-    sim_scene.save_hdu_to_fits(sim_scene.image_on_detector,outdir=outdir, write_as_L1=True)
+    outputs.save_hdu_to_fits(sim_scene.image_on_detector,outdir=outdir, write_as_L1=True)
     
     ### read the L1 product fits file
     prihdr = sim_scene.image_on_detector[0].header
     exthdr = sim_scene.image_on_detector[1].header
-    time_in_name = isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
+    time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
     filename = f"CGI_{prihdr['VISITID']}_{time_in_name}_L1_.fits"
 
 

@@ -11,6 +11,7 @@ from synphot.units import validate_wave_unit, convert_flux, VEGAMAG
 import matplotlib.pyplot as plt
 from emccd_detect.emccd_detect import EMCCDDetectBase, EMCCDDetect
 from corgidrp import mocks
+from corgisim import outputs
 
 
 class CorgiOptics():
@@ -234,7 +235,7 @@ class CorgiOptics():
         sim_info['includ_dectector_noise'] = 'False'
         # Create the HDU object with the generated header information
 
-        sim_scene.host_star_image = create_hdu(image,sim_info =sim_info)
+        sim_scene.host_star_image = outputs.create_hdu(image,sim_info =sim_info)
 
         return sim_scene
 
@@ -426,7 +427,7 @@ class CorgiOptics():
         sim_info['includ_dectector_noise'] = 'False'
         # Create the HDU object with the generated header information
 
-        sim_scene.point_source_image = create_hdu( np.sum(point_source_image,axis=0), sim_info =sim_info)
+        sim_scene.point_source_image = outputs.create_hdu( np.sum(point_source_image,axis=0), sim_info =sim_info)
 
         return sim_scene
 
@@ -475,15 +476,15 @@ class CorgiDetector():
         ### read comment header from components is not None to track sim_info
         for component in components:
             if component is not None:
-                data = component[1].data
+                data = component.data
                 if img is None:
                     img = data.copy()  # initialize from first valid image
                 else:
                     img += data
 
                 # Collect COMMENT headers if available
-                if 'COMMENT' in component[0].header:
-                    comment_lines = component[0].header['COMMENT']
+                if 'COMMENT' in component.header:
+                    comment_lines = component.header['COMMENT']
                     
                 for line in comment_lines:
                     if ':' in line:
@@ -513,9 +514,9 @@ class CorgiDetector():
             sim_info['position_on_detector_x'] = loc_x
             sim_info['position_on_detector_y'] = loc_y
             header_info = {'EXPTIME': exptime,'EMGAIN_C':self.emccd_keywords_default['em_gain']  }
-            simulated_scene.image_on_detector = create_hdu(Im_noisy, sim_info=sim_info, header_info = header_info, write_as_L1=True)
+            simulated_scene.image_on_detector = outputs.create_hdu_list(Im_noisy, sim_info=sim_info, header_info = header_info)
         else:
-            simulated_scene.image_on_detector = create_hdu(Im_noisy, sim_info=sim_info, write_as_L1=False)
+            simulated_scene.image_on_detector = outputs.create_hdu(Im_noisy, sim_info=sim_info)
 
         return simulated_scene
 
@@ -646,72 +647,4 @@ class CorgiDetector():
         
         return emccd
 
-
-def create_hdu(data, sim_info=None, header_info = None, write_as_L1=False):
-        """
-        Create an Astropy HDUList containing a simulated image with appropriate headers.
-        - The primary HDU contains a global header (without image data).
-        - The image HDU contains the 2D image array and its own header.
-
-        If `write_as_L1` is True, default L1 headers from `corgidrp.mocks` are applied.
-        Custom simulation information (`sim_info`) can also be appended to the primary header as comments.
-
-        Parameters
-        ----------
-        data : numpy.ndarray
-            2D array representing the simulated image.
-        sim_info : dict, optional
-            Additional key-value pairs describing simulation setup or stellar properties,
-            to be included as comments in the primary header.
-        header_info : dict, optional
-            Dictionary containing header keywords such as 'EXPTIME' and 'EMGAIN_C' to override defaults
-            when writing as an L1 product.
-        write_as_L1 : bool, default False
-            If True, use default L1 headers from `corgidrp` and format the headers accordingly.
-
-        Returns
-        -------
-        hdul : astropy.io.fits.HDUList
-            A FITS HDUList with two components:
-            [0] Primary HDU: global header (no data)
-            [1] ImageHDU: image data and associated header
-        """
-         
-        # Create the Primary HDU with the data
-        primary_hdu = fits.PrimaryHDU()
-        # Create an Image HDU with data
-        image_hdu = fits.ImageHDU(data)
-        # Combine them into an HDUList
-        hdul = fits.HDUList([primary_hdu, image_hdu])
-        if write_as_L1:
-            ####read default header and pass into the hdu
-            prihdr, exthdr = mocks.create_default_L1_headers()
-
-            ###populate values into headers
-            prihdr['SIMPLE'] = True
-            prihdr['ORIGIN'] = 'CorgiSim' 
-            if header_info is not None:
-                exthdr['EXPTIME'] = header_info['EXPTIME']
-                exthdr['EMGAIN_C'] = header_info['EMGAIN_C']
-        
-            hdul[0].header =  prihdr  # Primary HDU header
-            hdul[1].header = exthdr    # Image HDU header
-
-
-        if sim_info is not None:
-        # Add descriptive comments to the primary header
-            primary_hdu.header['COMMENT'] = "Additional COMMENT headers below contain simulation-specific details."
-            primary_hdu.header['COMMENT'] = "These are separate from the default L1 headers provided by the DRP."
-
-            for key, value in sim_info.items():
-                comment = key+' : '+str(value)
-                primary_hdu.header.add_comment(comment)
-                  
-        return hdul
-
-
-
-
-
-            
 

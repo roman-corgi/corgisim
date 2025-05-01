@@ -38,14 +38,14 @@ def test_on_axis_star_on_detector_subframe():
    
     optics = instrument.CorgiOptics(cgi_mode, bandpass, proper_keywords=proper_keywords, if_quiet=True, integrate_pixels=True)
     sim_scene = optics.get_psf(base_scene)
-    image = sim_scene.host_star_image[1].data
+    image = sim_scene.host_star_image.data
     
     gain =1000
     emccd_keywords ={'em_gain':gain}
     exptime = 30
     detector = instrument.CorgiDetector( emccd_keywords)
     sim_scene = detector.generate_detector_image(sim_scene,exptime)
-    image2 = sim_scene.image_on_detector[1].data
+    image2 = sim_scene.image_on_detector.data
 
 
     print('Final_intensity_get:', np.sum(image, dtype = np.float64))
@@ -69,50 +69,6 @@ def test_on_axis_star_on_detector_subframe():
     assert  image  == pytest.approx(a0_sim_allpol, rel=0.5)
     print("noise free image Pass")
 
-
-    ####################################################################
-    if_plot = False
-    if if_plot:
-        fig = plt.figure(figsize=(8,8))
-        plt.subplot(221)
-        plt.imshow(image)
-
-        co = plt.colorbar(shrink=0.7)
-        co.set_label(r'$\rm Counts\ [photons\ s^{-1}]$')
-        plt.xlabel('X (Pixel)')
-        plt.ylabel('X (Pixel)')
-        plt.title(f"On-axis star: {sptype} and {Vmag} mag (corgisim)")
-
-        plt.subplot(222)
-        plt.imshow(image2)
-
-        co = plt.colorbar(shrink=0.7)
-        co.set_label(r'$\rm Counts\ [photons\ s^{-1}]$')
-        plt.xlabel('X (Pixel)')
-        plt.ylabel('X (Pixel)')
-        plt.title(f"On-axis star on EMCCD: {sptype} and {Vmag} mag (corgisim)")
-
-
-
-        plt.subplot(223)
-        plt.imshow(a0_sim_allpol)
-        co = plt.colorbar(shrink=0.7)
-        co.set_label(r'$\rm Counts\ [photons\ s^{-1}]$')
-        plt.xlabel('X (Pixel)')
-        plt.ylabel('X (Pixel)')
-        plt.title(f"On-axis star: {sptype} and {Vmag} mag (cgisim)")
-
-        plt.subplot(224)
-        plt.imshow(a0_sim_allpol_ccd)
-        co = plt.colorbar(shrink=0.7)
-        co.set_label(r'$\rm Counts\ [photons\ s^{-1}]$')
-        plt.xlabel('X (Pixel)')
-        plt.ylabel('X (Pixel)')
-        plt.title(f"On-axis star on EMCCD: {sptype} and {Vmag} mag (cgisim)")
-
-        plt.subplots_adjust(wspace=0.4, hspace=0.2)
-        plt.show()
-        exit()
 
     
 

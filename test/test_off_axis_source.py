@@ -53,10 +53,10 @@ def test_off_axis_source():
 
     optics = instrument.CorgiOptics(cgi_mode, bandpass, proper_keywords=proper_keywords, if_quiet=True)
     sim_scene = optics.get_psf(base_scene)
-    image_star_corgi = sim_scene.host_star_image[1].data
+    image_star_corgi = sim_scene.host_star_image.data
 
     sim_scene = optics.inject_point_sources(base_scene,sim_scene)
-    image_comp_corgi = sim_scene.point_source_image[1].data 
+    image_comp_corgi = sim_scene.point_source_image.data 
     tot_counts_corgi = np.sum(image_comp_corgi+image_star_corgi, dtype = np.float64)
 
     gain =1000
@@ -64,7 +64,7 @@ def test_off_axis_source():
     exptime = 5000
     detector = instrument.CorgiDetector( emccd_keywords)
     sim_scene = detector.generate_detector_image(sim_scene,exptime)
-    image_tot_corgi = sim_scene.image_on_detector[1].data
+    image_tot_corgi = sim_scene.image_on_detector.data
 
     sim_scene = detector.generate_detector_image(sim_scene,exptime,full_frame=True,loc_x=300, loc_y=300)
     image_tot_corgi_full = sim_scene.image_on_detector[1].data

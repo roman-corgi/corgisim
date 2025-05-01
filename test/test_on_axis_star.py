@@ -38,7 +38,7 @@ def test_on_axis_star():
    
     optics = instrument.CorgiOptics(cgi_mode, bandpass, proper_keywords=proper_keywords, if_quiet=True, integrate_pixels=True)
     sim_scene = optics.get_psf(base_scene)
-    image = sim_scene.host_star_image[1].data
+    image = sim_scene.host_star_image.data
     print('Final_intensity_get:', np.sum(image, dtype = np.float64))
     #print(sim_scene.host_star_image[1].header)
     #print(sim_scene.host_star_image[0].header)
@@ -50,33 +50,6 @@ def test_on_axis_star():
         star_spectrum=sptype.lower(), star_vmag=Vmag )
 
     print(a0_counts, np.sum(a0_sim_allpol, dtype = np.float64))
-    if_plot = False
-    if if_plot:
-        fig = plt.figure(figsize=(10,4))
-        plt.subplot(121)
-        plt.imshow(image)
-        
-        co = plt.colorbar(shrink=0.7)
-        co.set_label(r'$\rm Counts\ [photons\ s^{-1}]$')
-        plt.xlabel('X (Pixel)')
-        plt.ylabel('X (Pixel)')
-        plt.title(f"On-axis star: {sptype} and {Vmag} mag (corgisim)")
-
-        plt.subplot(122)
-        plt.imshow(a0_sim_allpol)
-        co = plt.colorbar(shrink=0.7)
-        co.set_label(r'$\rm Counts\ [photons\ s^{-1}]$')
-        plt.xlabel('X (Pixel)')
-        plt.ylabel('X (Pixel)')
-        plt.title(f"On-axis star: {sptype} and {Vmag} mag (cgisim)")
-
-        plt.subplots_adjust(wspace=0.3)
-        plt.show()
-
-
-        exit()
-
-    
 
 if __name__ == '__main__':
     #run_sim()
