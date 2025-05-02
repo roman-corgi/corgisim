@@ -14,7 +14,7 @@ def test_install():
     # Copy the prescription files
     path_directory = os.path.dirname(os.path.abspath(__file__))
 
-    if not (os.path.isfile(path_directory + '/roman_preflight.py')):
+    if not (os.path.isfile( path_directory + '/roman_preflight.py')):
         prescription_file = roman_preflight_proper.lib_dir + '/roman_preflight.py'
         shutil.copy( prescription_file, path_directory )
 

@@ -10,6 +10,9 @@ from synphot import units, SourceSpectrum, SpectralElement, Observation
 from synphot.units import validate_wave_unit, convert_flux, VEGAMAG
 import matplotlib.pyplot as plt
 from emccd_detect.emccd_detect import EMCCDDetectBase, EMCCDDetect
+from corgidrp import mocks
+from corgisim import outputs
+
 
 class CorgiOptics():
     '''
@@ -210,19 +213,29 @@ class CorgiOptics():
         if sim_scene == None:
             sim_scene = scene.SimulatedScene(input_scene)
         
-        # Prepare header information for the output HDU FITS file
-        header_info = {'wvl_c_um':self.lam0_um,
-                    's_sptype':input_scene.host_star_sptype,
-                    's_Vmag':input_scene.host_star_Vmag,
-                    's_magtype':input_scene.host_star_magtype,
-                    }
+        
+        # Prepare additional information to be added as COMMENT headers in the primary HDU.
+        # These are different from the default L1 headers, but extra comments that are used to track simulation-specific details.
+        sim_info = {'host_star_sptype':input_scene.host_star_sptype,
+                    'host_star_Vmag':input_scene.host_star_Vmag,
+                    'host_star_magtype':input_scene.host_star_magtype,
+                    'cgi_mode':self.cgi_mode,
+                    'cor_type': self.proper_keywords['cor_type'],
+                    'bandpass':self.bandpass,
+                    'over_sampling_factor':self.oversampling_factor,
+                    'return_oversample': self.return_oversample,
+                    'output_dim': self.grid_dim_out,
+                    'nd_filter':self.nd}
+
         # Define specific keys from self.proper_keywords to include in the header            
-        keys_to_include_in_header = ['cor_type', 'use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
-                            'use_lyot_stop','use_field_stop','output_dim']  # Specify keys to include
+        keys_to_include_in_header = ['use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
+                            'use_lyot_stop','use_field_stop']  # Specify keys to include
         subset = {key: self.proper_keywords[key] for key in keys_to_include_in_header if key in self.proper_keywords}
-        header_info.update(subset)
+        sim_info.update(subset)
+        sim_info['includ_dectector_noise'] = 'False'
         # Create the HDU object with the generated header information
-        sim_scene.host_star_image = create_hdu(image,header_info =header_info)
+
+        sim_scene.host_star_image = outputs.create_hdu(image,sim_info =sim_info)
 
         return sim_scene
 
@@ -386,24 +399,35 @@ class CorgiOptics():
         if sim_scene == None:
             sim_scene = scene.SimulatedScene(input_scene)
 
-        # Prepare header information for the output HDU FITS file
+        # Prepare additional information to be added as COMMENT headers in the primary HDU.
+        # These are different from the default L1 headers, but extra comments that are used to track simulation-specific details.
         npl = len(input_scene.point_source_Vmag)
-        header_info = {'wvl_c_um': self.lam0_um,
-                            'pl_magtype': input_scene.point_source_magtype}
-
+        sim_info = {'num_off_axis_source': npl}
         ##update the brightness and position for ith companion
         for i in range(npl):
-            header_info[f'pl_Vmag_{i}'] = input_scene.point_source_Vmag[i]
-            header_info[f'position_x_{i}'] = input_scene.point_source_x[i]
-            header_info[f'position_y_{i}'] = input_scene.point_source_y[i]
+            sim_info[f'pl_Vmag_{i}'] = input_scene.point_source_Vmag[i]
+            sim_info[f'pl_magtype_{i}']= input_scene.point_source_magtype[i]
+            sim_info[f'position_x_mas_{i}'] = input_scene.point_source_x[i]
+            sim_info[f'position_y_mas_{i}'] = input_scene.point_source_y[i]
+
+        # Third: global simulation settings
+        sim_info['cgi_mode'] = self.cgi_mode
+        sim_info['cor_type'] = self.proper_keywords.get('cor_type')
+        sim_info['bandpass'] = self.bandpass
+        sim_info['over_sampling_factor'] = self.oversampling_factor
+        sim_info['return_oversample'] = self.return_oversample
+        sim_info['output_dim'] = self.grid_dim_out
+        sim_info['nd_filter'] = self.nd
                             
                 # Define specific keys from self.proper_keywords to include in the header            
-        keys_to_include_in_header = ['cor_type', 'use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
-                            'use_lyot_stop','use_field_stop','output_dim']  # Specify keys to include
+        keys_to_include_in_header = [ 'use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
+                            'use_lyot_stop','use_field_stop']  # Specify keys to include
         subset = {key: self.proper_keywords[key] for key in keys_to_include_in_header if key in self.proper_keywords}
-        header_info.update(subset)
+        sim_info.update(subset)
+        sim_info['includ_dectector_noise'] = 'False'
         # Create the HDU object with the generated header information
-        sim_scene.point_source_image = create_hdu(np.sum(point_source_image,axis=0),header_info =header_info)
+
+        sim_scene.point_source_image = outputs.create_hdu( np.sum(point_source_image,axis=0), sim_info =sim_info)
 
         return sim_scene
 
@@ -431,23 +455,25 @@ class CorgiDetector():
         The input_image probably has to be in electrons. 
 
         Arguments:
-        total_scene: a corgisim.scene.Scene object that contains the scene to be simulated in the total_scene attribute.
+        simulated_scene: a corgisim.scene.SimulatedScen object that contains the noise-free scene from CorgiOptics
         full_frame: if generated full_frame image in detetor
         loc_x (int): The horizontal coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True
         loc_y (int): The vertical coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True
         exptime: exptime in second
 
         Returns:
-        A corgisim.scene.Scene object that contains the detector image in the 
+        A corgisim.scene.SimulatedScene object that contains the detector image in the 
         '''
         # List of possible image components (in order of addition)
 
         img = None
+        sim_info = {}
         components = [simulated_scene.host_star_image,
                       simulated_scene.point_source_image,
                       simulated_scene.twoD_image]
         
-        ###check wich components is not None, and combine exsiting simulated scene
+        ###check witch components is not None, and combine exsiting simulated scene
+        ### read comment header from components is not None to track sim_info
         for component in components:
             if component is not None:
                 data = component.data
@@ -456,17 +482,41 @@ class CorgiDetector():
                 else:
                     img += data
 
+                # Collect COMMENT headers if available
+                if 'COMMENT' in component.header:
+                    comment_lines = component.header['COMMENT']
+                    
+                for line in comment_lines:
+                    if ':' in line:
+                        key, val = line.split(':', 1)
+                        sim_info[key.strip()] = val.strip()
+                        
+
         if img is None:
             raise ValueError('No valid simulated scene to put on detector')
       
 
         if full_frame:
             flux_map = self.place_scene_on_detector( img , loc_x, loc_y)
-            Im_noisy = self.emccd.sim_full_frame(flux_map, exptime).astype(float)
+            Im_noisy = self.emccd.sim_full_frame(flux_map, exptime).astype(np.uint16)
         else:
-            Im_noisy = self.emccd.sim_sub_frame(img, exptime).astype(float)
+            Im_noisy = self.emccd.sim_sub_frame(img, exptime).astype(np.uint16)
 
-        simulated_scene.image_on_detector = create_hdu(Im_noisy)
+        # Prepare additional information to be added as COMMENT headers in the primary HDU.
+        # These are different from the default L1 headers, but extra comments that are used to track simulation-specific details.
+        sim_info['includ_dectector_noise'] = 'True'
+        subset = {key: self.emccd_keywords_default[key] for key in self.emccd_keywords_default}
+        sim_info.update(subset)
+
+       
+        # Create the HDU object with the generated header information
+        if full_frame:
+            sim_info['position_on_detector_x'] = loc_x
+            sim_info['position_on_detector_y'] = loc_y
+            header_info = {'EXPTIME': exptime,'EMGAIN_C':self.emccd_keywords_default['em_gain']  }
+            simulated_scene.image_on_detector = outputs.create_hdu_list(Im_noisy, sim_info=sim_info, header_info = header_info)
+        else:
+            simulated_scene.image_on_detector = outputs.create_hdu(Im_noisy, sim_info=sim_info)
 
         return simulated_scene
 
@@ -554,7 +604,7 @@ class CorgiDetector():
         # Initialize emccd_keywords safely
         #if emccd_keywords is None:
         # default parameters for RMCCD on Roman-CGI, except QE, which set to 1 (already accounted for in counts)
-        emccd_keywords_default = {'full_well_serial': 100000.0,         # full well for serial register; 90K is requirement, 100K is CBE
+        self.emccd_keywords_default = {'full_well_serial': 100000.0,         # full well for serial register; 90K is requirement, 100K is CBE
                                   'full_well_image': 60000.0,                 # image full well; 50K is requirement, 60K is CBE
                                   'dark_rate': 0.00056,                  # e-/pix/s; 1.0 is requirement, 0.00042/0.00056 is CBE for 0/5 years
                                   'cic_noise': 0.01,                    # e-/pix/frame; 0.1 is requirement, 0.01 is CBE
@@ -575,16 +625,16 @@ class CorgiDetector():
                 raise Warning("Quantum efficiency has been added in the bandpass throughput; it must be enforced as 1 here.")
             # Override default parameters with user-specified ones
             for key, value in emccd_keywords.items():
-                if key in emccd_keywords_default:
-                    emccd_keywords_default[key] = value
+                if key in self.emccd_keywords_default:
+                    self.emccd_keywords_default[key] = value
 
+    
+        emccd = EMCCDDetect( em_gain=self.emccd_keywords_default['em_gain'], full_well_image=self.emccd_keywords_default['full_well_image'], full_well_serial=self.emccd_keywords_default['full_well_serial'],
+                             dark_current=self.emccd_keywords_default['dark_rate'], cic=self.emccd_keywords_default['cic_noise'], read_noise=self.emccd_keywords_default['read_noise'], bias=self.emccd_keywords_default['bias'],
+                             qe=1.0, cr_rate=self.emccd_keywords_default['cr_rate'], pixel_pitch=self.emccd_keywords_default['pixel_pitch'], eperdn=self.emccd_keywords_default['e_per_dn'],
+                             numel_gain_register=self.emccd_keywords_default['numel_gain_register'], nbits=self.emccd_keywords_default['nbits'] )
         
-        emccd = EMCCDDetect( em_gain=emccd_keywords_default['em_gain'], full_well_image=emccd_keywords_default['full_well_image'], full_well_serial=emccd_keywords_default['full_well_serial'],
-                             dark_current=emccd_keywords_default['dark_rate'], cic=emccd_keywords_default['cic_noise'], read_noise=emccd_keywords_default['read_noise'], bias=emccd_keywords_default['bias'],
-                             qe=1.0, cr_rate=emccd_keywords_default['cr_rate'], pixel_pitch=emccd_keywords_default['pixel_pitch'], eperdn=emccd_keywords_default['e_per_dn'],
-                             numel_gain_register=emccd_keywords_default['numel_gain_register'], nbits=emccd_keywords_default['nbits'] )
-        
-        if emccd_keywords_default['use_traps']: 
+        if self.emccd_keywords_default['use_traps']: 
             raise ValueError(f"The part to simulate CTI effects using trap models has not been implemented yet!")
         
             #from cgisim.rcgisim import model_for_Roman
@@ -597,46 +647,4 @@ class CorgiDetector():
         
         return emccd
 
-
-def create_hdu(data, header_info=None):
-        """
-        Create an Astropy HDU for the PSF with metadata.
-
-        Parameters:
-        - data (numpy.ndarray): 2D array representing the PSF.
-        - header_info (dict): Dictionary of metadata to include in the header.
-
-        Returns:
-        - hdu (fits.PrimaryHDU): Astropy HDU object containing the data and header_info
-        """
-        # Create the Primary HDU with the data
-        ##primary_hdu = fits.PrimaryHDU()
-        # Create an Image HDU with data
-        ##image_hdu = fits.ImageHDU(data)
-        # Combine them into an HDUList
-        ##hdul = fits.HDUList([primary_hdu, image_hdu])
-
-        ####read default header and pass into the hdu
-        #ile_path = pkg_resources.resource_filename("corgisim.data", "data/CGI_0000000000000000014_20221004T2359351_L1_.fits")
-        #with fits.open(file_path) as hdul_default:
-        #    primary_header = hdul_default[0].header
-        #    image_header = hdul_default[1].header
-
-        #hdul[0].header = primary_header  # Primary HDU header
-        #hdul[1].header = image_header    # Image HDU header
-        hdul = fits.PrimaryHDU(data)
-
-        if header_info is not None:
-        # Add customerized header info to the header
-            #print(header_info)
-            hdul.header['COMMENT'] = "This FITS file contains simulated data."
-            hdul.header['COMMENT'] = "Header includes stellar properties and other simulation details."
-
-            for key, value in header_info.items():
-                comment = key+' : '+str(value)
-                hdul.header.add_comment(comment)
-                #hdul.header[key] = value
-            
-        return hdul
-            
 

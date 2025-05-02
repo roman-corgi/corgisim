@@ -5,6 +5,8 @@ from synphot.models import BlackBodyNorm1D, Box1D, ConstFlux1D
 from synphot import units, SourceSpectrum, SpectralElement, Observation
 from synphot.units import validate_wave_unit, convert_flux, VEGAMAG
 import cgisim
+import os
+
 
 class Scene():
     ''' 
@@ -425,6 +427,8 @@ class SimulatedScene():
         pass
 
 
+
+
 def sort_sptype(typestr):
         letter = typestr[0]
         lettervals = {'O': 0, 'B': 1, 'A': 2, 'F': 3, 'G': 4, 'K': 5, 'M': 6}
@@ -475,3 +479,6 @@ def is_valid_spectral_type(spectral_type):
         raise ValueError(error_message)
 
     return bool(match)
+
+
+

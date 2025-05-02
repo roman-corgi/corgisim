@@ -67,7 +67,7 @@ def test_off_axis_source():
     image_tot_corgi = sim_scene.image_on_detector.data
 
     sim_scene = detector.generate_detector_image(sim_scene,exptime,full_frame=True,loc_x=300, loc_y=300)
-    image_tot_corgi_full = sim_scene.image_on_detector.data
+    image_tot_corgi_full = sim_scene.image_on_detector[1].data
     
 
     #### simulate using cgisim
