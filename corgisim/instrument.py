@@ -457,8 +457,10 @@ class CorgiDetector():
         Arguments:
         simulated_scene: a corgisim.scene.SimulatedScen object that contains the noise-free scene from CorgiOptics
         full_frame: if generated full_frame image in detetor
-        loc_x (int): The horizontal coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True
-        loc_y (int): The vertical coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True
+        loc_x (int): The horizontal coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True, 
+                     and image from CorgiOptics has size is smaller than 1024×1024
+        loc_y (int): The vertical coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True,
+                     and image from CorgiOptics has size is smaller than 1024×1024
         exptime: exptime in second
 
         Returns:
@@ -497,7 +499,16 @@ class CorgiDetector():
       
 
         if full_frame:
-            flux_map = self.place_scene_on_detector( img , loc_x, loc_y)
+            # If the simulated image is smaller than 1024×1024, place it on the full-frame detector at (loc_x, loc_y)
+            # If the image is exactly 1024×1024, assume it's already centered and use it directly
+            # If the image exceeds 1024×1024, raise an error
+            if (img.shape[0] < 1024) & (img.shape[1] < 1024):
+                flux_map = self.place_scene_on_detector( img , loc_x, loc_y)
+            if (img.shape[0] == 1024) & (img.shape[1] == 1024):
+                flux_map = img
+            if (img.shape[0] >1024) or (img.shape[1] >1024):
+                raise ValueError("Science image dimensions (excluding pre-scan area) cannot exceed 1024×1024.")
+           
             Im_noisy = self.emccd.sim_full_frame(flux_map, exptime).astype(np.uint16)
         else:
             Im_noisy = self.emccd.sim_sub_frame(img, exptime).astype(np.uint16)
