@@ -50,7 +50,7 @@ def test_L1_product_fits_format():
                     'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
 
     optics = instrument.CorgiOptics(cgi_mode, bandpass, proper_keywords=proper_keywords, if_quiet=True)
-    sim_scene = optics.get_psf(base_scene)
+    sim_scene = optics.get_host_star_psf(base_scene)
 
     sim_scene = optics.inject_point_sources(base_scene,sim_scene)
 

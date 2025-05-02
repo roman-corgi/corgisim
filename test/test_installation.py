@@ -51,7 +51,7 @@ def test_install():
     optics = instrument.CorgiOptics(cgi_mode, bandpass, proper_keywords=proper_keywords, if_quiet=True, integrate_pixels=True)
     assert isinstance(optics, instrument.CorgiOptics)
 
-    sim_scene = optics.get_psf(base_scene)
+    sim_scene = optics.get_host_star_psf(base_scene)
     image = sim_scene.host_star_image.data
 
     gain =1000
