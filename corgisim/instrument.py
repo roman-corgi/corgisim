@@ -209,9 +209,9 @@ class CorgiOptics():
         if self.cgi_mode in ['spec', 'lowfs', 'excam_efield']:
             raise ValueError(f"The mode '{self.cgi_mode}' has not been implemented yet!")
         
-        # Initialize SimulatedScene class to restore the output psf
+        # Initialize SimulatedImage class to restore the output psf
         if sim_scene == None:
-            sim_scene = scene.SimulatedScene(input_scene)
+            sim_scene = scene.SimulatedImage(input_scene)
         
         
         # Prepare additional information to be added as COMMENT headers in the primary HDU.
@@ -315,7 +315,7 @@ class CorgiOptics():
 
         Arguments: 
         scene: A corgisim.scene.Scene object that contains the scene to be simulated.
-        sim_scene: A corgisim.SimulatedScene object to contains the simylated scene.
+        sim_scene: A corgisim.SimulatedImage object to contains the simylated scene.
         on_the_fly: A boolean that defines whether the PSFs should be generated on the fly.
         
 
@@ -397,7 +397,7 @@ class CorgiOptics():
             raise ValueError(f"The mode '{self.cgi_mode}' has not been implemented yet!")
         
         if sim_scene == None:
-            sim_scene = scene.SimulatedScene(input_scene)
+            sim_scene = scene.SimulatedImage(input_scene)
 
         # Prepare additional information to be added as COMMENT headers in the primary HDU.
         # These are different from the default L1 headers, but extra comments that are used to track simulation-specific details.
@@ -462,7 +462,7 @@ class CorgiDetector():
         exptime: exptime in second
 
         Returns:
-        A corgisim.scene.SimulatedScene object that contains the detector image in the 
+        A corgisim.scene.SimulatedImage object that contains the detector image in the 
         '''
         # List of possible image components (in order of addition)
 
