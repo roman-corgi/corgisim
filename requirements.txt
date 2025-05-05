@@ -5,3 +5,4 @@ ipython
 pytest
 synphot==1.5.0
 emccd_detect==2.2.5
+corgidrp
