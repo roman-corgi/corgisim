@@ -136,7 +136,7 @@ class CorgiOptics():
         print("CorgiOptics initialized with proper keywords.")
      
 
-    def get_psf(self, input_scene, sim_scene=None, on_the_fly=False):
+    def get_host_star_psf(self, input_scene, sim_scene=None, on_the_fly=False):
         '''
         
         Function that provides an on-axis PSF for the current configuration of CGI.
@@ -271,7 +271,7 @@ class CorgiOptics():
         return bp
 
 
-    def simulate_2D_scene(self, scene, on_the_fly=False):
+    def convolve_2D_scene(self, scene, on_the_fly=False):
         '''
         Function that simulates a 2D scene with the current configuration of CGI. 
 

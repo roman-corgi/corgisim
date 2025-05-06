@@ -52,7 +52,7 @@ def test_off_axis_source():
                     'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
 
     optics = instrument.CorgiOptics(cgi_mode, bandpass, proper_keywords=proper_keywords, if_quiet=True)
-    sim_scene = optics.get_psf(base_scene)
+    sim_scene = optics.get_host_star_psf(base_scene)
     image_star_corgi = sim_scene.host_star_image.data
 
     sim_scene = optics.inject_point_sources(base_scene,sim_scene)
@@ -95,54 +95,6 @@ def test_off_axis_source():
     assert  image_comp_corgi  == pytest.approx(image_comp_cgi, rel=0.5)
 
     ####################################
-    ##if past the test, we will make the plots
-    ## which is optional
-    if_plot = False
-    if if_plot:
-        fig = plt.figure(figsize=(12,8))
-        plt.subplot(231)
-        plt.imshow(image_star_corgi)
-        plt.title('Host star Vmag=8, CorgiSim')
-
-        co = plt.colorbar(shrink=0.7)
-        plt.subplot(232)
-        plt.imshow(image_comp_corgi)
-        plt.title('Companion Vmag=25, CorgiSim')
-
-        co = plt.colorbar(shrink=0.7)
-
-        plt.subplot(233)
-        plt.imshow(image_star_corgi+image_comp_corgi)
-        plt.title('Combined Image, CorgiSim')
-
-        co = plt.colorbar(shrink=0.7)
-
-        plt.subplot(234)
-        plt.imshow(image_star_cgi)
-        plt.title('Host star Vmag=8, CgiSim')
-        co = plt.colorbar(shrink=0.7)
-
-        plt.subplot(235)
-        plt.imshow(image_comp_cgi )
-        plt.title('Companion Vmag=25, CgiSim')
-
-        co = plt.colorbar(shrink=0.7)
-
-        plt.subplot(236)
-        plt.imshow(image_star_cgi+image_comp_cgi )
-        plt.title('Combined Image, CgiSim')
-        co = plt.colorbar(shrink=0.7)
-
-        
-        fig2, (ax1, ax2) = plt.subplots(ncols=2,figsize=(12, 6),gridspec_kw={'width_ratios': [1, 2]}
-)
-        ax1.imshow(image_tot_corgi)
-        plt.title('Subframe, CorgiSim')
-
-        ax2.imshow(image_tot_corgi_full)
-        plt.title('Fullframe, CorgiSim')
-
-        plt.show()
         
 
 if __name__ == '__main__':
