@@ -10,8 +10,7 @@ def test_cpgs_loading():
         scene_list, optics = data_loader.load_cpgs_data(filepath)  
     assert str(excinfo.value) == filepath +" does not exists." 
     
-    print(os.getcwd())
-    filepath = 'test_data/CGI_0000000000000000014_20221004T2359351_L1_.fits'
+    filepath = 'test_data/cpgs_incorrect_type.txt'
     abs_path =  os.path.join(script_dir, filepath)
 
     with pytest.raises(TypeError) as excinfo:  
@@ -33,7 +32,7 @@ def test_cpgs_loading():
     scene_list, optics = data_loader.load_cpgs_data(abs_path)
     assert isinstance(scene_list[0], scene.Scene)
     assert isinstance(optics, instrument.CorgiOptics)
-    
+
     # Test correctness of information ?
   
 
