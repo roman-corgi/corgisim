@@ -37,7 +37,7 @@ def test_on_axis_star():
                        'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
    
     optics = instrument.CorgiOptics(cgi_mode, bandpass, proper_keywords=proper_keywords, if_quiet=True, integrate_pixels=True)
-    sim_scene = optics.get_psf(base_scene)
+    sim_scene = optics.get_host_star_psf(base_scene)
     image = sim_scene.host_star_image.data
     print('Final_intensity_get:', np.sum(image, dtype = np.float64))
     #print(sim_scene.host_star_image[1].header)
