@@ -18,18 +18,18 @@ Unzip them in you working directory. For each of them, enter the directory that 
 python -m pip install .
 ```
 
-
 ### Install corgisim
-```
-pip install -r requirements.txt 
-```
 
 Clone this directory:  
 
 ```
 git clone https://github.com/roman-corgi/corgisim.git
 ```
+
 Enter the directory that contains setup.py and run the following:
+```
+pip install -r requirements.txt 
+```
 ``` 
 pip install -e .
 ```
