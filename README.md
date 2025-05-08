@@ -18,20 +18,6 @@ Unzip them in you working directory. For each of them, enter the directory that 
 python -m pip install .
 ```
 
-### Install corgidrp
-
-Clone this directory:
-
-```
-git clone https://github.com/roman-corgi/corgidrp.git
-```
-
-Enter the directory that contains setup.py and run the following:
-
-``` 
-pip install -e .
-```
-
 ### Install corgisim
 
 Clone this directory:  
