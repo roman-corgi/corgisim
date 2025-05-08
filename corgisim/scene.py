@@ -322,7 +322,7 @@ class Scene():
             # read vega spetrum
             vega_spec = SourceSpectrum.from_vega()
             # sp_scale has the same units as sp
-            sp_scale = sp.normalize(renorm_val= magnitude * VEGAMAG, band=v_band,vegaspec = vega_spec )
+            sp_scale = sp.normalize(renorm_val= magnitude * VEGAMAG, band=v_band,vegaspec = vega_spec, force = True )
         if magtype == 'ABmag':
             raise ValueError("AB magnitude system has not been implemented yet. Please use Vega magnitudes instead.")
 
