@@ -165,10 +165,4 @@ cython_debug/
 
 #Prescription models
 roman_preflight.py
-roman_preflight_compact.py/Users/jingwenzhang/Desktop/corgisim/examples/CGI_0000000000000000000_20250426T1749252_L1_.fits
-/Users/jingwenzhang/Desktop/corgisim/examples/host_star_image.fits
-/Users/jingwenzhang/Desktop/corgisim/examples/exmple_on_axis_star_on_dector_fullframe.py
-/Users/jingwenzhang/Desktop/corgisim/examples/exmple_off_axis_source_on_dector_fullframe.py
-/Users/jingwenzhang/Desktop/corgisim/examples/example.py
-/Users/jingwenzhang/Desktop/corgisim/examples/example_on_axis_star.py
-/Users/jingwenzhang/Desktop/corgisim/corgisim/data.py
+roman_preflight_compact.py

@@ -95,6 +95,27 @@ def test_off_axis_source():
     assert  image_comp_corgi  == pytest.approx(image_comp_cgi, rel=0.5)
 
     ####################################
+
+    ## adding test when output size==1024 for full frame simulation
+
+    proper_keywords ={'cor_type':cor_type, 'use_errors':2, 'polaxis':10, 'output_dim':1024,\
+                    'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
+
+    optics = instrument.CorgiOptics(cgi_mode, bandpass, proper_keywords=proper_keywords, if_quiet=True)
+    sim_scene = optics.get_host_star_psf(base_scene)
+    
+
+    sim_scene = optics.inject_point_sources(base_scene,sim_scene)
+    
+    gain =1000
+    emccd_keywords ={'em_gain':gain}
+    exptime = 5000
+    detector = instrument.CorgiDetector( emccd_keywords)
+    sim_scene = detector.generate_detector_image(sim_scene,exptime)
+   
+    sim_scene = detector.generate_detector_image(sim_scene,exptime,full_frame=True)
+    #image_tot_corgi_full = sim_scene.image_on_detector[1].data
+
         
 
 if __name__ == '__main__':
