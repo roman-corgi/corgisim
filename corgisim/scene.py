@@ -54,22 +54,23 @@ class Scene():
     '''
     def __init__(self, host_star_properties=None, point_source_info=None, twoD_scene_hdu=None):
         
-        self._host_star_Vmag = host_star_properties['Vmag']  ## host star Vband magnitude
+        if host_star_properties is not None:
+            self._host_star_Vmag = host_star_properties['Vmag']  ## host star Vband magnitude
 
-        # Validate the magnitude type
-        if host_star_properties['magtype'] not in ['vegamag', 'ABmag']:
-            raise ValueError("Invalid magnitude type. Valid options are: 'vegamag' or 'ABmag'.")
-        # Store the magnitude type
-        self._host_star_magtype = host_star_properties['magtype']  # Type of magnitude (Vega or AB)
+            # Validate the magnitude type
+            if host_star_properties['magtype'] not in ['vegamag', 'ABmag']:
+                raise ValueError("Invalid magnitude type. Valid options are: 'vegamag' or 'ABmag'.")
+            # Store the magnitude type
+            self._host_star_magtype = host_star_properties['magtype']  # Type of magnitude (Vega or AB)
 
-        ### check if input spectral type is valid
-        if is_valid_spectral_type(host_star_properties['spectral_type']):
-           self._host_star_sptype = host_star_properties['spectral_type']  
+            ### check if input spectral type is valid
+            if is_valid_spectral_type(host_star_properties['spectral_type']):
+                self._host_star_sptype = host_star_properties['spectral_type']  
         
-        ### Retrieve the stellar spectrum based on spectral type and V-band magnitude
-        ### The self.stellar_spectrum attribute is an instance of the SourceSpectrum class (from synphot), 
-        ### used to store and retrieve the wavelength and stellar flux.
-        self.stellar_spectrum = self.get_stellar_spectrum( self._host_star_sptype, self._host_star_Vmag, magtype =self._host_star_magtype)
+            ### Retrieve the stellar spectrum based on spectral type and V-band magnitude
+            ### The self.stellar_spectrum attribute is an instance of the SourceSpectrum class (from synphot), 
+            ### used to store and retrieve the wavelength and stellar flux.
+            self.stellar_spectrum = self.get_stellar_spectrum( self._host_star_sptype, self._host_star_Vmag, magtype =self._host_star_magtype)
 
         #self._point_source_list = point_source_info
         # Extract V-band magnitude and magnitude type from point source info
@@ -406,11 +407,13 @@ class SimulatedScene():
         #self.host_star_image_on_detector = None
         self.point_source_image = None
         self.twoD_image = None
+        self.empty_scene = None
 
 
         #This will be basically the sum of the above three images at the right location on the detector
         self.total_image = None
         self.image_on_detector = None
+        
 
 
     def combine_simulated_scenes_list(scene_list):

@@ -431,6 +431,39 @@ class CorgiOptics():
 
         return sim_scene
 
+    def generate_empty_scene(self, input_scene, sim_scene=None):
+        """
+        Generate an empty scene to simulate a bias or dark frame.
+
+        Arguments
+        ----------
+        sim_scene : corgisim.SimulatedScene, optional
+            An existing SimulatedScene object to attach the empty image to. 
+            If None, a new SimulatedScene will be created.
+
+        Returns
+        -------
+        sim_scene : corgisim.SimulatedScene
+            The SimulatedScene object containing a 1024×1024 zero-valued image 
+            stored in the 'empty_scene' attribute.
+        """
+        image = np.zeros((1024, 1024))
+
+        if sim_scene is None:
+            sim_scene = scene.SimulatedScene(input_scene)
+
+        sim_info = {'includ_dectector_noise': 'False'}  # optional metadata for the primary header
+
+        sim_scene.empty_scene = outputs.create_hdu(image, sim_info=sim_info)
+
+        return sim_scene
+
+
+
+        
+
+
+
     
 class CorgiDetector(): 
     
@@ -470,7 +503,8 @@ class CorgiDetector():
         sim_info = {}
         components = [simulated_scene.host_star_image,
                       simulated_scene.point_source_image,
-                      simulated_scene.twoD_image]
+                      simulated_scene.twoD_image,
+                      simulated_scene.empty_scene]
         
         ###check witch components is not None, and combine exsiting simulated scene
         ### read comment header from components is not None to track sim_info
