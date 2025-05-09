@@ -290,6 +290,11 @@ class Scene():
             }  
 
         sptype_list = list(sptype_teff_mapping.keys())
+
+        # Attempt to auto-append "V" if no luminosity class is given
+        if sptype not in sptype_teff_mapping:
+            if not any(sptype.endswith(cls) for cls in ['I', 'II', 'III', 'IV', 'V','VI','VII','VIII']):
+                sptype += 'V'  # assume main sequence if no class specified
         
         if sptype in sptype_list:
             #print('aaa',sptype)
@@ -312,7 +317,6 @@ class Scene():
         # Create a blackbody spectrum using the interpolated or retrieved temperature
         # sp wavelengh unit is the default for synphot: angstrom
         # sp flux unit is the default for synphot: photlam (photons/s/cm^2/anstrom)
-        
         sp = SourceSpectrum(BlackBodyNorm1D, temperature=v0 )
         # Define the V band bandpass
         v_band = SpectralElement.from_filter('johnson_v')
