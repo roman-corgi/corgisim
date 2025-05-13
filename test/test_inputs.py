@@ -1,4 +1,4 @@
-from corgisim import scene, instrument, data_loader
+from corgisim import scene, instrument, inputs
 import pytest
 import os
 def test_cpgs_loading():
