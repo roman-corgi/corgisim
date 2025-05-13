@@ -58,7 +58,7 @@ def test_install():
     emccd_keywords ={'em_gain':gain}
     exptime = 30
     detector = instrument.CorgiDetector( emccd_keywords)
-    assert isinstance(detector, instrument.CorgiDetector )
+    assert isinstance(detector, instrument.CorgiDetector)
 
 
 if __name__ == '__main__':
