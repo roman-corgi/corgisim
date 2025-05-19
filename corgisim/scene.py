@@ -7,7 +7,6 @@ from synphot.units import validate_wave_unit, convert_flux, VEGAMAG
 import cgisim
 import os
 
-
 class Scene():
     ''' 
     A class that defines the an astrophysical scene
@@ -196,7 +195,7 @@ class Scene():
         self._point_source_magtype = value
 
 
-    def get_stellar_spectrum(self, sptype, magnitude, magtype = 'vegamag' ):
+    def get_stellar_spectrum(self, sptype, magnitude, magtype = 'vegamag', return_teff=False):
         """
         Retrieves or interpolates a stellar spectrum based on spectral type and magnitude.
 
@@ -209,9 +208,12 @@ class Scene():
             sptype (str): The spectral type of the star (e.g., "G2V", "M5III").
             magnitude (float): The magnitude of the star in the specified system.
             magtype (str, optional): The magnitude type ('vegamag' by default).
+            return_teff (bool, optional): If True, also return the effective temperature inferred from the spectral type. Default is False. 
 
         Returns:
             sp_scale (SourceSpectrum): The scaled stellar spectrum.
+            v0 (float, optional): Returned only if `return_teff` is True. The effective temperature of the star in Kelvin.
+
 
         Raises:
             ValueError: If the spectral type format is invalid.
@@ -219,8 +221,8 @@ class Scene():
         # Mapping of spectral types to temperature, metallicity, and surface gravity
         sptype_teff_mapping = {
             # https://www.pas.rochester.edu/~emamajek/EEM_dwarf_UBVIJHK_colors_Teff.txt
-            "O0V": (50000, 0.0, 4.0),  # Bracketing for interpolation
-            "O3V": (46000, 0.0, 4.0),
+            "O0V": (45000, 0.0, 4.0),  # Bracketing for interpolation
+            "O3V": (45000, 0.0, 4.0),
             "O5V": (43000, 0.0, 4.5),
             "O7V": (36500, 0.0, 4.0),
             "O9V": (32500, 0.0, 4.0),
@@ -249,7 +251,7 @@ class Scene():
             "M2V": (3550, 0.0, 4.5),
             "M5V": (3030, 0.0, 5.0),
             "M9V": (2400, 0.0, 5.0),   # Bracketing for interpolation
-            "O0IV": (50000, 0.0, 3.8),  # Bracketing for interpolation
+            "O0IV": (45000, 0.0, 3.8),  # Bracketing for interpolation
             "B0IV": (30000, 0.0, 3.8),
             "B8IV": (12000, 0.0, 3.8),
             "A0IV": (9500, 0.0, 3.8),
@@ -262,15 +264,18 @@ class Scene():
             "K7IV": (4000, 0.0, 4.3),
             "M0IV": (3750, 0.0, 4.3),
             "M9IV": (3000, 0.0, 4.7),    # Bracketing for interpolation
-            "O0III": (55000, 0.0, 3.5),  # Bracketing for interpolation
+            "O0III": (45000, 0.0, 3.5),  # Bracketing for interpolation
             "B0III": (29000, 0.0, 3.5),
             "B5III": (15000, 0.0, 3.5),
+            "A0III": (9100, 0.0, 3.5),
+            "F0III": (7000, 0.0, 3.5),
             "G0III": (5750, 0.0, 3.0),
             "G5III": (5250, 0.0, 2.5),
             "K0III": (4750, 0.0, 2.0),
             "K5III": (4000, 0.0, 1.5),
             "M0III": (3750, 0.0, 1.5),
             "M6III": (3000, 0.0, 1.0),  # Bracketing for interpolation
+            "M9III": (2400, 0.0, 1.0),  # Bracketing for interpolation
             "O0I": (45000, 0.0, 5.0),  # Bracketing for interpolation
             "O6I": (39000, 0.0, 4.5),
             "O8I": (34000, 0.0, 4.0),
@@ -287,13 +292,15 @@ class Scene():
             "M0I": (3750, 0.0, 0.0),
             "M2I": (3500, 0.0, 0.0),
             "M5I": (3000, 0.0, 0.0), # Bracketing for interpolation 
+            "M9I": (2400, 0.0, 0.0), # Bracketing for interpolation 
             }  
 
         sptype_list = list(sptype_teff_mapping.keys())
 
         # Attempt to auto-append "V" if no luminosity class is given
         if sptype not in sptype_teff_mapping:
-            if not any(sptype.endswith(cls) for cls in ['I', 'II', 'III', 'IV', 'V','VI','VII','VIII']):
+            if len(sptype) == 2:
+            #if not any(sptype.endswith(cls) for cls in ['I', 'II', 'III', 'IV', 'V','VI','VII','VIII']):
                 sptype += 'V'  # assume main sequence if no class specified
         
         if sptype in sptype_list:
@@ -304,8 +311,9 @@ class Scene():
     
             sptype_list.sort(key=sort_sptype)
             rank_list = np.array([sort_sptype(st) for st in sptype_list])
+        
             # Find the rank of the input spec type
-            rank = sort_sptype(sptype)
+            rank = sort_sptype(sptype)  
             # Grab values from tuples and interpolate based on rank
             tup_list0 = np.array([sptype_teff_mapping[st][0] for st in sptype_list])
             tup_list1 = np.array([sptype_teff_mapping[st][1] for st in sptype_list])
@@ -313,7 +321,7 @@ class Scene():
             v0 = np.interp(rank, rank_list, tup_list0)
             v1 = np.interp(rank, rank_list, tup_list1)
             v2 = np.interp(rank, rank_list, tup_list2)
-        
+            
         # Create a blackbody spectrum using the interpolated or retrieved temperature
         # sp wavelengh unit is the default for synphot: angstrom
         # sp flux unit is the default for synphot: photlam (photons/s/cm^2/anstrom)
@@ -326,11 +334,15 @@ class Scene():
             # read vega spetrum
             vega_spec = SourceSpectrum.from_vega()
             # sp_scale has the same units as sp
-            sp_scale = sp.normalize(renorm_val= magnitude * VEGAMAG, band=v_band,vegaspec = vega_spec, force = True )
+            sp_scale = sp.normalize(renorm_val= magnitude * VEGAMAG, band=v_band,vegaspec = vega_spec )
         if magtype == 'ABmag':
             raise ValueError("AB magnitude system has not been implemented yet. Please use Vega magnitudes instead.")
 
-        return sp_scale
+        if return_teff:
+             #### This is for testing the spytpe and teff mapping
+            return sp_scale, v0
+        else:
+            return sp_scale
 
    
 
@@ -440,10 +452,15 @@ def sort_sptype(typestr):
         value += (int(typestr[1]) * 0.1)
         if "III" in typestr:
             value += 30
-        elif "I" in typestr:
-            value += 10
+        elif 'II' in typestr:
+            value += 10  #### class II use teh same teff mapping as class I
+        elif 'IV' in typestr:
+            value += 40
         elif "V" in typestr:
             value += 50
+        elif "I" in typestr:
+            value += 10
+        
         return value
 
 
