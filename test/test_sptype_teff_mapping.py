@@ -23,9 +23,9 @@ def test_sptype_teff_mapping():
 
     ###### testing different spectral type inputs
     ############################# O type stars
-    #sptype='O0V'
-    #sp, v0= base_scene.get_stellar_spectrum(sptype, Vmag, 'vegamag', return_teff=True  )
-    #assert  10000 <= v0 <= 31500, f"Temperature {v0} out of expected range for {sptype}"
+    sptype='O0V'
+    sp, v0= base_scene.get_stellar_spectrum(sptype, Vmag, 'vegamag', return_teff=True  )
+    assert  30000 <= v0 <= 50000, f"Temperature {v0} out of expected range for {sptype}"
     
     sptype='O9I'
     sp, v0= base_scene.get_stellar_spectrum(sptype, Vmag, 'vegamag', return_teff=True  )
