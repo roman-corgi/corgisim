@@ -112,7 +112,7 @@ def test_off_axis_source():
     emccd_keywords ={'em_gain':gain}
     exptime = 5000
     detector = instrument.CorgiDetector( emccd_keywords)
-    sim_scene = detector.generate_detector_image(sim_scene,exptime)
+    #sim_scene = detector.generate_detector_image(sim_scene,exptime)
    
     sim_scene = detector.generate_detector_image(sim_scene,exptime,full_frame=True)
     #image_tot_corgi_full = sim_scene.image_on_detector[1].data
