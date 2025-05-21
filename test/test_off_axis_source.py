@@ -21,7 +21,8 @@ def test_off_axis_source():
     Vmag = 8
     sptype = 'G0V'
     cgi_mode = 'excam'
-    bandpass = '1b'
+    bandpass_corgisim = '1F'
+    bandpass_cgisim = '1'
     cor_type = 'hlc_band1'
 
     mag_companion = [25,25]
@@ -50,8 +51,8 @@ def test_off_axis_source():
 
     proper_keywords ={'cor_type':cor_type, 'use_errors':2, 'polaxis':10, 'output_dim':201,\
                     'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
-
-    optics = instrument.CorgiOptics(cgi_mode, bandpass, proper_keywords=proper_keywords, if_quiet=True)
+   
+    optics = instrument.CorgiOptics(cgi_mode,  bandpass_corgisim, proper_keywords=proper_keywords, if_quiet=True)
     sim_scene = optics.get_host_star_psf(base_scene)
     image_star_corgi = sim_scene.host_star_image.data
 
@@ -73,7 +74,7 @@ def test_off_axis_source():
     #### simulate using cgisim
     polaxis_cgisim = -10
     params = {'use_errors':1, 'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2}
-    image_star_cgi, a0_counts = cgisim.rcgisim( cgi_mode, cor_type, bandpass,  polaxis_cgisim, params, 
+    image_star_cgi, a0_counts = cgisim.rcgisim( cgi_mode, cor_type, bandpass_cgisim,  polaxis_cgisim, params, 
         star_spectrum=sptype.lower(), star_vmag=Vmag )
     
     image_comp = []
@@ -81,7 +82,7 @@ def test_off_axis_source():
 
         params['source_x_offset_mas']=dx[i]
         params['source_y_offset_mas']=dy[i]
-        comp_sim_allpol, comp_counts = cgisim.rcgisim( cgi_mode, cor_type, bandpass,  polaxis_cgisim, params, 
+        comp_sim_allpol, comp_counts = cgisim.rcgisim( cgi_mode, cor_type, bandpass_cgisim,  polaxis_cgisim, params, 
         star_spectrum=sptype.lower(), star_vmag=mag_companion[i] )
 
         image_comp.append(comp_sim_allpol)
@@ -93,30 +94,6 @@ def test_off_axis_source():
     ## the test is for noise-free simulation
     assert  image_star_corgi  == pytest.approx(image_star_cgi, rel=0.5)
     assert  image_comp_corgi  == pytest.approx(image_comp_cgi, rel=0.5)
-
-    ####################################
-
-    ## adding test when output size==1024 for full frame simulation
-
-    proper_keywords ={'cor_type':cor_type, 'use_errors':2, 'polaxis':10, 'output_dim':1024,\
-                    'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
-
-    optics = instrument.CorgiOptics(cgi_mode, bandpass, proper_keywords=proper_keywords, if_quiet=True)
-    sim_scene = optics.get_host_star_psf(base_scene)
-    
-
-    sim_scene = optics.inject_point_sources(base_scene,sim_scene)
-    
-    gain =1000
-    emccd_keywords ={'em_gain':gain}
-    exptime = 5000
-    detector = instrument.CorgiDetector( emccd_keywords)
-    sim_scene = detector.generate_detector_image(sim_scene,exptime)
-   
-    sim_scene = detector.generate_detector_image(sim_scene,exptime,full_frame=True)
-    #image_tot_corgi_full = sim_scene.image_on_detector[1].data
-
-        
 
 if __name__ == '__main__':
     test_off_axis_source()

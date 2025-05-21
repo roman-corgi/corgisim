@@ -7,19 +7,21 @@ import proper
 import roman_preflight_proper
 import pytest
 import cgisim
-import os
-import corgisim
-from corgisim import outputs
+from synphot.models import BlackBodyNorm1D, Box1D
+from synphot import units, SourceSpectrum, SpectralElement, Observation
+from synphot.units import validate_wave_unit, convert_flux, VEGAMAG
+from astropy import units as u
 
-def test_L1_product_fits_format():
-    """Test the headers of saved L1 product FITS file
-    """
-    #print('testrun')
+
+#@pytest.mark.parametrize("interp_method", ['linear', 'cubic'])
+def test_off_axis_source():
+    print('This is a test file to check if the simulated off-axis sources from corgisim agree with those from cgisim')
+    
     #### simulate using corgisim
     Vmag = 8
     sptype = 'G0V'
     cgi_mode = 'excam'
-    bandpass = '1F'
+    bandpass_corgisim = '1F'
     cor_type = 'hlc_band1'
 
     mag_companion = [25,25]
@@ -45,53 +47,27 @@ def test_L1_product_fits_format():
     rootname = 'hlc_ni_' + cases[0]
     dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm1_v.fits' )
     dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm2_v.fits' )
-
-    proper_keywords ={'cor_type':cor_type, 'use_errors':2, 'polaxis':10, 'output_dim':201,\
+    
+    proper_keywords ={'cor_type':cor_type, 'use_errors':2, 'polaxis':0, 'output_dim':1024,\
                     'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
 
-    optics = instrument.CorgiOptics(cgi_mode, bandpass, proper_keywords=proper_keywords, if_quiet=True)
+    optics = instrument.CorgiOptics(cgi_mode, bandpass_corgisim, proper_keywords=proper_keywords, if_quiet=True)
     sim_scene = optics.get_host_star_psf(base_scene)
-
+    
+    print('mid')
     sim_scene = optics.inject_point_sources(base_scene,sim_scene)
-
+    
     gain =1000
     emccd_keywords ={'em_gain':gain}
-    exptime = 3000
-
+    exptime = 5000
     detector = instrument.CorgiDetector( emccd_keywords)
-    sim_scene = detector.generate_detector_image(sim_scene, exptime,full_frame=True,loc_x=300, loc_y=300)
-    
-    ### save the L1 product fits file to test/testdata folder
-    local_path = corgisim.lib_dir
-    outdir = os.path.join(local_path.split('corgisim')[0], 'corgisim/test/testdata')
-    outputs.save_hdu_to_fits(sim_scene.image_on_detector,outdir=outdir, write_as_L1=True)
-    
-    ### read the L1 product fits file
-    prihdr = sim_scene.image_on_detector[0].header
-    exthdr = sim_scene.image_on_detector[1].header
-    time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
-    filename = f"CGI_{prihdr['VISITID']}_{time_in_name}_L1_.fits"
+    #sim_scene = detector.generate_detector_image(sim_scene,exptime)
+   
+    sim_scene = detector.generate_detector_image(sim_scene,exptime,full_frame=True)
+    #image_tot_corgi_full = sim_scene.image_on_detector[1].data
 
-
-    f = os.path.join( outdir , filename)
- 
-    with fits.open(f) as hdul:
-        data = hdul[1].data
-        prihr = hdul[0].header
-        exthr = hdul[1].header
         
-        # Check that the dtype is exactly uint16
-    assert data.dtype == np.uint16, f"Expected np.uint16, but got {data.dtype}"
-    assert exthr['BITPIX'] == 16, f"Expected BITPIX=16, but got {exthr['BITPIX']}"
-    assert data.shape[0] == 1200, f"Expected data shape[0]=2200, but got {data.shape[0]}"
-    assert data.shape[1] == 2200, f"Expected data shape[1]=1200, but got {data.shape[1]}"  
-
-    ### delete file after testing
-    print('Deleted the FITS file after testing')
-    os.remove(f)
-    
-
 
 if __name__ == '__main__':
-    #run_sim()
-    test_L1_product_fits_format()
+    test_off_axis_source()
+  

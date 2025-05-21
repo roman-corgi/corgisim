@@ -81,11 +81,17 @@ class CorgiOptics():
             raise Exception('ERROR: Requested coronagraph does not match any available types')
 
         self.cgi_mode = cgi_mode
-        self.bandpass = bandpass 
+        if bandpass  in ['1F','2F','3F','4F']:
+            self.bandpass = bandpass.split('F')[0]
+        else:
+            self.bandpass = bandpass.lower()
+
+
+        #self.bandpass = bandpass 
 
         # get mode and bandpass parameters:
         info_dir = cgisim.lib_dir + '/cgisim_info_dir/'
-        mode_data, bandpass_data = cgisim.cgisim_read_mode( cgi_mode, proper_keywords['cor_type'], bandpass, info_dir )
+        mode_data, bandpass_data = cgisim.cgisim_read_mode( cgi_mode, proper_keywords['cor_type'], self.bandpass, info_dir )
 
         self.lam0_um = bandpass_data["lam0_um"] ##central wavelength of the filter in micron
         self.nlam = bandpass_data["nlam"] 

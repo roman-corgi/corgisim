@@ -40,18 +40,18 @@ def test_stellar_spectrum():
 
     # Use pytest.approx to check similarity within a tolerance
     #assert cgisim_sp_scale  == pytest.approx(sp2, abs=1e-1), f"Values differ from two methods"
-        ax=plt.subplot(3,3,i+1)
+        #ax=plt.subplot(3,3,i+1)
         #sp.plot(ax=ax)
-        ax.plot(cgisim_lam, sp2,label='corgisim')
-        ax.plot(cgisim_lam, cgisim_sp_scale,label='cgisim')
-        ax.set_title(sptype[i])
-        ax.set_xlabel('wavelength (A)')
-        ax.set_ylabel('flux (photons/s/cm^2/A)')
+        #ax.plot(cgisim_lam, sp2,label='corgisim')
+        #ax.plot(cgisim_lam, cgisim_sp_scale,label='cgisim')
+        #ax.set_title(sptype[i])
+        #ax.set_xlabel('wavelength (A)')
+        #ax.set_ylabel('flux (photons/s/cm^2/A)')
 
-        plt.legend(loc='upper right')
-        plt.subplots_adjust(hspace=0.5, wspace=0.3)
+        #plt.legend(loc='upper right')
+        #plt.subplots_adjust(hspace=0.5, wspace=0.3)
 
-    plt.show()
+    #plt.show()
     
 
 if __name__ == '__main__':

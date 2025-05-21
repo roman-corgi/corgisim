@@ -30,7 +30,7 @@ def test_install():
     Vmag = 8
     sptype = 'G0V'
     cgi_mode = 'excam'
-    bandpass = '1b'
+    bandpass = '1F'
     cor_type = 'hlc_band1'
     
     #### simulate using corgisim
