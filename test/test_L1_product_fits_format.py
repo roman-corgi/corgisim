@@ -46,8 +46,11 @@ def test_L1_product_fits_format():
     dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm1_v.fits' )
     dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm2_v.fits' )
 
-    proper_keywords ={'cor_type':cor_type, 'use_errors':2, 'polaxis':10, 'output_dim':201,\
-                    'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
+    proper_keywords ={'cor_type':cor_type, 'use_errors':1, 'polaxis':10, 'output_dim':201,\
+                    'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1,
+                    'fsm_x_offset_mas':10.0,'fsm_y_offset_mas':20.0 }
+                ##pass fsm_x_offset_mas and fsm_y_offset_mas for no zero value as test
+
 
     optics = instrument.CorgiOptics(cgi_mode, bandpass, proper_keywords=proper_keywords, if_quiet=True)
     sim_scene = optics.get_host_star_psf(base_scene)
@@ -84,7 +87,10 @@ def test_L1_product_fits_format():
     assert data.dtype == np.uint16, f"Expected np.uint16, but got {data.dtype}"
     assert exthr['BITPIX'] == 16, f"Expected BITPIX=16, but got {exthr['BITPIX']}"
     assert data.shape[0] == 1200, f"Expected data shape[0]=2200, but got {data.shape[0]}"
-    assert data.shape[1] == 2200, f"Expected data shape[1]=1200, but got {data.shape[1]}"  
+    assert data.shape[1] == 2200, f"Expected data shape[1]=1200, but got {data.shape[1]}"
+    assert exthr['FSMX'] == 10.0, f"Expected data FSMX=10, but got {exthr['FSMX']}" 
+    assert exthr['FSMY'] == 20.0, f"Expected data FSMY=10, but got {exthr['FSMY']}"
+
 
     ### delete file after testing
     print('Deleted the FITS file after testing')

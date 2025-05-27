@@ -229,7 +229,7 @@ class CorgiOptics():
 
         # Define specific keys from self.proper_keywords to include in the header            
         keys_to_include_in_header = ['use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
-                            'use_lyot_stop','use_field_stop']  # Specify keys to include
+                            'use_lyot_stop','use_field_stop','fsm_x_offset_mas','fsm_y_offset_mas']  # Specify keys to include
         subset = {key: self.proper_keywords[key] for key in keys_to_include_in_header if key in self.proper_keywords}
         sim_info.update(subset)
         sim_info['includ_dectector_noise'] = 'False'
@@ -421,7 +421,7 @@ class CorgiOptics():
                             
                 # Define specific keys from self.proper_keywords to include in the header            
         keys_to_include_in_header = [ 'use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
-                            'use_lyot_stop','use_field_stop']  # Specify keys to include
+                            'use_lyot_stop','use_field_stop','fsm_x_offset_mas','fsm_y_offset_mas']  # Specify keys to include
         subset = {key: self.proper_keywords[key] for key in keys_to_include_in_header if key in self.proper_keywords}
         sim_info.update(subset)
         sim_info['includ_dectector_noise'] = 'False'
@@ -518,13 +518,17 @@ class CorgiDetector():
         sim_info['includ_dectector_noise'] = 'True'
         subset = {key: self.emccd_keywords_default[key] for key in self.emccd_keywords_default}
         sim_info.update(subset)
-
-       
+        
         # Create the HDU object with the generated header information
         if full_frame:
             sim_info['position_on_detector_x'] = loc_x
             sim_info['position_on_detector_y'] = loc_y
+
             header_info = {'EXPTIME': exptime,'EMGAIN_C':self.emccd_keywords_default['em_gain']  }
+            if 'fsm_x_offset_mas' in sim_info:
+                header_info['FSMX'] = float(sim_info['fsm_x_offset_mas'])
+            if 'fsm_y_offset_mas' in sim_info:
+                header_info['FSMY'] = float(sim_info['fsm_y_offset_mas'])
             simulated_scene.image_on_detector = outputs.create_hdu_list(Im_noisy, sim_info=sim_info, header_info = header_info)
         else:
             simulated_scene.image_on_detector = outputs.create_hdu(Im_noisy, sim_info=sim_info)
