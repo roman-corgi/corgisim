@@ -49,11 +49,6 @@ jobs:
         python -m pip install .
         cd ..    
         
-  test:
-    needs: build
-    runs-on: ubuntu-24.04
-
-    steps:
     - name: Test with pytest
       run: |
         pytest ./test/
