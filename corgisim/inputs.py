@@ -244,13 +244,14 @@ class Input():
         if name in  self.__dict__ :
             return self.__dict__[name]
 
-
+        """
     def initialize_with_cpgs_file(self, filepath):
         """
-        TODO: modify when we handle observing sequence
-        For the moment, only takes the information for the target star
+        #TODO: modify when we handle observing sequence
+        #For the moment, only takes the information for the target star
 
         """
+        load_cpgs_data(filepath, return_input=True)
         # Parse the file 
         try: 
             tree = ET.parse(filepath)
@@ -276,10 +277,10 @@ class Input():
         filter_dict = {'1':'1', '2':'4'}
         filt = cpgs_input.find('filter').text
         bandpass = filter_dict[filt]
+        """
 
 
-
-def load_cpgs_data(filepath):
+def load_cpgs_data(filepath, return_input=False):
     """Creates a scene, a detector and optics based on the content of a cpgs file
 
     :param filepath: path to the input file
@@ -316,7 +317,8 @@ def load_cpgs_data(filepath):
 
         host_star_properties_list.append(host_star_properties)
         scene_list.append(base_scene)
-
+        if (target.find('target_id').text == '1'):
+            host_star_properties_target =host_star_properties
     # Create optics and detector for every visit
 
     cpgs_input = root.find('cpgs_input')
@@ -370,7 +372,6 @@ def load_cpgs_data(filepath):
 
     proper_keywords ={'cor_type':cor_type, 'polaxis':polaxis, 'output_dim':201}
 
-    optics = instrument.CorgiOptics(cgi_mode, bandpass, proper_keywords=proper_keywords, if_quiet=True)
 
                     
     #For each visit, return header
@@ -379,14 +380,18 @@ def load_cpgs_data(filepath):
         prihdr, exthdr = mocks.create_default_L1_headers()
         exthdr['CPGSFILE'] = filepath
 
-        visnum = int(visit.find('cgi_visit number').text)
+        visnum = int(visit.attrib["number"])
         exthdr['VISNUM'] = visnum 
 
 
         header_list.append(exthdr)
     
-
-    return scene_list, optics, header_list
+    if return_input == True :
+        input = Input(cgi_mode=cgi_mode, bandpass=bandpass, proper_keywords=proper_keywords,host_star_properties=host_star_properties_target)
+        return input
+    else:
+        optics = instrument.CorgiOptics(cgi_mode, bandpass, proper_keywords=proper_keywords, if_quiet=True)
+        return scene_list, optics, header_list
 
 
 
