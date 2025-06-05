@@ -6,9 +6,22 @@ from corgidrp import mocks
 import numpy as np
 import roman_preflight_proper as rp
 
-
 class Input():
+    """
+    A class that holds all the information necessary for a simulation.
 
+    Input can be created without arguments (default values will be used), with individual arguments or with dictionnaries for host star, 
+    proper keywords and emccd keywords 
+
+    Attribute Access:
+        - All attributes are made read-only after initialization.
+        - Accessing an attribute (e.g., `input.source_x_offset`) will retrieve the corresponding 
+          internal value (e.g., `_source_x_offset`).
+
+    Raises:
+        AttributeError: If an attempt is made to modify any attribute after initialization.
+    
+    """
 
     def __init__(self, **kwargs ):
         #Defaults dictionnaries
@@ -33,7 +46,8 @@ class Input():
                                     'source_x_offset' : 0,   # source offset in lambda0_m/D radians (tilt applied at primary)
                                     'source_y_offset' : 0,          
                                     'cvs_source_z_offset_m' : 0,             # additional distance between CVS source and next optic, in meters
-                                    'cvs_jitter_mirror_x_offset_mas' : 0,      # source offset in milliarcsec (tilt applied at CVS jitter mirror)
+                              
+      'cvs_jitter_mirror_x_offset_mas' : 0,      # source offset in milliarcsec (tilt applied at CVS jitter mirror)
                                     'cvs_jitter_mirror_y_offset_mas' : 0,      # 
                                     'cvs_jitter_mirror_x_offset' : 0,          # source offset in lambda0_m/D radians (tilt applied at CVS jitter mirror) 
                                     'cvs_jitter_mirror_y_offset' : 0,
