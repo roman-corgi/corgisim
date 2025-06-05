@@ -244,51 +244,17 @@ class Input():
         if name in  self.__dict__ :
             return self.__dict__[name]
 
-        """
-    def initialize_with_cpgs_file(self, filepath):
-        """
-        #TODO: modify when we handle observing sequence
-        #For the moment, only takes the information for the target star
-
-        """
-        load_cpgs_data(filepath, return_input=True)
-        # Parse the file 
-        try: 
-            tree = ET.parse(filepath)
-        except FileNotFoundError:
-            raise FileNotFoundError(f"{filepath} does not exists.")
-        except ParseError: 
-            raise TypeError(f"{filepath} is not an xml file.") 
-        
-        cpgs_file = filepath
-
-        root = tree.getroot()
-
-        for target in root.iter('target'):
-            if (target.find('target_id').text == '1'):
-                    Vmag = float(target.find('v_mag').text)
-                    # Luminosity currently not an attribute of the target in cpgs file
-                    sptype = target.find('spec_type').text + target.find('sub_type').text 
-                    host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype':magtype}    
-
-
-        cpgs_input = root.find('cpgs_input')
-
-        filter_dict = {'1':'1', '2':'4'}
-        filt = cpgs_input.find('filter').text
-        bandpass = filter_dict[filt]
-        """
 
 
 def load_cpgs_data(filepath, return_input=False):
-    """Creates a scene, a detector and optics based on the content of a cpgs file
+    """
+    Creates a scene and optics based on the content of a cpgs file
 
     :param filepath: path to the input file
     :type filepath: string
-    
-    :raises [ErrorType]: [ErrorDescription]
+    :param return_input: if True, returns an Input object
     .
-    :return: a scene list and optics 
+    :return: a scene list and optics if return_input is False; an Input if return_input is True
 
     """
     # Parse the file 
@@ -372,26 +338,12 @@ def load_cpgs_data(filepath, return_input=False):
 
     proper_keywords ={'cor_type':cor_type, 'polaxis':polaxis, 'output_dim':201}
 
-
-                    
-    #For each visit, return header
-    header_list = []
-    for visit in root.find('visit_list').findall('cgi_visit'):
-        prihdr, exthdr = mocks.create_default_L1_headers()
-        exthdr['CPGSFILE'] = filepath
-
-        visnum = int(visit.attrib["number"])
-        exthdr['VISNUM'] = visnum 
-
-
-        header_list.append(exthdr)
-    
     if return_input == True :
-        input = Input(cgi_mode=cgi_mode, bandpass=bandpass, proper_keywords=proper_keywords,host_star_properties=host_star_properties_target)
+        input = Input(cgi_mode=cgi_mode, bandpass=bandpass, proper_keywords=proper_keywords,host_star_properties=host_star_properties_target, cpgs_file = filepath) 
         return input
     else:
         optics = instrument.CorgiOptics(cgi_mode, bandpass, proper_keywords=proper_keywords, if_quiet=True)
-        return scene_list, optics, header_list
+        return scene_list, optics
 
 
 
