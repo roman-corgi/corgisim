@@ -219,6 +219,7 @@ class CorgiOptics():
         sim_info = {'host_star_sptype':input_scene.host_star_sptype,
                     'host_star_Vmag':input_scene.host_star_Vmag,
                     'host_star_magtype':input_scene.host_star_magtype,
+                    'ref_flag':input_scene.ref_flag,
                     'cgi_mode':self.cgi_mode,
                     'cor_type': self.proper_keywords['cor_type'],
                     'bandpass':self.bandpass,
@@ -434,15 +435,17 @@ class CorgiOptics():
     
 class CorgiDetector(): 
     
-    def __init__(self ,emccd_keywords):
+    def __init__(self ,emccd_keywords, photon_counting = True):
         '''
         Initialize the class with a dictionary that defines the EMCCD_DETECT input parameters. 
 
         Arguments: 
         emccd_keywords: A dictionary with the keywords that are used to set up the emccd model
+        photon_counting: if use photon_counting mode, default is True
         '''
         self.emccd_keywords = emccd_keywords  # Store the keywords for later use
         #self.exptime = exptime ##expsoure time in second
+        self.photon_counting = photon_counting
 
 
         self.emccd = self.define_EMCCD(emccd_keywords=self.emccd_keywords)
@@ -523,8 +526,13 @@ class CorgiDetector():
         if full_frame:
             sim_info['position_on_detector_x'] = loc_x
             sim_info['position_on_detector_y'] = loc_y
-
-            header_info = {'EXPTIME': exptime,'EMGAIN_C':self.emccd_keywords_default['em_gain']  }
+            
+            if (sim_info['ref_flag'] == 'False') or (sim_info['ref_flag'] == '0'):
+                ref_flag = False
+            if (sim_info['ref_flag'] == 'True') or (sim_info['ref_flag'] == '1'):
+                ref_flag = True
+            header_info = {'EXPTIME': exptime,'EMGAIN_C':self.emccd_keywords_default['em_gain'],'PSFREF':ref_flag,
+                           'PHTCNT':self.photon_counting}
             if 'fsm_x_offset_mas' in sim_info:
                 header_info['FSMX'] = float(sim_info['fsm_x_offset_mas'])
             if 'fsm_y_offset_mas' in sim_info:

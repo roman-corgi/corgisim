@@ -28,6 +28,7 @@ class Scene():
             - "magtype" (str): the magnitude type: 
                 'vegamag' for Vega magnitude system.
                 'ABmag' for AB magnitude system
+            - "ref_flag" (boolean):optional, whether the input scene is a reference star (True) or a science target (False). Default is fasle
 
         point_sources_info (list): A list of dictionaries, each representing an off-axis point source in the scene. Each dictionary must contain:
             - "Vmag" (float): The apparent V-band magnitude of the source.
@@ -64,6 +65,9 @@ class Scene():
         ### check if input spectral type is valid
         if is_valid_spectral_type(host_star_properties['spectral_type']):
            self._host_star_sptype = host_star_properties['spectral_type']  
+
+        # Set the reference flag from host_star_properties, defaulting to False if not provided
+        self.ref_flag = host_star_properties.get('ref_flag', False)
         
         ### Retrieve the stellar spectrum based on spectral type and V-band magnitude
         ### The self.stellar_spectrum attribute is an instance of the SourceSpectrum class (from synphot), 
