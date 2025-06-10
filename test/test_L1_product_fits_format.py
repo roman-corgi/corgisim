@@ -56,8 +56,8 @@ def test_L1_product_fits_format():
 
     sim_scene = optics.inject_point_sources(base_scene,sim_scene)
 
-    gain =1000
-    emccd_keywords ={'em_gain':gain}
+    
+    emccd_keywords ={}
     exptime = 3000
 
     detector = instrument.CorgiDetector( emccd_keywords)
@@ -91,6 +91,11 @@ def test_L1_product_fits_format():
     assert exthr['FSMY'] == 0.0, f"Expected data FSMY=10, but got {exthr['FSMY']}"
     assert prihr['PSFREF'] == False, f"Expected data PSFREF=False, but got {prihr['PSFREF']}"
     assert prihr['PHTCNT'] == True, f"Expected data PSFREF=True, but got {prihr['PHTCNT']}"
+
+    assert exthdr['KGAINPAR'] == 8.7, f"Expected data KGAINPAR=8.7, but got {exthdr['KGAINPAR']}"
+    assert exthdr['EMGAIN_C'] == 1000, f"Expected data EMGAIN_C=1000, but got {exthdr['EMGAIN_C']}"
+    assert exthdr['EMGAIN_A'] == 1000, f"Expected data EMGAIN_A=1000, but got {exthdr['EMGAIN_A']}"
+    assert exthdr['ISPC'] == 1, f"Expected header ISPC=1, but got {exthdr['ISPC']}"
 
 
     ### delete file after testing
@@ -140,8 +145,9 @@ def test_L1_product_fits_format():
 
     sim_scene = optics.inject_point_sources(base_scene,sim_scene)
 
-    gain =1000
-    emccd_keywords ={'em_gain':gain}
+    gain =100
+    e_per_dn=1.0
+    emccd_keywords ={'em_gain':gain,'e_per_dn':e_per_dn}
     exptime = 3000
 
     detector = instrument.CorgiDetector( emccd_keywords, photon_counting = False)
@@ -176,6 +182,11 @@ def test_L1_product_fits_format():
     assert prihr['PSFREF'] == True, f"Expected header PSFREF=False, but got {prihr['PSFREF']}"
     assert prihr['PHTCNT'] == False, f"Expected header PSFREF=False, but got {prihr['PHTCNT']}"
     assert prihdr['FRAMET'] == exptime, f"Expected header FRAMET = {exptime}, but got {prihdr['FRAMET']}"
+
+    assert exthdr['KGAINPAR'] == e_per_dn, f"Expected data KGAINPAR={e_per_dn}, but got {exthdr['KGAINPAR']}"
+    assert exthdr['EMGAIN_C'] == gain, f"Expected data EMGAIN_C={gain}, but got {exthdr['EMGAIN_C']}"
+    assert exthdr['EMGAIN_A'] == gain, f"Expected data EMGAIN_A={gain}, but got {exthdr['EMGAIN_A']}"
+    assert exthdr['ISPC'] == 0, f"Expected header ISPC=0, but got {exthdr['ISPC']}"
  
 
 
