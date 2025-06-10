@@ -3,7 +3,7 @@ from corgidrp import mocks
 import os
 from datetime import datetime, timezone, timedelta
 
-def create_hdu_list(data, sim_info=None, header_info=None):
+def create_hdu_list(data, header_info, sim_info=None):
     """
     Create an Astropy HDUList for a simulated L1 FITS product.
 
@@ -16,7 +16,7 @@ def create_hdu_list(data, sim_info=None, header_info=None):
     ----------
     data : numpy.ndarray
         2D array representing the simulated image.
-    header_info : dict, optional
+    header_info : dict
         Header keywords (e.g., 'EXPTIME', 'EMGAIN_C') to override defaults in the image HDU header.
     sim_info : dict, optional
         Key-value metadata describing the simulation setup, added as comments in the primary header.
@@ -33,14 +33,43 @@ def create_hdu_list(data, sim_info=None, header_info=None):
     hdul = fits.HDUList([primary_hdu, image_hdu])
 
     # Apply default L1 headers
+    # populate L1 headers from input values or default from cgisim
     prihdr, exthdr = mocks.create_default_L1_headers()
     prihdr['SIMPLE'] = True
     prihdr['ORIGIN'] = 'CorgiSim'
+    prihdr['mock'] = 1
+    prihdr['TELESCOP'] = 'ROMAN'
+    prihdr['PSFREF'] = header_info['PSFREF']
+    prihdr['OPGAIN'] = header_info['EMGAIN_C']
+    prihdr['PHTCNT'] = header_info['PHTCNT']
 
-    if header_info:
-        for key in ['EXPTIME', 'EMGAIN_C']:
-            if key in header_info:
-                exthdr[key] = header_info[key]
+    ### currently we don't have sequence smulation, so the time per frame == exposure time
+    ### it needs to be updated later
+    prihdr['FRAMET'] = header_info['EXPTIME']
+
+    ### wait this for tachi to add sattlite spots function
+    #prihdr['SATSPOTS'] = header_info['SATSPOTS'] 
+    
+    time_in_name = isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
+    filename = f"CGI_{prihdr['VISITID']}_{time_in_name}_L1_"
+    prihdr['FILENAME'] =  f"{filename}.fits"
+
+    
+
+    exthdr['NAXIS'] = data.ndim
+    exthdr['NAXIS1'] = data.shape[0]
+    exthdr['NAXIS2'] = data.shape[0]
+    
+    for key in ['EXPTIME', 'EMGAIN_C']:
+        if key in header_info:
+            exthdr[key] = header_info[key]
+        else:
+            raise ValueError(f"'{key}' not found in header_info. We need them to populate the L1 headers")
+   
+    for key in ['FSMX', 'FSMY']:
+        exthdr[key] = header_info[key] if key in header_info else 0  # set the header from header_info or default in cgisim
+
+
 
     hdul[0].header = prihdr
     hdul[1].header = exthdr
@@ -107,14 +136,15 @@ def save_hdu_to_fits( hdul, outdir=None, overwrite=True, write_as_L1=False, file
             prihdr = hdul[0].header
             exthdr = hdul[1].header
 
-            time_in_name = isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
-            filename = f"CGI_{prihdr['VISITID']}_{time_in_name}_L1_"
+            #time_in_name = isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
+            #filename = f"CGI_{prihdr['VISITID']}_{time_in_name}_L1_"
+            filename = prihdr['FILENAME']
         else:
             if filename is None:
                 raise ValueError("Filename must be provided when write_as_L1 is False.")
 
         # Construct full file path
-        filepath = os.path.join(outdir, f"{filename}.fits")
+        filepath = os.path.join(outdir, filename)
         
         # Write the HDUList to file
         hdul.writeto(filepath, overwrite=overwrite)
