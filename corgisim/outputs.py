@@ -59,16 +59,18 @@ def create_hdu_list(data, header_info, sim_info=None):
     exthdr['NAXIS'] = data.ndim
     exthdr['NAXIS1'] = data.shape[0]
     exthdr['NAXIS2'] = data.shape[0]
-    
-    for key in ['EXPTIME', 'EMGAIN_C']:
-        if key in header_info:
-            exthdr[key] = header_info[key]
-        else:
-            raise ValueError(f"'{key}' not found in header_info. We need them to populate the L1 headers")
-   
+    exthdr['EXPTIME'] = header_info['EXPTIME']
+    exthdr['EMGAIN_C'] = header_info['EMGAIN_C']
+    exthdr['EMGAIN_A'] = header_info['EMGAIN_C']  
+    exthdr['KGAINPAR'] =  header_info['KGAINPAR']
+    if header_info['PHTCNT'] == True:
+        exthdr['ISPC']= int(1)
+    else:
+        exthdr['ISPC']= int(0)
+
     for key in ['FSMX', 'FSMY']:
         exthdr[key] = header_info[key] if key in header_info else 0  # set the header from header_info or default in cgisim
-
+   
 
 
     hdul[0].header = prihdr

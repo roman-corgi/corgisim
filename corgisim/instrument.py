@@ -532,7 +532,7 @@ class CorgiDetector():
             if (sim_info['ref_flag'] == 'True') or (sim_info['ref_flag'] == '1'):
                 ref_flag = True
             header_info = {'EXPTIME': exptime,'EMGAIN_C':self.emccd_keywords_default['em_gain'],'PSFREF':ref_flag,
-                           'PHTCNT':self.photon_counting}
+                           'PHTCNT':self.photon_counting,'KGAINPAR':self.emccd_keywords_default['e_per_dn']}
             if 'fsm_x_offset_mas' in sim_info:
                 header_info['FSMX'] = float(sim_info['fsm_x_offset_mas'])
             if 'fsm_y_offset_mas' in sim_info:
@@ -627,17 +627,17 @@ class CorgiDetector():
         # Initialize emccd_keywords safely
         #if emccd_keywords is None:
         # default parameters for RMCCD on Roman-CGI, except QE, which set to 1 (already accounted for in counts)
-        self.emccd_keywords_default = {'full_well_serial': 100000.0,         # full well for serial register; 90K is requirement, 100K is CBE
-                                  'full_well_image': 60000.0,                 # image full well; 50K is requirement, 60K is CBE
-                                  'dark_rate': 0.00056,                  # e-/pix/s; 1.0 is requirement, 0.00042/0.00056 is CBE for 0/5 years
-                                  'cic_noise': 0.01,                    # e-/pix/frame; 0.1 is requirement, 0.01 is CBE
-                                  'read_noise': 100.0,                  # e-/pix/frame; 125 is requirement, 100 is CBE
-                                  'cr_rate': 0,                         # hits/cm^2/s (0 for none, 5 for L2) 
+        self.emccd_keywords_default = {'full_well_serial': 105000.0,         # full well for serial register; 90K is requirement, 100K is CBE
+                                  'full_well_image': 90000.0,                 # image full well; 50K is requirement, 60K is CBE
+                                  'dark_rate': 0.001,                  # e-/pix/s; 1.0 is requirement, 0.00042/0.00056 is CBE for 0/5 years
+                                  'cic_noise': 0.0088,                    # e-/pix/frame; 0.1 is requirement, 0.01 is CBE
+                                  'read_noise': 165.0,                  # e-/pix/frame; 125 is requirement, 100 is CBE
+                                  'cr_rate': 5,                         # hits/cm^2/s (0 for none, 5 for L2) 
                                   'em_gain': 1000.0 ,                      # EM gain
                                   'bias': 0,
                                   'pixel_pitch': 13e-6 ,                # detector pixel size in meters
                                   'apply_smear': True ,                 # (LOWFS only) Apply fast readout smear?  
-                                  'e_per_dn':1.0  ,                    # post-multiplied electrons per data unit
+                                  'e_per_dn':8.7  ,                    # post-multiplied electrons per data unit
                                   'nbits': 14  ,                        # ADC bits
                                   'numel_gain_register': 604,           # Number of gain register elements 
                                   'use_traps': False,                    # include CTI impact of traps
