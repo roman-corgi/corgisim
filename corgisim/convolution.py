@@ -3,289 +3,277 @@
 #It might be incorporated into instrument.py
 
 import numpy as np
-from scipy.signal import convolve2d
+from scipy.signal import fftconvolve
 import astropy.io.fits as fits
 import astropy.units as u
-import matplotlib.pyplot as plt
-from matplotlib.patches import Circle
-from scipy.ndimage import rotate
 import time
-
-from IPython.display import clear_output, display
-from pathlib import Path
-import copy
-
 import proper
+import sys
 proper.prop_use_fftw(DISABLE=False)
 
-import roman_phasec_proper
+# Constants
+D_ROMAN = 2.3631 * u.m
 
-import cgi_phasec_poppy as cgi
-import cgi_phasec_poppy.imshows as imshows
-from cgi_phasec_poppy.imshows import *
+def _build_radial_grid(iwa, owa, fine, coarse, outer):
+    """Concatenate inner/mid/outer λ/D radii into one 1-D array."""
+    inner = np.arange(0, iwa + fine, fine)
+    mid   = np.arange(iwa + fine, owa, coarse)
+    outer = np.arange(owa, 15 + outer, outer)
+    return np.hstack([inner, mid, outer])
 
-from importlib import reload
+def _build_azimuth_grid(step_deg):
+    """Return 0 ≤ θ < 360 in constant steps as Quantity[deg]."""
+    return np.arange(0, 360, step_deg) * u.deg
 
+def _lam_grid_and_weights(c_lam_um, n_lambda, bandwidth_frac, source_sed):
+    """
+    Build a wavelength grid in µm and spectral weights.
+    Flat spectrum if `source_sed` is None.
+    """
+    c_lam_um = u.Quantity(c_lam_um, u.micron).value
 
-#Incorporate Dataset class and import it and calling save (for file path)
-#Look into Image and how we can use that to set up our scene from the CPGS file
+    if n_lambda == 1 or bandwidth_frac == 0.0:
+        lam_grid = np.array([c_lam_um])
+        lam_wts  = np.array([1.0])
+        return lam_grid, lam_wts
 
-def find_closest_prf(xoff, yoff, prfs, r_offsets_mas, thetas, verbose=True):
-    '''
-    Find the closest PRF based on the provided offsets.
+    half     = bandwidth_frac / 2.0
+    lam_grid = np.linspace(c_lam_um * (1 - half),
+                           c_lam_um * (1 + half),
+                           n_lambda)
 
-    Arguments:
-    xoff = off x-axis
-    yoff = off y-axis
-    prfs = amount of interpolated prfs
-    r_offsets_mas = the radial offsets 
-    thetas = anglular offsets
-    verbose = print current action while function is running
-    '''
-    r = np.sqrt(xoff**2 + yoff**2)
-    r = r * u.deg  # Assuming `r` should be in degrees for comparison
-    theta = np.arctan2(yoff, xoff) * u.rad  # Convert theta to Quantity
-
-    if theta < 0:
-        theta += 360 * u.deg
-
-    # Find closest radial offset
-    r_offsets_mas_value = r_offsets_mas.value  # Convert to numpy array of floats
-    r_value = r.to(u.mas).value  # Convert r to milliarcseconds for comparison
-    kr = np.argmin(np.abs(r_offsets_mas_value - r_value))
-    if kr > (len(r_offsets_mas) - 1):
-        kr = len(r_offsets_mas) - 1
-
-    # Find closest theta
-    thetas_value = thetas.value  # Convert to numpy array of floats
-    theta_value = theta.to(u.deg).value  # Convert theta to degrees for comparison
-    kth = np.argmin(np.abs(thetas_value - theta_value))
-    theta_diff = theta - thetas[kth]  # Difference in angles
-
-    if kr == 0:
-        kpsf = 0
+    if source_sed is None:
+        lam_wts = np.ones(n_lambda) / n_lambda
     else:
-        kpsf = 1 + kth + (len(thetas)) * (kr - 1)
+        lam_wts = np.asarray(source_sed, float)
+        if lam_wts.size != n_lambda:
+            raise ValueError("source_sed length must equal n_lambda")
+        lam_wts /= lam_wts.sum()
 
-    if verbose:
-        print(f'Desired r={r:.2f}, radial index={kr:d}, closest available r={r_offsets_mas[kr]:.2f}')
-        print(f'Desired th={theta:.2f}, theta index={kth:d}, closest available th={thetas[kth]:.2f}, difference={theta_diff:.2f}')
-        print(f'PSF index = {kpsf:d}')
+    return lam_grid, lam_wts
 
-    closest_psf = prfs[kpsf]
-    interpped_psf = rotate(closest_psf, -theta_diff.to(u.deg).value, reshape=False, order=1)
+def _pixel_polar(shape, pix_scale_mas, mas_per_lamD):
+    """
+    Return arrays (r_lamD, theta_deg) for every pixel of a scene frame.
+    """
+    ny, nx = shape
+    cy, cx = ny // 2, nx // 2
+    yy, xx = np.indices(shape)
+    r_pix  = np.hypot(xx - cx, yy - cy)
+    r_lamD = (r_pix * pix_scale_mas) / mas_per_lamD
+    theta  = np.degrees(np.arctan2(yy - cy, xx - cx)) % 360
+    return r_lamD, theta
 
-    return interpped_psf
+def _pad_prf_cube(prf_cube, scene_shape):
+    """Centre-pad or crop a PRF cube to the full detector frame."""
+    ny, nx = scene_shape
+    dy = (ny - prf_cube.shape[1]) // 2
+    dx = (nx - prf_cube.shape[2]) // 2
+    return np.pad(prf_cube, [(0, 0), (dy, dy), (dx, dx)], mode="constant")
 
+def _nearest_id_map(r_lamD, theta_deg, radii_lamD, azimuths_deg):
+    """Map each pixel to its nearest-neighbour PRF slice index."""
+    n_th   = len(azimuths_deg)
+    step   = 360 / n_th
+    k_th   = (theta_deg // step).astype(int) % n_th
+    k_r    = np.digitize(r_lamD, radii_lamD).clip(1, len(radii_lamD) - 1) - 1
+    return np.where(k_r == 0, 0, 1 + (k_r - 1) * n_th + k_th)
 
+def _bilinear_indices_weights(r_lamD, theta_deg, radii_lamD, azimuths_deg):
+    """
+    Return index quadruple (k00,k10,k01,k11) and weight quadruple
+    (w00,w10,w01,w11) for bilinear interpolation.
+    """
+    n_th   = len(azimuths_deg)
+    step   = 360 / n_th
 
-def generating_prfs(fine_sampling, coarse_sampling, iwa, owa, sampling_theta, 
-                    resolution_elem, n_lam, c_lam, bandwidth, options, prf_width, 
-                    sampling_plot=False, save_path="prfs.fits"):
-    ''' 
-    Function to generate PRF including optional argument to
-    make a sampling grid that the PRFs will be generated on
+    th_lo  = (theta_deg // step).astype(int) % n_th
+    beta   = (theta_deg - th_lo * step) / step
+    th_hi  = (th_lo + 1) % n_th
 
-    Arguments:
-    iwa = inner working angle
-    owa = outer working angle
-    sampling_theta = used for sampling grid
-    resolution_elem: (resolution element) Conversion factor 
-    from radians to milliarcseconds
-    n_lam = number of wavelength samples
-    c_lam = central wavelength
-    bandwidth = fractional bandwidth
-    options = dictionary input for changing coronagraph
-    type to the correct band
-    prf_width = desired width of prf
-    sampling_plot = boolean to control plotting of sampling grid
-    save_path = path to save the FITS file containing all PRFs
+    k_r_hi = np.digitize(r_lamD, radii_lamD).clip(1, len(radii_lamD) - 1)
+    k_r_lo = k_r_hi - 1
+    dr     = radii_lamD[k_r_hi] - radii_lamD[k_r_lo]
+    alpha  = np.divide(r_lamD - radii_lamD[k_r_lo], dr,
+                       out=np.zeros_like(r_lamD), where=dr != 0)
 
-    '''
-    #Calculate conversion factors
-    mas_per_lamD = (c_lam / bandwidth * u.radian).to(u.mas)  # Assuming D is 2.3631 meters
+    def _idx(r_i, th_i):
+        return np.where(r_i == 0, 0, 1 + (r_i - 1) * n_th + th_i)
 
-    #Create the sampling grid the PSFs will be made on
-    sampling1 = fine_sampling  # Fine sampling interval for the innermost region
-    sampling2 = coarse_sampling  # Coarser sampling interval for the intermediate region
-    sampling3 = resolution_elem  # Sampling interval for the outer region
-    offsets1 = np.arange(0, iwa + 1, sampling1)  # Region from center to about inner w.a.
-    offsets2 = np.arange(iwa + 1, owa, sampling2)  # Region from about inner w.a. to outer w.a.
-    offsets3 = np.arange(owa, 15 + sampling3, sampling3)  # Region from the outer w.a. to beyond
+    k00, k10 = _idx(k_r_lo, th_lo), _idx(k_r_hi, th_lo)
+    k01, k11 = _idx(k_r_lo, th_hi), _idx(k_r_hi, th_hi)
 
-    r_offsets = np.hstack([offsets1, offsets2, offsets3])  # Combined array of all radial offsets
-    r_offsets_mas = r_offsets * mas_per_lamD  # Convert to milliarcseconds
+    w00 = (1 - alpha) * (1 - beta)
+    w10 = alpha       * (1 - beta)
+    w01 = (1 - alpha) * beta
+    w11 = alpha       * beta
 
-    thetas = np.arange(0, 360, sampling_theta) * u.deg  # Array of angular offsets from 0 to 360 degrees w/ specified interval
+    return (k00, k10, k01, k11), (w00, w10, w01, w11)
 
-    nr = len(r_offsets)  # Total number of radial offsets
-    nth = len(thetas)  # Total number of angular offsets
+def build_sampling_grid(fine_sampling, coarse_sampling,
+                        iwa, owa, sampling_theta,
+                        resolution_elem, res_mas):
+    """
+        Construct a polar sampling grid on which PSFs/PRFs will be evaluated.
 
-    #Total number of PRFs required for the grid
-    prfs_required = (nr - 1) * nth + 1
-    print(prfs_required)
+        Parameters
+        ----------
+        fine_sampling : float
+            Radial step (in λ/D) inside the IWA.
+        coarse_sampling : float
+            Radial step (λ/D) between IWA and OWA.
+        iwa, owa : float
+            Inner and outer working angles, in λ/D.
+        sampling_theta : float
+            Azimuthal step in degrees.
+        resolution_elem : float
+            Radial step (λ/D) beyond the OWA (typically ≈ 1 λ/D).
+        res_mas : float
+            Scale factor that converts λ/D to milliarcseconds.
 
-    #Generating PRFs
-    minlam = c_lam * (1 - bandwidth / 2)
-    maxlam = c_lam * (1 + bandwidth / 2)
-    lam_array = np.linspace(minlam, maxlam, n_lam)
-    lam_array = np.array([c_lam])  # Assuming a single wavelength for simplicity
+        Returns
+        -------
+        radii_lamD : ndarray
+            Radial node positions in λ/D.
+        radii_mas : ndarray
+            Same radii converted to milliarcseconds.
+        azimuths_deg : astropy.units.Quantity
+            Azimuthal node positions, 0–360 deg.
+    """
 
-    psfs_array = np.zeros(shape=((len(r_offsets)-1)*len(thetas) + 1, prf_width, prf_width)) 
-    interpolated_psfs_array = np.zeros_like(psfs_array)
-
-    x_offsets = []
-    y_offsets = []
-
-    count = 0
-    start = time.time()
-    for i, r in enumerate(r_offsets):
-        for j, th in enumerate(thetas):
-            if count >= psfs_array.shape[0]:
-                break  # Ensure we don't go out of bounds
-            
-            xoff = r * np.cos(th.to(u.rad).value)
-            yoff = r * np.sin(th.to(u.rad).value)
-            options.update({'source_x_offset': xoff, 'source_y_offset': yoff})
-
-            (wfs, pxscls_m) = proper.prop_run_multi('roman_phasec', lam_array, prf_width, QUIET=True, PASSVALUE=options)
-
-            prfs = np.abs(wfs) ** 2
-            prf = np.sum(prfs, axis=0) / n_lam
-
-            psfs_array[count] = prf
-            x_offsets.append(xoff)
-            y_offsets.append(yoff)
-
-            count += 1
-
-            if r < r_offsets[1]:
-                break  # skip first set of PSFs if radial offset is 0 at the start
-
-    #Save PRFs to a FITS file
-    hdu1 = fits.PrimaryHDU(psfs_array)
-    hdul = fits.HDUList([hdu1])
-    hdul.writeto(save_path, overwrite=True)
-
-    #Interpolate PRFs
-    prfs = fits.getdata(save_path)  # Load the original PRFs
-    interpolated_psfs_array = np.zeros_like(psfs_array)
+    radii_lamD = _build_radial_grid(iwa, owa,
+                                    fine_sampling,
+                                    coarse_sampling,
+                                    resolution_elem)
+    radii_mas  = radii_lamD * res_mas
+    azimuths_deg = _build_azimuth_grid(sampling_theta)
     
-    for i, (xoff, yoff) in enumerate(zip(x_offsets, y_offsets)):
-        interpolated_psf = find_closest_psf(xoff, yoff, prfs, r_offsets_mas, thetas)
-        interpolated_psfs_array[i] = interpolated_psf
+    return radii_lamD, radii_mas, azimuths_deg
 
-    #Update FITS file with interpolated PRFs
-    hdu2 = fits.ImageHDU(interpolated_psfs_array, name='Interpolated_PRFs')
-    hdul = fits.open(save_path, mode='update')
-    hdul.append(hdu2)
-    hdul.flush()
-    hdul.close()
+def make_prf_cube(radii_lamD, azimuths_deg, c_lam,
+                  n_lambda=1, bandwidth_frac=0.0,
+                  prf_width_px=64, det_shape=(51, 51),
+                  prop_tag="roman_preflight",
+                  prop_opts=None, source_sed=None):
+    """
+    Build a PRF cube (cropped to `det_shape`) averaged over a band.
 
-    #Optional embedded function to plot sampling PRFs
-    def sampling_plots_prfs():
-        fig = plt.figure(dpi=125, figsize=(4, 4))
+    All wavelengths are in microns (µm).
 
-        ax1 = plt.subplot(111, projection='polar')
-        ax1.plot(thetas.value, r_offsets[1:], '.')
-        ax1.set_yticklabels([])
-        ax1.set_rticks([iwa, owa, max(r_offsets)])  # Less radial ticks
-        ax1.set_rlabel_position(55)  # Move radial labels away from plotted line
-        ax1.set_thetagrids(thetas[::2].value)
-        ax1.grid(axis='x', visible=True, color='black', linewidth=1)
-        ax1.grid(axis='y', color='black', linewidth=1)
-        ax1.set_title('Distribution of PRFs', va='bottom')
-        ax1.set_axisbelow(False)
+    Parameters
+    ----------
+    radii_lamD, azimuths_deg, c_lam
+        Polar grid and central wavelength as before.
+    n_lambda, bandwidth_frac
+        Define the λ grid.  If n_lambda==1 or bandwidth_frac==0 → monochromatic.
+    prf_width_px
+        Power-of-two gridsize for PROPER (default 64).
+    det_shape
+        (ny, nx) size of detector-frame PRF kernel (default 51×51).
+    prop_tag / prop_opts
+        Passed straight to PROPER.
+    source_sed
+        *Optional* 1-D iterable of length `n_lambda` that gives the
+        **spectral weight** at each λ sample.  If `None` → flat spectrum.
 
-        #Plots 2 band images
-        (wfs, pxscls_m) = proper.prop_run_multi('roman_phasec', lam_array, prf_width, QUIET=False, PASSVALUE=options)
-        prf_pixelscale_m = pxscls_m[0] * u.m / u.pix
+    Returns
+    -------
+    prf_cube_det : ndarray, shape (N_prf, ny, nx)
+        Broadband (or mono) PRF cube cropped to `det_shape`.
+    """
+    # wvl_grid and weights 
+    lam_grid, lam_wts = _lam_grid_and_weights(c_lam,
+                                              n_lambda,
+                                              bandwidth_frac,
+                                              source_sed)
 
-        patches = [Circle((0, 0), iwa, color='c', fill=False), Circle((0, 0), owa, color='c', fill=False)]
-        imshow2(prf, prf, 'HLC PSF: Band 1', 'HLC PSF: Band 1',
-                lognorm1=True, lognorm2=True,
-                pxscl1=prf_pixelscale_m.to(u.mm / u.pix), pxscl2=resolution_elem, patches2=patches)
+    # polar grid list
+    azimuths_deg = u.Quantity(azimuths_deg, u.deg)
+    rr2d, tt2d   = np.meshgrid(radii_lamD, azimuths_deg, indexing="ij")
+    mask         = ~((rr2d == 0) & (tt2d != 0 * u.deg))
+    rr, tt       = rr2d.ravel()[mask], tt2d.ravel()[mask]
+    n_prf        = rr.size
 
-    if sampling_plot:
-        sampling_plots_prfs()
+    prop_opts = {} if prop_opts is None else prop_opts.copy()
+    prf_cube = np.empty((n_prf, prf_width_px, prf_width_px), np.float32)
 
+    # progress bar
+    def _bar(i):
+        bar = "#" * int(40 * i / n_prf)
+        sys.stdout.write(f"\r[{bar:40s}] {i:>4}/{n_prf:<4}")
+        sys.stdout.flush()
 
+    t0 = time.time(); _bar(0)
+    for idx, (r_ld, th_deg) in enumerate(zip(rr, tt), 1):
+        rad = th_deg.to_value(u.rad)
+        run_opts = {**prop_opts,
+                    "source_x_offset": r_ld * np.cos(rad),
+                    "source_y_offset": r_ld * np.sin(rad)}
 
-def convolve_2d_scene(prf_file, scene_info):
-    mas_per_lamD = (c_lam / bandwidth * u.radian).to(u.mas)
-    iwa_mas = iwa * mas_per_lamD
-    owa_mas = owa * mas_per_lamD
-    psf_pixelscale_mas = resolution_elem * mas_per_lamD / u.pix
+        wfs, _ = proper.prop_run_multi(prop_tag, lam_grid,
+                                       prf_width_px, QUIET=True,
+                                       PASSVALUE=run_opts)
+        prf_cube[idx-1] = np.tensordot(lam_wts, np.abs(wfs)**2, axes=(0, 0))
+        _bar(idx)
 
-    #Loads the PRFs from the FITS file
-    prfs_array = fits.getdata(prf_file)
-    npsf = prfs_array.shape[1]
+    sys.stdout.write("\n")
+    print("PRF generation done in %.1f min" % ((time.time()-t0)/60.0))
 
-    #Loads the input image
-    input_image = fits.getdata(scene_info)
-    
-    #coordinates of the center of the input image calculated here
-    cx, cy = input_image.shape[1] // 2, input_image.shape[0] // 2
-    #[1] gives the width of the image
-    #[0] gives the height
+    # centre-crop to detector frame
+    ny_det, nx_det = det_shape
+    dy = (prf_width_px - ny_det) // 2
+    dx = (prf_width_px - nx_det) // 2
 
-    #Extracts the region to convolve, centered around the middle of the input image
-    disk_sim = np.zeros_like(input_image)
-    #is an array of zeros with the same shape as input_image
-    #later used to store sum of convolved images
-    
-    #Convolves each PRF with the image and sum the results
-    for prf in prfs_array:
-        '''
-        Loops thru each prf in the prf array
-        -> prf_padded: Ensures that the PSF 
-        is centered and aligned properly with the input 
-        image during convolution.
-        -> np.pad is used to add padding to prf so that
-        it becomes the same size as the input image.
-        '''
-        prf_padded = np.pad(prf, [(input_image.shape[0] // 2 - prf.shape[0] // 2,
-                                  input_image.shape[0] // 2 - prf.shape[0] // 2),
-                                 (input_image.shape[1] // 2 - prf.shape[1] // 2,
-                                  input_image.shape[1] // 2 - prf.shape[1] // 2)],
-                           mode='constant', constant_values=0)
-        disk_sim += convolve2d(input_image, prf_padded, mode='same')
-        '''
-        convolve2d function performs element-wise multiplication in the 
-        frequency domain, effectively blurring the input image by the PSF. 
-        The result is then transformed back to the spatial domain.
-        -> mode = same: output size will be the same as the input image size.
+    return prf_cube[:, dy:dy+ny_det, dx:dx+nx_det]
 
-        The code accumulates the results of convolving the input image with
-        each PSF, providing a convolved image of the combined PSFs.
-        '''
+def convolve_with_prfs(obj, prfs_array, radii_lamD, azimuths_deg,
+                       pix_scale_mas, mas_per_lamD, weighted=False):
+    """
+    Field-dependent shift–add convolution.
 
-    #Saves convolved image to fits
-    hdu = fits.PrimaryHDU(disk_sim)
-    hdul = fits.HDUList([hdu])
-    output_file = 'convolved.fits'
-    hdul.writeto(output_file, overwrite=True)
+    Parameters
+    ----------
+    scene           : 2-D image to blur (ny,nx)
+    prfs_array      : PRF cube     (N_prf, ny_prf, nx_prf) **cropped** to detector size
+    radii_lamD      : 1-D array of λ/D radial nodes (must include 0)
+    azimuths_deg    : 1-D astropy Quantity (deg) azimuth nodes (0 ≤ θ < 360, constant step)
+    pix_scale_mas   : detector pixel scale in mas / pix  (scalar)
+    mas_per_lamD    : conversion factor: 1 λ/D → mas     (scalar)
+    weighted        : if True use bilinear (4-PRF) weighting, else nearest neighbour
 
-    #Zooms in region based on iwa and owa for better plotting demonstration
-    zoom_radius_mas = owa_mas.value * 1.5  #Extend beyond OWA to include some margin
-    zoom_radius_pixels = int(zoom_radius_mas / psf_pixelscale_mas.value)
+    Returns
+    -------
+    detector        : blurred image, same shape as `scene`
+    """
 
-    #Crops the image for zoomed-in view
-    zoomed_disk_sim = disk_sim[cy-zoom_radius_pixels:cy+zoom_radius_pixels, cx-zoom_radius_pixels:cx+zoom_radius_pixels]
+    r_lamD, theta_deg = _pixel_polar(obj.shape,
+                                     pix_scale_mas,
+                                     mas_per_lamD)
+    prf_pad = _pad_prf_cube(prfs_array, obj.shape)
 
-    #Plots the zoomed-in result
-    zoomed_xpix = (np.arange(-zoom_radius_pixels, zoom_radius_pixels) * psf_pixelscale_mas.value) / 1000
-    zoomed_ypix = (np.arange(-zoom_radius_pixels, zoom_radius_pixels) * psf_pixelscale_mas.value) / 1000
+    if not weighted:
+        # nearest-neighbour convolution
+        prf_ids = _nearest_id_map(r_lamD, theta_deg,
+                                  radii_lamD, azimuths_deg)
+        conv = np.zeros_like(obj, float)
+        for k in np.unique(prf_ids):
+            mask = prf_ids == k
+            if mask.any():
+                conv += fftconvolve(obj * mask, prf_pad[k], mode="same")
+        return conv
 
-    fig, ax = plt.subplots()
-    im = ax.imshow(zoomed_disk_sim, cmap='magma', extent=[np.min(zoomed_xpix), np.max(zoomed_xpix), 
-                                                          np.max(zoomed_ypix), np.min(zoomed_ypix)])
-    ax.invert_yaxis()
-    circ1 = Circle((0, 0), iwa_mas.value / 1000, color='r', fill=False)
-    circ2 = Circle((0, 0), owa_mas.value / 1000, color='r', fill=False)
-    ax.add_patch(circ1)
-    ax.add_patch(circ2)
-    ax.set_ylabel('arcsec')
-    ax.set_xlabel('arcsec')
-    fig.colorbar(im, orientation='vertical')
-    plt.show()
+    # bilinear-weighted convolution
+    idx_maps, w_maps = _bilinear_indices_weights(r_lamD, theta_deg,
+                                                 radii_lamD, azimuths_deg)
+    k00,k10,k01,k11 = idx_maps
+    w00,w10,w01,w11 = w_maps
+
+    conv = np.zeros_like(obj, float)
+    for k in np.unique(np.stack(idx_maps)):
+        weight = (np.where(k00==k, w00, 0.0) +
+                  np.where(k10==k, w10, 0.0) +
+                  np.where(k01==k, w01, 0.0) +
+                  np.where(k11==k, w11, 0.0))
+        if weight.any():
+            conv += fftconvolve(obj * weight, prf_pad[k], mode="same")
+    return conv
