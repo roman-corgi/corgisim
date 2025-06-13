@@ -53,4 +53,4 @@ jobs:
       env:
         ACTIONS_RUNNER_DEBUG: true
       run: |
-        pytest ./test/test_output_size_1024.py
+        pytest ./test
