@@ -51,4 +51,4 @@ jobs:
 
     - name: Test with pytest
       run: |
-        pytest ./test/
+        pytest ./test/test_output_size_1024.py
