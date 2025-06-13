@@ -16,7 +16,7 @@ permissions:
 jobs:
   build:
 
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v4
@@ -50,5 +50,7 @@ jobs:
         cd ..        
 
     - name: Test with pytest
+      env:
+        ACTIONS_RUNNER_DEBUG: true
       run: |
-        pytest ./test/
+        pytest ./test
