@@ -81,11 +81,17 @@ class CorgiOptics():
             raise Exception('ERROR: Requested coronagraph does not match any available types')
 
         self.cgi_mode = cgi_mode
-        self.bandpass = bandpass 
+        if bandpass  in ['1F','2F','3F','4F']:
+            self.bandpass = bandpass.split('F')[0]
+        else:
+            self.bandpass = bandpass.lower()
+
+
+        #self.bandpass = bandpass 
 
         # get mode and bandpass parameters:
         info_dir = cgisim.lib_dir + '/cgisim_info_dir/'
-        mode_data, bandpass_data = cgisim.cgisim_read_mode( cgi_mode, proper_keywords['cor_type'], bandpass, info_dir )
+        mode_data, bandpass_data = cgisim.cgisim_read_mode( cgi_mode, proper_keywords['cor_type'], self.bandpass, info_dir )
 
         self.lam0_um = bandpass_data["lam0_um"] ##central wavelength of the filter in micron
         self.nlam = bandpass_data["nlam"] 
@@ -219,6 +225,7 @@ class CorgiOptics():
         sim_info = {'host_star_sptype':input_scene.host_star_sptype,
                     'host_star_Vmag':input_scene.host_star_Vmag,
                     'host_star_magtype':input_scene.host_star_magtype,
+                    'ref_flag':input_scene.ref_flag,
                     'cgi_mode':self.cgi_mode,
                     'cor_type': self.proper_keywords['cor_type'],
                     'bandpass':self.bandpass,
@@ -229,7 +236,7 @@ class CorgiOptics():
 
         # Define specific keys from self.proper_keywords to include in the header            
         keys_to_include_in_header = ['use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
-                            'use_lyot_stop','use_field_stop']  # Specify keys to include
+                            'use_lyot_stop','use_field_stop','fsm_x_offset_mas','fsm_y_offset_mas']  # Specify keys to include
         subset = {key: self.proper_keywords[key] for key in keys_to_include_in_header if key in self.proper_keywords}
         sim_info.update(subset)
         sim_info['includ_dectector_noise'] = 'False'
@@ -421,7 +428,7 @@ class CorgiOptics():
                             
                 # Define specific keys from self.proper_keywords to include in the header            
         keys_to_include_in_header = [ 'use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
-                            'use_lyot_stop','use_field_stop']  # Specify keys to include
+                            'use_lyot_stop','use_field_stop','fsm_x_offset_mas','fsm_y_offset_mas']  # Specify keys to include
         subset = {key: self.proper_keywords[key] for key in keys_to_include_in_header if key in self.proper_keywords}
         sim_info.update(subset)
         sim_info['includ_dectector_noise'] = 'False'
@@ -434,15 +441,17 @@ class CorgiOptics():
     
 class CorgiDetector(): 
     
-    def __init__(self ,emccd_keywords):
+    def __init__(self ,emccd_keywords, photon_counting = True):
         '''
         Initialize the class with a dictionary that defines the EMCCD_DETECT input parameters. 
 
         Arguments: 
         emccd_keywords: A dictionary with the keywords that are used to set up the emccd model
+        photon_counting: if use photon_counting mode, default is True
         '''
         self.emccd_keywords = emccd_keywords  # Store the keywords for later use
         #self.exptime = exptime ##expsoure time in second
+        self.photon_counting = photon_counting
 
 
         self.emccd = self.define_EMCCD(emccd_keywords=self.emccd_keywords)
@@ -518,13 +527,22 @@ class CorgiDetector():
         sim_info['includ_dectector_noise'] = 'True'
         subset = {key: self.emccd_keywords_default[key] for key in self.emccd_keywords_default}
         sim_info.update(subset)
-
-       
+        
         # Create the HDU object with the generated header information
         if full_frame:
             sim_info['position_on_detector_x'] = loc_x
             sim_info['position_on_detector_y'] = loc_y
-            header_info = {'EXPTIME': exptime,'EMGAIN_C':self.emccd_keywords_default['em_gain']  }
+            
+            if (sim_info['ref_flag'] == 'False') or (sim_info['ref_flag'] == '0'):
+                ref_flag = False
+            if (sim_info['ref_flag'] == 'True') or (sim_info['ref_flag'] == '1'):
+                ref_flag = True
+            header_info = {'EXPTIME': exptime,'EMGAIN_C':self.emccd_keywords_default['em_gain'],'PSFREF':ref_flag,
+                           'PHTCNT':self.photon_counting}
+            if 'fsm_x_offset_mas' in sim_info:
+                header_info['FSMX'] = float(sim_info['fsm_x_offset_mas'])
+            if 'fsm_y_offset_mas' in sim_info:
+                header_info['FSMY'] = float(sim_info['fsm_y_offset_mas'])
             simulated_scene.image_on_detector = outputs.create_hdu_list(Im_noisy, sim_info=sim_info, header_info = header_info)
         else:
             simulated_scene.image_on_detector = outputs.create_hdu(Im_noisy, sim_info=sim_info)
