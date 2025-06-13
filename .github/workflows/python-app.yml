@@ -11,8 +11,7 @@ on:
 
 permissions:
   contents: read
-env:
-  ACTIONS_RUNNER_DEBUG: true
+
 
 jobs:
   build:
@@ -51,5 +50,7 @@ jobs:
         cd ..        
 
     - name: Test with pytest
+      env:
+        ACTIONS_RUNNER_DEBUG: true
       run: |
         pytest ./test/test_output_size_1024.py
