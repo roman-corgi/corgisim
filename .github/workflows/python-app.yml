@@ -16,7 +16,7 @@ permissions:
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
     - uses: actions/checkout@v4
@@ -55,7 +55,5 @@ jobs:
         swap-size-gb: 10
 
     - name: Test with pytest
-      env:
-        ACTIONS_RUNNER_DEBUG: true
       run: |
-        pytest ./test/test_output_size_1024.py
+        pytest ./test
