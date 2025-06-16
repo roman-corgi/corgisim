@@ -41,7 +41,10 @@ def create_hdu_list(data, header_info, sim_info=None):
     prihdr['TELESCOP'] = 'ROMAN'
     prihdr['PSFREF'] = header_info['PSFREF']
     prihdr['OPGAIN'] = header_info['EMGAIN_C']
-    prihdr['PHTCNT'] = header_info['PHTCNT']
+    if header_info['PHTCNT'] == True:
+        prihdr['PHTCNT'] =int(1)
+    else:
+        prihdr['PHTCNT'] =int(0)
 
     ### currently we don't have sequence smulation, so the time per frame == exposure time
     ### it needs to be updated later
