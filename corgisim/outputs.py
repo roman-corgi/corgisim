@@ -268,6 +268,7 @@ def write_headers_LSAM(cor_type):
 
 
 def write_headers_CFAM(band_pass):
+   
     ### determine the value for CFAM based on bandpass
     if band_pass == '1F':
         CFAM_H = 55829.2
