@@ -97,6 +97,31 @@ def test_L1_product_fits_format():
     assert exthdr['EMGAIN_A'] == 1000, f"Expected data EMGAIN_A=1000, but got {exthdr['EMGAIN_A']}"
     assert exthdr['ISPC'] == 1, f"Expected header ISPC=1, but got {exthdr['ISPC']}"
 
+    assert exthdr['SPAM_H'] ==  1001.3, f"Expected data SPAM_H=1001.3, but got {exthdr['SPAM_H']}"
+    assert exthdr['SPAM_V']== 16627,  f"Expected data SPAM_V = 16627, but got {exthdr['SPAM_V']}"
+    assert exthdr['SPAMNAME'] =='OPEN' , f"Expected data SPAMNAME ='OPEN', but got {exthdr['SPAMNAME']}"
+    assert exthdr['SPAMSP_H']== 1001.3, f"Expected data SPAMSP_H=1001.3, but got {exthdr['SPAMSP_H']}"
+    assert exthdr['SPAMSP_V'] == 16627, f"Expected data SPAMSP_V=16627, but got {exthdr['SPAMSP_V']}"
+
+    assert exthdr['LSAM_H'] ==  36898.7, f"Expected data LSAM_H=36898.7, but got {exthdr['LSAM_H']}"
+    assert exthdr['LSAM_V']== 4636.2,  f"Expected data LSAM_V = 4636.2, but got {exthdr['LSAM_V']}"
+    assert exthdr['LSAMNAME'] =='NFOV' , f"Expected data LSAMNAME ='NFOV', but got {exthdr['LSAMNAME']}"
+    assert exthdr['LSAMSP_H']== 36898.7, f"Expected data LSAMSP_H=36898.7, but got {exthdr['LSAMSP_H']}"
+    assert exthdr['LSAMSP_V'] == 4636.2, f"Expected data LSAMSP_V=4636.2, but got {exthdr['LSAMSP_V']}"
+
+    assert exthdr['CFAM_H'] == 55829.2, f"Expected data CFAM_H=55829.2, but got {exthdr['CFAM_H']}"
+    assert exthdr['CFAM_V'] == 10002.7, f"Expected data CFAM_V=10002.7, but got {exthdr['CFAM_V']}"
+    assert exthdr['CFAMNAME'] == '1F', f"Expected data CFAMNAME='1F', but got {exthdr['CFAMNAME']}"
+    assert exthdr['CFAMSP_H'] == 55829.2, f"Expected data CFAMSP_H=55829.2, but got {exthdr['CFAMSP_H']}"
+    assert exthdr['CFAMSP_V'] == 10002.7, f"Expected data CFAMSP_V=10002.7, but got {exthdr['CFAMSP_V']}"
+
+    assert exthdr['DPAM_H'] == 38917.1, f"Expected data DPAM_H=38917.1, but got {exthdr['DPAM_H']}"
+    assert exthdr['DPAM_V'] == 26016.9, f"Expected data DPAM_V=26016.9, but got {exthdr['DPAM_V']}"
+    assert exthdr['DPAMNAME'] == 'IMAGING', f"Expected data DPAMNAME='IMAGING', but got {exthdr['DPAMNAME']}"
+    assert exthdr['DPAMSP_H'] == 38917.1, f"Expected data DPAMSP_H=38917.1, but got {exthdr['DPAMSP_H']}"
+    assert exthdr['DPAMSP_V'] == 26016.9, f"Expected data DPAMSP_V=26016.9, but got {exthdr['DPAMSP_V']}"
+
+
 
     ### delete file after testing
     print('Deleted the FITS file after testing headers populated with default values')

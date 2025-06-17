@@ -532,7 +532,8 @@ class CorgiDetector():
             if (sim_info['ref_flag'] == 'True') or (sim_info['ref_flag'] == '1'):
                 ref_flag = True
             header_info = {'EXPTIME': exptime,'EMGAIN_C':self.emccd_keywords_default['em_gain'],'PSFREF':ref_flag,
-                           'PHTCNT':self.photon_counting,'KGAINPAR':self.emccd_keywords_default['e_per_dn']}
+                           'PHTCNT':self.photon_counting,'KGAINPAR':self.emccd_keywords_default['e_per_dn'],'cor_type':sim_info['cor_type'], 'bandpass':sim_info['bandpass'],
+                           'cgi_mode': sim_info['cgi_mode'], 'polaxis':sim_info['polaxis']}
             if 'fsm_x_offset_mas' in sim_info:
                 header_info['FSMX'] = float(sim_info['fsm_x_offset_mas'])
             if 'fsm_y_offset_mas' in sim_info:
