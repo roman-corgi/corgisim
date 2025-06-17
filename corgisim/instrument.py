@@ -85,6 +85,10 @@ class CorgiOptics():
             self.bandpass = bandpass.split('F')[0]
         else:
             self.bandpass = bandpass.lower()
+        self.bandpass_header = bandpass
+        # self.bandpass is used as the keyword for cgisim, while self.bandpass_header is used for setting the FITS header.
+        # The distinction arises from differences in naming conventions for filters between cgisim and the latest wiki page.
+
 
 
         #self.bandpass = bandpass 
@@ -228,7 +232,7 @@ class CorgiOptics():
                     'ref_flag':input_scene.ref_flag,
                     'cgi_mode':self.cgi_mode,
                     'cor_type': self.proper_keywords['cor_type'],
-                    'bandpass':self.bandpass,
+                    'bandpass':self.bandpass_header,
                     'over_sampling_factor':self.oversampling_factor,
                     'return_oversample': self.return_oversample,
                     'output_dim': self.grid_dim_out,
@@ -420,7 +424,7 @@ class CorgiOptics():
         # Third: global simulation settings
         sim_info['cgi_mode'] = self.cgi_mode
         sim_info['cor_type'] = self.proper_keywords.get('cor_type')
-        sim_info['bandpass'] = self.bandpass
+        sim_info['bandpass'] = self.bandpass_header
         sim_info['over_sampling_factor'] = self.oversampling_factor
         sim_info['return_oversample'] = self.return_oversample
         sim_info['output_dim'] = self.grid_dim_out

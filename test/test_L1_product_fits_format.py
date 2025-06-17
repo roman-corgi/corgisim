@@ -132,7 +132,7 @@ def test_L1_product_fits_format():
     Vmag = 8
     sptype = 'G0V'
     cgi_mode = 'excam'
-    bandpass = '1b'
+    bandpass = '1B'
     cor_type = 'hlc_band1'
 
     mag_companion = [25,25]
