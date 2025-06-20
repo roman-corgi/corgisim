@@ -255,6 +255,8 @@ class CorgiOptics():
                             'use_lyot_stop','use_field_stop','fsm_x_offset_mas','fsm_y_offset_mas']  # Specify keys to include
         subset = {key: self.proper_keywords[key] for key in keys_to_include_in_header if key in self.proper_keywords}
         sim_info.update(subset)
+        ## add sattelite spots info 
+        #sim_info[SATSPOT] = self.SATSPOT
         sim_info['includ_dectector_noise'] = 'False'
         # Create the HDU object with the generated header information
 
@@ -447,6 +449,8 @@ class CorgiOptics():
                             'use_lyot_stop','use_field_stop','fsm_x_offset_mas','fsm_y_offset_mas']  # Specify keys to include
         subset = {key: self.proper_keywords[key] for key in keys_to_include_in_header if key in self.proper_keywords}
         sim_info.update(subset)
+        ## add sattelite spots info 
+        #sim_info[SATSPOT] = self.SATSPOT
         sim_info['includ_dectector_noise'] = 'False'
         # Create the HDU object with the generated header information
 
