@@ -214,9 +214,19 @@ class CorgiOptics():
 
                 images[i,:,:] = images[i,:,:] * counts
 
-        image = np.sum(images, axis=0)
+            image = np.sum(images, axis=0)
 
-        if self.cgi_mode in ['spec', 'lowfs', 'excam_efield']:
+        if self.cgi_mode == 'spec':
+            ### add the code in this block to generate spec simulation for host star 
+            ## the sequence could be 1) generate the 3D array for the host star psf (x, y, lambda) and also x, and y are oversampled
+                                   # 2) call function apply_slit_mask()
+                                   # 3) call function apply_prism()
+                                   # 4) scale images by counts and collapse 3D array to 2D arrays
+                
+            pass
+
+
+        if self.cgi_mode in ['lowfs', 'excam_efield']:
             raise ValueError(f"The mode '{self.cgi_mode}' has not been implemented yet!")
         
         # Initialize SimulatedImage class to restore the output psf
@@ -441,6 +451,14 @@ class CorgiOptics():
         sim_scene.point_source_image = outputs.create_hdu( np.sum(point_source_image,axis=0), sim_info =sim_info)
 
         return sim_scene
+
+    def apply_slit_mask(self, _3d_array):
+        
+        pass
+
+    def apply_prism(self,_3d_array):
+        pass
+
 
     
 class CorgiDetector(): 
