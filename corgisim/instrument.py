@@ -720,7 +720,11 @@ class CorgiOptics():
                             'slit_x_offset_mas','slit_y_offset_mas']  # Specify keys to include
         subset = {key: self.optics_keywords[key] for key in keys_to_include_in_header if key in self.optics_keywords}
         sim_info.update(subset)
+<<<<<<< HEAD
         ## add sattelite spots info
+=======
+        ## add sattelite spots info 
+>>>>>>> 8d691eb (add lines to update sim_info)
         #sim_info[SATSPOT] = self.SATSPOT
         sim_info['includ_dectector_noise'] = 'False'
         # Create the HDU object with the generated header information
