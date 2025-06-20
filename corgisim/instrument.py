@@ -146,11 +146,11 @@ class CorgiOptics():
         # prihdr[SATSPOTS]= 0: No satellite spots present 
         # prihdr[SATSPOTS]= 1: Satellite spots present
         if satspot_keywords == None:
-            self.SATSPOT == int(0)
+            self.SATSPOT = int(0)
         else:
-            self.SATSPOT == int(1)
+            self.SATSPOT = int(1)
             #### call self.add_satspot() to satellite spots in DM files 
-            #self.proper_keywords['dm1_v'], self.proper_keywords['dm2_v'] = self.add_satspot(satspot_keywords=satspot_keywords)
+            # self.proper_keywords['dm1_v'], self.proper_keywords['dm2_v'] = self.add_satspot(satspot_keywords=satspot_keywords)
             
            
 
