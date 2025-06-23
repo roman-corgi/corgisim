@@ -27,7 +27,7 @@ class CorgiOptics():
 
     '''
 
-    def __init__(self, cgi_mode = None, bandpass= None,  diam = 236.3114, proper_keywords=None, oversampling_factor = 7, return_oversample = False, **kwargs):
+    def __init__(self, cgi_mode = None, bandpass= None,  diam = 236.3114, proper_keywords=None, roll_angle= 0, oversampling_factor = 7, return_oversample = False, **kwargs):
         '''
 
         Initialize the class a keyword dictionary that defines the setup of cgisim/PROPER 
@@ -41,6 +41,7 @@ class CorgiOptics():
         - proper_keywords: A dictionary with the keywords that are used to set up the proper model
         - oversample: An integer that defines the oversampling factor of the detector when generating the image
         - return_oversample: A boolean that defines whether the function should return the oversampled image or not.
+        - roll_angle : float, optional, Telescope roll angle in degrees (0 to 360). Default is 0 deg. A value of 0 means North is up and East is to the left
     
 
         Raises:
@@ -136,6 +137,8 @@ class CorgiOptics():
         # bp: wavelegth is in unit of angstrom
         # bp: throughput is unitless, including transmission, reflectivity and EMCCD quantum efficiency 
         self.bp = self.setup_bandpass(self.cgi_mode, self.bandpass, self.nd)
+
+        self.roll_angle = roll_angle
 
 
 
@@ -236,7 +239,8 @@ class CorgiOptics():
                     'over_sampling_factor':self.oversampling_factor,
                     'return_oversample': self.return_oversample,
                     'output_dim': self.grid_dim_out,
-                    'nd_filter':self.nd}
+                    'nd_filter':self.nd,
+                    'roll_angle':self.roll_angle}
 
         # Define specific keys from self.proper_keywords to include in the header            
         keys_to_include_in_header = ['use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
@@ -371,10 +375,20 @@ class CorgiOptics():
             for j in range(len(point_source_spectra )):
             
                 proper_keywords_comp = self.proper_keywords.copy()
+                if self.roll_angle == 0.0:
+                    x_offset_source_j = point_source_x[j]
+                    y_offset_source_j = point_source_y[j]
+                else:
+                    ##### rotate the telescope based on Roll angle
+                    sep_source_j = np.sqrt(point_source_x[j]**2 +  point_source_y[j]**2)
+                    PA_source_j = calculate_PA(point_source_x[j], point_source_y[j]) ## rad
+                    x_offset_source_j = sep_source_j * np.sin( PA_source_j + np.deg2rad(self.roll_angle) )
+                    y_offset_source_j = sep_source_j * np.cos( PA_source_j + np.deg2rad(self.roll_angle) )
+
                 proper_keywords_comp.update({'output_dim': grid_dim_out_tem,
                                             'final_sampling_m': sampling_um_tem * 1e-6,
-                                            'source_x_offset_mas': point_source_x[j],
-                                            'source_y_offset_mas': point_source_y[j]})
+                                            'source_x_offset_mas': x_offset_source_j,
+                                            'source_y_offset_mas': y_offset_source_j})
 
                 (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE= proper_keywords_comp ,QUIET=True)
                 images_tem = np.abs(fields)**2
@@ -420,6 +434,7 @@ class CorgiOptics():
             sim_info[f'pl_magtype_{i}']= input_scene.point_source_magtype[i]
             sim_info[f'position_x_mas_{i}'] = input_scene.point_source_x[i]
             sim_info[f'position_y_mas_{i}'] = input_scene.point_source_y[i]
+            
 
         # Third: global simulation settings
         sim_info['cgi_mode'] = self.cgi_mode
@@ -429,6 +444,7 @@ class CorgiOptics():
         sim_info['return_oversample'] = self.return_oversample
         sim_info['output_dim'] = self.grid_dim_out
         sim_info['nd_filter'] = self.nd
+        sim_info['roll_angle'] = self.roll_angle
                             
                 # Define specific keys from self.proper_keywords to include in the header            
         keys_to_include_in_header = [ 'use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
@@ -543,7 +559,7 @@ class CorgiDetector():
                 ref_flag = True
             header_info = {'EXPTIME': exptime,'EMGAIN_C':self.emccd_keywords_default['em_gain'],'PSFREF':ref_flag,
                            'PHTCNT':self.photon_counting,'KGAINPAR':self.emccd_keywords_default['e_per_dn'],'cor_type':sim_info['cor_type'], 'bandpass':sim_info['bandpass'],
-                           'cgi_mode': sim_info['cgi_mode'], 'polaxis':sim_info['polaxis']}
+                           'cgi_mode': sim_info['cgi_mode'], 'polaxis':sim_info['polaxis'],'ROLL':float(sim_info['roll_angle'])}
             if 'fsm_x_offset_mas' in sim_info:
                 header_info['FSMX'] = float(sim_info['fsm_x_offset_mas'])
             if 'fsm_y_offset_mas' in sim_info:
@@ -647,7 +663,7 @@ class CorgiDetector():
                                   'em_gain': 1000.0 ,                      # EM gain
                                   'bias': 0,
                                   'pixel_pitch': 13e-6 ,                # detector pixel size in meters
-                                  'apply_smear': True ,                 # (LOWFS only) Apply fast readout smear?  
+                                  'apply_smear': False ,                 # (LOWFS only) Apply fast readout smear?  
                                   'e_per_dn':8.7  ,                    # post-multiplied electrons per data unit
                                   'nbits': 14  ,                        # ADC bits
                                   'numel_gain_register': 604,           # Number of gain register elements 
@@ -682,3 +698,40 @@ class CorgiDetector():
         return emccd
 
 
+def calculate_PA(dx, dy):
+    """
+    Compute the position angle (PA) in radians from offsets in x and y.
+
+    The position angle is measured counterclockwise from North (positive y-axis)
+    to the direction of the vector (dx, dy), following astronomical convention.
+
+    Parameters
+    ----------
+    dx : float
+        Offset in the x-direction (East).
+    dy : float
+        Offset in the y-direction (North).
+
+    Returns
+    -------
+    PA : float
+        Position angle in radians, in the range [0, 2pi).
+    """
+    if dy == 0:
+        if dx > 0:
+            PA = np.pi / 2
+        else:
+            PA = 3 * np.pi / 2
+    else:
+        rat_pos = dx / dy
+        if rat_pos > 0:
+            if dx > 0:
+                PA = np.arctan(rat_pos)
+            else:
+                PA = np.arctan(abs(rat_pos)) + np.pi
+        else:
+            if dx > 0:
+                PA = np.pi - np.arctan(abs(rat_pos))
+            else:
+                PA = 2 * np.pi - np.arctan(abs(rat_pos))
+    return PA
