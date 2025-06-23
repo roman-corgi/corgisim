@@ -91,6 +91,7 @@ def test_L1_product_fits_format():
     assert exthr['FSMY'] == 0.0, f"Expected data FSMY=10, but got {exthr['FSMY']}"
     assert prihr['PSFREF'] == False, f"Expected data PSFREF=False, but got {prihr['PSFREF']}"
     assert prihr['PHTCNT'] == True, f"Expected data PSFREF=True, but got {prihr['PHTCNT']}"
+    assert prihr['ROLL'] == 0.0, f"Expected data ROLL=0, but got {prihr['ROLL']}"
 
     assert exthdr['KGAINPAR'] == 8.7, f"Expected data KGAINPAR=8.7, but got {exthdr['KGAINPAR']}"
     assert exthdr['EMGAIN_C'] == 1000, f"Expected data EMGAIN_C=1000, but got {exthdr['EMGAIN_C']}"
@@ -165,7 +166,7 @@ def test_L1_product_fits_format():
                 ##pass fsm_x_offset_mas and fsm_y_offset_mas for no zero value as test
 
 
-    optics = instrument.CorgiOptics(cgi_mode, bandpass, proper_keywords=proper_keywords, if_quiet=True)
+    optics = instrument.CorgiOptics(cgi_mode, bandpass, proper_keywords=proper_keywords, roll_angle=30, if_quiet=True)
     sim_scene = optics.get_host_star_psf(base_scene)
 
     sim_scene = optics.inject_point_sources(base_scene,sim_scene)
@@ -212,6 +213,7 @@ def test_L1_product_fits_format():
     assert exthdr['EMGAIN_C'] == gain, f"Expected data EMGAIN_C={gain}, but got {exthdr['EMGAIN_C']}"
     assert exthdr['EMGAIN_A'] == gain, f"Expected data EMGAIN_A={gain}, but got {exthdr['EMGAIN_A']}"
     assert exthdr['ISPC'] == 0, f"Expected header ISPC=0, but got {exthdr['ISPC']}"
+    assert prihr['ROLL'] == 30.0, f"Expected data ROLL= 30, but got {prihr['ROLL']}"
  
 
 
