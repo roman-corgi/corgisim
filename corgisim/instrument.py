@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 from emccd_detect.emccd_detect import EMCCDDetectBase, EMCCDDetect
 from corgidrp import mocks
 from corgisim import outputs
+from corgisim import spec
 
 
 class CorgiOptics():
@@ -452,12 +453,6 @@ class CorgiOptics():
 
         return sim_scene
 
-    def apply_slit_mask(self, _3d_array):
-        
-        pass
-
-    def apply_prism(self,_3d_array):
-        pass
 
 
     
