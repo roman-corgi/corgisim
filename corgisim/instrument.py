@@ -5,6 +5,7 @@ from astropy.io import fits
 import roman_preflight_proper
 from corgisim import scene
 import cgisim
+import corgisim
 from synphot.models import BlackBodyNorm1D, Box1D,Empirical1D
 from synphot import units, SourceSpectrum, SpectralElement, Observation
 from synphot.units import validate_wave_unit, convert_flux, VEGAMAG
@@ -13,7 +14,7 @@ from emccd_detect.emccd_detect import EMCCDDetectBase, EMCCDDetect
 from corgidrp import mocks
 from corgisim import outputs
 from corgisim import spec
-
+import os
 
 class CorgiOptics():
     '''
@@ -97,6 +98,39 @@ class CorgiOptics():
         # get mode and bandpass parameters:
         info_dir = cgisim.lib_dir + '/cgisim_info_dir/'
         mode_data, bandpass_data = cgisim.cgisim_read_mode( cgi_mode, proper_keywords['cor_type'], self.bandpass, info_dir )
+
+        # Set directory containing reference data for parameters external to CGISim
+        ref_data_dir = os.path.join(corgisim.lib_dir, 'data')
+        if not os.path.exists(ref_data_dir):
+            raise FileNotFoundError(f"Directory does not exist: {ref_data_dir}")
+        else:
+            self.ref_data_dir = ref_data_dir
+        if self.cgi_mode == 'spec':
+            spec_kw_defaults = {
+                'slit': 'None',
+                'slit_x_offset_mas': 0.0,
+                'slit_y_offset_mas': 0.0,
+                'prism': 'None'
+            }
+            spec_kw_allowed = {
+                'slit': ['None', 'R1C2', 'R6C5', 'R3C1'],
+                'prism': ['None', 'PRISM3', 'PRISM2']
+            }
+            for attr_name, default_value in spec_kw_defaults.items():
+                if attr_name in kwargs:
+                    value = kwargs[attr_name]
+                
+                    if attr_name in spec_kw_allowed:
+                        if value not in spec_kw_allowed[attr_name]:
+                            allowed_str = ", ".join(f"'{v}'" for v in spec_kw_allowed[attr_name])
+                            raise ValueError(
+                                f"Invalid value for '{attr_name}': '{value}'. "
+                                f"Must be one of: {allowed_str}"
+                            )
+                    setattr(self, attr_name, value)
+                else:
+                    setattr(self, attr_name, default_value)
+
 
         self.lam0_um = bandpass_data["lam0_um"] ##central wavelength of the filter in micron
         self.nlam = bandpass_data["nlam"] 
@@ -218,14 +252,53 @@ class CorgiOptics():
             image = np.sum(images, axis=0)
 
         if self.cgi_mode == 'spec':
+            if self.slit != 'None':
+                field_stop_array, field_stop_sampling_m = spec.get_slit_mask(self)
+                self.proper_keywords['field_stop_array']=field_stop_array
+                self.proper_keywords['field_stop_array_sampling_m']=field_stop_sampling_m
+                
             ### add the code in this block to generate spec simulation for host star 
             ## the sequence could be 1) generate the 3D array for the host star psf (x, y, lambda) and also x, and y are oversampled
                                    # 2) call function apply_slit_mask()
                                    # 3) call function apply_prism()
                                    # 4) scale images by counts and collapse 3D array to 2D arrays
                 
-            pass
+            # Compute the observed stellar spectrum within the defined bandpass
+            # obs: wavelegth is in unit of angstrom
+            # obs: flux is in unit of photons/s/cm^2/angstrom
+            obs = Observation(input_scene.stellar_spectrum, self.bp)
 
+            grid_dim_out_tem = self.grid_dim_out * self.oversampling_factor
+            sampling_um_tem = self.sampling_um / self.oversampling_factor
+
+            self.proper_keywords['output_dim']=grid_dim_out_tem
+            self.proper_keywords['final_sampling_m']=sampling_um_tem *1e-6
+            
+            (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=self.proper_keywords,QUIET=self.quiet)
+            images_tem = np.abs(fields)**2
+
+            # Initialize the image array based on whether oversampling is returned
+            images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if self.return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
+            images = np.zeros(images_shape, dtype=float)
+
+            for i in range(images_tem.shape[0]):
+                if self.return_oversample:
+                    ##return the oversampled PSF, default 7 grid per pixel
+                    images[i,:,:] +=  images_tem[i,:,:]
+                else:
+                    ## integrate oversampled PSF back to one grid per pixel
+                    images[i,:,:] +=  images_tem[i,:,:].reshape((self.grid_dim_out,self.oversampling_factor,self.grid_dim_out,self.oversampling_factor)).mean(3).mean(1) * self.oversampling_factor**2
+
+                dlam_um = self.lam_um[1]-self.lam_um[0]
+                lam_um_l = (self.lam_um[i]- 0.5*dlam_um) * 1e4 ## unit of anstrom
+                lam_um_u = (self.lam_um[i]+ 0.5*dlam_um) * 1e4 ## unit of anstrom
+                # ares in unit of cm^2
+                # counts in unit of photos/s
+                counts = self.polarizer_transmission * obs.countrate(area=self.area, waverange=[lam_um_l, lam_um_u])
+
+                images[i,:,:] = images[i,:,:] * counts
+
+            image = np.sum(images, axis=0)
 
         if self.cgi_mode in ['lowfs', 'excam_efield']:
             raise ValueError(f"The mode '{self.cgi_mode}' has not been implemented yet!")
