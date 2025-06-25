@@ -93,7 +93,6 @@ class CorgiOptics():
 
 
         #self.bandpass = bandpass 
-        ##test
 
         # get mode and bandpass parameters:
         info_dir = cgisim.lib_dir + '/cgisim_info_dir/'
