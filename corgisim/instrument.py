@@ -70,9 +70,10 @@ class CorgiOptics():
 
         valid_cgi_modes = ['excam', 'spec', 'lowfs', 'excam_efield']
         valid_cor_types = ['hlc', 'hlc_band1', 'spc-spec', 'spc-spec_band2', 'spc-spec_band3', 'spc-wide', 'spc-wide_band4', 
-                        'spc-wide_band1', 'spc-mswc', 'spc-mswc_band4','spc-mswc_band1', 'zwfs',
-                        'hlc_band2', 'hlc_band3', 'hlc_band4', 'spc-spec_rotated', 'spc-spec_band2_rotated', 'spc-spec_band3_rotated']
+                        'spc-wide_band1', 'hlc_band2', 'hlc_band3', 'hlc_band4', 'spc-spec_rotated', 'spc-spec_band2_rotated', 'spc-spec_band3_rotated']
 
+       # 'spc-mswc', 'spc-mswc_band4','spc-mswc_band1', 'zwfs', these cor_type is availbale in cgisim, but we currently don't support them in corgisim 
+       
         if cgi_mode not in valid_cgi_modes:
             raise Exception('ERROR: Requested mode does not match any available mode')
      
