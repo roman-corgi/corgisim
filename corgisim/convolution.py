@@ -110,6 +110,14 @@ def _bilinear_indices_weights(r_lamD, theta_deg, radii_lamD, azimuths_deg):
 
     return (k00, k10, k01, k11), (w00, w10, w01, w11)
 
+def is_not_power_of_two(n):
+    return n <= 0 or (n & (n - 1)) != 0
+
+def round_up_to_power_of_two(n):
+    if n < 1:
+        return 1
+    return 1 << (n - 1).bit_length()
+
 def build_sampling_grid(fine_sampling, coarse_sampling,
                         iwa, owa, sampling_theta,
                         resolution_elem, res_mas):
@@ -187,12 +195,12 @@ def make_prf_cube(radii_lamD, azimuths_deg, c_lam,
                                               bandwidth_frac,
                                               source_sed)
 
-    # polar grid list
     azimuths_deg = u.Quantity(azimuths_deg, u.deg)
     rr2d, tt2d   = np.meshgrid(radii_lamD, azimuths_deg, indexing="ij")
     mask         = ~((rr2d == 0) & (tt2d != 0 * u.deg))
-    rr, tt       = rr2d.ravel()[mask], tt2d.ravel()[mask]
-    n_prf        = rr.size
+    rr = rr2d.ravel()[mask.ravel()]
+    tt = tt2d.ravel()[mask.ravel()]
+    n_prf = rr.size # number of PRFs to compute
 
     prop_opts = {} if prop_opts is None else prop_opts.copy()
     prf_cube = np.empty((n_prf, prf_width_px, prf_width_px), np.float32)
@@ -213,6 +221,9 @@ def make_prf_cube(radii_lamD, azimuths_deg, c_lam,
         wfs, _ = proper.prop_run_multi(prop_tag, lam_grid,
                                        prf_width_px, QUIET=True,
                                        PASSVALUE=run_opts)
+
+        print(f'sxhape(prf_cube) and lam_wts: {np.shape(prf_cube), np.shape(lam_wts)}')
+        # (fields, sampling) = proper.prop_run_multi('roman_preflight', self.lam_um, 1024,PASSVALUE=self.proper_keywords,QUIET=self.quiet)
         prf_cube[idx-1] = np.tensordot(lam_wts, np.abs(wfs)**2, axes=(0, 0))
         _bar(idx)
 
