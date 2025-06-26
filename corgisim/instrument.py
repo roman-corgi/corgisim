@@ -138,7 +138,11 @@ class CorgiOptics():
         self.sampling_lamref_div_D = mode_data['sampling_lamref_div_D'] 
         self.lamref_um = mode_data['lamref_um'] ## ref wavelength in micron
         self.owa_lamref = mode_data['owa_lamref'] ## out working angle
-        self.sampling_um = mode_data['sampling_um'] ### size of pixel in micron
+        if self.cgi_mode == 'spec':
+            baseline_mode_data, _ = cgisim.cgisim_read_mode('excam', 'hlc_band1', '1', info_dir=info_dir)
+            self.sampling_um = baseline_mode_data['sampling_um']
+        else:
+            self.sampling_um = mode_data['sampling_um'] ### size of pixel in micron
 
         self.diam = diam  ## diameter of Roman primary in cm, default is 236.114 cm
         # Effective collecting area in unit of cm^2, 
@@ -272,8 +276,8 @@ class CorgiOptics():
             sampling_um_tem = self.sampling_um / self.oversampling_factor
 
             self.proper_keywords['output_dim']=grid_dim_out_tem
-            # self.proper_keywords['final_sampling_m']=sampling_um_tem *1e-6
-            self.proper_keywords['final_sampling_lam0'] = 0.1 / self.oversampling_factor
+            self.proper_keywords['final_sampling_m']=sampling_um_tem *1e-6
+            # self.proper_keywords['final_sampling_lam0'] = 0.1 / self.oversampling_factor
             
             (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024, PASSVALUE=self.proper_keywords, QUIET=self.quiet)
             images_tem = np.abs(fields)**2
