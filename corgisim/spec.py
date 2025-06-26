@@ -65,7 +65,7 @@ def get_slit_mask(config, dx_hires_um = 0.1, hires_dim_um = 800, binfac = 50):
     else:
         fsam_meter_per_lamD = 1.48513E-5 / (1000 / 2048) # Roman preflight proper model manual
 
-    mas_per_lamD = config.lamref_um * 1E6 * 360.0 * 3600.0 / (2 * np.pi * 2.363) * 1000    # mas per lambda0/D, defined in roman preflight proper model
+    mas_per_lamD = config.lamref_um * 1E-6 * 360.0 * 3600.0 / (2 * np.pi * 2.363) * 1000    # mas per lambda0/D, defined in roman preflight proper model
     fsam_meter_per_mas = fsam_meter_per_lamD / mas_per_lamD
 
     slit_ref_param_fname = os.path.join(config.ref_data_dir, 'FSAM_slit_params.json')

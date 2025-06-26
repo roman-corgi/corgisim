@@ -272,9 +272,10 @@ class CorgiOptics():
             sampling_um_tem = self.sampling_um / self.oversampling_factor
 
             self.proper_keywords['output_dim']=grid_dim_out_tem
-            self.proper_keywords['final_sampling_m']=sampling_um_tem *1e-6
+            # self.proper_keywords['final_sampling_m']=sampling_um_tem *1e-6
+            self.proper_keywords['final_sampling_lam0'] = 0.1 / self.oversampling_factor
             
-            (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=self.proper_keywords,QUIET=self.quiet)
+            (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024, PASSVALUE=self.proper_keywords, QUIET=self.quiet)
             images_tem = np.abs(fields)**2
 
             # Initialize the image array based on whether oversampling is returned
