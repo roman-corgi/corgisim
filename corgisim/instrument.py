@@ -105,12 +105,14 @@ class CorgiOptics():
             raise FileNotFoundError(f"Directory does not exist: {ref_data_dir}")
         else:
             self.ref_data_dir = ref_data_dir
+        # Set the spectroscopy parameters
         if self.cgi_mode == 'spec':
             spec_kw_defaults = {
-                'slit': 'None',
-                'slit_x_offset_mas': 0.0,
-                'slit_y_offset_mas': 0.0,
-                'prism': 'None'
+                'slit': 'None', # named FSAM slit
+                'slit_x_offset_mas': 0.0, # offset of slit position from star on EXCAM, in mas
+                'slit_y_offset_mas': 0.0, # offset of slit position from star on EXCAM, in mas
+                'prism': 'None', # named DPAM prism
+                'wav_step_um': 1E-3 # wavelength step size of the prism dispersion model, in microns 
             }
             spec_kw_allowed = {
                 'slit': ['None', 'R1C2', 'R6C5', 'R3C1'],
@@ -130,7 +132,18 @@ class CorgiOptics():
                     setattr(self, attr_name, value)
                 else:
                     setattr(self, attr_name, default_value)
-
+            if self.prism != 'None':
+                prism_param_fname = os.path.join(ref_data_dir, 'TVAC_{:s}_dispersion_profile.npz'.format(self.prism))
+                if not os.path.exists(prism_param_fname):
+                    raise FileNotFoundError(f"Prism parameter file {prism_param_fname} does not exist")
+                else:
+                    setattr(self, 'prism_param_fname', prism_param_fname)
+            if self.slit != 'None':
+                slit_param_fname = os.path.join(ref_data_dir, 'FSAM_slit_params.json')
+                if not os.path.exists(slit_param_fname):
+                    raise FileNotFoundError(f"Slit aperture parameter file {slit_param_fname} does not exist")
+                else:
+                    setattr(self, 'slit_param_fname', slit_param_fname)
 
         self.lam0_um = bandpass_data["lam0_um"] ##central wavelength of the filter in micron
         self.nlam = bandpass_data["nlam"] 
@@ -277,10 +290,17 @@ class CorgiOptics():
 
             self.proper_keywords['output_dim']=grid_dim_out_tem
             self.proper_keywords['final_sampling_m']=sampling_um_tem *1e-6
-            # self.proper_keywords['final_sampling_lam0'] = 0.1 / self.oversampling_factor
             
-            (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024, PASSVALUE=self.proper_keywords, QUIET=self.quiet)
+            (fields, sampling) = proper.prop_run_multi('roman_preflight', self.lam_um, 1024, PASSVALUE=self.proper_keywords, QUIET=self.quiet)
             images_tem = np.abs(fields)**2
+
+            # If a prism was selected, apply the dispersion model and overwrite the image cube and wavelength array.
+            if self.prism != 'None': 
+                images_tem, dispersed_lam_um = spec.apply_prism(self, images_tem)
+
+                self.nlam = len(dispersed_lam_um)
+                self.lam_um = dispersed_lam_um
+                dlam_um = dispersed_lam_um[1] - dispersed_lam_um[0]
 
             # Initialize the image array based on whether oversampling is returned
             images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if self.return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
