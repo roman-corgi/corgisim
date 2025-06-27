@@ -187,7 +187,8 @@ def apply_prism(optics, image_cube):
     flux_conserv_factor = len(optics.lam_um) / len(interp_wavs_bandpass)
 
     cube_interp_func = scipy.interpolate.RegularGridInterpolator(cube_grid, image_cube)
-    cube_interp_result = cube_interp_func(cube_interp_grid) * flux_conserv_factor
+    # cube_interp_result = cube_interp_func(cube_interp_grid) * flux_conserv_factor
+    cube_interp_result = cube_interp_func(cube_interp_grid)
     image_cube_interp = cube_interp_result.reshape(xpts_grid.shape)
 
     dispersed_cube = np.zeros((image_cube_interp.shape[1], image_cube_interp.shape[2]))

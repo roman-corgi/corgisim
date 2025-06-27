@@ -268,21 +268,12 @@ class CorgiOptics():
 
             image = np.sum(images, axis=0)
 
-        if self.cgi_mode == 'spec':
+        elif self.cgi_mode == 'spec':
             if self.slit != 'None':
                 field_stop_array, field_stop_sampling_m = spec.get_slit_mask(self)
                 self.proper_keywords['field_stop_array']=field_stop_array
                 self.proper_keywords['field_stop_array_sampling_m']=field_stop_sampling_m
                 
-            ### add the code in this block to generate spec simulation for host star 
-            ## the sequence could be 1) generate the 3D array for the host star psf (x, y, lambda) and also x, and y are oversampled
-                                   # 2) call function apply_slit_mask()
-                                   # 3) call function apply_prism()
-                                   # 4) scale images by counts and collapse 3D array to 2D arrays
-                
-            # Compute the observed stellar spectrum within the defined bandpass
-            # obs: wavelegth is in unit of angstrom
-            # obs: flux is in unit of photons/s/cm^2/angstrom
             obs = Observation(input_scene.stellar_spectrum, self.bp)
 
             grid_dim_out_tem = self.grid_dim_out * self.oversampling_factor
@@ -511,9 +502,82 @@ class CorgiOptics():
 
                 image = np.sum(images, axis=0)
                 point_source_image.append(image) 
+        elif self.cgi_mode == 'spec':
+            # Extract point source spectra and positions
+            point_source_spectra = input_scene.off_axis_source_spectrum
+            point_source_x = input_scene.point_source_x
+            point_source_y = input_scene.point_source_y
+
+            # Ensure all inputs are lists for uniform processing
+            if not isinstance(point_source_spectra, list):
+                point_source_spectra = [point_source_spectra]
+            if not isinstance(point_source_x, list):
+                point_source_x = [point_source_x]
+            if not isinstance(point_source_y, list):
+                point_source_y = [point_source_y]
+
+            # Ensure all lists have the same length
+            if not (len(point_source_spectra) == len(point_source_x) == len(point_source_y)):
+                raise ValueError(
+                    f"Mismatch in input lengths: {len(point_source_spectra)} spectra, "
+                    f"{len(point_source_x)} x-positions, {len(point_source_y)} y-positions. "
+                    "Each point source must have a corresponding (x, y) position.")
+
+            if self.slit != 'None':
+                field_stop_array, field_stop_sampling_m = spec.get_slit_mask(self)
+                self.proper_keywords['field_stop_array']=field_stop_array
+                self.proper_keywords['field_stop_array_sampling_m']=field_stop_sampling_m
+
+            # Compute the observed  spectrum for each off-axis source
+            obs_point_source = [Observation(spectrum, self.bp) for spectrum in point_source_spectra]
             
-       
-        if self.cgi_mode in ['spec', 'lowfs', 'excam_efield']:
+            grid_dim_out_tem = self.grid_dim_out * self.oversampling_factor
+            sampling_um_tem = self.sampling_um / self.oversampling_factor
+            
+            point_source_image = []
+            for j in range(len(point_source_spectra )):
+                proper_keywords_comp = self.proper_keywords.copy()
+                proper_keywords_comp.update({'output_dim': grid_dim_out_tem,
+                                            'final_sampling_m': sampling_um_tem * 1e-6,
+                                            'source_x_offset_mas': point_source_x[j],
+                                            'source_y_offset_mas': point_source_y[j]})
+
+                (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE= proper_keywords_comp ,QUIET=True)
+                images_tem = np.abs(fields)**2
+
+                # If a prism was selected, apply the dispersion model and overwrite the image cube and wavelength array.
+                if self.prism != 'None': 
+                    images_tem, dispersed_lam_um = spec.apply_prism(self, images_tem)
+    
+                    self.nlam = len(dispersed_lam_um)
+                    self.lam_um = dispersed_lam_um
+                    dlam_um = dispersed_lam_um[1] - dispersed_lam_um[0]
+
+                # Initialize the image array based on whether oversampling is returned
+                images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if self.return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
+                images = np.zeros(images_shape, dtype=float) 
+
+                for i in range(images_tem.shape[0]):
+                    if self.return_oversample:
+                        ##return the oversampled PSF, default 7 grid per pixel
+                        images[i,:,:] +=  images_tem[i,:,:]
+                    else:
+                        ## integrate oversampled PSF back to one grid per pixel
+                        images[i,:,:] +=  images_tem[i,:,:].reshape((self.grid_dim_out,self.oversampling_factor,self.grid_dim_out,self.oversampling_factor)).mean(3).mean(1) * self.oversampling_factor**2
+
+                    dlam_um = self.lam_um[1]-self.lam_um[0]
+                    lam_um_l = (self.lam_um[i]- 0.5*dlam_um) * 1e4 ## unit of anstrom
+                    lam_um_u = (self.lam_um[i]+ 0.5*dlam_um) * 1e4 ## unit of anstrom
+                    # ares in unit of cm^2
+                    # counts in unit of photos/s
+                    counts = self.polarizer_transmission * obs_point_source[j].countrate(area=self.area, waverange=[lam_um_l, lam_um_u])
+
+                    images[i,:,:] = images[i,:,:] * counts
+
+                image = np.sum(images, axis=0)
+                point_source_image.append(image) 
+
+        if self.cgi_mode in ['lowfs', 'excam_efield']:
             raise ValueError(f"The mode '{self.cgi_mode}' has not been implemented yet!")
         
         if sim_scene == None:
