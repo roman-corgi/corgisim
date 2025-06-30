@@ -270,7 +270,7 @@ class CorgiOptics():
 
         elif self.cgi_mode == 'spec':
             if self.slit != 'None':
-                field_stop_array, field_stop_sampling_m = spec.get_slit_mask(self, binfac=100)
+                field_stop_array, field_stop_sampling_m = spec.get_slit_mask(self)
                 self.proper_keywords['field_stop_array']=field_stop_array
                 self.proper_keywords['field_stop_array_sampling_m']=field_stop_sampling_m
             else:

@@ -6,7 +6,113 @@ import os
 from pathlib import Path
 import scipy.interpolate
 
-def get_slit_mask(optics, dx_hires_um = 0.1, hires_dim_um = 800, binfac = 50):
+def get_slit_mask(optics, dx_fsam_um = 10.0, hires_dim_um = 800, binfac = 50):
+    """
+    Generate an FSAM slit mask array for spec mode simulations
+    
+    This function creates a high-resolution slit mask based on the specified aperture
+    parameters and then bins it down to an intermediate spatial resolution.
+    The function handles slit positioning offsets,
+    and proper scaling based on the coronagraph configuration.
+    
+    Parameters
+    ----------
+    optics : object
+        CorgiOptics configuration object containing:
+        - cor_type : str
+            Coronagraph type ('spc-spec_band3' or other)
+        - lamref_um : float
+            Reference wavelength of mode in micrometers
+        - ref_data_dir : str
+            Directory path containing reference data files
+        - slit : str
+            Name of the slit to use
+        - slit_x_offset_mas : float or None
+            Slit offset in x-direction in milliarcseconds
+        - slit_y_offset_mas : float or None
+            Slit offset in y-direction in milliarcseconds
+    dx_fsam_um : float, optional
+        FSAM slit array spatial sampling in micrometers (default: 10.0)
+    hires_dim_um : float, optional
+        High-resolution array dimension in micrometers (default: 800)
+    binfac : int, optional  
+        Binning factor for downsampling (default: 50)
+    
+    Returns
+    -------
+    binned_slit : numpy.ndarray
+        2D array representing the FSAM slit transmision, with values between 0 and 1
+    dx_fsam_m : float
+        Spatial sampling of FSAM slit array in meters
+        
+    Raises
+    ------
+    Exception
+        If the requested slit is not defined in the reference parameter file
+    ValueError
+        If the binning factor does not evenly divide the image dimensions
+        
+    Notes
+    -----
+    - Uses Roman Space Telescope preflight proper model parameters for scaling
+    - Slit parameters are loaded from 'FSAM_slit_params.json' reference file
+    - The function applies user-specified offsets
+    
+    Examples
+    --------
+    >>> binned_mask, pixel_size = get_slit_mask(self, binfac=25)
+    >>> print(f"Binned mask shape: {binned_mask.shape}")
+    """
+    if optics.proper_keywords['cor_type'] == 'spc-spec_band2':
+        fsam_meter_per_lamD = 1.34273E-5 / (1000 / 2048) # Roman preflight proper model manual
+    else:
+        fsam_meter_per_lamD = 1.48513E-5 / (1000 / 2048) # Roman preflight proper model manual
+
+    mas_per_lamD = optics.lamref_um * 1E-6 * 360.0 * 3600.0 / (2 * np.pi * 2.363) * 1000    # mas per lambda0/D, defined in roman preflight proper model
+    fsam_meter_per_mas = fsam_meter_per_lamD / mas_per_lamD
+
+    slit_ref_params = read_slit_params(optics.slit_param_fname)
+    if optics.slit not in slit_ref_params.keys():
+        raise Exception('ERROR: Requested slit {:s} is not defined in {:s}'.format(optics.slit, optics.slit_param_fname))
+
+    if optics.slit_x_offset_mas == None:
+        optics.slit_x_offset_mas = 0 
+    if optics.slit_y_offset_mas == None:
+        optics.slit_y_offset_mas = 0
+
+    (slit_x_offset_um, slit_y_offset_um) = (1E6 * fsam_meter_per_mas * optics.slit_x_offset_mas,
+                                            1E6 * fsam_meter_per_mas * optics.slit_y_offset_mas) 
+
+    dx_hires_um = dx_fsam_um / binfac # spatial sampling of binned array in microns
+    dx_fsam_m = dx_fsam_um * 1E-6 # meters
+
+    hires_dimx, hires_dimy = (int(hires_dim_um / dx_hires_um), int(hires_dim_um / dx_hires_um))
+    if not (hires_dimy % binfac == 0 and hires_dimx % binfac == 0):
+        raise ValueError(f"Binning factor {binfac} does not evenly divide image dimensions. "
+                        f"hires_dimy ({hires_dimy}) % binfac = {hires_dimy % binfac}, "
+                        f"hires_dimx ({hires_dimx}) % binfac = {hires_dimx % binfac}")
+
+    if hires_dimx % 2 == 0:
+        xc = hires_dimx // 2 - 0.5 + slit_x_offset_um / dx_hires_um
+        yc = hires_dimy // 2 - 0.5 + slit_y_offset_um / dx_hires_um
+    else:
+        xc = hires_dimx // 2 + slit_x_offset_um / dx_hires_um
+        yc = hires_dimy // 2 + slit_y_offset_um / dx_hires_um
+
+    xs = np.arange(hires_dimx) - xc
+    ys = np.arange(hires_dimy) - yc
+    XXs, YYs = np.meshgrid(xs, ys)
+
+    slit_width_hires = 1.0 / dx_hires_um * slit_ref_params[optics.slit]['width'] 
+    slit_height_hires = 1.0 / dx_hires_um * slit_ref_params[optics.slit]['height']
+    hires_slit = ((np.abs(XXs) < slit_width_hires / 2) & 
+                  (np.abs(YYs) < slit_height_hires / 2))
+    binned_slit = hires_slit.reshape(hires_dimy // binfac, binfac, 
+                                     hires_dimx // binfac, binfac).mean(axis=3).mean(axis=1)
+
+    return binned_slit, dx_fsam_m
+
+def get_slit_mask_old(optics, dx_hires_um = 0.1, hires_dim_um = 800, binfac = 50):
     """
     Generate an FSAM slit mask array for spec mode simulations
     
