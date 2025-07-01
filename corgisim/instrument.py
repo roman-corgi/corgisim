@@ -1,5 +1,6 @@
 
 import proper
+import warnings
 import numpy as np
 from astropy.io import fits
 import roman_preflight_proper
@@ -36,6 +37,7 @@ class CorgiOptics():
 
         Initialize the class with two dictionaries: 
         - cgi_mode (str): define cgi simulation mode, valid values: 'excam', 'spec', ‘lowfs’, ‘excam_efield’
+        - cor_type (str): define coronagraphic observing modes
         - bandpass (str): pre-difined bandpass for Roman-CGI
         - diam (float) in meter: diameter of the primaru mirror, the default value is 2.363114 meter
         - proper_keywords: A dictionary with the keywords that are used to set up the proper model
@@ -82,6 +84,7 @@ class CorgiOptics():
             raise Exception('ERROR: Requested coronagraph does not match any available types')
 
         self.cgi_mode = cgi_mode
+        self.cor_type = proper_keywords['cor_type']
         if bandpass  in ['1F','2F','3F','4F']:
             self.bandpass = bandpass.split('F')[0]
         else:
@@ -356,6 +359,27 @@ class CorgiOptics():
                     f"Mismatch in input lengths: {len(point_source_spectra)} spectra, "
                     f"{len(point_source_x)} x-positions, {len(point_source_y)} y-positions. "
                     "Each point source must have a corresponding (x, y) position.")
+            
+            ##checks to see if point source is within FOV of coronagraph
+            FOV_range = [[3, 9.7], [3, 9.1], [5.9, 20.1]]
+            if(self.cor_type.find('hlc') != -1):
+                FOV_index = 0
+            elif (self.cor_type.find('spec') != -1):
+                if (self.cor_type.find('rotated') != -1):
+                    FOV_index = -1
+                else:
+                    FOV_index = 1
+            else:
+                FOV_index = 2
+            #Convert point source positions to polar coordinates, radius is in units of lambda/d, angle is in degrees
+            point_source_radius = np.sqrt(np.power(point_source_x, 2) + np.power(point_source_y, 2)) * ((self.diam * 1e-2)/(self.lam0_um * 1e-6 * 206265000))
+            point_source_angle = np.degrees(np.atan2(point_source_y, point_source_y))
+            print(point_source_angle)
+            for j in range(len(point_source_spectra)):
+                if ((FOV_index != -1 and (not FOV_range[FOV_index][0] <= point_source_radius[j] <= FOV_range[FOV_index][1]))
+                    or (FOV_index == 1 and 32.5 < abs(point_source_angle[j]) < 147.5)
+                    or (FOV_index == -1 and (-102.5 < point_source_angle[j] < 12.5 or 77.5 < point_source_angle[j] <= 180 or -180 <= point_source_angle[j] < -167.5))):
+                    warnings.warn('The point source is located outside the coronagraph FOV coverage')
 
             # Compute the observed  spectrum for each off-axis source
             obs_point_source = [Observation(spectrum, self.bp) for spectrum in point_source_spectra]

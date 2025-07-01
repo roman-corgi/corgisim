@@ -20,17 +20,17 @@ def test_spc_mode():
     Vmag = 8
     sptype = 'G0V'
     cgi_mode = 'excam'
-    bandpass_corgisim = '2F'
-    bandpass_cgisim = '2'
-    cor_type = 'spc-spec_band2'
+    bandpass_corgisim = '4F'
+    bandpass_cgisim = '4'
+    cor_type = 'spc-wide'
     
     #### simulate using corgisim
     host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype':'vegamag'}
     #Create a Scene object that holds all this information
     base_scene = scene.Scene(host_star_properties)
     ####setup the wavelength for the simulation, nlam=1 for monochromatic image, nlam>1 for broadband image 
-    cases = ['1e-9']       
-    rootname = 'spc-spec_ni_' + cases[0]
+    cases = ['2e-8']       
+    rootname = 'spc-wide_ni_' + cases[0]
     dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm1_v.fits' )
     dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm2_v.fits' )
 
