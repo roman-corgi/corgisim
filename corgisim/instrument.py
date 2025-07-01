@@ -385,7 +385,7 @@ class CorgiOptics():
                 if ((FOV_index == 1 and self.cor_type.find('rotated') == -1 and (32.5 < point_source_angle[j] < 147.5 or 212.5 < point_source_angle[j] < 327.5))
                     or (FOV_index == 1 and self.cor_type.find('rotated') != -1 
                         and (0 <= point_source_angle[j] < 12.5 or 77.5 < point_source_angle[j] < 192.5 or 257.5 < point_source_angle[j] <= 360))):
-                    warnings.warn(f"The point source is at angle {point_source_angle} with respect to the +x axis, "
+                    warnings.warn(f"The point source is at angle {point_source_angle[j]} with respect to the +x axis, "
                                   f"which is outside the coronagraph azimuthal angle range of "
                                   f"{'327.5 to 360, 0 to 32.5, and 147.5 to 212.5'if self.cor_type.find('rotated') != -1 else '12.5 to 77.5 and 192.5 to 257.5'} "
                                   f"for {self.cor_type}")
