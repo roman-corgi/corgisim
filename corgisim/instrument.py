@@ -374,7 +374,6 @@ class CorgiOptics():
             #Convert point source positions to polar coordinates, radius is in units of lambda/d, angle is in degrees
             point_source_radius = np.sqrt(np.power(point_source_x, 2) + np.power(point_source_y, 2)) * ((self.diam * 1e-2)/(self.lam0_um * 1e-6 * 206265000))
             point_source_angle = np.degrees(np.atan2(point_source_y, point_source_y))
-            print(point_source_angle)
             for j in range(len(point_source_spectra)):
                 if ((FOV_index != -1 and (not FOV_range[FOV_index][0] <= point_source_radius[j] <= FOV_range[FOV_index][1]))
                     or (FOV_index == 1 and 32.5 < abs(point_source_angle[j]) < 147.5)
