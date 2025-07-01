@@ -548,7 +548,7 @@ class CorgiOptics():
                                             'source_x_offset_mas': point_source_x[j],
                                             'source_y_offset_mas': point_source_y[j]})
 
-                (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE= proper_keywords_comp ,QUIET=True)
+                (fields, sampling) = proper.prop_run_multi('roman_preflight', self.lam_um, 1024, PASSVALUE=proper_keywords_comp ,QUIET=True)
                 images_tem = np.abs(fields)**2
 
                 # If a prism was selected, apply the dispersion model and overwrite the image cube and wavelength array.

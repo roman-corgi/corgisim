@@ -63,6 +63,9 @@ def get_slit_mask(optics, dx_fsam_um = 10.0, hires_dim_um = 800, binfac = 50):
     >>> binned_mask, pixel_size = get_slit_mask(self, binfac=25)
     >>> print(f"Binned mask shape: {binned_mask.shape}")
     """
+    if not hires_dim_um % dx_fsam_um == 0:
+        raise ValueError(f"The spatial dimension of the binned FSAM array, hires_dim_um={hires_dim_um} microns, is not a whole number ratio to the binned spatial sampling scale, dx_fsam_um={dx_fsam_um} microns.")
+
     if optics.proper_keywords['cor_type'] == 'spc-spec_band2':
         fsam_meter_per_lamD = 1.34273E-5 / (1000 / 2048) # Roman preflight proper model manual
     else:
@@ -85,12 +88,7 @@ def get_slit_mask(optics, dx_fsam_um = 10.0, hires_dim_um = 800, binfac = 50):
 
     dx_hires_um = dx_fsam_um / binfac # spatial sampling of binned array in microns
     dx_fsam_m = dx_fsam_um * 1E-6 # meters
-
     hires_dimx, hires_dimy = (int(hires_dim_um / dx_hires_um), int(hires_dim_um / dx_hires_um))
-    if not (hires_dimy % binfac == 0 and hires_dimx % binfac == 0):
-        raise ValueError(f"Binning factor {binfac} does not evenly divide image dimensions. "
-                        f"hires_dimy ({hires_dimy}) % binfac = {hires_dimy % binfac}, "
-                        f"hires_dimx ({hires_dimx}) % binfac = {hires_dimx % binfac}")
 
     if hires_dimx % 2 == 0:
         xc = hires_dimx // 2 - 0.5 + slit_x_offset_um / dx_hires_um
@@ -105,12 +103,13 @@ def get_slit_mask(optics, dx_fsam_um = 10.0, hires_dim_um = 800, binfac = 50):
 
     slit_width_hires = 1.0 / dx_hires_um * slit_ref_params[optics.slit]['width'] 
     slit_height_hires = 1.0 / dx_hires_um * slit_ref_params[optics.slit]['height']
-    hires_slit = ((np.abs(XXs) < slit_width_hires / 2) & 
-                  (np.abs(YYs) < slit_height_hires / 2))
+    hires_slit = ((np.abs(XXs) < slit_height_hires / 2) & 
+                  (np.abs(YYs) < slit_width_hires / 2))
     binned_slit = hires_slit.reshape(hires_dimy // binfac, binfac, 
                                      hires_dimx // binfac, binfac).mean(axis=3).mean(axis=1)
-
-    return binned_slit, dx_fsam_m
+    # Rotate and flip the slit array to match the orientation as applied in the Proper model
+    rot_binned_slit = np.fliplr(np.rot90(binned_slit, 3))
+    return rot_binned_slit, dx_fsam_m
 
 def get_slit_mask_old(optics, dx_hires_um = 0.1, hires_dim_um = 800, binfac = 50):
     """

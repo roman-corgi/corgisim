@@ -12,8 +12,8 @@ def mock_optics():
         lamref_um = 0.73
         slit_param_fname = ''
         slit = 'test_slit'
-        slit_x_offset_mas = 0
-        slit_y_offset_mas = 0
+        slit_x_offset_mas = 50
+        slit_y_offset_mas = 100
     return MockOptics()
 
 @pytest.fixture
@@ -29,29 +29,29 @@ def mock_read_slit_params(monkeypatch):
 
 def test_get_slit_mask(mock_optics, mock_read_slit_params):
     # Test normal operation
-    mask, dx = spec.get_slit_mask(mock_optics)
+    mask, dx_fsam_meters = spec.get_slit_mask(mock_optics, dx_fsam_um = 2.0, hires_dim_um = 200)
     
     # Test shape
-    assert mask.shape == (160, 160), "Mask shape is incorrect"
+    assert mask.shape == (100, 100), "Mask shape is incorrect"
     
     # Test values
     assert np.all((mask >= 0) & (mask <= 1)), "Mask values should be between 0 and 1"
     assert np.any(mask > 0), "Mask should have some non-zero values"
     assert np.any(mask < 1), "Mask should have some non-one values"
     
-    # Test dx
-    assert pytest.approx(dx, 1e-9) == 5e-6, "dx value is incorrect"
+    # Test dx_fsam_meters
+    assert pytest.approx(dx_fsam_meters, 1E-9) == 2E-6, "dx value is incorrect"
     
 def test_invalid_binning(mock_optics, mock_read_slit_params):
-    # Test invalid binning
+    # Test invalid array dimension and sampling combination
     with pytest.raises(ValueError):
-        spec.get_slit_mask(mock_optics, binfac=33)
+        spec.get_slit_mask(mock_optics, dx_fsam_um = 3.0, hires_dim_um = 200)
 
 def test_read_slit_params(tmp_path):
     # Create a temporary JSON file
     test_data = {
         "slit1": {"width": 10, "height": 100},
-        "slit2": {"width": 20, "height": 200}
+        "slit2": {"width": 20, "height": 100}
     }
     temp_file = tmp_path / "test_slit_params.json"
     with open(temp_file, "w") as f:
