@@ -135,8 +135,10 @@ def test_apply_prism():
     # Create a mock image cube
     mock_imwidth = 250
     mock_nlam = 5
+    hwbox = 3 
+    (xc, yc) = (mock_imwidth//2, mock_imwidth//2)
     image_cube = np.zeros((mock_nlam, mock_imwidth, mock_imwidth))
-    image_cube[:, mock_imwidth // 2, mock_imwidth // 2] = 1  # Single bright pixel in center for all wavelengths
+    image_cube[:, yc-hwbox:yc+hwbox, xc-hwbox:xc+hwbox] = 1  # Mock image cube is a box of bright pixels at center for all wavelengths
 
     for config in [prism3_config, prism2_config]:
         dispersed_cube, interp_wavs = spec.apply_prism(config, image_cube)
@@ -152,19 +154,21 @@ def test_apply_prism():
         # Check that the output is not all zeros
         assert np.any(dispersed_cube != 0), "Dispersed cube should not be all zeros"
     
-        # Check that dispersion occurred
-        center_flux = np.sum(dispersed_cube[:, 10, 10])
-        total_flux = np.sum(dispersed_cube)
-        print(f"Flux in center pixel: {center_flux}")
-        print(f"Total flux in dispersed cube: {total_flux}")
-    
-        # assert center_flux < total_flux, "Dispersion should spread flux from center"
-        # assert np.isclose(total_flux, image_cube.sum(), rtol=1e-5), "Total flux should be conserved"
-    
         # Check wavelength array
         assert len(interp_wavs) == dispersed_cube.shape[0], "Wavelength array should match dispersed cube size"
         assert np.min(interp_wavs) >= np.min(config.lam_um), "Min wavelength should not decrease"
         assert np.max(interp_wavs) <= np.max(config.lam_um), "Max wavelength should not increase"
+
+        # Verify dispersion direction
+        # Find the row with maximum intensity for the shortest and longest wavelengths
+        shortest_wave_row = np.argmax(dispersed_cube[0].sum(axis=1))
+        longest_wave_row = np.argmax(dispersed_cube[-1].sum(axis=1))
+        
+        print(f"Row of maximum intensity for shortest wavelength: {shortest_wave_row}")
+        print(f"Row of maximum intensity for longest wavelength: {longest_wave_row}")
+        
+        # Assert that the longest wavelength is dispersed to a lower row number
+        assert longest_wave_row < shortest_wave_row, "Longer wavelengths should be shifted to lower row numbers"
 
 if __name__ == '__main__':
     pytest.main([__file__])

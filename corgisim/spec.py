@@ -269,7 +269,6 @@ def apply_prism(optics, image_cube):
     prism_params = read_prism_params(optics.prism_param_fname)
     theta = prism_params['clocking_angle']
 
-    dispersed_slices = []
     # Define a densely sampled wavelength array for the cube of dispersed images
     N_wav_interp = int(round((optics.lam_um[-1] - optics.lam_um[0]) / optics.wav_step_um))
     
@@ -288,55 +287,28 @@ def apply_prism(optics, image_cube):
     cube_grid = (optics.lam_um, y_pts, x_pts)
     interp_wavs_grid, ypts_grid, xpts_grid = np.meshgrid(interp_wavs_bandpass, y_pts, x_pts, indexing='ij')
     cube_interp_grid = (interp_wavs_grid.ravel(), ypts_grid.ravel(), xpts_grid.ravel())
-    # Scale factor to conserve flux after interpolation to the densely sampled wavelength grid  
-    flux_conserv_factor = len(optics.lam_um) / len(interp_wavs_bandpass)
 
     cube_interp_func = scipy.interpolate.RegularGridInterpolator(cube_grid, image_cube)
-    # cube_interp_result = cube_interp_func(cube_interp_grid) * flux_conserv_factor
-    cube_interp_result = cube_interp_func(cube_interp_grid)
-    image_cube_interp = cube_interp_result.reshape(xpts_grid.shape)
+    image_cube_interp = cube_interp_func(cube_interp_grid).reshape(xpts_grid.shape)
 
-    dispersed_cube = np.zeros((image_cube_interp.shape[1], image_cube_interp.shape[2]))
-    # dispersed_image = np.zeros((image_cube.shape[1], image_cube.shape[2]))
+    # Calculate the shifts for all wavelengths at once
+    shifts_y = dispers_shift_modelpix * np.sin(np.deg2rad(theta))
+    shifts_x = dispers_shift_modelpix * np.cos(np.deg2rad(theta))
 
-    for ww, wavelen in enumerate(interp_wavs_bandpass):
-        dispersion_shift = (dispers_shift_modelpix[ww] * np.sin(np.deg2rad(theta)),
-                            dispers_shift_modelpix[ww] * np.cos(np.deg2rad(theta)))
-        # Apply the dispersion shift
-        shifted_slice = scipy.ndimage.shift(
-            input=image_cube_interp[ww],
-            shift=dispersion_shift,
-            order=1, mode='constant',
-            prefilter=False)
-        
-        # dispersed_image = dispersed_image + shifted_slice
-        dispersed_slices.append(shifted_slice)
- 
-    # Stack oversamp_image_slices to make an image cube
-    dispersed_cube = np.stack(dispersed_slices, axis=0)
+    # Apply the shifts to a coordinate grid
+    y, x = np.indices(image_cube_interp.shape[1:])
+    x_shifted = x[np.newaxis, :, :] - shifts_x[:, np.newaxis, np.newaxis]
+    y_shifted = y[np.newaxis, :, :] - shifts_y[:, np.newaxis, np.newaxis]
 
-    ## Compute the image position corresponding to the filter center wavelength
-    # center_lam_um = optics.lam0_um
-    # delta_wavelen_filter_center = center_lam_um - optics.lamref_um
-    # disp_shift_filter_center_modelpix = dispersion_polyfunc(delta_wavelen_filter_center / optics.lamref_um) / model_sampling_mm
-    # disp_shift_filter_center_2d = (-disp_shift_filter_center_modelpix * np.sin(np.deg2rad(theta)),
-                                #    -disp_shift_filter_center_modelpix * np.cos(np.deg2rad(theta)))
+    # Prepare coordinates for map_coordinates
+    coords = np.stack([y_shifted, x_shifted], axis=0)
 
-    # xcent_ovsamp = dispersed_image.shape[1] // 2 + xoff_modelpix - disp_shift_filter_center_2d[0]
-    # ycent_ovsamp = dispersed_image.shape[0] // 2 + yoff_modelpix + disp_shift_filter_center_2d[1]
-    # # Transform to downsampled coordinates
-    # xcent = (xcent_ovsamp + 0.5) / optics.oversampling_factor - 0.5
-    # ycent = (ycent_ovsamp + 0.5) / optics.oversampling_factor - 0.5
+    # Interpolate all wavelengths at once
+    dispersed_cube = np.zeros_like(image_cube_interp)
+    for i in range(image_cube_interp.shape[0]):
+        dispersed_cube[i] = scipy.ndimage.map_coordinates(image_cube_interp[i], coords[:, i], order=1, mode='constant')
 
-    # fsam_image = np.zeros((dispersed_cube.shape[0],
-                        #    dispersed_cube.shape[1] // optics.oversampling_factor,
-                        #    dispersed_cube.shape[2] // optics.oversampling_factor))
-    # for ww in range(fsam_image.shape[0]):
-        # fsam_image[ww,:,:] = (dispersed_cube[ww,:,:].reshape(
-                                # (fsam_image.shape[1], optics.oversampling_factor,
-                                # fsam_image.shape[2], optics.oversampling_factor)).mean(3).mean(1) *
-                                # optics.oversampling_factor**2)
-    return dispersed_cube, interp_wavs_bandpass 
+    return dispersed_cube, interp_wavs_bandpass
 
 def read_slit_params(slit_param_filename):
     """
@@ -452,3 +424,4 @@ def read_prism_params(prism_param_fname):
 
 def read_subband_filter():
     pass
+
