@@ -379,15 +379,15 @@ class CorgiOptics():
                     point_source_angle[j] += 360
             for j in range(len(point_source_spectra)):
                 if (not FOV_range[FOV_index][0] <= point_source_radius[j] <= FOV_range[FOV_index][1]):
-                    warnings.warn(f"The point source is at separation {point_source_radius} λ/D, "
+                    warnings.warn(f"Point source #{j} is at separation {point_source_radius} λ/D, "
                                   f"which is outside the coronagraph FOV range of "
                                   f"{FOV_range[FOV_index][0]} to {FOV_range[FOV_index][1]} λ/D for {self.cor_type}")
                 if ((FOV_index == 1 and self.cor_type.find('rotated') == -1 and (32.5 < point_source_angle[j] < 147.5 or 212.5 < point_source_angle[j] < 327.5))
                     or (FOV_index == 1 and self.cor_type.find('rotated') != -1 
                         and (0 <= point_source_angle[j] < 12.5 or 77.5 < point_source_angle[j] < 192.5 or 257.5 < point_source_angle[j] <= 360))):
-                    warnings.warn(f"The point source is at angle {point_source_angle[j]} with respect to the +x axis, "
-                                  f"which is outside the coronagraph azimuthal angle range of "
-                                  f"{'327.5 to 360, 0 to 32.5, and 147.5 to 212.5'if self.cor_type.find('rotated') != -1 else '12.5 to 77.5 and 192.5 to 257.5'} "
+                    warnings.warn(f"Point source #{j} is at angle {point_source_angle[j]}° with respect to the positive x-axis, "
+                                  f"which is outside the coronagraph azimuthal angle coverage range of "
+                                  f"{'0° to 32.5°, 147.5° to 212.5°, and 327.5° to 360°'if self.cor_type.find('rotated') == -1 else '12.5° to 77.5° and 192.5° to 257.5°'} "
                                   f"for {self.cor_type}")
 
             # Compute the observed  spectrum for each off-axis source
