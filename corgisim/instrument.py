@@ -368,27 +368,17 @@ class CorgiOptics():
                 FOV_index = 0
             elif (self.cor_type.find('spec') != -1):
                 FOV_index = 1
+                raise Exception('ERROR: Spectroscopy mode not yet implemented')
+                #todo: Add conditions checking if point source is within azimuthal angle range once spectroscopy mode is implemented
             else:
                 FOV_index = 2
-            #Convert point source positions to polar coordinates, radius is in units of lambda/d, angle is in degrees
+            #Calculate point source separation from origin in units of lambda/D
             point_source_radius = np.sqrt(np.power(point_source_x, 2) + np.power(point_source_y, 2)) * ((self.diam * 1e-2)/(self.lam0_um * 1e-6 * 206265000))
-            #todo: replace with function that calculates angle in 0-360 range 
-            point_source_angle = np.degrees(np.atan2(point_source_y, point_source_y))
-            for j in range(len(point_source_angle)):
-                if (point_source_angle[j] < 0):
-                    point_source_angle[j] += 360
             for j in range(len(point_source_spectra)):
                 if (not FOV_range[FOV_index][0] <= point_source_radius[j] <= FOV_range[FOV_index][1]):
                     warnings.warn(f"Point source #{j} is at separation {point_source_radius} λ/D, "
                                   f"which is outside the coronagraph FOV range of "
                                   f"{FOV_range[FOV_index][0]} to {FOV_range[FOV_index][1]} λ/D for {self.cor_type}")
-                if ((FOV_index == 1 and self.cor_type.find('rotated') == -1 and (32.5 < point_source_angle[j] < 147.5 or 212.5 < point_source_angle[j] < 327.5))
-                    or (FOV_index == 1 and self.cor_type.find('rotated') != -1 
-                        and (0 <= point_source_angle[j] < 12.5 or 77.5 < point_source_angle[j] < 192.5 or 257.5 < point_source_angle[j] <= 360))):
-                    warnings.warn(f"Point source #{j} is at angle {point_source_angle[j]}° with respect to the positive x-axis, "
-                                  f"which is outside the coronagraph azimuthal angle coverage range of "
-                                  f"{'0° to 32.5°, 147.5° to 212.5°, and 327.5° to 360°'if self.cor_type.find('rotated') == -1 else '12.5° to 77.5° and 192.5° to 257.5°'} "
-                                  f"for {self.cor_type}")
 
             # Compute the observed  spectrum for each off-axis source
             obs_point_source = [Observation(spectrum, self.bp) for spectrum in point_source_spectra]
