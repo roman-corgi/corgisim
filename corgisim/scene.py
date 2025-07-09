@@ -28,7 +28,7 @@ class Scene():
             - "magtype" (str): the magnitude type: 
                 'vegamag' for Vega magnitude system.
                 'ABmag' for AB magnitude system
-            - "ref_flag" (boolean):optional, whether the input scene is a reference star (True) or a science target (False). Default is fasle
+            - "ref_flag" (boolean):optional, whether the input scene is a reference star (True) or a science target (False). Default is false
 
         point_sources_info (list): A list of dictionaries, each representing an off-axis point source in the scene. Each dictionary must contain:
             - "Vmag" (float): The apparent V-band magnitude of the source.

@@ -39,7 +39,7 @@ class CorgiOptics():
         - bandpass (str): pre-difined bandpass for Roman-CGI
         - diam (float) in meter: diameter of the primaru mirror, the default value is 2.363114 meter
         - proper_keywords: A dictionary with the keywords that are used to set up the proper model
-        - oversample: An integer that defines the oversampling factor of the detector when generating the image
+        - oversampling_factor: An integer that defines the oversampling factor of the detector when generating the image
         - return_oversample: A boolean that defines whether the function should return the oversampled image or not.
     
 
