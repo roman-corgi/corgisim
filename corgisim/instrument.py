@@ -204,6 +204,8 @@ class CorgiOptics():
                 else:
                     ## integrate oversampled PSF back to one grid per pixel
                     images[i,:,:] +=  images_tem[i,:,:].reshape((self.grid_dim_out,self.oversampling_factor,self.grid_dim_out,self.oversampling_factor)).mean(3).mean(1) * self.oversampling_factor**2
+                    ## update the proper_keywords['output_dim'] baclk to non_oversample size
+                    self.proper_keywords['output_dim'] = self.grid_dim_out
 
                 dlam_um = self.lam_um[1]-self.lam_um[0]
                 lam_um_l = (self.lam_um[i]- 0.5*dlam_um) * 1e4 ## unit of anstrom
@@ -235,7 +237,7 @@ class CorgiOptics():
                     'bandpass':self.bandpass_header,
                     'over_sampling_factor':self.oversampling_factor,
                     'return_oversample': self.return_oversample,
-                    'output_dim': self.grid_dim_out,
+                    'output_dim': self.proper_keywords['output_dim'],
                     'nd_filter':self.nd}
 
         # Define specific keys from self.proper_keywords to include in the header            
@@ -390,6 +392,9 @@ class CorgiOptics():
                     else:
                         ## integrate oversampled PSF back to one grid per pixel
                         images[i,:,:] +=  images_tem[i,:,:].reshape((self.grid_dim_out,self.oversampling_factor,self.grid_dim_out,self.oversampling_factor)).mean(3).mean(1) * self.oversampling_factor**2
+                        ## update the proper_keywords['output_dim'] baclk to non_oversample size
+                        self.proper_keywords['output_dim'] = self.grid_dim_out
+
 
                     dlam_um = self.lam_um[1]-self.lam_um[0]
                     lam_um_l = (self.lam_um[i]- 0.5*dlam_um) * 1e4 ## unit of anstrom
@@ -427,7 +432,7 @@ class CorgiOptics():
         sim_info['bandpass'] = self.bandpass_header
         sim_info['over_sampling_factor'] = self.oversampling_factor
         sim_info['return_oversample'] = self.return_oversample
-        sim_info['output_dim'] = self.grid_dim_out
+        sim_info['output_dim'] = self.proper_keywords['output_dim'] 
         sim_info['nd_filter'] = self.nd
                             
                 # Define specific keys from self.proper_keywords to include in the header            
