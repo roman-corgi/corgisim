@@ -55,8 +55,10 @@ def test_off_axis_source():
     optics = instrument.CorgiOptics(cgi_mode,  bandpass_corgisim, proper_keywords=proper_keywords, if_quiet=True)
     sim_scene = optics.get_host_star_psf(base_scene)
     image_star_corgi = sim_scene.host_star_image.data
+    assert optics.proper_keywords['output_dim'] == proper_keywords['output_dim'], f"output_dim={proper_keywords['output_dim']}, but got {optics.proper_keywords['output_dim']}"
 
     sim_scene = optics.inject_point_sources(base_scene,sim_scene)
+    assert optics.proper_keywords['output_dim'] == proper_keywords['output_dim'], f"output_dim={proper_keywords['output_dim']}, but got {optics.proper_keywords['output_dim']}"
     image_comp_corgi = sim_scene.point_source_image.data 
     tot_counts_corgi = np.sum(image_comp_corgi+image_star_corgi, dtype = np.float64)
 
