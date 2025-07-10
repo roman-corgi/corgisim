@@ -270,8 +270,8 @@ def load_cpgs_data(filepath, return_input=False):
     :type filepath: string
     :param return_input: if True, returns an Input object
     .
-    :return: a scene list and optics if return_input is False; an Input if return_input is True
-
+    :return:
+    :scene_target, scene_reference, optics, detector_target, detector_reference, visit_list
     """
     # Parse the file 
     try: 
@@ -343,7 +343,7 @@ def load_cpgs_data(filepath, return_input=False):
                 number_of_frames = excam.find('number_of_frames').text
                 exp_time =  excam.find('exposure_duration').text
 
-            visit_dict = {'number_of_frames': number_of_frames,'exp_time': exp_time, 'isNotHowfsc':isNotHowfsc,'roll_angle':roll_angle, 'visit_id':visit_id}
+            visit_dict = {'number_of_frames': number_of_frames,'exp_time': exp_time, 'roll_angle':roll_angle, 'visit_id':visit_id}
             
             if reference_star_present :
                 visit_dict['isReference'] = isReference
