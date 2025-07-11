@@ -27,7 +27,7 @@ class CorgiOptics():
 
     '''
 
-    def __init__(self, cgi_mode = None, bandpass= None,  diam = 236.3114, proper_keywords=None, oversampling_factor = 7, return_oversample = False, **kwargs):
+    def __init__(self, cgi_mode = None, bandpass= None,  diam = 236.3114, proper_keywords=None, satspot_keywords=None, oversampling_factor = 7, return_oversample = False, **kwargs):
         '''
 
         Initialize the class a keyword dictionary that defines the setup of cgisim/PROPER 
@@ -41,6 +41,7 @@ class CorgiOptics():
         - proper_keywords: A dictionary with the keywords that are used to set up the proper model
         - oversample: An integer that defines the oversampling factor of the detector when generating the image
         - return_oversample: A boolean that defines whether the function should return the oversampled image or not.
+        - satspot_keywords: A dictionary with the keywords that are used to add satellite spots
     
 
         Raises:
@@ -140,7 +141,18 @@ class CorgiOptics():
 
 
         if 'if_quiet'in kwargs:self.quiet = kwargs.get("if_quiet")
-
+        
+        ##self.SATSPOT is the value to be populated to L1 header prihdr[SATSPOTS]
+        # prihdr[SATSPOTS]= 0: No satellite spots present 
+        # prihdr[SATSPOTS]= 1: Satellite spots present
+        if satspot_keywords == None:
+            self.SATSPOT = int(0)
+        else:
+            self.SATSPOT = int(1)
+            #### call self.add_satspot() to satellite spots in DM files 
+            # self.proper_keywords['dm1_v'], self.proper_keywords['dm2_v'] = self.add_satspot(satspot_keywords=satspot_keywords)
+            
+           
 
 
         print("CorgiOptics initialized with proper keywords.")
@@ -245,6 +257,8 @@ class CorgiOptics():
                             'use_lyot_stop','use_field_stop','fsm_x_offset_mas','fsm_y_offset_mas']  # Specify keys to include
         subset = {key: self.proper_keywords[key] for key in keys_to_include_in_header if key in self.proper_keywords}
         sim_info.update(subset)
+        ## add sattelite spots info 
+        #sim_info[SATSPOT] = self.SATSPOT
         sim_info['includ_dectector_noise'] = 'False'
         # Create the HDU object with the generated header information
 
@@ -440,12 +454,38 @@ class CorgiOptics():
                             'use_lyot_stop','use_field_stop','fsm_x_offset_mas','fsm_y_offset_mas']  # Specify keys to include
         subset = {key: self.proper_keywords[key] for key in keys_to_include_in_header if key in self.proper_keywords}
         sim_info.update(subset)
+        ## add sattelite spots info 
+        #sim_info[SATSPOT] = self.SATSPOT
         sim_info['includ_dectector_noise'] = 'False'
         # Create the HDU object with the generated header information
 
         sim_scene.point_source_image = outputs.create_hdu( np.sum(point_source_image,axis=0), sim_info =sim_info)
 
         return sim_scene
+
+    def add_satspot(self, satspot_keywords):
+        """
+        Add satellite spots to deformable mirror (DM) settings.
+
+        This function modifies the deformable mirror settings stored in 
+        `self.proper_keywords['dm1_v']` and `self.proper_keywords['dm2_v']` 
+        by injecting satellite spots according to the provided `satspot_keywords`.
+
+        Parameters:
+        ----------
+        satspot_keywords : dict
+            Dictionary specifying the parameters needed to define and inject 
+            satellite spots (e.g., location, amplitude, frequency).
+
+        Returns:
+        -------
+        dm1_v : 2D ndarray
+            Updated DM1 voltage map with satellite spots added.
+        
+        dm2_v : 2D ndarray
+            Updated DM2 voltage map with satellite spots added.
+        """
+        pass
 
     
 class CorgiDetector(): 
