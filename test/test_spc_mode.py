@@ -25,13 +25,15 @@ def test_spc_mode():
     cor_type = 'spc-wide'
 
     #Define companion properties
-    mag_companion = 25
-    companion_x_pos = 740
-    companion_y_pos = 740
+    #Add two companions, one in FOV, one out of FOV to test warning message
+    mag_companion = [25, 25]
+    companion_x_pos = [740, 1250]
+    companion_y_pos = [740, 1250]
     
     #### simulate using corgisim
     host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype':'vegamag'}
-    point_source_info = [{'Vmag': mag_companion, 'magtype': 'vegamag','position_x':companion_x_pos , 'position_y':companion_y_pos}]
+    point_source_info = [{'Vmag': mag_companion[0], 'magtype': 'vegamag','position_x': companion_x_pos[0], 'position_y': companion_y_pos[0]},
+                         {'Vmag': mag_companion[1], 'magtype': 'vegamag','position_x': companion_x_pos[1], 'position_y': companion_y_pos[1]}]
     #Create a Scene object that holds all this information
     base_scene = scene.Scene(host_star_properties, point_source_info)
     ####setup the wavelength for the simulation, nlam=1 for monochromatic image, nlam>1 for broadband image 
@@ -54,11 +56,16 @@ def test_spc_mode():
     params = {'use_errors':1, 'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2}
     image_star_cgi, a0_counts = cgisim.rcgisim(cgi_mode, cor_type, bandpass_cgisim,  polaxis_cgisim, params, 
         star_spectrum = sptype.lower(), star_vmag = Vmag)
-    params['source_x_offset_mas'] = companion_x_pos
-    params['source_y_offset_mas'] = companion_y_pos
-    image_comp_cgi, comp_counts = cgisim.rcgisim(cgi_mode, cor_type, bandpass_cgisim,  polaxis_cgisim, params, 
-    star_spectrum = sptype.lower(), star_vmag = mag_companion)
-    a0_counts = a0_counts + comp_counts 
+    
+    image_comp = []
+    for i in range(len(mag_companion)):
+        params['source_x_offset_mas'] = companion_x_pos[i]
+        params['source_y_offset_mas'] = companion_y_pos[i]
+        comp_sim_allpol, comp_counts = cgisim.rcgisim(cgi_mode, cor_type, bandpass_cgisim,  polaxis_cgisim, params, 
+        star_spectrum = sptype.lower(), star_vmag = mag_companion[i])
+        image_comp.append(comp_sim_allpol)
+        a0_counts = a0_counts + comp_counts
+    image_comp_cgi = np.sum(image_comp,axis=0) 
 
     #check to see that the corgisim output matches the cgisim output within a 0.5% tolerance
     assert image_star_corgi == pytest.approx(image_star_cgi, rel=0.5)

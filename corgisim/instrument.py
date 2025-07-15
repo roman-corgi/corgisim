@@ -71,10 +71,10 @@ class CorgiOptics():
 
 
         valid_cgi_modes = ['excam', 'spec', 'lowfs', 'excam_efield']
-        valid_cor_types = ['hlc', 'hlc_band1', 'spc-spec', 'spc-spec_band2', 'spc-spec_band3', 'spc-wide', 'spc-wide_band4', 
+        valid_cor_types = ['hlc', 'hlc_band1', 'spc-wide', 'spc-wide_band4', 
                         'spc-wide_band1', 'hlc_band2', 'hlc_band3', 'hlc_band4', 'spc-spec_rotated', 'spc-spec_band2_rotated', 'spc-spec_band3_rotated']
 
-       # 'spc-mswc', 'spc-mswc_band4','spc-mswc_band1', 'zwfs', these cor_type is availbale in cgisim, but we currently don't support them in corgisim 
+       # ''spc-spec', 'spc-spec_band2', 'spc-spec_band3', spc-mswc', 'spc-mswc_band4','spc-mswc_band1', 'zwfs', these cor_type is availbale in cgisim, but we currently don't support them in corgisim 
 
         if cgi_mode not in valid_cgi_modes:
             raise Exception('ERROR: Requested mode does not match any available mode')
@@ -376,7 +376,7 @@ class CorgiOptics():
             point_source_radius = np.sqrt(np.power(point_source_x, 2) + np.power(point_source_y, 2)) * ((self.diam * 1e-2)/(self.lam0_um * 1e-6 * 206265000))
             for j in range(len(point_source_spectra)):
                 if (not FOV_range[FOV_index][0] <= point_source_radius[j] <= FOV_range[FOV_index][1]):
-                    warnings.warn(f"Point source #{j} is at separation {point_source_radius} λ/D, "
+                    warnings.warn(f"Point source #{j} is at separation {point_source_radius[j]} λ/D, "
                                   f"which is outside the coronagraph FOV range of "
                                   f"{FOV_range[FOV_index][0]} to {FOV_range[FOV_index][1]} λ/D for {self.cor_type}")
 
