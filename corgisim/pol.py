@@ -162,15 +162,14 @@ def get_instrument_mueller_matrix(lam_um):
 def get_wollaston_mueller_matrix(angle):
     """
     Calculate the mueller matrix response for one of the two orthogonal polarization directions the light is split into, can
-    be treated like a linear polarizer oriented at a certain angle
+    be treated like a linear polarizer oriented at a certain angle. Used to calculate polarization for point sources
 
     Args:
         angle (float): The linear polarization angle of transmission in degrees. Default for the wollaston prisms is 0/90 degrees
-        for the prism oriented at 0 degrees and 45/135 degrees for second prism oriented at 45 degrees. Other angles can still
-        be inputted for testing purposes
+        for the prism oriented at 0 degrees and 45/135 degrees for second prism oriented at 45 degrees.
 
     Returns:
-        The mueller matrix describing the transformation from light going into the wollaston to one of the two pathes the light is split into
+        The 4x4 mueller matrix describing the transformation from light going into the wollaston to one of the two pathes the light is split into
     """
     theta = angle * (np.pi / 180) * 2
     return 0.5 * np.array([[1, np.cos(theta), np.sin(theta), 0],
@@ -178,44 +177,18 @@ def get_wollaston_mueller_matrix(angle):
                    [np.sin(theta), (np.cos(theta)) * (np.sin(theta)), (np.sin(theta)) ** 2, 0],
                    [0, 0, 0, 0]])
 
-def lu_chipman_decomposition(mm):
+def get_wollaston_jones_matrix(angle):
     """
-    Decompose an input mueller matrix into its depolarizer, retarder, and diattenuator components
+    Calculate the jones matrix response for one of the two orthogonal polarization directions the light is split into, can
+    be treated like a linear polarizer oriented at a certain angle. Used to calculate polarization for host star
 
-    Args: 
-        mm (4x4 float array): Input mueller matrix to be decomposed
-    
-    Raises:
-        ValueError: If input mueller matrix isn't 4x4 sized
-    
+    Args:
+        angle (float): The linear polarization angle of transmission in degrees. Default for the wollaston prisms is 0/90 degrees
+        for the prism oriented at 0 degrees and 45/135 degrees for second prism oriented at 45 degrees.
+
     Returns:
-        mm_decomposed (list of 3 4x4 float arrays): List containing the 3 decomposed matrices,
-        mm_decomposed[0] is the depolarizer, mm_decomposed[1] is the retarder and mm_decomposed[2] is the diattenuator,
-        mm_total=mm_decomposed[0]*mm_decomposed[1]*mm_decomposed[2]
+        The 2x2 jones matrix describing the transformation from light going into the wollaston to one of the two pathes the light is split into
     """
-    if np.shape(mm) != (4, 4):
-        raise ValueError('Please make sure input is a 4x4 array')
-    a = np.sqrt(1 - ((mm[0,1] ** 2) + (mm[0,2] ** 2) + (mm[0,3] ** 3)))
-    b = (1 - a) / ((mm[0,1] ** 2) + (mm[0,2] ** 2) + (mm[0,3] ** 3))
-
-    #diattenuator:
-    mm_dia = np.array([[1, mm[0,1], mm[0,2], mm[0,3]],
-                       [mm[0,1], a+b*(mm[0,1]**2), b*mm[0,1]*mm[0,2], b*mm[0,1]*mm[0,3]],
-                       [mm[0,2], b*mm[0,2]*mm[0,1], a+b*(mm[0,2]**2), b*mm[0,2]*mm[0,3]],
-                       [mm[0,3], b*mm[0,3]*mm[0,1], b*mm[0,3]*mm[0,2], a+b*(mm[0,3]**2)]
-                       ])
-    
-    #retarder:
-    mm_ret = (1/a) * np.array([[a, 0, 0, 0],
-                               [0, mm[1,1]-b*(mm[1,0]*mm[0,1]), mm[1,2]-b*(mm[1,0]*mm[0,2]), mm[1,3]-b*(mm[1,0]*mm[0,3])],
-                               [0, mm[2,1]-b*(mm[2,0]*mm[0,1]), mm[2,2]-b*(mm[2,0]*mm[0,2]), mm[2,3]-b*(mm[2,0]*mm[0,3])],
-                               [0, mm[3,1]-b*(mm[3,0]*mm[0,1]), mm[3,2]-b*(mm[3,0]*mm[0,2]), mm[3,3]-b*(mm[3,0]*mm[0,3])]
-                               ])
-    
-    mm_dia_inv = np.linalg.inv(mm_dia)
-    mm_ret_inv = np.linalg.inv(mm_ret)
-
-    #depolarizer:
-    mm_dep = mm @ mm_dia_inv @ mm_ret_inv
-
-    return [mm_dep, mm_ret, mm_dia]
+    theta = angle * (np.pi / 180)
+    return np.array([[np.cos(theta) ** 2, np.cos(theta) * np.sin(theta)],
+                    [np.cos(theta) * np.sin(theta), np.sin(theta) ** 2]], dtype=np.complex128)

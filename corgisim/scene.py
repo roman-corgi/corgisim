@@ -29,9 +29,7 @@ class Scene():
             - "magtype" (str): the magnitude type: 
                 'vegamag' for Vega magnitude system.
                 'ABmag' for AB magnitude system
-            - "ref_flag" (boolean):optional, whether the input scene is a reference star (True) or a science target (False). Default is fasle
-            - "pol_state" (float array): optional, vector of length 4 consisting of the I, Q, U, and V components of the stokes parameter
-                describing how the starlight is polarized, default is unpolarized or [1,0,0,0]
+            - "ref_flag" (boolean):optional, whether the input scene is a reference star (True) or a science target (False). Default is false
 
         point_sources_info (list): A list of dictionaries, each representing an off-axis point source in the scene. Each dictionary must contain:
             - "Vmag" (float): The apparent V-band magnitude of the source.
@@ -79,14 +77,6 @@ class Scene():
         ### The self.stellar_spectrum attribute is an instance of the SourceSpectrum class (from synphot), 
         ### used to store and retrieve the wavelength and stellar flux.
         self.stellar_spectrum = self.get_stellar_spectrum( self._host_star_sptype, self._host_star_Vmag, magtype =self._host_star_magtype)
-
-        #Set the polarization state from host_star_properties, default to [1,0,0,0] if none provided
-        self.host_star_pol_state = host_star_properties.get('pol_state', np.array([1,0,0,0]))
-        
-        pol.check_stokes_vector_validity(self.host_star_pol_state)
-
-        #normalizes stokes vector so that I = 1
-        self.host_star_pol_state = np.divide(self.host_star_pol_state, self.host_star_pol_state[0])
 
         #self._point_source_list = point_source_info
         # Extract V-band magnitude and magnitude type from point source info

@@ -312,49 +312,55 @@ class CorgiOptics():
             self.proper_keywords['output_dim']=grid_dim_out_tem
             self.proper_keywords['final_sampling_m']=sampling_um_tem *1e-6
             
+            proper_keywords_pol_x = self.proper_keywords.copy()
+            proper_keywords_pol_y = self.proper_keywords.copy()
+            proper_keywords_pol_x['polaxis'] = 5
+            proper_keywords_pol_y['polaxis'] = 6
+            (fields_x, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=proper_keywords_pol_x,QUIET=self.quiet)
+            (fields_y, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=proper_keywords_pol_y,QUIET=self.quiet)
+
+            images_tem = [np.zeros(fields_x.shape), np.zeros(fields_x.shape)]
+            if (self.wollaston_mode == 1):
+                wollaston_jones_1 = pol.get_wollaston_jones_matrix(0)
+                wollaston_jones_2 = pol.get_wollaston_jones_matrix(90)
+            else:
+                wollaston_jones_1 = pol.get_wollaston_jones_matrix(45)
+                wollaston_jones_2 = pol.get_wollaston_jones_matrix(135)
+                print(wollaston_jones_2)
             
-            (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=self.proper_keywords,QUIET=self.quiet)
-            images_tem = np.abs(fields)**2
+            jones_in = np.stack([fields_x, fields_y], axis= -1)
+            jones_out_1 = np.matmul(jones_in, wollaston_jones_1.T)
+            jones_out_2 = np.matmul(jones_in, wollaston_jones_2.T)
+            images_tem[0] = (np.abs(jones_out_1[:,:,:,0]) ** 2) + (np.abs(jones_out_1[:,:,:,1]) ** 2)
+            images_tem[1] = (np.abs(jones_out_2[:,:,:,0]) ** 2) + (np.abs(jones_out_2[:,:,:,1]) ** 2)
 
             # Initialize the image array based on whether oversampling is returned
             images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if self.return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
-            images = np.zeros(images_shape, dtype=float)
             images_1 = np.zeros(images_shape, dtype=float)
             images_2 = np.zeros(images_shape, dtype=float)
-            ##transform host star stokes vector if polarimetry mode is enabled
-            #todo: add condition to check whether to include instrument polarization to model or not, right now included by default
-            #todo: add condition to include wollaston prism in image path
-            #multiply by instrument Mueller matrix
-            star_pol_after_instrument = np.matmul(pol.get_instrument_mueller_matrix(self.lam_um), input_scene.host_star_pol_state)
-            print(star_pol_after_instrument)
-            if (self.wollaston_mode == 1):
-                star_pol_path_1 = np.matmul(pol.get_wollaston_mueller_matrix(0), star_pol_after_instrument)
-                star_pol_path_2 = np.matmul(pol.get_wollaston_mueller_matrix(90), star_pol_after_instrument)
-            else:
-                star_pol_path_1 = np.matmul(pol.get_wollaston_mueller_matrix(45), star_pol_after_instrument)
-                star_pol_path_2 = np.matmul(pol.get_wollaston_mueller_matrix(135), star_pol_after_instrument)
-            print(star_pol_path_1)
-            print(star_pol_path_2)
-            for i in range(images_tem.shape[0]):
+
+            for i in range(images_tem[0].shape[0]):
                 if self.return_oversample:
                     ##return the oversampled PSF, default 7 grid per pixel
-                    images[i,:,:] +=  images_tem[i,:,:]
+                    images_1[i,:,:] +=  images_tem[0][i,:,:]
+                    images_2[i,:,:] += images_tem[1][i,:,:]
                 else:
                     ## integrate oversampled PSF back to one grid per pixel
-                    images[i,:,:] +=  images_tem[i,:,:].reshape((self.grid_dim_out,self.oversampling_factor,self.grid_dim_out,self.oversampling_factor)).mean(3).mean(1) * self.oversampling_factor**2
+                    images_1[i,:,:] +=  images_tem[0][i,:,:].reshape((self.grid_dim_out,self.oversampling_factor,self.grid_dim_out,self.oversampling_factor)).mean(3).mean(1) * self.oversampling_factor**2
+                    images_2[i,:,:] +=  images_tem[1][i,:,:].reshape((self.grid_dim_out,self.oversampling_factor,self.grid_dim_out,self.oversampling_factor)).mean(3).mean(1) * self.oversampling_factor**2
+
 
                 dlam_um = self.lam_um[1]-self.lam_um[0]
                 lam_um_l = (self.lam_um[i]- 0.5*dlam_um) * 1e4 ## unit of anstrom
                 lam_um_u = (self.lam_um[i]+ 0.5*dlam_um) * 1e4 ## unit of anstrom
-
                 # ares in unit of cm^2
                 # counts in unit of photos/s
                 counts = self.polarizer_transmission * obs.countrate(area=self.area, waverange=[lam_um_l, lam_um_u])
-                #scale counts by new total intensity in each path after the light is split by the wollaston
-                counts_after_wollaston = [counts * star_pol_path_1[0], counts * star_pol_path_2[0]]
-                images_1[i,:,:] = images[i,:,:] * counts_after_wollaston[0]
-                images_2[i,:,:] = images[i,:,:] * counts_after_wollaston[1]
-            image = [np.sum(images_1, axis=0), np.sum(images_2, axis=0)]
+
+                images_1[i,:,:] = images_1[i,:,:] * counts
+                images_2[i,:,:] = images_2[i,:,:] * counts
+
+        image = [np.sum(images_1, axis=0), np.sum(images_2, axis=0)]
 
         if self.cgi_mode in ['spec', 'lowfs', 'excam_efield']:
             raise ValueError(f"The mode '{self.cgi_mode}' has not been implemented yet!")
