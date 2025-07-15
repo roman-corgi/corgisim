@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 from emccd_detect.emccd_detect import EMCCDDetectBase, EMCCDDetect
 from corgidrp import mocks
 from corgisim import outputs
+from corgisim import pol
 
 
 class CorgiOptics():
@@ -28,7 +29,7 @@ class CorgiOptics():
 
     '''
 
-    def __init__(self, cgi_mode = None, bandpass= None,  diam = 236.3114, proper_keywords=None, oversampling_factor = 7, return_oversample = False, **kwargs):
+    def __init__(self, cgi_mode = None, bandpass= None,  diam = 236.3114, wollaston_mode=0, proper_keywords=None, oversampling_factor = 7, return_oversample = False, **kwargs):
         '''
 
         Initialize the class a keyword dictionary that defines the setup of cgisim/PROPER 
@@ -40,6 +41,8 @@ class CorgiOptics():
         - cor_type (str): define coronagraphic observing modes
         - bandpass (str): pre-difined bandpass for Roman-CGI
         - diam (float) in meter: diameter of the primaru mirror, the default value is 2.363114 meter
+        - wollaston_mode (int): define whether to use wollaston prisms in the optical path for polarimetry data
+          0 (default): no wollastons used, 1: image 0/90 degree polarization, 2: image 45/135 degree polarization
         - proper_keywords: A dictionary with the keywords that are used to set up the proper model
         - oversample: An integer that defines the oversampling factor of the detector when generating the image
         - return_oversample: A boolean that defines whether the function should return the oversampled image or not.
@@ -76,12 +79,17 @@ class CorgiOptics():
 
        # 'spc-mswc', 'spc-mswc_band4','spc-mswc_band1', 'zwfs', these cor_type is availbale in cgisim, but we currently don't support them in corgisim 
 
+        valid_wollaston_modes = [0, 1, 2]
+
         if cgi_mode not in valid_cgi_modes:
             raise Exception('ERROR: Requested mode does not match any available mode')
      
 
         if proper_keywords['cor_type'] not in valid_cor_types:
             raise Exception('ERROR: Requested coronagraph does not match any available types')
+        
+        if wollaston_mode not in valid_wollaston_modes:
+            raise Exception('Error: Requested wollaston setting does not match any available mode')
 
         self.cgi_mode = cgi_mode
         self.cor_type = proper_keywords['cor_type']
@@ -90,6 +98,7 @@ class CorgiOptics():
         else:
             self.bandpass = bandpass.lower()
         self.bandpass_header = bandpass
+        self.wollaston_mode = wollaston_mode
         # self.bandpass is used as the keyword for cgisim, while self.bandpass_header is used for setting the FITS header.
         # The distinction arises from differences in naming conventions for filters between cgisim and the latest wiki page.
 
@@ -253,6 +262,146 @@ class CorgiOptics():
         sim_scene.host_star_image = outputs.create_hdu(image,sim_info =sim_info)
 
         return sim_scene
+
+    def get_host_star_psf_polarized(self, input_scene, sim_scenes=None, on_the_fly=False):
+        '''
+        
+        Function that provides an on-axis polarized PSF for the current configuration of CGI.
+        
+        Produces two images of orthogonal polarizations as outputted by the wollaston prism, 
+        only use if wollaston_mode is enabled.
+
+        It should take the host star properties from scene.host_star_properties and return a 
+        Simulated_scene object with the host_star_image attribute populated with an astropy HDU 
+        that contains a noiseless on-axis PSF, and associated metadata in the header. This on-axis 
+        PSF should be either generated on the fly, or picked from a pregenerated library (e.g. OS11 
+        or something cached locally). 
+
+        #Todo Figure out the default output units. Current candidate is photoelectrons/s. 
+        #Todo: If the input is a scene.Simulation_Scene instead, then just pull the Scene from the attribute 
+                and put the output of this function into the host_star_image attribute.
+
+        Arguments: 
+        input_scene: A corgisim.scene.Scene object that contains the scene to be simulated.
+        on_the_fly: A boolean that defines whether the PSF should be generated on the fly.
+        
+        Returns:
+        corgisim.scene.Simulated_Scene[]: Length 2 array containing scene object with the host_star_image attribute populated with an astropy
+                                        HDU that contains a noiseless on-axis PSF, imaged in orthogonal polarizations.
+
+        '''
+        
+        if self.wollaston_mode == 0:
+            raise Exception("This function is for use with the wollaston prisms only")
+
+        if self.cgi_mode == 'excam':
+            
+            # Compute the observed stellar spectrum within the defined bandpass
+            # obs: wavelegth is in unit of angstrom
+            # obs: flux is in unit of photons/s/cm^2/angstrom
+            obs = Observation(input_scene.stellar_spectrum, self.bp)
+            
+            #if self.integrate_pixels:
+                #oversampling_factor = 7
+            #else:
+                #oversampling_factor = 1
+
+            grid_dim_out_tem = self.grid_dim_out * self.oversampling_factor
+            sampling_um_tem = self.sampling_um / self.oversampling_factor
+
+            self.proper_keywords['output_dim']=grid_dim_out_tem
+            self.proper_keywords['final_sampling_m']=sampling_um_tem *1e-6
+            
+            
+            (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=self.proper_keywords,QUIET=self.quiet)
+            images_tem = np.abs(fields)**2
+
+            # Initialize the image array based on whether oversampling is returned
+            images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if self.return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
+            images = np.zeros(images_shape, dtype=float)
+            images_1 = np.zeros(images_shape, dtype=float)
+            images_2 = np.zeros(images_shape, dtype=float)
+            ##transform host star stokes vector if polarimetry mode is enabled
+            #todo: add condition to check whether to include instrument polarization to model or not, right now included by default
+            #todo: add condition to include wollaston prism in image path
+            #multiply by instrument Mueller matrix
+            star_pol_after_instrument = np.matmul(pol.get_instrument_mueller_matrix(self.lam_um), input_scene.host_star_pol_state)
+            print(star_pol_after_instrument)
+            if (self.wollaston_mode == 1):
+                star_pol_path_1 = np.matmul(pol.get_wollaston_mueller_matrix(0), star_pol_after_instrument)
+                star_pol_path_2 = np.matmul(pol.get_wollaston_mueller_matrix(90), star_pol_after_instrument)
+            else:
+                star_pol_path_1 = np.matmul(pol.get_wollaston_mueller_matrix(45), star_pol_after_instrument)
+                star_pol_path_2 = np.matmul(pol.get_wollaston_mueller_matrix(135), star_pol_after_instrument)
+            print(star_pol_path_1)
+            print(star_pol_path_2)
+            for i in range(images_tem.shape[0]):
+                if self.return_oversample:
+                    ##return the oversampled PSF, default 7 grid per pixel
+                    images[i,:,:] +=  images_tem[i,:,:]
+                else:
+                    ## integrate oversampled PSF back to one grid per pixel
+                    images[i,:,:] +=  images_tem[i,:,:].reshape((self.grid_dim_out,self.oversampling_factor,self.grid_dim_out,self.oversampling_factor)).mean(3).mean(1) * self.oversampling_factor**2
+
+                dlam_um = self.lam_um[1]-self.lam_um[0]
+                lam_um_l = (self.lam_um[i]- 0.5*dlam_um) * 1e4 ## unit of anstrom
+                lam_um_u = (self.lam_um[i]+ 0.5*dlam_um) * 1e4 ## unit of anstrom
+
+                # ares in unit of cm^2
+                # counts in unit of photos/s
+                counts = self.polarizer_transmission * obs.countrate(area=self.area, waverange=[lam_um_l, lam_um_u])
+                #scale counts by new total intensity in each path after the light is split by the wollaston
+                counts_after_wollaston = [counts * star_pol_path_1[0], counts * star_pol_path_2[0]]
+                images_1[i,:,:] = images[i,:,:] * counts_after_wollaston[0]
+                images_2[i,:,:] = images[i,:,:] * counts_after_wollaston[1]
+            image = [np.sum(images_1, axis=0), np.sum(images_2, axis=0)]
+
+        if self.cgi_mode in ['spec', 'lowfs', 'excam_efield']:
+            raise ValueError(f"The mode '{self.cgi_mode}' has not been implemented yet!")
+        
+        # Initialize SimulatedImage class to restore the output psf
+        if sim_scenes == None:
+            sim_scenes = [scene.SimulatedImage(input_scene), scene.SimulatedImage(input_scene)]
+
+        if len(sim_scenes) != len(image):
+            raise ValueError('Input sim_scenes length does not match with the provided imaging mode')
+
+        for j in range(len(image)):
+            # Prepare additional information to be added as COMMENT headers in the primary HDU.
+            # These are different from the default L1 headers, but extra comments that are used to track simulation-specific details.
+            if self.wollaston_mode == 1:
+                if j == 0:
+                    polarization_basis = '0 degrees'
+                else:
+                    polarization_basis = '90 degrees'
+            else:
+                if j == 0:
+                    polarization_basis = '45 degrees'
+                else:
+                    polarization_basis = '135 degrees'
+            sim_info = {'host_star_sptype':input_scene.host_star_sptype,
+                        'host_star_Vmag':input_scene.host_star_Vmag,
+                        'host_star_magtype':input_scene.host_star_magtype,
+                        'ref_flag':input_scene.ref_flag,
+                        'cgi_mode':self.cgi_mode,
+                        'cor_type': self.proper_keywords['cor_type'],
+                        'bandpass':self.bandpass_header,
+                        'polarization_basis': polarization_basis,
+                        'over_sampling_factor':self.oversampling_factor,
+                        'return_oversample': self.return_oversample,
+                        'output_dim': self.grid_dim_out,
+                        'nd_filter':self.nd}
+
+            # Define specific keys from self.proper_keywords to include in the header            
+            keys_to_include_in_header = ['use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
+                                'use_lyot_stop','use_field_stop','fsm_x_offset_mas','fsm_y_offset_mas']  # Specify keys to include
+            subset = {key: self.proper_keywords[key] for key in keys_to_include_in_header if key in self.proper_keywords}
+            sim_info.update(subset)
+            sim_info['includ_dectector_noise'] = 'False'
+            # Create the HDU object with the generated header information
+            sim_scenes[j].host_star_image = outputs.create_hdu(image[j],sim_info =sim_info)
+
+        return sim_scenes
 
     def setup_bandpass(self, cgimode, bandpass_name, nd ):
         """
@@ -465,6 +614,188 @@ class CorgiOptics():
         sim_scene.point_source_image = outputs.create_hdu( np.sum(point_source_image,axis=0), sim_info =sim_info)
 
         return sim_scene
+    
+    def inject_point_sources_polarized(self, input_scene, sim_scenes=None, on_the_fly=False):
+        '''
+        Function that injects point sources into the scene for polarimetry mode.
+
+        It should take the input scene and inject the point sources defined scene.point_source_list, 
+        which should give the location and brightness. 
+
+        Only use when wollaston mode is enabled, inject point sources imaged in a specific polarization
+        basis into the host star psf imaged in that same basis 
+
+        The off-axis PSFs should be either generated on the fly, or read in from a set of pre-generated PSFs. 
+
+        TODO: Figure out the default output units. Current candidate is photoelectrons/s.
+        TODO: We may want this to generate "far away" point sources whose diffraction spikes still 
+                end up in our scene. We'll only want to simulate the part of the scene that ends up on the detector.
+                How do we do that with corgisim/proper?
+        TODO: If the input is a scene.Simulation_Scene instead, then just pull the Scene from the attribute
+                and put the output of this function into the point_source_image attribute
+
+        Arguments: 
+        scene: A corgisim.scene.Scene object that contains the scene to be simulated.
+        sim_scenes: Length 2 array of corgisim.SimulatedImage objects to contains the polarized simylated scene.
+        If wollaston_mode=1, then sim_scenes[0] is horizontally polarized, sim_scenes[1] is vertically polarized.
+        If wollaston_mode=2, then sim_scenes[0] is 45 degrees polarized, sim_scenes[1] is 135 degrees polarized.
+        on_the_fly: A boolean that defines whether the PSFs should be generated on the fly.
+
+        Returns: 
+        A length 2 array containing the simulated scene with point sources add in imaged in orthogonal polarizations. 
+        '''
+
+        if self.wollaston_mode == 0:
+            raise Exception("This function is for use with the wollaston prisms only")
+        
+        if self.cgi_mode == 'excam':
+
+
+            # Extract point source spectra, positions, and polarization
+            point_source_spectra = input_scene.off_axis_source_spectrum
+            point_source_x = input_scene.point_source_x
+            point_source_y = input_scene.point_source_y
+            point_source_pol = input_scene.point_source_pol_state
+
+            # Ensure all inputs are lists for uniform processing
+            if not isinstance(point_source_spectra, list):
+                point_source_spectra = [point_source_spectra]
+            if not isinstance(point_source_x, list):
+                point_source_x = [point_source_x]
+            if not isinstance(point_source_y, list):
+                point_source_y = [point_source_y]
+            if not isinstance(point_source_pol, list):
+                point_source_pol = [point_source_pol]
+
+            # Ensure all lists have the same length
+            if not (len(point_source_spectra) == len(point_source_x) == len(point_source_y) == len(point_source_pol)):
+                raise ValueError(
+                    f"Mismatch in input lengths: {len(point_source_spectra)} spectra, "
+                    f"{len(point_source_x)} x-positions, {len(point_source_y)} y-positions. "
+                    "Each point source must have a corresponding (x, y) position.")
+            
+            ##checks to see if point source is within FOV of coronagraph
+            #FOV_range is indexed as follows - 0: hlc, 1: spc-spec, 2: spc-wide.
+            #FOV_range Values correspond to the inner and outer radius of region of highest contrast and are in units of lambda/d
+            FOV_range = [[3, 9.7], [3, 9.1], [5.9, 20.1]]
+            if(self.cor_type.find('hlc') != -1):
+                FOV_index = 0
+            elif (self.cor_type.find('spec') != -1):
+                FOV_index = 1
+                raise Exception('ERROR: Spectroscopy mode not yet implemented')
+                #todo: Add conditions checking if point source is within azimuthal angle range once spectroscopy mode is implemented
+            else:
+                FOV_index = 2
+            #Calculate point source separation from origin in units of lambda/D
+            point_source_radius = np.sqrt(np.power(point_source_x, 2) + np.power(point_source_y, 2)) * ((self.diam * 1e-2)/(self.lam0_um * 1e-6 * 206265000))
+            for j in range(len(point_source_spectra)):
+                if (not FOV_range[FOV_index][0] <= point_source_radius[j] <= FOV_range[FOV_index][1]):
+                    warnings.warn(f"Point source #{j} is at separation {point_source_radius} λ/D, "
+                                  f"which is outside the coronagraph FOV range of "
+                                  f"{FOV_range[FOV_index][0]} to {FOV_range[FOV_index][1]} λ/D for {self.cor_type}")
+
+            # Compute the observed  spectrum for each off-axis source
+            obs_point_source = [Observation(spectrum, self.bp) for spectrum in point_source_spectra]
+            
+            #if self.integrate_pixels:
+                #oversampling_factor = 7
+            #else:
+                #oversampling_factor = 1
+
+            grid_dim_out_tem = self.grid_dim_out * self.oversampling_factor
+            sampling_um_tem = self.sampling_um / self.oversampling_factor
+            
+            point_source_image = []
+            for j in range(len(point_source_spectra )):
+            
+                proper_keywords_comp = self.proper_keywords.copy()
+                proper_keywords_comp.update({'output_dim': grid_dim_out_tem,
+                                            'final_sampling_m': sampling_um_tem * 1e-6,
+                                            'source_x_offset_mas': point_source_x[j],
+                                            'source_y_offset_mas': point_source_y[j]})
+
+                (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE= proper_keywords_comp ,QUIET=True)
+                images_tem = np.abs(fields)**2
+
+                # Initialize the image array based on whether oversampling is returned
+                images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if self.return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
+                images = np.zeros(images_shape, dtype=float)
+                images_1 = np.zeros(images_shape, dtype=float)
+                images_2 = np.zeros(images_shape, dtype=float)
+                ##transform point source stokes vector if polarimetry mode is enabled
+                #todo: add condition to check whether to include instrument polarization to model or not, right now included by default
+                #todo: add condition to include wollaston prism in image path
+                #multiply by instrument Mueller matrix
+                source_pol_after_instrument = np.matmul(pol.get_instrument_mueller_matrix(self.lam_um), point_source_pol[j])
+                if (self.wollaston_mode == 1):
+                    source_pol_path_1 = np.matmul(pol.get_wollaston_mueller_matrix(0), source_pol_after_instrument)
+                    source_pol_path_2 = np.matmul(pol.get_wollaston_mueller_matrix(90), source_pol_after_instrument)
+                else:
+                    source_pol_path_1 = np.matmul(pol.get_wollaston_mueller_matrix(45), source_pol_after_instrument)
+                    source_pol_path_2 = np.matmul(pol.get_wollaston_mueller_matrix(135), source_pol_after_instrument)
+
+                for i in range(images_tem.shape[0]):
+                    if self.return_oversample:
+                        ##return the oversampled PSF, default 7 grid per pixel
+                        images[i,:,:] +=  images_tem[i,:,:]
+                    else:
+                        ## integrate oversampled PSF back to one grid per pixel
+                        images[i,:,:] +=  images_tem[i,:,:].reshape((self.grid_dim_out,self.oversampling_factor,self.grid_dim_out,self.oversampling_factor)).mean(3).mean(1) * self.oversampling_factor**2
+
+                    dlam_um = self.lam_um[1]-self.lam_um[0]
+                    lam_um_l = (self.lam_um[i]- 0.5*dlam_um) * 1e4 ## unit of anstrom
+                    lam_um_u = (self.lam_um[i]+ 0.5*dlam_um) * 1e4 ## unit of anstrom
+                    # ares in unit of cm^2
+                    # counts in unit of photos/s
+                    counts = self.polarizer_transmission * obs_point_source[j].countrate(area=self.area, waverange=[lam_um_l, lam_um_u])
+
+                    counts_after_wollaston = [counts * source_pol_path_1[0], counts * source_pol_path_2[0]]
+                    images_1[i,:,:] = images[i,:,:] * counts_after_wollaston[0]
+                    images_2[i,:,:] = images[i,:,:] * counts_after_wollaston[1]
+
+                image = [np.sum(images_1, axis=0), np.sum(images_2, axis=0)]
+                point_source_image.append(image) 
+            
+       
+        if self.cgi_mode in ['spec', 'lowfs', 'excam_efield']:
+            raise ValueError(f"The mode '{self.cgi_mode}' has not been implemented yet!")
+        
+        if sim_scenes == None:
+            sim_scenes = [scene.SimulatedImage(input_scene), scene.SimulatedImage(input_scene)]
+
+        for j in range(2):
+            # Prepare additional information to be added as COMMENT headers in the primary HDU.
+            # These are different from the default L1 headers, but extra comments that are used to track simulation-specific details.
+            npl = len(input_scene.point_source_Vmag)
+            sim_info = {'num_off_axis_source': npl}
+            ##update the brightness and position for ith companion
+            for i in range(npl):
+                sim_info[f'pl_Vmag_{i}'] = input_scene.point_source_Vmag[i]
+                sim_info[f'pl_magtype_{i}']= input_scene.point_source_magtype[i]
+                sim_info[f'position_x_mas_{i}'] = input_scene.point_source_x[i]
+                sim_info[f'position_y_mas_{i}'] = input_scene.point_source_y[i]
+
+            # Third: global simulation settings
+            sim_info['cgi_mode'] = self.cgi_mode
+            sim_info['cor_type'] = self.proper_keywords.get('cor_type')
+            sim_info['bandpass'] = self.bandpass_header
+            sim_info['over_sampling_factor'] = self.oversampling_factor
+            sim_info['return_oversample'] = self.return_oversample
+            sim_info['output_dim'] = self.grid_dim_out
+            sim_info['nd_filter'] = self.nd
+                            
+                # Define specific keys from self.proper_keywords to include in the header            
+            keys_to_include_in_header = [ 'use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
+                            'use_lyot_stop','use_field_stop','fsm_x_offset_mas','fsm_y_offset_mas']  # Specify keys to include
+            subset = {key: self.proper_keywords[key] for key in keys_to_include_in_header if key in self.proper_keywords}
+            sim_info.update(subset)
+            sim_info['includ_dectector_noise'] = 'False'
+            # Create the HDU object with the generated header information
+
+            tot_image = [point_source[j] for point_source in point_source_image]
+            sim_scenes[j].point_source_image = outputs.create_hdu( np.sum(tot_image, axis=0), sim_info =sim_info)
+
+        return sim_scenes
 
     
 class CorgiDetector(): 
