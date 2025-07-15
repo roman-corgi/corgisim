@@ -48,7 +48,9 @@ def test_spc_mode():
     optics = instrument.CorgiOptics(cgi_mode, bandpass_corgisim, proper_keywords=proper_keywords, if_quiet=True, integrate_pixels=True)
     sim_scene = optics.get_host_star_psf(base_scene)
     image_star_corgi = sim_scene.host_star_image.data
-    sim_scene = optics.inject_point_sources(base_scene, sim_scene)
+    #check warning is there for out of FOV source
+    with pytest.warns(UserWarning):
+        sim_scene = optics.inject_point_sources(base_scene, sim_scene)
     image_comp_corgi = sim_scene.point_source_image.data 
 
     #### simulate using cgisim
