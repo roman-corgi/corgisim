@@ -35,11 +35,24 @@ def test_cpgs_loading():
     assert isinstance(scene_reference, scene.Scene)
     assert isinstance(detector_target, instrument.CorgiDetector)
     assert isinstance(detector_reference, instrument.CorgiDetector)
-
     assert isinstance(optics, instrument.CorgiOptics)
 
-    # Test correctness of information ?
-  
+    sim_scene_target  = optics.get_host_star_psf(scene_target)
+    sim_scene_reference  = optics.get_host_star_psf(scene_reference)
+
+    assert isinstance(sim_scene_target, fits.hdu.image.PrimaryHDU)
+    assert isinstance(sim_scene_reference, fits.hdu.image.PrimaryHDU)
+
+    exp_time_target = visit_list[1]['exp_time']
+    exp_time_reference = visit_list[0]['exp_time']
+
+    sim_image_target = detector_target.generate_detector_image(sim_scene_target,exp_time_target)
+    sim_image_reference = detector_reference.generate_detector_image(sim_scene_reference,exp_time_reference)
+
+    assert isinstance(sim_image_target, fits.hdu.image.PrimaryHDU)
+    assert isinstance(sim_image_reference, fits.hdu.image.PrimaryHDU)
+
+
 def test_input():
     #test creation
     #For brevity's sake, not all values are tested
@@ -140,6 +153,7 @@ def test_input_from_cpgs():
                     assert scene_target.__dict__[key][keyword] == scene_input.__dict__[key][keyword]
             else:
                 assert scene_input.__dict__[key] == val
+ 
 
 if __name__ == '__main__':
     test_cpgs_loading()

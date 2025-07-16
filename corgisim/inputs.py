@@ -291,7 +291,7 @@ def load_cpgs_data(filepath, return_input=False):
     for target in target_list.iter('target'):
         Vmag = float(target.find('v_mag').text)
         # Luminosity currently not an attribute of the target in cpgs file
-        sptype = target.find('spec_type').text + target.find('sub_type').text 
+        sptype = target.find('spec_type').text + target.find('sub_type').text[:1] 
         # MAG Type not currently not an attribute of the target in cpgs file, using vegamag by default
         magtype = "vegamag"
         if (target.find('target_id').text == '1'):
@@ -307,7 +307,10 @@ def load_cpgs_data(filepath, return_input=False):
     
     if (cpgs_input.find('target_autogain').text == '0'):
         photon_counting = (cpgs_input.find('target_pcounting')=='1')
-        em_gain = cpgs_input.find('target_gain')
+        em_gain = float(cpgs_input.find('target_gain').text)
+        # em_gain cannot be under 1 in emccd. Since it's possible to set it to less than 1 in CPGS for now, we overwrite it
+        if em_gain < 1 : 
+            em_gain = 1.0 
         detector_target = instrument.CorgiDetector(emccd_keywords={'em_gain':em_gain}, photon_counting=photon_counting) 
     elif (cpgs_input.find('target_autogain').text == '1'):
         detector_target = instrument.CorgiDetector(emccd_keywords=None) 
@@ -315,7 +318,10 @@ def load_cpgs_data(filepath, return_input=False):
     if reference_star_present :
         if (cpgs_input.find('reference_autogain').text == '0'):
             photon_counting = (cpgs_input.find('reference_pcounting')=='1')
-            em_gain = cpgs_input.find('reference_gain')
+            em_gain = float(cpgs_input.find('reference_gain').text)
+            # em_gain cannot be under 1 in emccd. Since it's possible to set it to less than 1 in CPGS for now, we overwrite it
+            if em_gain < 1 : 
+                em_gain = 1.0             
             detector_reference = instrument.CorgiDetector(emccd_keywords={'em_gain':em_gain}, photon_counting=photon_counting) 
         elif (cpgs_input.find('reference_autogain').text == '1'):
             detector_reference = instrument.CorgiDetector(emccd_keywords=None) 
@@ -340,8 +346,8 @@ def load_cpgs_data(filepath, return_input=False):
                 number_of_frames = 1
                 exp_time = float(excam.find('exposure_duration').text)*3600
             else:
-                number_of_frames = excam.find('number_of_frames').text
-                exp_time =  excam.find('exposure_duration').text
+                number_of_frames = int(excam.find('number_of_frames').text)
+                exp_time =  float(excam.find('exposure_duration').text)
 
             visit_dict = {'number_of_frames': number_of_frames,'exp_time': exp_time, 'roll_angle':roll_angle, 'visit_id':visit_id}
             

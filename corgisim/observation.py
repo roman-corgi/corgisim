@@ -1,6 +1,7 @@
 ### Functions that will be run to simulate an observation. 
 ## This will likely contain functions simmilar to the functionality in Jorge's corgisims_obs 
 
+from corgisim import scene, instrument, inputs, observation
 
 def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, full_frame= False, loc_x=None, loc_y=None):
     '''
@@ -9,35 +10,46 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, f
     Arguments: 
     scene
 
-    return list of HDUList
+    return list of SimulatedImage
     '''
     sim_scene = optics.get_host_star_psf(scene)
     if hasattr(scene, 'point_source_x'):
-        sim_scene = optics.inject_point_sources(base_scene,sim_scene)
+        sim_scene = optics.inject_point_sources(scene,sim_scene)
     
-    hdu_list = []
+    simulatedImage_list = []
+    
     if full_frame == False :
-        sim_image = detector.generate_detector_image(sim_scene,exp_time)
+        for i in range(0, n_frames):
+            sim_image = detector.generate_detector_image(sim_scene,exp_time)
+            simulatedImage_list.append(sim_image)
     else:
-        sim_image = detector.generate_detector_image(sim_scene,exptime,full_frame=True,loc_x=loc_x, loc_y=loc_y)
-    for i in range[1, n_frames]:
-        hdu_list.append[sim_image]
+        for i in range(0, n_frames):
+            sim_image = detector.generate_detector_image(sim_scene,exp_time,full_frame=True,loc_x=loc_x, loc_y=loc_y)
+            simulatedImage_list.append(sim_image)
 
-    return hdu_list
+    return simulatedImage_list
 
-def generate_observation_scenario(roll_angles, from_cpgs=False):
+def generate_observation_scenario_from_cpgs(filepath):
 
-    # Get the detector, scene and optics used in generate obeservation sequence
-    if from_cpgs: 
-        hdu_list = []
+    # Get the detector, scene and optics used in generate obeservation sequence from CPGS file
+    simulatedImage_list = []
+    # Try to get target and reference
+    try:
         scene_target, scene_reference, optics, detector_target, detector_reference, visit_list = inputs.load_cpgs_data(filepath)
-        
-        for visit in visit_list:
-           #optics.roll_angle = visit['roll_angle']
-            if visit['isReference']:
-                generate_observation_sequence(scene_reference, optics, detector_reference, number_of_frames )
-            else:
-                generate_observation_sequence(scene_target, optics, detector_target, number_of_frames )
+    # If error, only get the target        
+    except ValueError:
+        scene_target, optics, detector_target, visit_list = inputs.load_cpgs_data(filepath)
 
 
-    return hdu_list
+    for visit in visit_list:
+        #optics.roll_angle = visit['roll_angle'] Commented out for now
+        if visit['isReference']:
+            simulatedImage_visit = generate_observation_sequence(scene_reference, optics, detector_reference, visit['exp_time'], visit['number_of_frames'] )
+        else:
+            simulatedImage_visit = generate_observation_sequence(scene_target, optics, detector_target, visit['exp_time'], visit['number_of_frames'] )
+
+        simulatedImage_list.extend(simulatedImage_visit)
+
+    return simulatedImage_list
+
+    
