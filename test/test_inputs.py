@@ -1,6 +1,8 @@
 from corgisim import scene, instrument, inputs
 import pytest
 import os
+from astropy.io import fits
+
 def test_cpgs_loading():
     #script_dir = os.path.dirname(__file__) 
     script_dir = os.getcwd()
@@ -36,12 +38,14 @@ def test_cpgs_loading():
     assert isinstance(detector_target, instrument.CorgiDetector)
     assert isinstance(detector_reference, instrument.CorgiDetector)
     assert isinstance(optics, instrument.CorgiOptics)
+    assert isinstance(visit_list, list)
+    assert len(visit_list) > 0
 
     sim_scene_target  = optics.get_host_star_psf(scene_target)
     sim_scene_reference  = optics.get_host_star_psf(scene_reference)
 
-    assert isinstance(sim_scene_target, fits.hdu.image.PrimaryHDU)
-    assert isinstance(sim_scene_reference, fits.hdu.image.PrimaryHDU)
+    assert isinstance(sim_scene_target.host_star_image, fits.hdu.image.PrimaryHDU)
+    assert isinstance(sim_scene_reference.host_star_image, fits.hdu.image.PrimaryHDU)
 
     exp_time_target = visit_list[1]['exp_time']
     exp_time_reference = visit_list[0]['exp_time']
@@ -49,8 +53,8 @@ def test_cpgs_loading():
     sim_image_target = detector_target.generate_detector_image(sim_scene_target,exp_time_target)
     sim_image_reference = detector_reference.generate_detector_image(sim_scene_reference,exp_time_reference)
 
-    assert isinstance(sim_image_target, fits.hdu.image.PrimaryHDU)
-    assert isinstance(sim_image_reference, fits.hdu.image.PrimaryHDU)
+    assert isinstance(sim_image_target.image_on_detector, fits.hdu.image.PrimaryHDU)
+    assert isinstance(sim_image_reference.image_on_detector, fits.hdu.image.PrimaryHDU)
 
 
 def test_input():

@@ -24,7 +24,7 @@ def test_generate_observation_sequence():
     gain =1000
     emccd_keywords ={'em_gain':gain}
 
-    scene = scene.Scene(host_star_properties)
+    base_scene = scene.Scene(host_star_properties)
     optics =  instrument.CorgiOptics(cgi_mode, bandpass_corgisim, proper_keywords=proper_keywords, if_quiet=True, integrate_pixels=True)
     detector = instrument.CorgiDetector( emccd_keywords)
     
@@ -32,7 +32,7 @@ def test_generate_observation_sequence():
     n_frames = 1
     
     # Test a single frame 
-    simulatedImage_list = observation.generate_observation_sequence(scene, optics, detector, exp_time, n_frames)
+    simulatedImage_list = observation.generate_observation_sequence(base_scene, optics, detector, exp_time, n_frames)
     
     assert isinstance(simulatedImage_list, list)
     assert len(simulatedImage_list) == n_frames
@@ -40,7 +40,7 @@ def test_generate_observation_sequence():
     assert isinstance(simulatedImage_list[n_frames-1].image_on_detector, fits.hdu.image.PrimaryHDU)
 
     # Test a single full frame 
-    simulatedImage_list_fullframe = observation.generate_observation_sequence(scene, optics, detector, exp_time, n_frames,full_frame=True, loc_x=300, loc_y=300)
+    simulatedImage_list_fullframe = observation.generate_observation_sequence(base_scene, optics, detector, exp_time, n_frames,full_frame=True, loc_x=300, loc_y=300)
 
     assert isinstance(simulatedImage_list_fullframe, list)
     assert len(simulatedImage_list_fullframe) == n_frames
@@ -59,13 +59,13 @@ def test_generate_observation_sequence():
     # Test several frames
 
     n_frames = 1000
-    simulatedImage_list = observation.generate_observation_sequence(scene, optics, detector, exp_time, n_frames)
+    simulatedImage_list = observation.generate_observation_sequence(base_scene, optics, detector, exp_time, n_frames)
     assert isinstance(simulatedImage_list, list)
     assert len(simulatedImage_list) == n_frames
     assert isinstance(simulatedImage_list[n_frames-1], SimulatedImage)
     assert isinstance(simulatedImage_list[n_frames-1].image_on_detector, fits.hdu.image.PrimaryHDU)
 
-def generate_observation_scenario_from_cpgs():
+def test_generate_observation_scenario_from_cpgs():
     script_dir = os.getcwd()
     filepath = 'test/test_data/cpgs_without_polarization.xml'
     abs_path =  os.path.join(script_dir, filepath)
@@ -84,4 +84,4 @@ def generate_observation_scenario_from_cpgs():
 
 if __name__ == '__main__':
     test_generate_observation_sequence()
-    generate_observation_scenario_from_cpgs()
+    test_generate_observation_scenario_from_cpgs()
