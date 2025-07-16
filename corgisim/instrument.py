@@ -323,9 +323,16 @@ class CorgiOptics():
             if (self.wollaston_mode == 1):
                 wollaston_jones_1 = pol.get_wollaston_jones_matrix(0)
                 wollaston_jones_2 = pol.get_wollaston_jones_matrix(90)
+                print('0 degrees:')
+                print(wollaston_jones_1)
+                print('90 degrees:')
+                print(wollaston_jones_2)
             else:
                 wollaston_jones_1 = pol.get_wollaston_jones_matrix(45)
                 wollaston_jones_2 = pol.get_wollaston_jones_matrix(135)
+                print('45 degrees:')
+                print(wollaston_jones_1)
+                print('135 degrees:')
                 print(wollaston_jones_2)
             
             jones_in = np.stack([fields_x, fields_y], axis= -1)
