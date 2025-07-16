@@ -266,12 +266,32 @@ def load_cpgs_data(filepath, return_input=False):
     """
     Creates a scene and optics based on the content of a cpgs file
 
+    This function parses the CPGS file to extract simulation parameters for
+    target and, if present, reference stars, along with visit-specific details.
+
     :param filepath: path to the input file
     :type filepath: string
-    :param return_input: if True, returns an Input object
-    .
-    :return:
-    :scene_target, scene_reference, optics, detector_target, detector_reference, visit_list
+    :param return_input: if True, returns an Input object instead of the scene, optics, and detector objects.
+                         Defaults to False.
+    :type return_input: bool, optional
+    
+    :return: If ``return_input`` is False (default):
+             A tuple containing:
+             - ``scene_target`` : The scene object for the target star.
+             - ``scene_reference`` (optional): The scene object for the reference star, if present.
+             - ``optics`` : The optics object configured from the CPGS file.
+             - ``detector_target``: The detector object for target observations.
+             - ``detector_reference`` (optional): The detector object for reference observations, if present.
+             - ``visit_list`` (list): A list of dictionaries, where each dictionary describes a single observation visit.
+             
+             If ``return_input`` is True:
+             - ``input`` (:py:class:`Input`): An Input object containing all parsed simulation parameters.
+    :rtype: tuple or corgisim.inputs.Input
+    :raises FileNotFoundError: If the specified `filepath` does not exist.
+    :raises xml.etree.ElementTree.ParseError: If the file at `filepath` is not a valid XML file.
+    :raises Exception: For unsupported target IDs or other parsing issues within the CPGS structure.
+    :raises NotImplementedError: If a specific configuration (e.g., polarization, filter, coronagraph mask)
+                                 from the CPGS file is not yet implemented in the simulation.
     """
     # Parse the file 
     try: 

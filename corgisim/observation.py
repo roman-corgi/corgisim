@@ -5,12 +5,32 @@ from corgisim import scene, instrument, inputs, observation
 
 def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, full_frame= False, loc_x=None, loc_y=None):
     '''
-    Function that generates a sequence of observations for a given scene, instrument configuration, and detector configuration. 
-    One observation sequence is one visit at one roll angle
-    Arguments: 
-    scene
+    """
+    Generates a sequence of observations for a given scene, instrument configuration,
+    and detector configuration.
 
-    return list of SimulatedImage
+    One observation sequence represents a single visit at a specific roll angle.
+
+    :param scene: The scene object containing information about the host star and point sources.
+    :type scene: corgisim.scene.Scene
+    :param optics: The optics object defining the instrument configuration.
+    :type optics: corgisim.instrument.CorgiOptics
+    :param detector: The detector object defining the detector characteristics.
+    :type detector: corgisim.instrument.CorgiDetector
+    :param exp_time: The exposure time for each frame in seconds.
+    :type exp_time: float
+    :param n_frames: The number of frames to generate in the sequence.
+    :type n_frames: int
+    :param full_frame: If True, generate a full-frame detector image. Defaults to False.
+    :type full_frame: bool, optional
+    :param loc_x: The x-coordinate for the center of the sub-array if `full_frame` is False.
+                  Required if `full_frame` is True.
+    :type loc_x: int, optional
+    :param loc_y: The y-coordinate for the center of the sub-array if `full_frame` is False.
+                  Required if `full_frame` is True.
+    :type loc_y: int, optional
+    :return: A list of SimulatedImage objects, each representing a generated observation frame.
+    :rtype: list[corgisim.scene.SimulatedImage]
     '''
     sim_scene = optics.get_host_star_psf(scene)
     if hasattr(scene, 'point_source_x'):
@@ -30,7 +50,19 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, f
     return simulatedImage_list
 
 def generate_observation_scenario_from_cpgs(filepath):
+    """
+    Generates an observation scenario by loading instrument, scene, and visit
+    information from a CPGS file.
 
+    This function attempts to load both target and reference star information.
+    If only target information is available, it proceeds with that.
+
+    :param filepath: The path to the CPGS XML file.
+    :type filepath: str
+    :return: A list of SimulatedImage objects, representing the complete observation
+             scenario across all visits defined in the CPGS file.
+    :rtype: list[corgisim.scene.SimulatedImage]
+    """
     # Get the detector, scene and optics used in generate obeservation sequence from CPGS file
     simulatedImage_list = []
     # Try to get target and reference
