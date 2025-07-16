@@ -5,6 +5,7 @@ import proper
 import roman_preflight_proper
 import pytest
 import numpy as np
+import os
 
 def test_generate_observation_sequence():
 
