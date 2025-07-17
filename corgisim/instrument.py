@@ -29,7 +29,7 @@ class CorgiOptics():
 
     '''
 
-    def __init__(self, cgi_mode = None, bandpass= None,  diam = 236.3114, wollaston_mode=0, proper_keywords=None, oversampling_factor = 7, return_oversample = False, **kwargs):
+    def __init__(self, cgi_mode = None, bandpass= None,  diam = 236.3114, wollaston_prism=0, proper_keywords=None, oversampling_factor = 7, return_oversample = False, **kwargs):
         '''
 
         Initialize the class a keyword dictionary that defines the setup of cgisim/PROPER 
@@ -41,7 +41,7 @@ class CorgiOptics():
         - cor_type (str): define coronagraphic observing modes
         - bandpass (str): pre-difined bandpass for Roman-CGI
         - diam (float) in meter: diameter of the primaru mirror, the default value is 2.363114 meter
-        - wollaston_mode (int): define whether to use wollaston prisms in the optical path for polarimetry data
+        - wollaston_prism (int): define whether to use wollaston prisms in the optical path for polarimetry data
           0 (default): no wollastons used, 1: image 0/90 degree polarization, 2: image 45/135 degree polarization
         - proper_keywords: A dictionary with the keywords that are used to set up the proper model
         - oversample: An integer that defines the oversampling factor of the detector when generating the image
@@ -79,7 +79,7 @@ class CorgiOptics():
 
        # ''spc-spec', 'spc-spec_band2', 'spc-spec_band3', spc-mswc', 'spc-mswc_band4','spc-mswc_band1', 'zwfs', these cor_type is availbale in cgisim, but we currently don't support them in corgisim 
 
-        valid_wollaston_modes = [0, 1, 2]
+        valid_wollaston_prisms = [0, 1, 2]
 
         if cgi_mode not in valid_cgi_modes:
             raise Exception('ERROR: Requested mode does not match any available mode')
@@ -88,7 +88,7 @@ class CorgiOptics():
         if proper_keywords['cor_type'] not in valid_cor_types:
             raise Exception('ERROR: Requested coronagraph does not match any available types')
         
-        if wollaston_mode not in valid_wollaston_modes:
+        if wollaston_prism not in valid_wollaston_prisms:
             raise Exception('Error: Requested wollaston setting does not match any available mode')
 
         self.cgi_mode = cgi_mode
@@ -98,7 +98,7 @@ class CorgiOptics():
         else:
             self.bandpass = bandpass.lower()
         self.bandpass_header = bandpass
-        self.wollaston_mode = wollaston_mode
+        self.wollaston_prism = wollaston_prism
         # self.bandpass is used as the keyword for cgisim, while self.bandpass_header is used for setting the FITS header.
         # The distinction arises from differences in naming conventions for filters between cgisim and the latest wiki page.
 
@@ -263,13 +263,13 @@ class CorgiOptics():
 
         return sim_scene
 
-    def get_host_star_psf_polarized(self, input_scene, sim_scenes=None, on_the_fly=False):
+    def get_host_star_psf_polarized(self, input_scene, sim_scene=None, on_the_fly=False):
         '''
         
         Function that provides an on-axis polarized PSF for the current configuration of CGI.
         
         Produces two images of orthogonal polarizations as outputted by the wollaston prism, 
-        only use if wollaston_mode is enabled.
+        only use if wollaston_prism is 1 or 2.
 
         It should take the host star properties from scene.host_star_properties and return a 
         Simulated_scene object with the host_star_image attribute populated with an astropy HDU 
@@ -280,6 +280,8 @@ class CorgiOptics():
         #Todo Figure out the default output units. Current candidate is photoelectrons/s. 
         #Todo: If the input is a scene.Simulation_Scene instead, then just pull the Scene from the attribute 
                 and put the output of this function into the host_star_image attribute.
+        #Todo: Possibly merge this with the regular get_host_star_psf() function
+        #Todo: Get 45/135 polarized speckle fields working
 
         Arguments: 
         input_scene: A corgisim.scene.Scene object that contains the scene to be simulated.
@@ -291,8 +293,10 @@ class CorgiOptics():
 
         '''
         
-        if self.wollaston_mode == 0:
+        if self.wollaston_prism == 0:
             raise Exception("This function is for use with the wollaston prisms only")
+        if self.wollaston_prism == 2:
+            warnings.warn('Warning: 45°/135° polarized images for the speckle field is currently unsupported, generated output will not be accurate')
 
         if self.cgi_mode == 'excam':
             
@@ -312,6 +316,7 @@ class CorgiOptics():
             self.proper_keywords['output_dim']=grid_dim_out_tem
             self.proper_keywords['final_sampling_m']=sampling_um_tem *1e-6
             
+            #generate x-polarized and y-polarized speckles field
             proper_keywords_pol_x = self.proper_keywords.copy()
             proper_keywords_pol_y = self.proper_keywords.copy()
             proper_keywords_pol_x['polaxis'] = 5
@@ -320,21 +325,15 @@ class CorgiOptics():
             (fields_y, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=proper_keywords_pol_y,QUIET=self.quiet)
 
             images_tem = [np.zeros(fields_x.shape), np.zeros(fields_x.shape)]
-            if (self.wollaston_mode == 1):
+            if (self.wollaston_prism == 1):
                 wollaston_jones_1 = pol.get_wollaston_jones_matrix(0)
                 wollaston_jones_2 = pol.get_wollaston_jones_matrix(90)
-                print('0 degrees:')
-                print(wollaston_jones_1)
-                print('90 degrees:')
-                print(wollaston_jones_2)
             else:
                 wollaston_jones_1 = pol.get_wollaston_jones_matrix(45)
                 wollaston_jones_2 = pol.get_wollaston_jones_matrix(135)
-                print('45 degrees:')
-                print(wollaston_jones_1)
-                print('135 degrees:')
-                print(wollaston_jones_2)
             
+            #Calculate 0/90 or 45/135 polarized intensities from total e-field vector
+            #todo: 45/135 method does not work, need to be changed
             jones_in = np.stack([fields_x, fields_y], axis= -1)
             jones_out_1 = np.matmul(jones_in, wollaston_jones_1.T)
             jones_out_2 = np.matmul(jones_in, wollaston_jones_2.T)
@@ -362,7 +361,7 @@ class CorgiOptics():
                 lam_um_u = (self.lam_um[i]+ 0.5*dlam_um) * 1e4 ## unit of anstrom
                 # ares in unit of cm^2
                 # counts in unit of photos/s
-                counts = self.polarizer_transmission * obs.countrate(area=self.area, waverange=[lam_um_l, lam_um_u])
+                counts = 0.45 * obs.countrate(area=self.area, waverange=[lam_um_l, lam_um_u])
 
                 images_1[i,:,:] = images_1[i,:,:] * counts
                 images_2[i,:,:] = images_2[i,:,:] * counts
@@ -373,16 +372,14 @@ class CorgiOptics():
             raise ValueError(f"The mode '{self.cgi_mode}' has not been implemented yet!")
         
         # Initialize SimulatedImage class to restore the output psf
-        if sim_scenes == None:
-            sim_scenes = [scene.SimulatedImage(input_scene), scene.SimulatedImage(input_scene)]
+        if sim_scene == None:
+            sim_scene = scene.SimulatedImage(input_scene)
 
-        if len(sim_scenes) != len(image):
-            raise ValueError('Input sim_scenes length does not match with the provided imaging mode')
-
+        sim_scene.host_star_image = []
         for j in range(len(image)):
             # Prepare additional information to be added as COMMENT headers in the primary HDU.
             # These are different from the default L1 headers, but extra comments that are used to track simulation-specific details.
-            if self.wollaston_mode == 1:
+            if self.wollaston_prism == 1:
                 if j == 0:
                     polarization_basis = '0 degrees'
                 else:
@@ -412,9 +409,10 @@ class CorgiOptics():
             sim_info.update(subset)
             sim_info['includ_dectector_noise'] = 'False'
             # Create the HDU object with the generated header information
-            sim_scenes[j].host_star_image = outputs.create_hdu(image[j],sim_info =sim_info)
+            #host_star_image is a list of HDU objects rather than a singular one in polarimetry mode
+            sim_scene.host_star_image.append(outputs.create_hdu(image[j],sim_info =sim_info))
 
-        return sim_scenes
+        return sim_scene
 
     def setup_bandpass(self, cgimode, bandpass_name, nd ):
         """
@@ -628,14 +626,14 @@ class CorgiOptics():
 
         return sim_scene
     
-    def inject_point_sources_polarized(self, input_scene, sim_scenes=None, on_the_fly=False):
+    def inject_point_sources_polarized(self, input_scene, sim_scene=None, on_the_fly=False):
         '''
         Function that injects point sources into the scene for polarimetry mode.
 
         It should take the input scene and inject the point sources defined scene.point_source_list, 
         which should give the location and brightness. 
 
-        Only use when wollaston mode is enabled, inject point sources imaged in a specific polarization
+        Only use when wollaston prism is 1 or 2, inject point sources imaged in a specific polarization
         basis into the host star psf imaged in that same basis 
 
         The off-axis PSFs should be either generated on the fly, or read in from a set of pre-generated PSFs. 
@@ -649,16 +647,14 @@ class CorgiOptics():
 
         Arguments: 
         scene: A corgisim.scene.Scene object that contains the scene to be simulated.
-        sim_scenes: Length 2 array of corgisim.SimulatedImage objects to contains the polarized simylated scene.
-        If wollaston_mode=1, then sim_scenes[0] is horizontally polarized, sim_scenes[1] is vertically polarized.
-        If wollaston_mode=2, then sim_scenes[0] is 45 degrees polarized, sim_scenes[1] is 135 degrees polarized.
+        sim_scene: A corgisim.SimulatedImage object to contains the simylated scene.
         on_the_fly: A boolean that defines whether the PSFs should be generated on the fly.
 
         Returns: 
         A length 2 array containing the simulated scene with point sources add in imaged in orthogonal polarizations. 
         '''
 
-        if self.wollaston_mode == 0:
+        if self.wollaston_prism == 0:
             raise Exception("This function is for use with the wollaston prisms only")
         
         if self.cgi_mode == 'excam':
@@ -736,11 +732,10 @@ class CorgiOptics():
                 images_1 = np.zeros(images_shape, dtype=float)
                 images_2 = np.zeros(images_shape, dtype=float)
                 ##transform point source stokes vector if polarimetry mode is enabled
-                #todo: add condition to check whether to include instrument polarization to model or not, right now included by default
-                #todo: add condition to include wollaston prism in image path
-                #multiply by instrument Mueller matrix
+                #multiply by instrument Mueller matrix, renormalize
                 source_pol_after_instrument = np.matmul(pol.get_instrument_mueller_matrix(self.lam_um), point_source_pol[j])
-                if (self.wollaston_mode == 1):
+                source_pol_after_instrument = source_pol_after_instrument / source_pol_after_instrument[0]
+                if (self.wollaston_prism == 1):
                     source_pol_path_1 = np.matmul(pol.get_wollaston_mueller_matrix(0), source_pol_after_instrument)
                     source_pol_path_2 = np.matmul(pol.get_wollaston_mueller_matrix(90), source_pol_after_instrument)
                 else:
@@ -760,7 +755,7 @@ class CorgiOptics():
                     lam_um_u = (self.lam_um[i]+ 0.5*dlam_um) * 1e4 ## unit of anstrom
                     # ares in unit of cm^2
                     # counts in unit of photos/s
-                    counts = self.polarizer_transmission * obs_point_source[j].countrate(area=self.area, waverange=[lam_um_l, lam_um_u])
+                    counts = obs_point_source[j].countrate(area=self.area, waverange=[lam_um_l, lam_um_u])
 
                     counts_after_wollaston = [counts * source_pol_path_1[0], counts * source_pol_path_2[0]]
                     images_1[i,:,:] = images[i,:,:] * counts_after_wollaston[0]
@@ -773,10 +768,12 @@ class CorgiOptics():
         if self.cgi_mode in ['spec', 'lowfs', 'excam_efield']:
             raise ValueError(f"The mode '{self.cgi_mode}' has not been implemented yet!")
         
-        if sim_scenes == None:
-            sim_scenes = [scene.SimulatedImage(input_scene), scene.SimulatedImage(input_scene)]
+        if sim_scene == None:
+            sim_scene = scene.SimulatedImage(input_scene)
 
-        for j in range(2):
+        sim_scene.point_source_image = []
+
+        for j in range(len(point_source_image[0])):
             # Prepare additional information to be added as COMMENT headers in the primary HDU.
             # These are different from the default L1 headers, but extra comments that are used to track simulation-specific details.
             npl = len(input_scene.point_source_Vmag)
@@ -806,9 +803,10 @@ class CorgiOptics():
             # Create the HDU object with the generated header information
 
             tot_image = [point_source[j] for point_source in point_source_image]
-            sim_scenes[j].point_source_image = outputs.create_hdu( np.sum(tot_image, axis=0), sim_info =sim_info)
+            #point_source_image is a HDU list as well in polarimetry mode
+            sim_scene.point_source_image.append(outputs.create_hdu( np.sum(tot_image, axis=0), sim_info =sim_info))
 
-        return sim_scenes
+        return sim_scene
 
     
 class CorgiDetector(): 
