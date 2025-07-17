@@ -251,6 +251,7 @@ class CorgiOptics():
                     'cgi_mode':self.cgi_mode,
                     'cor_type': self.proper_keywords['cor_type'],
                     'bandpass':self.bandpass_header,
+                    'polarization_basis': 'None',
                     'over_sampling_factor':self.oversampling_factor,
                     'return_oversample': self.return_oversample,
                     'output_dim': self.proper_keywords['output_dim'],
@@ -371,7 +372,7 @@ class CorgiOptics():
                 images_1[i,:,:] = images_1[i,:,:] * counts
                 images_2[i,:,:] = images_2[i,:,:] * counts
 
-        image = [np.sum(images_1, axis=0), np.sum(images_2, axis=0)]
+        image = np.array([np.sum(images_1, axis=0), np.sum(images_2, axis=0)])
 
         if self.cgi_mode in ['spec', 'lowfs', 'excam_efield']:
             raise ValueError(f"The mode '{self.cgi_mode}' has not been implemented yet!")
@@ -380,42 +381,33 @@ class CorgiOptics():
         if sim_scene == None:
             sim_scene = scene.SimulatedImage(input_scene)
 
-        sim_scene.host_star_image = []
-        for j in range(len(image)):
-            # Prepare additional information to be added as COMMENT headers in the primary HDU.
-            # These are different from the default L1 headers, but extra comments that are used to track simulation-specific details.
-            if self.wollaston_prism == 1:
-                if j == 0:
-                    polarization_basis = '0 degrees'
-                else:
-                    polarization_basis = '90 degrees'
-            else:
-                if j == 0:
-                    polarization_basis = '45 degrees'
-                else:
-                    polarization_basis = '135 degrees'
-            sim_info = {'host_star_sptype':input_scene.host_star_sptype,
-                        'host_star_Vmag':input_scene.host_star_Vmag,
-                        'host_star_magtype':input_scene.host_star_magtype,
-                        'ref_flag':input_scene.ref_flag,
-                        'cgi_mode':self.cgi_mode,
-                        'cor_type': self.proper_keywords['cor_type'],
-                        'bandpass':self.bandpass_header,
-                        'polarization_basis': polarization_basis,
-                        'over_sampling_factor':self.oversampling_factor,
-                        'return_oversample': self.return_oversample,
-                        'output_dim': self.grid_dim_out,
-                        'nd_filter':self.nd}
+        # Prepare additional information to be added as COMMENT headers in the primary HDU.
+        # These are different from the default L1 headers, but extra comments that are used to track simulation-specific details.
+        if self.wollaston_prism == 1:
+            polarization_basis = '0/90 degrees'
+        else:
+            polarization_basis = '45/135 degrees'
+        sim_info = {'host_star_sptype':input_scene.host_star_sptype,
+                    'host_star_Vmag':input_scene.host_star_Vmag,
+                    'host_star_magtype':input_scene.host_star_magtype,
+                    'ref_flag':input_scene.ref_flag,
+                    'cgi_mode':self.cgi_mode,
+                    'cor_type': self.proper_keywords['cor_type'],
+                    'bandpass':self.bandpass_header,
+                    'polarization_basis': polarization_basis,
+                    'over_sampling_factor':self.oversampling_factor,
+                    'return_oversample': self.return_oversample,
+                    'output_dim': self.grid_dim_out,
+                    'nd_filter':self.nd}
 
-            # Define specific keys from self.proper_keywords to include in the header            
-            keys_to_include_in_header = ['use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
-                                'use_lyot_stop','use_field_stop','fsm_x_offset_mas','fsm_y_offset_mas']  # Specify keys to include
-            subset = {key: self.proper_keywords[key] for key in keys_to_include_in_header if key in self.proper_keywords}
-            sim_info.update(subset)
-            sim_info['includ_dectector_noise'] = 'False'
-            # Create the HDU object with the generated header information
-            #host_star_image is a list of HDU objects rather than a singular one in polarimetry mode
-            sim_scene.host_star_image.append(outputs.create_hdu(image[j],sim_info =sim_info))
+        # Define specific keys from self.proper_keywords to include in the header            
+        keys_to_include_in_header = ['use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
+                            'use_lyot_stop','use_field_stop','fsm_x_offset_mas','fsm_y_offset_mas']  # Specify keys to include
+        subset = {key: self.proper_keywords[key] for key in keys_to_include_in_header if key in self.proper_keywords}
+        sim_info.update(subset)
+        sim_info['includ_dectector_noise'] = 'False'
+        # Create the HDU object with the generated header information
+        sim_scene.host_star_image = outputs.create_hdu(image,sim_info =sim_info)
 
         return sim_scene
 
@@ -617,6 +609,7 @@ class CorgiOptics():
         sim_info['cgi_mode'] = self.cgi_mode
         sim_info['cor_type'] = self.proper_keywords.get('cor_type')
         sim_info['bandpass'] = self.bandpass_header
+        sim_info['polarization_basis'] = 'None'
         sim_info['over_sampling_factor'] = self.oversampling_factor
         sim_info['return_oversample'] = self.return_oversample
         sim_info['output_dim'] = self.proper_keywords['output_dim'] 
@@ -722,7 +715,7 @@ class CorgiOptics():
             grid_dim_out_tem = self.grid_dim_out * self.oversampling_factor
             sampling_um_tem = self.sampling_um / self.oversampling_factor
             
-            point_source_image = []
+            point_source_image = [[],[]]
             for j in range(len(point_source_spectra )):
             
                 proper_keywords_comp = self.proper_keywords.copy()
@@ -769,8 +762,8 @@ class CorgiOptics():
                     images_1[i,:,:] = images[i,:,:] * counts_after_wollaston[0]
                     images_2[i,:,:] = images[i,:,:] * counts_after_wollaston[1]
 
-                image = [np.sum(images_1, axis=0), np.sum(images_2, axis=0)]
-                point_source_image.append(image) 
+                point_source_image[0].append(np.sum(images_1, axis=0))
+                point_source_image[1].append(np.sum(images_2, axis=0)) 
             
        
         if self.cgi_mode in ['spec', 'lowfs', 'excam_efield']:
@@ -779,40 +772,40 @@ class CorgiOptics():
         if sim_scene == None:
             sim_scene = scene.SimulatedImage(input_scene)
 
-        sim_scene.point_source_image = []
+        # Prepare additional information to be added as COMMENT headers in the primary HDU.
+        # These are different from the default L1 headers, but extra comments that are used to track simulation-specific details.
+        npl = len(input_scene.point_source_Vmag)
+        sim_info = {'num_off_axis_source': npl}
+        ##update the brightness and position for ith companion
+        for i in range(npl):
+            sim_info[f'pl_Vmag_{i}'] = input_scene.point_source_Vmag[i]
+            sim_info[f'pl_magtype_{i}']= input_scene.point_source_magtype[i]
+            sim_info[f'position_x_mas_{i}'] = input_scene.point_source_x[i]
+            sim_info[f'position_y_mas_{i}'] = input_scene.point_source_y[i]
 
-        for j in range(len(point_source_image[0])):
-            # Prepare additional information to be added as COMMENT headers in the primary HDU.
-            # These are different from the default L1 headers, but extra comments that are used to track simulation-specific details.
-            npl = len(input_scene.point_source_Vmag)
-            sim_info = {'num_off_axis_source': npl}
-            ##update the brightness and position for ith companion
-            for i in range(npl):
-                sim_info[f'pl_Vmag_{i}'] = input_scene.point_source_Vmag[i]
-                sim_info[f'pl_magtype_{i}']= input_scene.point_source_magtype[i]
-                sim_info[f'position_x_mas_{i}'] = input_scene.point_source_x[i]
-                sim_info[f'position_y_mas_{i}'] = input_scene.point_source_y[i]
-
-            # Third: global simulation settings
-            sim_info['cgi_mode'] = self.cgi_mode
-            sim_info['cor_type'] = self.proper_keywords.get('cor_type')
-            sim_info['bandpass'] = self.bandpass_header
-            sim_info['over_sampling_factor'] = self.oversampling_factor
-            sim_info['return_oversample'] = self.return_oversample
-            sim_info['output_dim'] = self.grid_dim_out
-            sim_info['nd_filter'] = self.nd
+        # Third: global simulation settings
+        if self.wollaston_prism == 1:
+            polarization_basis = '0/90 degrees'
+        else:
+            polarization_basis = '45/135 degrees'
+        sim_info['cgi_mode'] = self.cgi_mode
+        sim_info['cor_type'] = self.proper_keywords.get('cor_type')
+        sim_info['bandpass'] = self.bandpass_header
+        sim_info['polarization_basis'] = polarization_basis
+        sim_info['over_sampling_factor'] = self.oversampling_factor
+        sim_info['return_oversample'] = self.return_oversample
+        sim_info['output_dim'] = self.proper_keywords['output_dim'] 
+        sim_info['nd_filter'] = self.nd
                             
                 # Define specific keys from self.proper_keywords to include in the header            
-            keys_to_include_in_header = [ 'use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
+        keys_to_include_in_header = [ 'use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
                             'use_lyot_stop','use_field_stop','fsm_x_offset_mas','fsm_y_offset_mas']  # Specify keys to include
-            subset = {key: self.proper_keywords[key] for key in keys_to_include_in_header if key in self.proper_keywords}
-            sim_info.update(subset)
-            sim_info['includ_dectector_noise'] = 'False'
-            # Create the HDU object with the generated header information
+        subset = {key: self.proper_keywords[key] for key in keys_to_include_in_header if key in self.proper_keywords}
+        sim_info.update(subset)
+        sim_info['includ_dectector_noise'] = 'False'
+        # Create the HDU object with the generated header information
 
-            tot_image = [point_source[j] for point_source in point_source_image]
-            #point_source_image is a HDU list as well in polarimetry mode
-            sim_scene.point_source_image.append(outputs.create_hdu( np.sum(tot_image, axis=0), sim_info =sim_info))
+        sim_scene.point_source_image = outputs.create_hdu(np.array([np.sum(point_source_image[0],axis=0), np.sum(point_source_image[1],axis=0)]), sim_info =sim_info)
 
         return sim_scene
 

@@ -45,11 +45,11 @@ def test_polarimetry():
 
     #simulate using corgisim
     sim_scene = optics.get_host_star_psf_polarized(base_scene)
-    image_star_corgi_x = sim_scene.host_star_image[0].data
-    image_star_corgi_y = sim_scene.host_star_image[1].data
+    image_star_corgi_x = sim_scene.host_star_image.data[0]
+    image_star_corgi_y = sim_scene.host_star_image.data[1]
     sim_scene = optics.inject_point_sources_polarized(base_scene, sim_scene)
-    image_comp_corgi_x = sim_scene.point_source_image[0].data
-    image_comp_corgi_y = sim_scene.point_source_image[1].data
+    image_comp_corgi_x = sim_scene.point_source_image.data[0]
+    image_comp_corgi_y = sim_scene.point_source_image.data[1]
 
     #simulate using cgisim
     polaxis_cgisim_x = -5
