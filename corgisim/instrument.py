@@ -80,12 +80,10 @@ class CorgiOptics():
         #these cor_type is availbale in cgisim, but are currently untested in corgisim
         untest_cor_types = ['spc-spec', 'spc-spec_band2', 'spc-spec_band3', 'spc-mswc', 'spc-mswc_band4','spc-mswc_band1', 'zwfs']
 
-
         valid_wollaston_prisms = [0, 1, 2]
 
         if cgi_mode not in valid_cgi_modes:
             raise Exception('ERROR: Requested mode does not match any available mode')
-     
 
         if proper_keywords['cor_type'] not in valid_cor_types and proper_keywords['cor_type'] not in untest_cor_types:
             raise Exception('ERROR: Requested coronagraph does not match any available types')
