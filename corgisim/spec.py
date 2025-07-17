@@ -1,8 +1,6 @@
 import pickle
 import numpy as np
-from astropy.io import fits
 import json
-import os
 from pathlib import Path
 import scipy.interpolate
 

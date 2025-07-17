@@ -2,6 +2,7 @@
 import proper
 import numpy as np
 from astropy.io import fits
+import astropy.units as u
 import roman_preflight_proper
 from corgisim import scene
 import cgisim
@@ -15,6 +16,7 @@ from corgidrp import mocks
 from corgisim import outputs
 from corgisim import spec
 import os
+from scipy import interpolate
 
 class CorgiOptics():
     '''
@@ -154,6 +156,12 @@ class CorgiOptics():
         if self.cgi_mode == 'spec':
             baseline_mode_data, _ = cgisim.cgisim_read_mode('excam', 'hlc_band1', '1', info_dir=info_dir)
             self.sampling_um = baseline_mode_data['sampling_um']
+            # Redefine the wavelength array so that the prism dispersion wavelength bins span the full bandpass
+            if self.prism != 'None': 
+                dlam_um = self.lam_um[1] - self.lam_um[0]
+                self.lam_um = np.linspace( bandpass_data["minlam_um"] - 0.5*dlam_um, bandpass_data["maxlam_um"] + 0.5*dlam_um, self.nlam ) ### wavelength in um
+            else:
+                self.lam_um = np.linspace( bandpass_data["minlam_um"], bandpass_data["maxlam_um"], self.nlam ) ### wavelength in um
         else:
             self.sampling_um = mode_data['sampling_um'] ### size of pixel in micron
 
@@ -299,6 +307,7 @@ class CorgiOptics():
             # Initialize the image array based on whether oversampling is returned
             images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if self.return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
             images = np.zeros(images_shape, dtype=float)
+            counts = np.zeros(self.nlam) * u.count / u.second
 
             for i in range(images_tem.shape[0]):
                 if self.return_oversample:
@@ -313,10 +322,9 @@ class CorgiOptics():
                 lam_um_u = (self.lam_um[i]+ 0.5*dlam_um) * 1e4 ## unit of anstrom
                 # ares in unit of cm^2
                 # counts in unit of photos/s
-                counts = self.polarizer_transmission * obs.countrate(area=self.area, waverange=[lam_um_l, lam_um_u])
+                counts[i] = self.polarizer_transmission * obs.countrate(area=self.area, waverange=[lam_um_l, lam_um_u])
 
-                images[i,:,:] = images[i,:,:] * counts
-
+            images *= counts.value[:, np.newaxis, np.newaxis]
             image = np.sum(images, axis=0)
 
         if self.cgi_mode in ['lowfs', 'excam_efield']:
@@ -379,7 +387,10 @@ class CorgiOptics():
         bandpass_i = 'lam' + str(lam_start_um*1000) + 'lam' + str(lam_end_um*1000) 
 
         wave, throughput = cgisim.cgisim_roman_throughput( bandpass_name, bandpass_i, nd, cgimode, info_dir )
-
+        if cgimode == 'spec': # upsample the wavelength and throughput arrays
+            f = interpolate.interp1d(wave, throughput, kind='linear')
+            wave = np.linspace(wave[0], wave[-1], 100*len(wave))
+            throughput = f(wave)
         bp = SpectralElement(Empirical1D, points=wave, lookup_table=throughput)
 
         return bp
