@@ -1,5 +1,6 @@
 
 import proper
+import warnings
 import numpy as np
 from astropy.io import fits
 import astropy.units as u
@@ -40,6 +41,7 @@ class CorgiOptics():
 
         Initialize the class with two dictionaries: 
         - cgi_mode (str): define cgi simulation mode, valid values: 'excam', 'spec', ‘lowfs’, ‘excam_efield’
+        - cor_type (str): define coronagraphic observing modes
         - bandpass (str): pre-difined bandpass for Roman-CGI
         - diam (float) in meter: diameter of the primaru mirror, the default value is 2.363114 meter
         - proper_keywords: A dictionary with the keywords that are used to set up the proper model
@@ -73,18 +75,25 @@ class CorgiOptics():
 
 
         valid_cgi_modes = ['excam', 'spec', 'lowfs', 'excam_efield']
-        valid_cor_types = ['hlc', 'hlc_band1', 'spc-spec', 'spc-spec_band2', 'spc-spec_band3', 'spc-wide', 'spc-wide_band4', 
-                        'spc-wide_band1', 'spc-mswc', 'spc-mswc_band4','spc-mswc_band1', 'zwfs',
-                        'hlc_band2', 'hlc_band3', 'hlc_band4', 'spc-spec_rotated', 'spc-spec_band2_rotated', 'spc-spec_band3_rotated']
+        valid_cor_types = ['hlc', 'hlc_band1', 'spc-wide', 'spc-wide_band4', 
+                        'spc-wide_band1', 'hlc_band2', 'hlc_band3', 'hlc_band4', 'spc-spec_rotated', 'spc-spec_band2_rotated', 'spc-spec_band3_rotated']
+        
+        #these cor_type is availbale in cgisim, but are currently untested in corgisim
+        untest_cor_types = ['spc-spec', 'spc-spec_band2', 'spc-spec_band3', 'spc-mswc', 'spc-mswc_band4','spc-mswc_band1', 'zwfs']
+
 
         if cgi_mode not in valid_cgi_modes:
             raise Exception('ERROR: Requested mode does not match any available mode')
      
 
-        if proper_keywords['cor_type'] not in valid_cor_types:
+        if proper_keywords['cor_type'] not in valid_cor_types and proper_keywords['cor_type'] not in untest_cor_types:
             raise Exception('ERROR: Requested coronagraph does not match any available types')
+        
+        if proper_keywords['cor_type'] in untest_cor_types:
+            warnings.warn('Warning: Requested coronagraph is currently untested and might not work as expected')
 
         self.cgi_mode = cgi_mode
+        self.cor_type = proper_keywords['cor_type']
         if bandpass  in ['1F','2F','3F','4F']:
             self.bandpass = bandpass.split('F')[0]
         else:
@@ -264,6 +273,8 @@ class CorgiOptics():
                 else:
                     ## integrate oversampled PSF back to one grid per pixel
                     images[i,:,:] +=  images_tem[i,:,:].reshape((self.grid_dim_out,self.oversampling_factor,self.grid_dim_out,self.oversampling_factor)).mean(3).mean(1) * self.oversampling_factor**2
+                    ## update the proper_keywords['output_dim'] baclk to non_oversample size
+                    self.proper_keywords['output_dim'] = self.grid_dim_out
 
                 dlam_um = self.lam_um[1]-self.lam_um[0]
                 lam_um_l = (self.lam_um[i]- 0.5*dlam_um) * 1e4 ## unit of anstrom
@@ -346,7 +357,7 @@ class CorgiOptics():
                     'bandpass':self.bandpass_header,
                     'over_sampling_factor':self.oversampling_factor,
                     'return_oversample': self.return_oversample,
-                    'output_dim': self.grid_dim_out,
+                    'output_dim': self.proper_keywords['output_dim'],
                     'nd_filter':self.nd}
 
         # Define specific keys from self.proper_keywords to include in the header            
@@ -469,6 +480,26 @@ class CorgiOptics():
                     f"Mismatch in input lengths: {len(point_source_spectra)} spectra, "
                     f"{len(point_source_x)} x-positions, {len(point_source_y)} y-positions. "
                     "Each point source must have a corresponding (x, y) position.")
+            
+            ##checks to see if point source is within FOV of coronagraph
+            #FOV_range is indexed as follows - 0: hlc, 1: spc-spec, 2: spc-wide.
+            #FOV_range Values correspond to the inner and outer radius of region of highest contrast and are in units of lambda/d
+            FOV_range = [[3, 9.7], [3, 9.1], [5.9, 20.1]]
+            if(self.cor_type.find('hlc') != -1):
+                FOV_index = 0
+            elif (self.cor_type.find('spec') != -1):
+                FOV_index = 1
+                raise Exception('ERROR: Spectroscopy mode not yet implemented')
+                #todo: Add conditions checking if point source is within azimuthal angle range once spectroscopy mode is implemented
+            else:
+                FOV_index = 2
+            #Calculate point source separation from origin in units of lambda/D
+            point_source_radius = np.sqrt(np.power(point_source_x, 2) + np.power(point_source_y, 2)) * ((self.diam * 1e-2)/(self.lam0_um * 1e-6 * 206265000))
+            for j in range(len(point_source_spectra)):
+                if (not FOV_range[FOV_index][0] <= point_source_radius[j] <= FOV_range[FOV_index][1]):
+                    warnings.warn(f"Point source #{j} is at separation {point_source_radius[j]} λ/D, "
+                                  f"which is outside the coronagraph FOV range of "
+                                  f"{FOV_range[FOV_index][0]} to {FOV_range[FOV_index][1]} λ/D for {self.cor_type}")
 
             # Compute the observed  spectrum for each off-axis source
             obs_point_source = [Observation(spectrum, self.bp) for spectrum in point_source_spectra]
@@ -581,6 +612,9 @@ class CorgiOptics():
                     else:
                         ## integrate oversampled PSF back to one grid per pixel
                         images[i,:,:] +=  images_tem[i,:,:].reshape((self.grid_dim_out,self.oversampling_factor,self.grid_dim_out,self.oversampling_factor)).mean(3).mean(1) * self.oversampling_factor**2
+                        ## update the proper_keywords['output_dim'] baclk to non_oversample size
+                        self.proper_keywords['output_dim'] = self.grid_dim_out
+
 
                     dlam_um = self.lam_um[1]-self.lam_um[0]
                     lam_um_l = (self.lam_um[i]- 0.5*dlam_um) * 1e4 ## unit of anstrom
@@ -617,7 +651,7 @@ class CorgiOptics():
         sim_info['bandpass'] = self.bandpass_header
         sim_info['over_sampling_factor'] = self.oversampling_factor
         sim_info['return_oversample'] = self.return_oversample
-        sim_info['output_dim'] = self.grid_dim_out
+        sim_info['output_dim'] = self.proper_keywords['output_dim'] 
         sim_info['nd_filter'] = self.nd
                             
                 # Define specific keys from self.proper_keywords to include in the header            
