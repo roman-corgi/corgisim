@@ -111,9 +111,10 @@ class CorgiOptics():
         mode_data, bandpass_data = cgisim.cgisim_read_mode( cgi_mode, proper_keywords['cor_type'], self.bandpass, info_dir )
 
         # Set directory containing reference data for parameters external to CGISim
-        ref_data_dir = corgisim.lib_dir + '/data/'
+        path_directory = os.path.dirname(os.path.abspath(__file__))
+        ref_data_dir = path_directory + '/data/'
         if not os.path.exists(ref_data_dir):
-            subfolders = [ f.path for f in os.scandir(corgisim.lib_dir) if f.is_dir() ]
+            subfolders = [ f.path for f in os.scandir(path_directory) if f.is_dir() ]
             print(subfolders) 
             raise FileNotFoundError(f"Directory does not exist: {ref_data_dir}")
         else:
