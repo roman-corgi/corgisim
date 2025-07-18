@@ -53,7 +53,9 @@ jobs:
       uses: pierotofy/set-swap-space@master
       with:
         swap-size-gb: 10
-
+    - name: Get directories
+      run:  ls * -r
+      
     - name: Test with pytest
       run: |
         pytest ./test
