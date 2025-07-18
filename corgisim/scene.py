@@ -55,7 +55,7 @@ class Scene():
     def __init__(self, host_star_properties=None, point_source_info=None, twoD_scene_hdu=None):
 
         host_star_properties_internal = host_star_properties.copy()
-        point_source_info_internal = copy.deepcopy(point_source_info)
+        point_source_info_internal = point_source_info.copy()
         self._host_star_Vmag = host_star_properties_internal['Vmag']  ## host star Vband magnitude
 
         # Validate the magnitude type
@@ -95,7 +95,7 @@ class Scene():
                                                                             magtype=self._point_source_magtype)
 
         
-        self._twoD_scene = copy.deepcopy(twoD_scene_hdu)
+        self._twoD_scene = twoD_scene_hdu.copy()
 
         
     @property
