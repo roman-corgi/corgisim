@@ -114,7 +114,7 @@ class CorgiOptics():
         path_directory = os.path.dirname(os.path.abspath(__file__))
         ref_data_dir = path_directory + '/data/'
         if not os.path.exists(ref_data_dir):
-            subfolders = [ f.path for f in os.scandir(path_directory) if f.is_dir() ]
+            subfolders = [ f.path for f in os.scandir(path_directory) ]
             print(subfolders) 
             raise FileNotFoundError(f"Directory does not exist: {ref_data_dir}")
         else:
