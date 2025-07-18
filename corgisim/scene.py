@@ -6,7 +6,7 @@ from synphot import units, SourceSpectrum, SpectralElement, Observation
 from synphot.units import validate_wave_unit, convert_flux, VEGAMAG
 import cgisim
 import os
-
+import copy
 class Scene():
     ''' 
     A class that defines the an astrophysical scene
@@ -53,21 +53,23 @@ class Scene():
         ValueError: If the provided spectral type is invalid.
     '''
     def __init__(self, host_star_properties=None, point_source_info=None, twoD_scene_hdu=None):
-        
-        self._host_star_Vmag = host_star_properties['Vmag']  ## host star Vband magnitude
+
+        host_star_properties_internal = copy.deepcopy(host_star_properties)
+        point_source_info_internal = copy.deepcopy(point_source_info)
+        self._host_star_Vmag = host_star_properties_internal['Vmag']  ## host star Vband magnitude
 
         # Validate the magnitude type
-        if host_star_properties['magtype'] not in ['vegamag', 'ABmag']:
+        if host_star_properties_internal['magtype'] not in ['vegamag', 'ABmag']:
             raise ValueError("Invalid magnitude type. Valid options are: 'vegamag' or 'ABmag'.")
         # Store the magnitude type
-        self._host_star_magtype = host_star_properties['magtype']  # Type of magnitude (Vega or AB)
+        self._host_star_magtype = host_star_properties_internal['magtype']  # Type of magnitude (Vega or AB)
 
         ### check if input spectral type is valid
-        if is_valid_spectral_type(host_star_properties['spectral_type']):
-           self._host_star_sptype = host_star_properties['spectral_type']  
+        if is_valid_spectral_type(host_star_properties_internal['spectral_type']):
+           self._host_star_sptype = host_star_properties_internal['spectral_type']  
 
         # Set the reference flag from host_star_properties, defaulting to False if not provided
-        self.ref_flag = host_star_properties.get('ref_flag', False)
+        self.ref_flag = host_star_properties_internal.get('ref_flag', False)
         
         ### Retrieve the stellar spectrum based on spectral type and V-band magnitude
         ### The self.stellar_spectrum attribute is an instance of the SourceSpectrum class (from synphot), 
@@ -76,16 +78,16 @@ class Scene():
 
         #self._point_source_list = point_source_info
         # Extract V-band magnitude and magnitude type from point source info
-        if point_source_info is not None:
-            n_off_axis_source = len( point_source_info)
+        if point_source_info_internal is not None:
+            n_off_axis_source = len( point_source_info_internal)
             print(f"Adding {n_off_axis_source} off-axis sources")
             # Extract V-band magnitudes from point source info
-            self._point_source_Vmag = [source['Vmag'] for source in point_source_info]
-            self._point_source_magtype =[source['magtype'] for source in point_source_info]# Type of magnitude ('vegamag' or 'ABmag')
-            self.point_source_x = [source['position_x'] for source in point_source_info]
-            self.point_source_y = [source['position_y'] for source in point_source_info]
+            self._point_source_Vmag = [source['Vmag'] for source in point_source_info_internal]
+            self._point_source_magtype =[source['magtype'] for source in point_source_info_internal]# Type of magnitude ('vegamag' or 'ABmag')
+            self.point_source_x = [source['position_x'] for source in point_source_info_internal]
+            self.point_source_y = [source['position_y'] for source in point_source_info_internal]
             # Extract optional custom spectrum, if provided
-            self.point_source_spectrum = [source.get('Custom_Spectrum', None) for source in point_source_info]  
+            self.point_source_spectrum = [source.get('Custom_Spectrum', None) for source in point_source_info_internal]  
 
             # Generate the off-axis source spectrum using provided parameters
             self.off_axis_source_spectrum = self.get_off_axis_source_spectrum(self._point_source_Vmag,
@@ -93,7 +95,7 @@ class Scene():
                                                                             magtype=self._point_source_magtype)
 
         
-        self._twoD_scene = twoD_scene_hdu
+        self._twoD_scene = copy.deepcopy(twoD_scene_hdu)
 
         
     @property

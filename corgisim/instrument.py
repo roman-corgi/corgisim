@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from emccd_detect.emccd_detect import EMCCDDetectBase, EMCCDDetect
 from corgidrp import mocks
 from corgisim import outputs
-
+import copy
 
 class CorgiOptics():
     '''
@@ -51,13 +51,14 @@ class CorgiOptics():
         - KeyError: If forbidden keywords are included.
         """
         '''
+        proper_keywords_internal = copy.deepcopy(proper_keywords)
          # Initialize proper_keywords safely
-        if proper_keywords is None:
-            proper_keywords = {}
+        if proper_keywords_internal is None:
+            proper_keywords_internal = {}
 
         #some parameters to the PROPER prescription are required, including 'cor_type', 'polaxis'
         required_keys = {'cor_type', 'polaxis', 'output_dim'}
-        missing_keys = required_keys - proper_keywords.keys()
+        missing_keys = required_keys - proper_keywords_internal.keys()
         if missing_keys:
             raise KeyError(f"ERROR: Missing required proper_keywords: {missing_keys}")
 
@@ -65,7 +66,7 @@ class CorgiOptics():
         ## 'final_sampling_m' is directly choosed based on different cgi mode 
         ## 'end_at_fpm_exit_pupil','end_at_fsm' are not allowed because they will give outimage at fsm 
         forbidden_keys = {'final_sampling_lam0', 'final_sampling_m', 'end_at_fpm_exit_pupil','end_at_fsm'}
-        forbidden_found = forbidden_keys & proper_keywords.keys()
+        forbidden_found = forbidden_keys & proper_keywords_internal.keys()
         if forbidden_found:
             raise KeyError(f"ERROR: Forbidden keywords detected in proper_keywords: {forbidden_found}")
 
@@ -82,14 +83,14 @@ class CorgiOptics():
             raise Exception('ERROR: Requested mode does not match any available mode')
      
 
-        if proper_keywords['cor_type'] not in valid_cor_types and proper_keywords['cor_type'] not in untest_cor_types:
+        if proper_keywords_internal['cor_type'] not in valid_cor_types and proper_keywords_internal['cor_type'] not in untest_cor_types:
             raise Exception('ERROR: Requested coronagraph does not match any available types')
         
-        if proper_keywords['cor_type'] in untest_cor_types:
+        if proper_keywords_internal['cor_type'] in untest_cor_types:
             warnings.warn('Warning: Requested coronagraph is currently untested and might not work as expected')
 
         self.cgi_mode = cgi_mode
-        self.cor_type = proper_keywords['cor_type']
+        self.cor_type = proper_keywords_internal['cor_type']
         if bandpass  in ['1F','2F','3F','4F']:
             self.bandpass = bandpass.split('F')[0]
         else:
@@ -104,7 +105,7 @@ class CorgiOptics():
 
         # get mode and bandpass parameters:
         info_dir = cgisim.lib_dir + '/cgisim_info_dir/'
-        mode_data, bandpass_data = cgisim.cgisim_read_mode( cgi_mode, proper_keywords['cor_type'], self.bandpass, info_dir )
+        mode_data, bandpass_data = cgisim.cgisim_read_mode( self.cgi_mode, proper_keywords_internal['cor_type'], self.bandpass, info_dir )
 
         self.lam0_um = bandpass_data["lam0_um"] ##central wavelength of the filter in micron
         self.nlam = bandpass_data["nlam"] 
@@ -114,18 +115,18 @@ class CorgiOptics():
         self.owa_lamref = mode_data['owa_lamref'] ## out working angle
         self.sampling_um = mode_data['sampling_um'] ### size of pixel in micron
 
-        self.diam = diam  ## diameter of Roman primary in cm, default is 236.114 cm
+        self.diam = diam ## diameter of Roman primary in cm, default is 236.114 cm
         # Effective collecting area in unit of cm^2, 
         # 30.3% central obscuration of the telescope entrance pupil (diameter ratio) from IPAC-Roman website
         #self.area = (self.diam/2)**2 * np.pi - (self.diam/2*0.303)**2 * np.pi
         self.area =  35895.212    # primary effective area from cgisim cm^2 
-        self.grid_dim_out = proper_keywords['output_dim'] # number of grid in output image in one dimension
-        self.proper_keywords = proper_keywords  # Store the keywords for PROPER package
+        self.grid_dim_out = proper_keywords_internal['output_dim'] # number of grid in output image in one dimension
+        self.proper_keywords = proper_keywords_internal  # Store the keywords for PROPER package
         self.proper_keywords['lam0']=self.lam0_um
 
         # polarization
         
-        if proper_keywords['polaxis'] != 10 and proper_keywords['polaxis'] != -10 and proper_keywords['polaxis'] != 0:
+        if proper_keywords_internal['polaxis'] != 10 and proper_keywords_internal['polaxis'] != -10 and proper_keywords_internal['polaxis'] != 0:
             self.polarizer_transmission = 0.45
         else:
             self.polarizer_transmission = 1.0
@@ -487,9 +488,9 @@ class CorgiDetector():
         emccd_keywords: A dictionary with the keywords that are used to set up the emccd model
         photon_counting: if use photon_counting mode, default is True
         '''
-        self.emccd_keywords = emccd_keywords  # Store the keywords for later use
+        self.emccd_keywords = copy.deepcopy(emccd_keywords)  # Store the keywords for later use
         #self.exptime = exptime ##expsoure time in second
-        self.photon_counting = photon_counting
+        self.photon_counting = copy.deepcopy(photon_counting)
 
 
         self.emccd = self.define_EMCCD(emccd_keywords=self.emccd_keywords)
