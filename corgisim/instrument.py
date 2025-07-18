@@ -51,7 +51,7 @@ class CorgiOptics():
         - KeyError: If forbidden keywords are included.
         """
         '''
-        proper_keywords_internal = copy.deepcopy(proper_keywords)
+        proper_keywords_internal = proper_keywords.copy()
          # Initialize proper_keywords safely
         if proper_keywords_internal is None:
             proper_keywords_internal = {}
@@ -488,9 +488,9 @@ class CorgiDetector():
         emccd_keywords: A dictionary with the keywords that are used to set up the emccd model
         photon_counting: if use photon_counting mode, default is True
         '''
-        self.emccd_keywords = copy.deepcopy(emccd_keywords)  # Store the keywords for later use
+        self.emccd_keywords = emccd_keywords.copy()  # Store the keywords for later use
         #self.exptime = exptime ##expsoure time in second
-        self.photon_counting = copy.deepcopy(photon_counting)
+        self.photon_counting = photon_counting
 
 
         self.emccd = self.define_EMCCD(emccd_keywords=self.emccd_keywords)
