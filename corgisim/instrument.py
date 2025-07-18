@@ -113,6 +113,8 @@ class CorgiOptics():
         # Set directory containing reference data for parameters external to CGISim
         ref_data_dir = corgisim.lib_dir + '/data/'
         if not os.path.exists(ref_data_dir):
+            subfolders = [ f.path for f in os.scandir(corgisim.lib_dir) if f.is_dir() ]
+            print(subfolders) 
             raise FileNotFoundError(f"Directory does not exist: {ref_data_dir}")
         else:
             self.ref_data_dir = ref_data_dir
