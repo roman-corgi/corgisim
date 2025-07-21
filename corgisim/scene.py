@@ -54,8 +54,21 @@ class Scene():
     '''
     def __init__(self, host_star_properties=None, point_source_info=None, twoD_scene_hdu=None):
 
+        if host_star_properties is None:
+            raise KeyError(f"ERROR: host_star_properties are required to create a Scene object")
+
         host_star_properties_internal = host_star_properties.copy()
-        point_source_info_internal = point_source_info.copy()
+
+        if point_source_info is not None:
+            point_source_info_internal = point_source_info.copy()
+        else:
+            point_source_info_internal = None
+
+        if twoD_scene_hdu is not None:
+            self._twoD_scene = twoD_scene_hdu.copy()
+        else:
+            self._twoD_scene = None  
+              
         self._host_star_Vmag = host_star_properties_internal['Vmag']  ## host star Vband magnitude
 
         # Validate the magnitude type
@@ -95,8 +108,6 @@ class Scene():
                                                                             magtype=self._point_source_magtype)
 
         
-        self._twoD_scene = twoD_scene_hdu.copy()
-
         
     @property
     def host_star_sptype(self):

@@ -51,11 +51,12 @@ class CorgiOptics():
         - KeyError: If forbidden keywords are included.
         """
         '''
-        proper_keywords_internal = proper_keywords.copy()
+        
          # Initialize proper_keywords safely
-        if proper_keywords_internal is None:
-            proper_keywords_internal = {}
-
+        if proper_keywords is None:
+            raise KeyError(f"ERROR: proper_keywords are required to create an Optics object")
+        
+        proper_keywords_internal = proper_keywords.copy()
         #some parameters to the PROPER prescription are required, including 'cor_type', 'polaxis'
         required_keys = {'cor_type', 'polaxis', 'output_dim'}
         missing_keys = required_keys - proper_keywords_internal.keys()
