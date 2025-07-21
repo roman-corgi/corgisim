@@ -322,29 +322,54 @@ class CorgiOptics():
             self.proper_keywords['output_dim']=grid_dim_out_tem
             self.proper_keywords['final_sampling_m']=sampling_um_tem *1e-6
             
-            #generate x-polarized and y-polarized speckles field
-            proper_keywords_pol_x = self.proper_keywords.copy()
-            proper_keywords_pol_y = self.proper_keywords.copy()
-            proper_keywords_pol_x['polaxis'] = 5
-            proper_keywords_pol_y['polaxis'] = 6
-            (fields_x, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=proper_keywords_pol_x,QUIET=self.quiet)
-            (fields_y, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=proper_keywords_pol_y,QUIET=self.quiet)
-
-            images_tem = [np.zeros(fields_x.shape), np.zeros(fields_x.shape)]
             if (self.wollaston_prism == 1):
-                wollaston_jones_1 = pol.get_wollaston_jones_matrix(0)
-                wollaston_jones_2 = pol.get_wollaston_jones_matrix(90)
+                #0/90 case
+                #generate x-polarized and y-polarized speckles field
+                proper_keywords_pol_x = self.proper_keywords.copy()
+                proper_keywords_pol_y = self.proper_keywords.copy()
+                proper_keywords_pol_x['polaxis'] = 5
+                proper_keywords_pol_y['polaxis'] = 6
+                (fields_x, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=proper_keywords_pol_x,QUIET=self.quiet)
+                (fields_y, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=proper_keywords_pol_y,QUIET=self.quiet)
+
+                #obtain 0/90 degree polarization intensities
+                images_tem = [np.abs(fields_x) ** 2, np.abs(fields_y) ** 2]
+
             else:
-                wollaston_jones_1 = pol.get_wollaston_jones_matrix(45)
-                wollaston_jones_2 = pol.get_wollaston_jones_matrix(135)
-            
-            #Calculate 0/90 or 45/135 polarized intensities from total e-field vector
-            #todo: 45/135 method does not work, need to be changed
-            jones_in = np.stack([fields_x, fields_y], axis= -1)
-            jones_out_1 = np.matmul(jones_in, wollaston_jones_1.T)
-            jones_out_2 = np.matmul(jones_in, wollaston_jones_2.T)
-            images_tem[0] = (np.abs(jones_out_1[:,:,:,0]) ** 2) + (np.abs(jones_out_1[:,:,:,1]) ** 2)
-            images_tem[1] = (np.abs(jones_out_2[:,:,:,0]) ** 2) + (np.abs(jones_out_2[:,:,:,1]) ** 2)
+                #45/135 case, still wrong 
+                #generate x-polarized and y-polarized speckles field for each input polarization
+                proper_keywords_45_wollaston = self.proper_keywords.copy()
+                polaxis_params = [-2, -1, 1, 2]
+                #Jones vector in D/A basis for every polaxis case
+                jones_rotated = []
+                #matrix to rotate Jones vector from H/V basis to D/A basis
+                rotation_mat = np.array([[1/np.sqrt(2), 1/np.sqrt(2)],
+                                         [1/np.sqrt(2), -1/np.sqrt(2)]], dtype=np.complex128)
+
+                #compute field for each polaxis case, rotate output X or Y field to +/- 45 fields 
+                for i in range(len(polaxis_params)):
+                    proper_keywords_45_wollaston['polaxis'] = polaxis_params[i]
+                    (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=proper_keywords_45_wollaston,QUIET=self.quiet)
+                    
+                    #H/V Jones vector construction
+                    if i == 0 or i == 3:
+                        #Y output case
+                        jones_in = np.stack([np.zeros(fields.shape, dtype=np.complex128), fields], axis = -1)
+                    else:
+                        #X output case
+                        jones_in = np.stack([fields, np.zeros(fields.shape, dtype=np.complex128)], axis = -1)
+                    
+                    #Compute rotation
+                    jones_rotated.append(np.matmul(jones_in, rotation_mat.T))
+                
+                #coherently sum fields with the same input and output polarizations
+                jones_45_in = jones_rotated[2] + jones_rotated[3]
+                jones_135_in = jones_rotated[0] + jones_rotated[1]
+
+                #incoherently sum and average fields of the same output polarization to obtain intensity in 45/135 degree polarization
+                intensities_45 = ((np.abs(jones_45_in[:,:,:,0]) ** 2) + (np.abs(jones_135_in[:,:,:,0]) ** 2)) / 2
+                intensities_135 = ((np.abs(jones_45_in[:,:,:,1]) ** 2) + (np.abs(jones_135_in[:,:,:,1]) ** 2)) / 2
+                images_tem = [intensities_45, intensities_135]
 
             # Initialize the image array based on whether oversampling is returned
             images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if self.return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
@@ -877,22 +902,42 @@ class CorgiDetector():
         if img is None:
             raise ValueError('No valid simulated scene to put on detector')
       
-
-        if full_frame:
-            # If the simulated image is smaller than 1024×1024, place it on the full-frame detector at (loc_x, loc_y)
-            # If the image is exactly 1024×1024, assume it's already centered and use it directly
+        if sim_info['polarization_basis'] == 'None':
+            if full_frame:
+                # If the simulated image is smaller than 1024×1024, place it on the full-frame detector at (loc_x, loc_y)
+                # If the image is exactly 1024×1024, assume it's already centered and use it directly
             # If the image exceeds 1024×1024, raise an error
-            if (img.shape[0] < 1024) & (img.shape[1] < 1024):
-                flux_map = self.place_scene_on_detector( img , loc_x, loc_y)
-            if (img.shape[0] == 1024) & (img.shape[1] == 1024):
-                flux_map = img
-            if (img.shape[0] >1024) or (img.shape[1] >1024):
-                raise ValueError("Science image dimensions (excluding pre-scan area) cannot exceed 1024×1024.")
+                if (img.shape[0] < 1024) & (img.shape[1] < 1024):
+                    flux_map = self.place_scene_on_detector( img , loc_x, loc_y)
+                if (img.shape[0] == 1024) & (img.shape[1] == 1024):
+                    flux_map = img
+                if (img.shape[0] >1024) or (img.shape[1] >1024):
+                    raise ValueError("Science image dimensions (excluding pre-scan area) cannot exceed 1024×1024.")
            
-            Im_noisy = self.emccd.sim_full_frame(flux_map, exptime).astype(np.uint16)
+                Im_noisy = self.emccd.sim_full_frame(flux_map, exptime).astype(np.uint16)
+            else:
+                Im_noisy = self.emccd.sim_sub_frame(img, exptime).astype(np.uint16)
         else:
-            Im_noisy = self.emccd.sim_sub_frame(img, exptime).astype(np.uint16)
-
+            if full_frame:
+                #override previous location info if in polarimetry mode
+                #images separated 7.5" or 344 pix on the detector (1"=0.0218 pix)
+                #0/90 degree images are placed on x-axis symmetric about the center
+                #45/135 degree images are placed on -45 degree axis symmetric about the center
+                if sim_info['polarization_basis'] == '0/90 degrees':
+                    loc_x = 172
+                    loc_y = 0
+                else:
+                    loc_x = 122
+                    loc_y = 122
+                if (img[0].shape[0] < 512) & (img[0].shape[1] < 512):
+                    flux_map = self.place_scene_on_detector(img[0] , 512-loc_x, 512-loc_y) + self.place_scene_on_detector(img[1] , 512+loc_x, 512+loc_y)
+                else:
+                    raise ValueError("Polarimetry mode image dimensions cannot exceed 512x512 to ensure images do not go off detector.")
+                Im_noisy = self.emccd.sim_full_frame(flux_map, exptime).astype(np.uint16)
+            else:
+                Im_noisy = np.array([self.emccd.sim_sub_frame(img[0], exptime).astype(np.uint16), self.emccd.sim_sub_frame(img[1], exptime).astype(np.uint16)])
+                #raise Exception('to be implemented')
+            
         # Prepare additional information to be added as COMMENT headers in the primary HDU.
         # These are different from the default L1 headers, but extra comments that are used to track simulation-specific details.
         sim_info['includ_dectector_noise'] = 'True'
@@ -901,8 +946,12 @@ class CorgiDetector():
         
         # Create the HDU object with the generated header information
         if full_frame:
-            sim_info['position_on_detector_x'] = loc_x
-            sim_info['position_on_detector_y'] = loc_y
+            if sim_info['polarization_basis'] == 'None':
+                sim_info['position_on_detector_x'] = loc_x
+                sim_info['position_on_detector_y'] = loc_y
+            else:
+                sim_info['position_on_detector_x'] = 512
+                sim_info['position_on_detector_y'] = 512
             
             if (sim_info['ref_flag'] == 'False') or (sim_info['ref_flag'] == '0'):
                 ref_flag = False
