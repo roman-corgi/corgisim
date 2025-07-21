@@ -5,7 +5,7 @@ from astropy.io import fits
 from corgidrp import mocks
 import numpy as np
 import roman_preflight_proper as rp
-
+import types
 class Input():
     """
     A class that holds all the information necessary for a simulation.
@@ -176,9 +176,11 @@ class Input():
         for key in list(host_star_properties_default):
             host_star_properties_default[key[1:]] = host_star_properties_default.pop(key)
 
-        self._proper_keywords = proper_keywords_default.copy()
-        self._emccd_keywords = emccd_keywords_default.copy()
-        self._host_star_properties = host_star_properties_default.copy()
+
+        # Create mutable copies for internal use during initialization
+        self.__mutable_proper_keywords = proper_keywords_default.copy()
+        self.__mutable_emccd_keywords = emccd_keywords_default.copy()
+        self.__mutable_host_star_properties = host_star_properties_default.copy()
 
         # Remaining Inputs for scene 
         self._point_source_info = None
@@ -202,7 +204,7 @@ class Input():
         # Update dictionaries
         if 'proper_keywords' in kwargs : 
             new_proper_keywords = kwargs['proper_keywords'].copy()
-            self._proper_keywords.update(new_proper_keywords)
+            self.__mutable_proper_keywords.update(new_proper_keywords)
             # Put dictionary value into attributes
             for key in list(kwargs['proper_keywords']):
                 new_proper_keywords['_'+key] = new_proper_keywords.pop(key)    
@@ -212,7 +214,7 @@ class Input():
 
         if 'emccd_keywords' in kwargs : 
             new_emccd_keywords = kwargs['emccd_keywords'].copy()
-            self._emccd_keywords.update(kwargs['emccd_keywords'])
+            self.__mutable_emccd_keywords.update(kwargs['emccd_keywords'])
             # Put dictionary value into attributes
             for key in list(kwargs['emccd_keywords']):
                 new_emccd_keywords['_'+key] = new_emccd_keywords.pop(key)    
@@ -222,7 +224,7 @@ class Input():
 
         if 'host_star_properties' in kwargs : 
             new_host_star_properties = kwargs['host_star_properties'].copy()
-            self._host_star_properties.update(kwargs['host_star_properties'])
+            self.__mutable_host_star_properties.update(kwargs['host_star_properties'])
             # Put dictionary value into attributes
             for key in list(kwargs['host_star_properties']):
                 new_host_star_properties['_'+key] = new_host_star_properties.pop(key)    
@@ -236,13 +238,17 @@ class Input():
         
         # Make sure there are no discrepancies between dictionnaries and individual values
         for key, val in kwargs.items():
-            if key[1:] in list(proper_keywords_default):
-                self._proper_keywords[key[1:]] = val
-            elif key[1:] in list(emccd_keywords_default):
-                self._emccd_keywords[key[1:]] = val
-            elif key[1:] in list(host_star_properties_default):
-                self._host_star_properties[key[1:]] = val
+            if key[1:] in self.__mutable_proper_keywords:
+                self.__mutable_proper_keywords[key[1:]] = val
+            elif key[1:] in self.__mutable_emccd_keywords:
+                self.__mutable_emccd_keywords[key[1:]] = val
+            elif key[1:] in self.__mutable_host_star_properties:
+                self.__mutable_host_star_properties[key[1:]] = val
 
+        # Now, create the immutable views of the dictionaries
+        self._proper_keywords = types.MappingProxyType(self.__mutable_proper_keywords)
+        self._emccd_keywords = types.MappingProxyType(self.__mutable_emccd_keywords)
+        self._host_star_properties = types.MappingProxyType(self.__mutable_host_star_properties)
 
         self._initialized = True
         
