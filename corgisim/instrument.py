@@ -17,7 +17,21 @@ from corgisim import outputs, spec
 import copy
 import os
 from scipy import interpolate
-import warnings
+import time
+import sys
+import astropy.units as u
+
+from corgisim.convolution import (
+    create_wavelength_grid_and_weights,
+    build_radial_grid,
+    build_azimuth_grid,
+    convolve_with_prfs, 
+    get_valid_polar_positions,
+    ARCSEC_PER_RAD,
+    PIXEL_SCALE_ARCSEC
+)
+
+from corgisim.scene import Scene, SimulatedImage
 
 class CorgiOptics():
     '''
@@ -209,6 +223,7 @@ class CorgiOptics():
         self.optics_keywords['lam0']=self.lam0_um
         if 'use_fpm' not in self.optics_keywords:
             self.optics_keywords['use_fpm'] = 1  # use fpm by default
+        self.res_mas = self.lam0_um / (self.diam*1e4) * ARCSEC_PER_RAD * 1000 # convert to mas, this is the resolution in mas at lam0_um
 
         # polarization
         
@@ -270,7 +285,6 @@ class CorgiOptics():
 
         print("CorgiOptics initialized with proper keywords.")
      
-
     def get_host_star_psf(self, input_scene, sim_scene=None, on_the_fly=False):
         '''
         
@@ -295,6 +309,7 @@ class CorgiOptics():
                                         HDU that contains a noiseless on-axis PSF.
 
         '''
+        # TODO - check! Because changing to 1024 actually make a huge difference to teh output image, unlike what otehr people said? 
         
         if self.cgi_mode == 'excam':
             
@@ -313,7 +328,6 @@ class CorgiOptics():
 
             self.optics_keywords['output_dim']=grid_dim_out_tem
             self.optics_keywords['final_sampling_m']=sampling_um_tem *1e-6
-            
             
             (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=self.optics_keywords,QUIET=self.quiet)
             images_tem = np.abs(fields)**2
@@ -465,33 +479,223 @@ class CorgiOptics():
 
         return bp
 
+    def _compute_single_off_axis_psf(self, radius_lamD, azimuth_angle, 
+                                    wavelength_grid, wavelength_weights):
+        """
+        Compute a weighted off-axis PSF at a given polar position (r, θ).
 
-    def convolve_2D_scene(self, scene, on_the_fly=False):
-        '''
-        Function that simulates a 2D scene with the current configuration of CGI. 
+        Parameters
+        ----------
+        radius_lamD : float
+            Off-axis distance in λ/D.
+        azimuth_deg : float
+            Off-axis angle in degrees.
+        lam_grid : ndarray
+            Wavelengths to simulate (in microns).
+        lam_weights : ndarray
+            Normalised weights corresponding to each wavelength.
 
-        It should take the image data from the HDU from scene.background_scene and convolve it with a 
-        set of off-axis PSFs (also known as PRFs in some circles), and return an updated scene object with the
-        background_scene attribute populated with an astropy HDU that contains the simulated scene and associated 
-        metadata in the header.
+        Returns
+        -------
+        weighted_psf : ndarray
+            2D PSF image, weighted across the spectral band.
+        """
 
-        The off-axis PSFs should be either generated on the fly, or read in from a set of pre-generated PSFs. The 
-        convolution should be flux conserving. 
-
-        TODO: Figure out the default output units. Current candidate is photoelectrons/s.
-        TODO: If the input is a scene.Simulation_Scene instead, then just pull the Scene from the attribute
-                and put the output of this function into the twoD_image attribute
-
-        Arguments: 
-        scene: A corgisim.scene.Scene object that contains the scene to be simulated.
-        on_the_fly: A boolean that defines whether the PSFs should be generated on the fly.
+        # Convert polar to Cartesian coordinates
+        dx = radius_lamD * np.cos(azimuth_angle.to_value(u.rad))
+        dy = radius_lamD * np.sin(azimuth_angle.to_value(u.rad))
         
-        Returns: 
-        corgisim.scene.Simulated_Scene: A scene object with the background_scene attribute populated with an astropy
-                                        HDU that contains the simulated scene.
-        '''
-        pass
+        # Configure PROPER simulation options
+        simulation_options = dict(self.proper_keywords,
+                                source_x_offset=dx,
+                                source_y_offset=dy,
+                                output_dim=self.grid_dim_out * self.oversampling_factor,
+                                final_sampling_m=self.sampling_um / self.oversampling_factor * 1e-6)
+        
+        # Run PROPER simulation
+        fields, _ = proper.prop_run_multi('roman_preflight', wavelength_grid, 1024,PASSVALUE=simulation_options, QUIET=self.quiet)
 
+        # Apply spectral weighting and bin down
+        intensity = np.abs(fields)**2
+        weighted_img = np.tensordot(wavelength_weights, intensity, axes=(0, 0))
+
+        # Bin down to detector resolution
+        binned = weighted_img.reshape(
+            (self.grid_dim_out, self.oversampling_factor,
+             self.grid_dim_out, self.oversampling_factor)
+        ).mean(3).mean(1) * self.oversampling_factor**2
+
+        return binned
+
+    def make_prf_cube(self, radii_lamD, azimuths_deg, source_sed=None):
+        """
+        Build a psf cube by evaluating the off-axis PSF at specified polar positions.
+
+        Parameters
+        ----------
+        radii_lamD : array-like
+            Radial offsets in λ/D.
+        azimuths_deg : array-like
+            Azimuthal angles in degrees.
+        source_sed : array-like or None
+            Spectral energy distribution weights, optional.
+
+        Returns
+        -------
+        prf_cube : ndarray, shape (N_positions, Ny, Nx)
+            Cube of PSFs at all requested (r, θ) positions.
+        """
+        wavelength_grid, wavelength_weights = create_wavelength_grid_and_weights(self.lam_um, source_sed)
+        valid_positions = get_valid_polar_positions(radii_lamD, azimuths_deg)   
+
+        num_positions = len(valid_positions)
+        prf_cube = np.empty((num_positions, self.grid_dim_out, self.grid_dim_out), dtype=np.float32)
+
+        show_progress = num_positions > 10  # Show progress bar for larger jobs
+
+        for i, (radius_lamD, azimuth_angle) in enumerate(valid_positions):
+            prf_cube[i] = self._compute_single_off_axis_psf(radius_lamD, azimuth_angle, wavelength_grid, wavelength_weights)
+
+            if show_progress:  # Only show progress for larger jobs
+                progress = (i + 1) / num_positions
+                bar_length = 40
+                filled_length = int(bar_length * progress)
+                bar = '█' * filled_length + '-' * (bar_length - filled_length)
+                print(f'\r[{bar}] {i+1}/{num_positions} ({progress:.1%})', end='', flush=True)
+
+        if show_progress:
+            print()  # New line after progress bar
+        
+        return prf_cube
+
+    def convolve_2d_scene(self, scene, **kwargs):
+        """
+
+        Simulate a two-dimensional scene through the current CGI configuration.
+
+        TODO - add emccd_detect to the scene, and add the detector noise to the scene.
+
+        This method retrieves the image data from `scene.background_scene` (or from
+        `scene.twoD_image` when `scene` is a `SimulatedImage`), then convolves it
+        with a grid of off-axis PSFs (also termed PRFs) either generated on the fly
+        or supplied via `prf_cube`. The convolution is flux-conserving and the result
+        is stored in the appropriate scene attribute (`twoD_image` or
+        `background_scene`). The output units are currently assumed to be
+        photoelectrons per second.
+
+        Two modes of operation:
+        1. **Pre-computed PRF mode**: Provide `prf_cube`, `prf_grid_radii`, `prf_grid_azimuths`
+        2. **Generate-on-fly mode**: Provide grid parameters (iwa, owa, steps, etc.)
+
+        Parameters
+        ----------
+        scene : Scene or SimulatedImage
+            Scene object containing 2D image data to be convolved.
+            
+        kwargs : keyword arguments
+
+            Mode 1 parameters (all required):
+            prf_cube : ndarray, shape (n_prfs, ny, nx)
+                Pre-computed PRF cube.
+            prf_grid_radii : array-like
+                Radial grid values in λ/D corresponding to PRF cube.
+            prf_grid_azimuths : array-like
+                Azimuthal grid values in degrees corresponding to PRF cube.
+
+            Mode 2 parameters:
+            iwa : float, optional
+                Inner working angle in λ/D. Default is 0.
+            owa : float, required
+                Outer working angle in λ/D.
+            inner_step : float, required
+                Radial step size in λ/D for inner region (r ≤ iwa).
+            mid_step : float, required
+                Radial step size in λ/D for middle region (iwa < r < owa).
+            outer_step : float, required
+                Radial step size in λ/D for outer region (r ≥ owa).
+            step_deg : float, required
+                Azimuthal step size in degrees.
+            max_radius : float, optional
+                Maximum radius in λ/D for PRF generation. Default is max(15, 1.5 * owa).
+
+        Returns
+        -------
+        Scene or SimulatedImage
+            The input scene updated with its 2D image replaced by the convolved result.
+
+        Raises
+        ------
+        ValueError
+            If neither mode has complete parameters, or if both modes are specified.
+
+        Examples
+        --------
+        Mode 1 - Using pre-computed PRF cube:
+        >>> prf_cube = optics.make_prf_cube([0, 2, 4], [0, 90, 180, 270])
+        >>> result = optics.convolve_2d_scene(scene, 
+        ...                                   prf_cube=prf_cube,
+        ...                                   prf_grid_radii=[0, 2, 4], 
+        ...                                   prf_grid_azimuths=[0, 90, 180, 270])
+        
+        Mode 2 - Auto-generate PRF cube:
+        >>> result = optics.convolve_2d_scene(scene,
+        ...                                   iwa=3.0, owa=9.0,
+        ...                                   inner_step=1.0, mid_step=1.5, 
+        ...                                   outer_step=2.0, step_deg=90.0)
+        """
+
+        # seeing which mode we are in
+        has_prf_cube = 'prf_cube' in kwargs
+        has_grid_params = 'iwa' in kwargs or 'owa' in kwargs
+
+        # Extract optional parameter that applies to both modes
+        use_bilinear_interpolation = kwargs.get('use_bilinear_interpolation', False)
+
+        if has_prf_cube == has_grid_params:
+            raise ValueError("Provide either prf_cube or grid parameters")
+        
+        if has_prf_cube:
+            # Mode 1: Pre-computed PRF cube
+            prf_cube = kwargs.get('prf_cube')
+            prf_grid_radii = kwargs.get('prf_grid_radii')
+            prf_grid_azimuths = kwargs.get('prf_grid_azimuths')
+
+            # Apply convolution
+            conv2d = convolve_with_prfs(scene._twoD_scene.data, prf_cube, prf_grid_radii, prf_grid_azimuths, PIXEL_SCALE_ARCSEC * 1e3, self.res_mas, use_bilinear_interpolation)
+
+        else:
+            # Mode 2: Generate cube
+            required = ['owa', 'inner_step', 'mid_step', 'outer_step', 'step_deg']
+            missing = [k for k in required if k not in kwargs]
+            if missing:
+                raise ValueError(f"Missing parameters: {missing}")
+
+            # Extract required parameters
+            owa = kwargs['owa'] 
+            inner_step = kwargs['inner_step']
+            mid_step = kwargs['mid_step']
+            outer_step = kwargs['outer_step']
+            step_deg = kwargs['step_deg']
+        
+            # Extract optional parameters with defaults
+            iwa = kwargs.get('iwa', 0)
+            max_radius = kwargs.get('max_radius')
+        
+            radii_lamD = build_radial_grid(iwa, owa, inner_step, mid_step, outer_step, max_radius)
+            azimuths_deg = build_azimuth_grid(step_deg)
+            prf_cube = self.make_prf_cube(radii_lamD, azimuths_deg)
+                
+            # Apply convolution
+            conv2d = convolve_with_prfs(scene._twoD_scene.data, prf_cube, radii_lamD, azimuths_deg, PIXEL_SCALE_ARCSEC * 1e3, self.res_mas, use_bilinear_interpolation)
+        
+        # Update the scene with the convolved image
+        if isinstance(scene, SimulatedImage):
+            scene.twoD_image = conv2d
+        elif isinstance(scene, Scene):
+            scene.background_scene = conv2d
+        else:
+            raise ValueError(f"Unsupported scene type: {type(scene)}")
+        
     def inject_point_sources(self, input_scene, sim_scene=None, on_the_fly=False):
         '''
         Function that injects point sources into the scene. 
@@ -808,7 +1012,7 @@ class CorgiDetector():
         components = [simulated_scene.host_star_image,
                       simulated_scene.point_source_image,
                       simulated_scene.twoD_image]
-        
+
         ###check witch components is not None, and combine exsiting simulated scene
         ### read comment header from components is not None to track sim_info
         for component in components:
