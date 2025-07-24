@@ -1,10 +1,10 @@
-
 import proper
 import numpy as np
 from astropy.io import fits
 import roman_preflight_proper
 from corgisim import scene
 import cgisim
+from corgisim.sat_spots import add_cos_pattern_dm
 from synphot.models import BlackBodyNorm1D, Box1D,Empirical1D
 from synphot import units, SourceSpectrum, SpectralElement, Observation
 from synphot.units import validate_wave_unit, convert_flux, VEGAMAG
@@ -470,18 +470,30 @@ class CorgiOptics():
         ----------
         satspot_keywords : dict
             Dictionary specifying the parameters needed to define and inject 
-            satellite spots (e.g., location, amplitude, frequency).
+            satellite spots (sep_lamD, angle_deg, contrast, wavelength_m).
 
         Returns:
         -------
-        dm1_v : 2D ndarray
+        dm1_cos_added : 2D ndarray
             Updated DM1 voltage map with satellite spots added.
         
-        dm2_v : 2D ndarray
-            Updated DM2 voltage map with satellite spots added.
+        TODO: check if we need to update dm2
         """
-        pass
+        
+        proper_keywords = self.proper_keywords.copy()
+        if proper_keywords['use_dm1'] != 1:
+            raise Exception('Error: use_dm1 in proper_keywords is not set 1')
+        dm1_input = proper_keywords['dm1_v']
 
+        # see docstring in sat_spot.py
+        sep_lamD = satspot_keywords['sep_lamD']
+        angle_deg = satspot_keywords['angle_deg']
+        contrast = satspot_keywords['contrast']
+        wavelength_m = satspot_keywords['wavelength_m']
+
+        dm1_cos_added = add_cosine_pattern_to_dm(dm1_input,sep_lamD,angle_deg,contrast,wavelength_m)
+
+        return dm1_cos_added
     
 class CorgiDetector(): 
     

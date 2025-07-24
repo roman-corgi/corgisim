@@ -7,7 +7,7 @@ def add_cos_pattern_dm(dm_volts, sep_lamD=6, angle_deg=0, contrast=1e-6, wavelen
     Parameters:
         dm_volts: 2D numpy array (original DM in volts)
         sep_lamD: float, number of wave cycles across the pupil diameter
-        angle_deg: float, orientation angle (degrees, 0 = along x-axis)
+        angle_deg: float, orientation angle (degrees, 0 = same position angle as the input DM solution)
         contrast: float, expected contrast of sattelite spots, assuming amplitude_rad = 2*sqrt(contrast), where amplitude is a phase amplitude in radians
         wavelength_m: float, wavelength in meters
     
