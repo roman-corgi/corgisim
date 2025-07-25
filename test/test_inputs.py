@@ -20,14 +20,17 @@ def test_cpgs_loading():
         sscene_target, scene_reference, optics, detector_target, detector_reference, visit_list = inputs.load_cpgs_data(abs_path)  
     assert str(excinfo.value) == abs_path +" is not an xml file." 
 
-    # Test polarization not implemented
+    # Test autogain not implemented
     filepath = 'test/test_data/cpgs_default.xml'
     abs_path =  os.path.join(script_dir, filepath)
 
     with pytest.raises(NotImplementedError) as excinfo:  
         scene_target, scene_reference, optics, detector_target, detector_reference, visit_list = inputs.load_cpgs_data(abs_path)  
-    assert str(excinfo.value) == "Only 0/90 deg and 45/135 deg are implemented" 
+    assert str(excinfo.value) == "Autogain is not implemented." 
 
+    # Test polarization not implemented
+    # TO DO Add a file without autogain with polarization to test the error handling 
+    
     # Test object creation 
     filepath = 'test/test_data/cpgs_without_polarization.xml'
     abs_path =  os.path.join(script_dir, filepath)
@@ -55,6 +58,7 @@ def test_cpgs_loading():
 
     assert isinstance(sim_image_target.image_on_detector, fits.hdu.image.PrimaryHDU)
     assert isinstance(sim_image_reference.image_on_detector, fits.hdu.image.PrimaryHDU)
+    # Test correctness of information ?
 
 
 def test_input():
