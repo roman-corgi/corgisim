@@ -4,34 +4,38 @@
 from corgisim import scene, instrument, inputs, observation
 
 def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, full_frame= False, loc_x=None, loc_y=None):
-    '''
+    """Generates a sequence of simulated observations and places them on a detector.
+
+    This function orchestrates the simulation of a given astrophysical scene through
+    the instrument optics and then onto the detector. It first generates the host star's
+    PSF, then injects any defined off-axis point sources into the simulated scene.
+    Finally, it uses the detector model to create a detector image, optionally
+    generating either a sub-array or a full-frame image for each exposure.
+    Each observation sequence corresponds to a single visit at a specific roll angle.
+
+    Args:
+        scene (corgisim.scene.Scene): The scene object containing information about
+            the host star and any specified point sources.
+        optics (corgisim.instrument.CorgiOptics): The optics object defining the
+            instrument configuration, including the telescope and coronagraph.
+        detector (corgisim.instrument.CorgiDetector): The detector object defining
+            the detector characteristics and noise properties.
+        exp_time (float): The exposure time for each individual frame in seconds.
+        n_frames (int): The total number of frames to generate in this observation sequence.
+        full_frame (bool, optional): If True, a full-frame detector image will be generated.
+            If False (default), a sub-array image is generated.
+        loc_x (int, optional): The x-coordinate for the center of the sub-array in pixels
+            if `full_frame` is False. If `full_frame` is True, this specifies the
+            x-coordinate of the full frame's origin (top-left pixel). Required if `full_frame` is True.
+        loc_y (int, optional): The y-coordinate for the center of the sub-array in pixels
+            if `full_frame` is False. If `full_frame` is True, this specifies the
+            y-coordinate of the full frame's origin (top-left pixel). Required if `full_frame` is True.
+
+    Returns:
+        list[corgisim.scene.SimulatedImage]: A list of :py:class:`corgisim.scene.SimulatedImage` objects,
+        where each object represents a single generated observation frame with its image data
+        and associated FITS header information.
     """
-    Generates a sequence of observations for a given scene, instrument configuration,
-    and detector configuration.
-
-    One observation sequence represents a single visit at a specific roll angle.
-
-    :param scene: The scene object containing information about the host star and point sources.
-    :type scene: corgisim.scene.Scene
-    :param optics: The optics object defining the instrument configuration.
-    :type optics: corgisim.instrument.CorgiOptics
-    :param detector: The detector object defining the detector characteristics.
-    :type detector: corgisim.instrument.CorgiDetector
-    :param exp_time: The exposure time for each frame in seconds.
-    :type exp_time: float
-    :param n_frames: The number of frames to generate in the sequence.
-    :type n_frames: int
-    :param full_frame: If True, generate a full-frame detector image. Defaults to False.
-    :type full_frame: bool, optional
-    :param loc_x: The x-coordinate for the center of the sub-array if `full_frame` is False.
-                  Required if `full_frame` is True.
-    :type loc_x: int, optional
-    :param loc_y: The y-coordinate for the center of the sub-array if `full_frame` is False.
-                  Required if `full_frame` is True.
-    :type loc_y: int, optional
-    :return: A list of SimulatedImage objects, each representing a generated observation frame.
-    :rtype: list[corgisim.scene.SimulatedImage]
-    '''
     sim_scene = optics.get_host_star_psf(scene)
     if hasattr(scene, 'point_source_x'):
         sim_scene = optics.inject_point_sources(scene,sim_scene)
@@ -49,19 +53,20 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, f
 
     return simulatedImage_list
 
-def generate_observation_scenario_from_cpgs(filepath):
-    """
-    Generates an observation scenario by loading instrument, scene, and visit
+def generate_observation_scenario_from_cpgs(filepath, save_as_fit= False, output_dir=None):
+    """Generates an observation scenario by loading instrument, scene, and visit
     information from a CPGS file.
 
     This function attempts to load both target and reference star information.
     If only target information is available, it proceeds with that.
 
-    :param filepath: The path to the CPGS XML file.
-    :type filepath: str
-    :return: A list of SimulatedImage objects, representing the complete observation
-             scenario across all visits defined in the CPGS file.
-    :rtype: list[corgisim.scene.SimulatedImage]
+    Args:
+        filepath (str): The path to the CPGS XML file.
+
+    Returns:
+        list[corgisim.scene.SimulatedImage]: A list of SimulatedImage objects,
+        representing the complete observation scenario across all visits
+        defined in the CPGS file.
     """
     # Get the detector, scene and optics used in generate obeservation sequence from CPGS file
     simulatedImage_list = []
@@ -81,6 +86,17 @@ def generate_observation_scenario_from_cpgs(filepath):
             simulatedImage_visit = generate_observation_sequence(scene_target, optics, detector_target, visit['exp_time'], visit['number_of_frames'] )
 
         simulatedImage_list.extend(simulatedImage_visit)
+
+    if save_as_fit:
+        #Save the images as fits in output_dir if specified, in corgisim/test/testdata if not
+        if output_dir == None:
+            local_path = corgisim.lib_dir
+            outdir = os.path.join(local_path.split('corgisim')[0], 'corgisim/test/testdata')
+        else:
+            outdir = output_dir
+        for simulatedImage in simulatedImage_list:
+            outputs.save_hdu_to_fits(simulatedImage.image_on_detector,outdir=outdir, write_as_L1=True)
+
 
     return simulatedImage_list
 

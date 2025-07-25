@@ -263,35 +263,36 @@ class Input():
 
 
 def load_cpgs_data(filepath, return_input=False):
-    """
-    Creates a scene and optics based on the content of a cpgs file
+    """Creates a scene and optics based on the content of a CPGS file.
 
     This function parses the CPGS file to extract simulation parameters for
     target and, if present, reference stars, along with visit-specific details.
 
-    :param filepath: path to the input file
-    :type filepath: string
-    :param return_input: if True, returns an Input object instead of the scene, optics, and detector objects.
-                         Defaults to False.
-    :type return_input: bool, optional
-    
-    :return: If ``return_input`` is False (default):
-             A tuple containing:
-             - ``scene_target`` : The scene object for the target star.
-             - ``scene_reference`` (optional): The scene object for the reference star, if present.
-             - ``optics`` : The optics object configured from the CPGS file.
-             - ``detector_target``: The detector object for target observations.
-             - ``detector_reference`` (optional): The detector object for reference observations, if present.
-             - ``visit_list`` (list): A list of dictionaries, where each dictionary describes a single observation visit.
-             
-             If ``return_input`` is True:
-             - ``input`` (:py:class:`Input`): An Input object containing all parsed simulation parameters.
-    :rtype: tuple or corgisim.inputs.Input
-    :raises FileNotFoundError: If the specified `filepath` does not exist.
-    :raises xml.etree.ElementTree.ParseError: If the file at `filepath` is not a valid XML file.
-    :raises Exception: For unsupported target IDs or other parsing issues within the CPGS structure.
-    :raises NotImplementedError: If a specific configuration (e.g., polarization, filter, coronagraph mask)
-                                 from the CPGS file is not yet implemented in the simulation.
+    Args:
+        filepath (str): Path to the input CPGS XML file.
+        return_input (bool, optional): If True, an :py:class:`Input` object populated with CPGS data
+            will be returned instead of the scene, optics, and detector objects.
+            Defaults to False.
+
+    Returns:
+        tuple or corgisim.inputs.Input:
+            If "return_input" is False (default):
+                A tuple containing:
+                - "scene_target" (:py:class:`corgisim.scene.Scene`): The scene object for the target star.
+                - "scene_reference" (:py:class:`corgisim.scene.Scene`, optional): The scene object for the reference star, if present.
+                - "optics" (:py:class:`corgisim.instrument.CorgiOptics`): The optics object configured from the CPGS file.
+                - "detector_target" (:py:class:`corgisim.instrument.CorgiDetector`): The detector object for target observations.
+                - "detector_reference" (:py:class:`corgisim.instrument.CorgiDetector`, optional): The detector object for reference observations, if present.
+                - "visit_list" (list): A list of dictionaries, where each dictionary describes a single observation visit.
+            If "return_input" is True:
+                - "input" (:py:class:`corgisim.inputs.Input`): An Input object containing all parsed simulation parameters.
+
+    Raises:
+        FileNotFoundError: If the specified `filepath` does not exist.
+        xml.etree.ElementTree.ParseError: If the file at `filepath` is not a valid XML file.
+        Exception: For unsupported target IDs or other parsing issues within the CPGS structure.
+        NotImplementedError: If a specific configuration (e.g., polarization, filter, coronagraph mask)
+            from the CPGS file is not yet implemented in the simulation.
     """
     # Parse the file 
     try: 
@@ -333,7 +334,7 @@ def load_cpgs_data(filepath, return_input=False):
             em_gain = 1.0 
         detector_target = instrument.CorgiDetector(emccd_keywords={'em_gain':em_gain}, photon_counting=photon_counting) 
     elif (cpgs_input.find('target_autogain').text == '1'):
-        detector_target = instrument.CorgiDetector(emccd_keywords=None) 
+        raise NotImplementedError("Autogain is not implemented.") 
 
     if reference_star_present :
         if (cpgs_input.find('reference_autogain').text == '0'):
@@ -356,7 +357,8 @@ def load_cpgs_data(filepath, return_input=False):
         if isNotHowfsc :
             if reference_star_present :
                 isReference = (visit.find('fixed_target').find('reference_target').text == 'Y')
-
+            else:
+                isReference = False
             excam = visit.find('cgi_excam')
             roll_angle = visit.find('position_angle').text
             visit_id = visit.attrib['number']
@@ -369,10 +371,8 @@ def load_cpgs_data(filepath, return_input=False):
                 number_of_frames = int(excam.find('number_of_frames').text)
                 exp_time =  float(excam.find('exposure_duration').text)
 
-            visit_dict = {'number_of_frames': number_of_frames,'exp_time': exp_time, 'roll_angle':roll_angle, 'visit_id':visit_id}
-            
-            if reference_star_present :
-                visit_dict['isReference'] = isReference
+            visit_dict = {'number_of_frames': number_of_frames,'exp_time': exp_time, 'roll_angle':roll_angle, 'visit_id':visit_id, 'isReference':isReference}
+
 
             visit_list.append(visit_dict)
 

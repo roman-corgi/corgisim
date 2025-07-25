@@ -68,6 +68,8 @@ def test_generate_observation_sequence():
 
 def test_generate_observation_scenario_from_cpgs():
     script_dir = os.getcwd()
+
+    #Test with target and reference
     filepath = 'test/test_data/cpgs_without_polarization.xml'
     abs_path =  os.path.join(script_dir, filepath)
    
@@ -81,7 +83,19 @@ def test_generate_observation_scenario_from_cpgs():
     assert len(simulatedImage_list) == len_list
     assert isinstance(simulatedImage_list[0], SimulatedImage)
 
+    #Test with only target
+    filepath = 'test/test_data/cpgs_without_reference.xml'
+    abs_path =  os.path.join(script_dir, filepath)
+   
+    scene_target, optics, detector_target, visit_list = inputs.load_cpgs_data(abs_path)
+    len_list = 0 
+    for visit in visit_list:
+        len_list += visit['number_of_frames']
 
+    simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path)
+    assert isinstance(simulatedImage_list, list)
+    assert len(simulatedImage_list) == len_list
+    assert isinstance(simulatedImage_list[0], SimulatedImage)
 
 if __name__ == '__main__':
     test_generate_observation_sequence()
