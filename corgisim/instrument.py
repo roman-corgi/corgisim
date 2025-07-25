@@ -3,7 +3,6 @@ import proper
 import warnings
 import numpy as np
 from astropy.io import fits
-import astropy.units as u
 import roman_preflight_proper
 from corgisim import scene
 import cgisim
@@ -318,7 +317,6 @@ class CorgiOptics():
             # Initialize the image array based on whether oversampling is returned
             images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if self.return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
             images = np.zeros(images_shape, dtype=float)
-            #counts = np.zeros(self.nlam) * u.count / u.second
             counts = np.zeros(self.nlam)
 
             for i in range(images_tem.shape[0]):
@@ -334,10 +332,8 @@ class CorgiOptics():
                 lam_um_u = (self.lam_um[i]+ 0.5*dlam_um) * 1e4 ## unit of anstrom
                 # ares in unit of cm^2
                 # counts in unit of photos/s
-                # counts[i] = self.polarizer_transmission * obs.countrate(area=self.area, waverange=[lam_um_l, lam_um_u]
                 counts[i] = self.polarizer_transmission * obs.countrate(area=self.area, waverange=[lam_um_l, lam_um_u]).value
 
-            # images *= counts.value[:, np.newaxis, np.newaxis]
             images *= counts[:, np.newaxis, np.newaxis]
             image = np.sum(images, axis=0)
 
@@ -530,7 +526,7 @@ class CorgiOptics():
                 # Initialize the image array based on whether oversampling is returned
                 images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if self.return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
                 images = np.zeros(images_shape, dtype=float)
-                counts = np.zeros(self.nlam) * u.count / u.second
+                counts = np.zeros(self.nlam)
 
                 for i in range(images_tem.shape[0]):
                     if self.return_oversample:
@@ -545,9 +541,9 @@ class CorgiOptics():
                     lam_um_u = (self.lam_um[i]+ 0.5*dlam_um) * 1e4 ## unit of anstrom
                     # ares in unit of cm^2
                     # counts in unit of photos/s
-                    counts[i] = self.polarizer_transmission * obs_point_source[j].countrate(area=self.area, waverange=[lam_um_l, lam_um_u])
+                    counts[i] = self.polarizer_transmission * obs_point_source[j].countrate(area=self.area, waverange=[lam_um_l, lam_um_u]).value
 
-                images *= counts.value[:, np.newaxis, np.newaxis]
+                images *= counts[:, np.newaxis, np.newaxis]
                 image = np.sum(images, axis=0)
                 point_source_image.append(image) 
         elif self.cgi_mode == 'spec':
