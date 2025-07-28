@@ -219,6 +219,29 @@ def test_L1_product_fits_format():
     print('Deleted the FITS file after testing headers populated with non-dafult values(inputs)')
     os.remove(f)
 
+def test_L1_product_from_CPGS():
+    """Test the saving of files from CPGS
+    """
+
+    script_dir = os.getcwd()
+
+    filepath = 'test/test_data/cpgs_short_sequence.xml'
+    abs_path =  os.path.join(script_dir, filepath)
+    local_path = corgisim.lib_dir
+    outdir = os.path.join(local_path.split('corgisim')[0], 'corgisim/test/testdata')
+    
+    scene_target, scene_reference, optics, detector_target, detector_reference, visit_list = inputs.load_cpgs_data(abs_path)
+    simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, full_frame=True, loc_x=300, loc_y=300, save_as_fit=True, output_dir=outdir)
+
+    for simulatedImage_ in simulatedImage_list:
+        prihdr = simulatedImage.image_on_detector[0].header
+        exthdr = simulatedImage.image_on_detector[1].header
+        time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
+        filename = f"CGI_{prihdr['VISITID']}_{time_in_name}_L1_.fits"
+
+        f = os.path.join( outdir , filename)
+        assert os.path.isfile(f)
+
 
 if __name__ == '__main__':
     #run_sim()

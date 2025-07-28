@@ -377,9 +377,9 @@ def load_cpgs_data(filepath, return_input=False):
             visit_list.append(visit_dict)
 
     # For now, filter can only take two values in cpgs:
-    #   1 <-> Band 1 (575 nm)
-    #   2 <-> Band 4 (825 nm)
-    filter_dict = {'1':'1', '2':'4'}
+    #   1 <-> Band 1F (575 nm)
+    #   2 <-> Band 4F (825 nm)
+    filter_dict = {'1':'1F', '2':'4F'}
     filt = cpgs_input.find('filter').text
     bandpass = filter_dict[filt]
     # For now, coronagraph_mask can only take one value in cpgs:
@@ -387,12 +387,12 @@ def load_cpgs_data(filepath, return_input=False):
     coronograph_mask = cpgs_input.find('coronagraph_mask').text
 
     match bandpass:
-        case '1':
+        case '1F':
             if coronograph_mask == '1':
                 cor_type = 'hlc_band1'
             else:
                 raise NotImplementedError("HLC is the only implemented mode")
-        case '4':
+        case '4F':
             if coronograph_mask == '1':
                 cor_type = 'hlc_band4'
             else:

@@ -70,7 +70,7 @@ def test_generate_observation_scenario_from_cpgs():
     script_dir = os.getcwd()
 
     #Test with target and reference
-    filepath = 'test/test_data/cpgs_without_polarization.xml'
+    filepath = 'test/test_data/cpgs_short_sequence.xml'
     abs_path =  os.path.join(script_dir, filepath)
    
     scene_target, scene_reference, optics, detector_target, detector_reference, visit_list = inputs.load_cpgs_data(abs_path)
