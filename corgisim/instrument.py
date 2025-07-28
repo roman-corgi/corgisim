@@ -42,6 +42,7 @@ class CorgiOptics():
         - oversample: An integer that defines the oversampling factor of the detector when generating the image
         - return_oversample: A boolean that defines whether the function should return the oversampled image or not.
         - satspot_keywords: A dictionary with the keywords that are used to add satellite spots. See add_satspot for the keywords
+        # TODO: update the header if generating satellite_spots 
     
 
         Raises:

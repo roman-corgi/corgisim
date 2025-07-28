@@ -1,6 +1,6 @@
 import numpy as np
 
-def add_cosine_pattern_to_dm(dm_volts, sep_lamD=6, angle_deg=[0,90], contrast=1e-6, wavelength_m=0.575e-6):
+def add_cos_pattern_dm(dm_volts, sep_lamD=6, angle_deg=[0,90], contrast=1e-6, wavelength_m=0.575e-6):
     """
     Add 2D cosine phase pattern(s) to Roman CGI DM solution (in volts).
 
