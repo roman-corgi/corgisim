@@ -59,7 +59,7 @@ def add_cosine_pattern_to_dm(dm_volts, sep_lamD=6, angle_deg=[0,90], contrast=1e
         stroke_m = (phase_pattern * wavelength_m) / (4 * np.pi)
         
         # Convert stroke to volts
-	stroke_V = stroke_m / (gain_nm_per_V * 1e-9)
+        stroke_V = stroke_m / (gain_nm_per_V * 1e-9)
 
         # Add to original DM map (in volts)
         dm_volts_with_pattern += stroke_V
