@@ -31,7 +31,7 @@ class CorgiOptics():
 
     '''
 
-    def __init__(self, cgi_mode = None, bandpass= None,  diam = 236.3114, proper_keywords=None, oversampling_factor = 7, return_oversample = False, **kwargs):
+    def __init__(self, cgi_mode = None, bandpass= None,  diam = 236.3114, optics_keywords=None, oversampling_factor = 7, return_oversample = False, **kwargs):
         '''
 
         Initialize the class a keyword dictionary that defines the setup of cgisim/PROPER 
@@ -43,34 +43,34 @@ class CorgiOptics():
         - cor_type (str): define coronagraphic observing modes
         - bandpass (str): pre-difined bandpass for Roman-CGI
         - diam (float) in meter: diameter of the primaru mirror, the default value is 2.363114 meter
-        - proper_keywords: A dictionary with the keywords that are used to set up the proper model
+        - optics_keywords: A dictionary with the keywords that are used to set up the proper model
         - oversample: An integer that defines the oversampling factor of the detector when generating the image
         - return_oversample: A boolean that defines whether the function should return the oversampled image or not.
     
 
         Raises:
         - ValueError: If `cgi_mode` or `cor_type` is invalid.
-        - KeyError: If required `proper_keywords` are missing.
+        - KeyError: If required `optics_keywords` are missing.
         - KeyError: If forbidden keywords are included.
         """
         '''
-         # Initialize proper_keywords safely
-        if proper_keywords is None:
-            proper_keywords = {}
+         # Initialize optics_keywords safely
+        if optics_keywords is None:
+            optics_keywords = {}
 
         #some parameters to the PROPER prescription are required, including 'cor_type', 'polaxis'
         required_keys = {'cor_type', 'polaxis', 'output_dim'}
-        missing_keys = required_keys - proper_keywords.keys()
+        missing_keys = required_keys - optics_keywords.keys()
         if missing_keys:
-            raise KeyError(f"ERROR: Missing required proper_keywords: {missing_keys}")
+            raise KeyError(f"ERROR: Missing required optics_keywords: {missing_keys}")
 
         # some parameters to the PROPER prescription are not allowed when calling it from corgisim;
         ## 'final_sampling_m' is directly choosed based on different cgi mode 
         ## 'end_at_fpm_exit_pupil','end_at_fsm' are not allowed because they will give outimage at fsm 
         forbidden_keys = {'final_sampling_lam0', 'final_sampling_m', 'end_at_fpm_exit_pupil','end_at_fsm'}
-        forbidden_found = forbidden_keys & proper_keywords.keys()
+        forbidden_found = forbidden_keys & optics_keywords.keys()
         if forbidden_found:
-            raise KeyError(f"ERROR: Forbidden keywords detected in proper_keywords: {forbidden_found}")
+            raise KeyError(f"ERROR: Forbidden keywords detected in optics_keywords: {forbidden_found}")
 
 
         valid_cgi_modes = ['excam', 'spec', 'lowfs', 'excam_efield']
@@ -85,14 +85,14 @@ class CorgiOptics():
             raise Exception('ERROR: Requested mode does not match any available mode')
      
 
-        if proper_keywords['cor_type'] not in valid_cor_types and proper_keywords['cor_type'] not in untest_cor_types:
+        if optics_keywords['cor_type'] not in valid_cor_types and optics_keywords['cor_type'] not in untest_cor_types:
             raise Exception('ERROR: Requested coronagraph does not match any available types')
         
-        if proper_keywords['cor_type'] in untest_cor_types:
+        if optics_keywords['cor_type'] in untest_cor_types:
             warnings.warn('Warning: Requested coronagraph is currently untested and might not work as expected')
 
         self.cgi_mode = cgi_mode
-        self.cor_type = proper_keywords['cor_type']
+        self.cor_type = optics_keywords['cor_type']
         if bandpass  in ['1F','2F','3F','4F']:
             self.bandpass = bandpass.split('F')[0]
         else:
@@ -107,7 +107,7 @@ class CorgiOptics():
 
         # get mode and bandpass parameters:
         info_dir = cgisim.lib_dir + '/cgisim_info_dir/'
-        mode_data, bandpass_data = cgisim.cgisim_read_mode( cgi_mode, proper_keywords['cor_type'], self.bandpass, info_dir )
+        mode_data, bandpass_data = cgisim.cgisim_read_mode( cgi_mode, optics_keywords['cor_type'], self.bandpass, info_dir )
 
         # Set directory containing reference data for parameters external to CGISim
         ref_data_dir = os.path.join(corgisim.lib_dir, 'data')
@@ -129,8 +129,8 @@ class CorgiOptics():
                 'prism': ['None', 'PRISM3', 'PRISM2']
             }
             for attr_name, default_value in spec_kw_defaults.items():
-                if attr_name in kwargs:
-                    value = kwargs[attr_name]
+                if attr_name in optics_keywords:
+                    value = optics_keywords[attr_name]
                 
                     if attr_name in spec_kw_allowed:
                         if value not in spec_kw_allowed[attr_name]:
@@ -178,13 +178,13 @@ class CorgiOptics():
         # 30.3% central obscuration of the telescope entrance pupil (diameter ratio) from IPAC-Roman website
         #self.area = (self.diam/2)**2 * np.pi - (self.diam/2*0.303)**2 * np.pi
         self.area =  35895.212    # primary effective area from cgisim cm^2 
-        self.grid_dim_out = proper_keywords['output_dim'] # number of grid in output image in one dimension
-        self.proper_keywords = proper_keywords  # Store the keywords for PROPER package
-        self.proper_keywords['lam0']=self.lam0_um
+        self.grid_dim_out = optics_keywords['output_dim'] # number of grid in output image in one dimension
+        self.optics_keywords = optics_keywords  # Store the keywords for PROPER package
+        self.optics_keywords['lam0']=self.lam0_um
 
         # polarization
         
-        if proper_keywords['polaxis'] != 10 and proper_keywords['polaxis'] != -10 and proper_keywords['polaxis'] != 0:
+        if optics_keywords['polaxis'] != 10 and optics_keywords['polaxis'] != -10 and optics_keywords['polaxis'] != 0:
             self.polarizer_transmission = 0.45
         else:
             self.polarizer_transmission = 1.0
@@ -254,11 +254,11 @@ class CorgiOptics():
             grid_dim_out_tem = self.grid_dim_out * self.oversampling_factor
             sampling_um_tem = self.sampling_um / self.oversampling_factor
 
-            self.proper_keywords['output_dim']=grid_dim_out_tem
-            self.proper_keywords['final_sampling_m']=sampling_um_tem *1e-6
+            self.optics_keywords['output_dim']=grid_dim_out_tem
+            self.optics_keywords['final_sampling_m']=sampling_um_tem *1e-6
             
             
-            (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=self.proper_keywords,QUIET=self.quiet)
+            (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=self.optics_keywords,QUIET=self.quiet)
             images_tem = np.abs(fields)**2
 
             # Initialize the image array based on whether oversampling is returned
@@ -272,8 +272,8 @@ class CorgiOptics():
                 else:
                     ## integrate oversampled PSF back to one grid per pixel
                     images[i,:,:] +=  images_tem[i,:,:].reshape((self.grid_dim_out,self.oversampling_factor,self.grid_dim_out,self.oversampling_factor)).mean(3).mean(1) * self.oversampling_factor**2
-                    ## update the proper_keywords['output_dim'] baclk to non_oversample size
-                    self.proper_keywords['output_dim'] = self.grid_dim_out
+                    ## update the optics_keywords['output_dim'] baclk to non_oversample size
+                    self.optics_keywords['output_dim'] = self.grid_dim_out
 
                 dlam_um = self.lam_um[1]-self.lam_um[0]
                 lam_um_l = (self.lam_um[i]- 0.5*dlam_um) * 1e4 ## unit of anstrom
@@ -289,21 +289,21 @@ class CorgiOptics():
         elif self.cgi_mode == 'spec':
             if self.slit != 'None':
                 field_stop_array, field_stop_sampling_m = spec.get_slit_mask(self)
-                self.proper_keywords['field_stop_array']=field_stop_array
-                self.proper_keywords['field_stop_array_sampling_m']=field_stop_sampling_m
+                self.optics_keywords['field_stop_array']=field_stop_array
+                self.optics_keywords['field_stop_array_sampling_m']=field_stop_sampling_m
             else:
-                self.proper_keywords['field_stop_array']=0
-                self.proper_keywords['field_stop_array_sampling_m']=0
+                self.optics_keywords['field_stop_array']=0
+                self.optics_keywords['field_stop_array_sampling_m']=0
                 
             obs = Observation(input_scene.stellar_spectrum, self.bp)
 
             grid_dim_out_tem = self.grid_dim_out * self.oversampling_factor
             sampling_um_tem = self.sampling_um / self.oversampling_factor
 
-            self.proper_keywords['output_dim']=grid_dim_out_tem
-            self.proper_keywords['final_sampling_m']=sampling_um_tem *1e-6
+            self.optics_keywords['output_dim']=grid_dim_out_tem
+            self.optics_keywords['final_sampling_m']=sampling_um_tem *1e-6
             
-            (fields, sampling) = proper.prop_run_multi('roman_preflight', self.lam_um, 1024, PASSVALUE=self.proper_keywords, QUIET=self.quiet)
+            (fields, sampling) = proper.prop_run_multi('roman_preflight', self.lam_um, 1024, PASSVALUE=self.optics_keywords, QUIET=self.quiet)
             images_tem = np.abs(fields)**2
 
             # If a prism was selected, apply the dispersion model and overwrite the image cube and wavelength array.
@@ -352,17 +352,17 @@ class CorgiOptics():
                     'host_star_magtype':input_scene.host_star_magtype,
                     'ref_flag':input_scene.ref_flag,
                     'cgi_mode':self.cgi_mode,
-                    'cor_type': self.proper_keywords['cor_type'],
+                    'cor_type': self.optics_keywords['cor_type'],
                     'bandpass':self.bandpass_header,
                     'over_sampling_factor':self.oversampling_factor,
                     'return_oversample': self.return_oversample,
-                    'output_dim': self.proper_keywords['output_dim'],
+                    'output_dim': self.optics_keywords['output_dim'],
                     'nd_filter':self.nd}
 
-        # Define specific keys from self.proper_keywords to include in the header            
+        # Define specific keys from self.optics_keywords to include in the header            
         keys_to_include_in_header = ['use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
                             'use_lyot_stop','use_field_stop','fsm_x_offset_mas','fsm_y_offset_mas']  # Specify keys to include
-        subset = {key: self.proper_keywords[key] for key in keys_to_include_in_header if key in self.proper_keywords}
+        subset = {key: self.optics_keywords[key] for key in keys_to_include_in_header if key in self.optics_keywords}
         sim_info.update(subset)
         sim_info['includ_dectector_noise'] = 'False'
         # Create the HDU object with the generated header information
@@ -514,13 +514,13 @@ class CorgiOptics():
             point_source_image = []
             for j in range(len(point_source_spectra )):
             
-                proper_keywords_comp = self.proper_keywords.copy()
-                proper_keywords_comp.update({'output_dim': grid_dim_out_tem,
+                optics_keywords_comp = self.optics_keywords.copy()
+                optics_keywords_comp.update({'output_dim': grid_dim_out_tem,
                                             'final_sampling_m': sampling_um_tem * 1e-6,
                                             'source_x_offset_mas': point_source_x[j],
                                             'source_y_offset_mas': point_source_y[j]})
 
-                (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE= proper_keywords_comp ,QUIET=True)
+                (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE= optics_keywords_comp ,QUIET=True)
                 images_tem = np.abs(fields)**2
 
                 # Initialize the image array based on whether oversampling is returned
@@ -569,11 +569,11 @@ class CorgiOptics():
 
             if self.slit != 'None':
                 field_stop_array, field_stop_sampling_m = spec.get_slit_mask(self)
-                self.proper_keywords['field_stop_array']=field_stop_array
-                self.proper_keywords['field_stop_array_sampling_m']=field_stop_sampling_m
+                self.optics_keywords['field_stop_array']=field_stop_array
+                self.optics_keywords['field_stop_array_sampling_m']=field_stop_sampling_m
             else:
-                self.proper_keywords['field_stop_array']=0
-                self.proper_keywords['field_stop_array_sampling_m']=0
+                self.optics_keywords['field_stop_array']=0
+                self.optics_keywords['field_stop_array_sampling_m']=0
 
             # Compute the observed  spectrum for each off-axis source
             obs_point_source = [Observation(spectrum, self.bp) for spectrum in point_source_spectra]
@@ -583,13 +583,13 @@ class CorgiOptics():
             
             point_source_image = []
             for j in range(len(point_source_spectra )):
-                proper_keywords_comp = self.proper_keywords.copy()
-                proper_keywords_comp.update({'output_dim': grid_dim_out_tem,
+                optics_keywords_comp = self.optics_keywords.copy()
+                optics_keywords_comp.update({'output_dim': grid_dim_out_tem,
                                             'final_sampling_m': sampling_um_tem * 1e-6,
                                             'source_x_offset_mas': point_source_x[j],
                                             'source_y_offset_mas': point_source_y[j]})
 
-                (fields, sampling) = proper.prop_run_multi('roman_preflight', self.lam_um, 1024, PASSVALUE=proper_keywords_comp ,QUIET=True)
+                (fields, sampling) = proper.prop_run_multi('roman_preflight', self.lam_um, 1024, PASSVALUE=optics_keywords_comp ,QUIET=True)
                 images_tem = np.abs(fields)**2
 
                 # If a prism was selected, apply the dispersion model and overwrite the image cube and wavelength array.
@@ -611,8 +611,8 @@ class CorgiOptics():
                     else:
                         ## integrate oversampled PSF back to one grid per pixel
                         images[i,:,:] +=  images_tem[i,:,:].reshape((self.grid_dim_out,self.oversampling_factor,self.grid_dim_out,self.oversampling_factor)).mean(3).mean(1) * self.oversampling_factor**2
-                        ## update the proper_keywords['output_dim'] baclk to non_oversample size
-                        self.proper_keywords['output_dim'] = self.grid_dim_out
+                        ## update the optics_keywords['output_dim'] baclk to non_oversample size
+                        self.optics_keywords['output_dim'] = self.grid_dim_out
 
 
                     dlam_um = self.lam_um[1]-self.lam_um[0]
@@ -646,17 +646,17 @@ class CorgiOptics():
 
         # Third: global simulation settings
         sim_info['cgi_mode'] = self.cgi_mode
-        sim_info['cor_type'] = self.proper_keywords.get('cor_type')
+        sim_info['cor_type'] = self.optics_keywords.get('cor_type')
         sim_info['bandpass'] = self.bandpass_header
         sim_info['over_sampling_factor'] = self.oversampling_factor
         sim_info['return_oversample'] = self.return_oversample
-        sim_info['output_dim'] = self.proper_keywords['output_dim'] 
+        sim_info['output_dim'] = self.optics_keywords['output_dim'] 
         sim_info['nd_filter'] = self.nd
                             
-                # Define specific keys from self.proper_keywords to include in the header            
+                # Define specific keys from self.optics_keywords to include in the header            
         keys_to_include_in_header = [ 'use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
                             'use_lyot_stop','use_field_stop','fsm_x_offset_mas','fsm_y_offset_mas']  # Specify keys to include
-        subset = {key: self.proper_keywords[key] for key in keys_to_include_in_header if key in self.proper_keywords}
+        subset = {key: self.optics_keywords[key] for key in keys_to_include_in_header if key in self.optics_keywords}
         sim_info.update(subset)
         sim_info['includ_dectector_noise'] = 'False'
         # Create the HDU object with the generated header information

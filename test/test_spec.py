@@ -8,7 +8,7 @@ from importlib import resources
 @pytest.fixture
 def mock_optics():
     class MockOptics:
-        proper_keywords = {'cor_type': 'spc-spec_band3'}
+        optics_keywords = {'cor_type': 'spc-spec_band3'}
         lamref_um = 0.73
         slit_param_fname = ''
         slit = 'test_slit'

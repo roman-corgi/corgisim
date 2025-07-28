@@ -46,7 +46,7 @@ def get_slit_mask(optics, dx_fsam_um=10.0, hires_dim_um=800, binfac=50):
 
     # Set the scale factor between physical length and diffraction model units (lambda/D) at the FSAM
     # These scale parameters are listed in the Roman Preflight Proper model manual
-    if optics.proper_keywords['cor_type'] == 'spc-spec_band2':
+    if optics.optics_keywords['cor_type'] == 'spc-spec_band2':
         fsam_meter_per_lamD = 1.34273E-5 / (1000 / 2048) # Roman Preflight PROPER Prescription manual, v2.0, pg 19
     else:
         fsam_meter_per_lamD = 1.48513E-5 / (1000 / 2048) # Roman Preflight PROPER Prescription manual, v2.0, pg 19
