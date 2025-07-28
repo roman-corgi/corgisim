@@ -41,7 +41,7 @@ class CorgiOptics():
         - proper_keywords: A dictionary with the keywords that are used to set up the proper model
         - oversample: An integer that defines the oversampling factor of the detector when generating the image
         - return_oversample: A boolean that defines whether the function should return the oversampled image or not.
-        - satspot_keywords: A dictionary with the keywords that are used to add satellite spots
+        - satspot_keywords: A dictionary with the keywords that are used to add satellite spots. See add_satspot for the keywords
     
 
         Raises:
@@ -148,12 +148,19 @@ class CorgiOptics():
         if satspot_keywords == None:
             self.SATSPOT = int(0)
         else:
-            self.SATSPOT = int(1)
-            #### call self.add_satspot() to satellite spots in DM files 
-            # self.proper_keywords['dm1_v'], self.proper_keywords['dm2_v'] = self.add_satspot(satspot_keywords=satspot_keywords)
-            
-           
+            # check keywords
+            if proper_keywords['use_dm1'] != 1:
+                raise KeyError('ERROR: use_dm1 in proper_keywords is not set 1')
+            required_keys_satspot = {'sep_lamD', 'angle_deg', 'contrast', 'wavelength_m'}
+            missing_keys = required_keys_satspot - satspot_keywords.keys()
+            if missing_keys:
+                raise KeyError(f"ERROR: Missing required satspot_keywords: {missing_keys}")
 
+            #### call self.add_satspot() to satellite spots in DM files 
+            self.proper_keywords['dm1_v'] = self.add_satspot(satspot_keywords=satspot_keywords)
+            
+            self.SATSPOT = int(1)
+            print("satellite spots are added to DM1.")
 
         print("CorgiOptics initialized with proper keywords.")
      
@@ -458,12 +465,11 @@ class CorgiOptics():
 
         return sim_scene
 
-    def add_satspot(self, satspot_keywords):
+    def add_satspot(self,satspot_keywords):
         """
         Add satellite spots to deformable mirror (DM) settings.
 
-        This function modifies the deformable mirror settings stored in 
-        `self.proper_keywords['dm1_v']` and `self.proper_keywords['dm2_v']` 
+        This function modifies the deformable mirror settings stored in `self.proper_keywords['dm1_v']` 
         by injecting satellite spots according to the provided `satspot_keywords`.
 
         Parameters:
@@ -476,22 +482,20 @@ class CorgiOptics():
         -------
         dm1_cos_added : 2D ndarray
             Updated DM1 voltage map with satellite spots added.
-        
-        TODO: check if we need to update dm2
+       
         """
         
+        # extract DM1
         proper_keywords = self.proper_keywords.copy()
-        if proper_keywords['use_dm1'] != 1:
-            raise Exception('Error: use_dm1 in proper_keywords is not set 1')
         dm1_input = proper_keywords['dm1_v']
 
-        # see docstring in sat_spot.py
+        # extract satspot_keywords
         sep_lamD = satspot_keywords['sep_lamD']
         angle_deg = satspot_keywords['angle_deg']
         contrast = satspot_keywords['contrast']
         wavelength_m = satspot_keywords['wavelength_m']
 
-        dm1_cos_added = add_cosine_pattern_to_dm(dm1_input,sep_lamD,angle_deg,contrast,wavelength_m)
+        dm1_cos_added = add_cos_pattern_dm(dm1_input,sep_lamD,angle_deg,contrast,wavelength_m)
 
         return dm1_cos_added
     
