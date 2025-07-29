@@ -2,8 +2,8 @@ from corgisim import scene, instrument, inputs
 import pytest
 import os
 def test_cpgs_loading():
-    #script_dir = os.path.dirname(__file__) 
-    script_dir = os.getcwd()
+    script_dir = os.path.dirname(__file__) 
+    # script_dir = os.getcwd()
 
     # Test error handling 
     filepath = 'wrong/file/path'
@@ -12,7 +12,7 @@ def test_cpgs_loading():
     assert str(excinfo.value) == filepath +" does not exists." 
     
     filepath = 'test/test_data/cpgs_incorrect_type.txt'
-    abs_path =  os.path.join(script_dir, filepath)
+    abs_path =  os.path.join(script_dir, '..', filepath)
 
     with pytest.raises(TypeError) as excinfo:  
         scene_list, optics = inputs.load_cpgs_data(abs_path)  
@@ -20,7 +20,7 @@ def test_cpgs_loading():
 
     # Test polarization not implemented
     filepath = 'test/test_data/cpgs_default.xml'
-    abs_path =  os.path.join(script_dir, filepath)
+    abs_path =  os.path.join(script_dir, '..', filepath)
 
     with pytest.raises(NotImplementedError) as excinfo:  
         scene_list, optics = inputs.load_cpgs_data(abs_path)  
@@ -28,7 +28,7 @@ def test_cpgs_loading():
 
     # Test object creation 
     filepath = 'test/test_data/cpgs_without_polarization.xml'
-    abs_path =  os.path.join(script_dir, filepath)
+    abs_path =  os.path.join(script_dir, '..', filepath)
 
     scene_list, optics = inputs.load_cpgs_data(abs_path)
     assert isinstance(scene_list[0], scene.Scene)
