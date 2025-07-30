@@ -34,10 +34,10 @@ def test_on_axis_star_on_detector_subframe():
     dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm1_v.fits' )
     dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm2_v.fits' )
 
-    proper_keywords ={'cor_type':cor_type, 'use_errors':2, 'polaxis':10, 'output_dim':201,\
+    optics_keywords ={'cor_type':cor_type, 'use_errors':2, 'polaxis':10, 'output_dim':201,\
                        'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
    
-    optics = instrument.CorgiOptics(cgi_mode, bandpass_corgisim, proper_keywords=proper_keywords, if_quiet=True, integrate_pixels=True)
+    optics = instrument.CorgiOptics(cgi_mode, bandpass_corgisim, optics_keywords=optics_keywords, if_quiet=True, integrate_pixels=True)
     sim_scene = optics.get_host_star_psf(base_scene)
     image = sim_scene.host_star_image.data
     
