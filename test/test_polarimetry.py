@@ -3,12 +3,10 @@ from corgisim import instrument
 import numpy as np
 import proper
 import roman_preflight_proper
-import cgisim
 import pytest
 
 '''
-Test file for polarimetry mode, currently just tests 0°/90° polarization, will be updated
-once 45°/135° polarized speckle field is implemented correctly
+Test file to check that polarized images are generated correctly
 '''
 
 def test_polarimetry():
@@ -28,48 +26,59 @@ def test_polarimetry():
 
     base_scene = scene.Scene(host_star_properties, point_source_info)
 
-    #define instrument properties, set instrument to use 0° wollaston to image 0° and 90° linear polarization intensities
+    #define instrument properties
     cgi_mode = 'excam'
     bandpass_corgisim = '1F'
-    bandpass_cgisim = '1'
     cor_type = 'hlc'
-    output_dim = 201
-    wollaston_prism = 1
+    output_dim = 51
     dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/hlc_ni_3e-8_dm1_v.fits' )
     dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/hlc_ni_3e-8_dm2_v.fits' )
 
-    proper_keywords = {'cor_type':cor_type, 'use_errors':2, 'polaxis':10, 'output_dim':output_dim,\
+    proper_keywords_0_90 = {'cor_type':cor_type, 'use_errors':2, 'polaxis':-10, 'output_dim':output_dim,\
                     'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
     
-    optics = instrument.CorgiOptics(cgi_mode, bandpass_corgisim, wollaston_prism=wollaston_prism, proper_keywords=proper_keywords, if_quiet=True, integrate_pixels=True)
 
-    #simulate using corgisim
-    sim_scene = optics.get_host_star_psf_polarized(base_scene)
-    image_star_corgi_x = sim_scene.host_star_image.data[0]
-    image_star_corgi_y = sim_scene.host_star_image.data[1]
-    sim_scene = optics.inject_point_sources_polarized(base_scene, sim_scene)
-    image_comp_corgi_x = sim_scene.point_source_image.data[0]
-    image_comp_corgi_y = sim_scene.point_source_image.data[1]
+    #Generate 0/90 image pair
+    wollaston_prism = 1
+    proper_keywords_0_90 = {'cor_type':cor_type, 'use_errors':2, 'polaxis':-10, 'output_dim':output_dim,\
+                    'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
+    optics_0_90 = instrument.CorgiOptics(cgi_mode, bandpass_corgisim, wollaston_prism=wollaston_prism, proper_keywords=proper_keywords_0_90, if_quiet=True, integrate_pixels=True)
+    sim_scene_0_90 = optics_0_90.get_host_star_psf_polarized(base_scene)
+    image_star_corgi_x = sim_scene_0_90.host_star_image.data[0]
+    image_star_corgi_y = sim_scene_0_90.host_star_image.data[1]
+    sim_scene_0_90 = optics_0_90.inject_point_sources_polarized(base_scene, sim_scene_0_90)
+    image_comp_corgi_x = sim_scene_0_90.point_source_image.data[0]
+    image_comp_corgi_y = sim_scene_0_90.point_source_image.data[1]
 
-    #simulate using cgisim
-    polaxis_cgisim_x = -5
-    polaxis_cgisim_y = -6
-    params = {'use_errors':1, 'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2}
-    image_star_cgi_x, a0_counts = cgisim.rcgisim( cgi_mode, cor_type, bandpass_cgisim,  polaxis_cgisim_x, params, 
-        star_spectrum=sptype.lower(), star_vmag=Vmag )
-    image_star_cgi_y, a0_counts = cgisim.rcgisim( cgi_mode, cor_type, bandpass_cgisim,  polaxis_cgisim_y, params, 
-        star_spectrum=sptype.lower(), star_vmag=Vmag )
+    #Generate 45/135 image pair
+    wollaston_prism = 2
+    proper_keywords_45_135 = {'cor_type':cor_type, 'use_errors':2, 'polaxis':-10, 'output_dim':output_dim,\
+                    'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
+    optics_45_135 = instrument.CorgiOptics(cgi_mode, bandpass_corgisim, wollaston_prism=wollaston_prism, proper_keywords=proper_keywords_45_135, if_quiet=True, integrate_pixels=True)
+    sim_scene_45_135 = optics_45_135.get_host_star_psf_polarized(base_scene)
+    image_star_corgi_45 = sim_scene_45_135.host_star_image.data[0]
+    image_star_corgi_135 = sim_scene_45_135.host_star_image.data[1]
+    sim_scene_45_135 = optics_45_135.inject_point_sources_polarized(base_scene, sim_scene_0_90)
+    image_comp_corgi_45 = sim_scene_45_135.point_source_image.data[0]
+    image_comp_corgi_135 = sim_scene_45_135.point_source_image.data[1]
+
+    #Generate unpolarized image
+    wollaston_prism = 0
+    proper_keywords_unpol = {'cor_type':cor_type, 'use_errors':2, 'polaxis':-10, 'output_dim':output_dim,\
+                    'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
+    optics_unpol = instrument.CorgiOptics(cgi_mode, bandpass_corgisim, wollaston_prism=wollaston_prism, proper_keywords=proper_keywords_unpol, if_quiet=True, integrate_pixels=True)
+    sim_scene_unpol = optics_unpol.get_host_star_psf(base_scene)
+    image_star_corgi_unpol = sim_scene_unpol.host_star_image.data
+    sim_scene_unpol = optics_unpol.inject_point_sources(base_scene, sim_scene_unpol)
+    image_comp_corgi_unpol = sim_scene_unpol.point_source_image.data
     
-    #check similarity of host star and speckle field image
-    assert image_star_corgi_x  == pytest.approx(image_star_cgi_x, rel=0.5)
-    assert image_star_corgi_y  == pytest.approx(image_star_cgi_y, rel=0.5)
+    #check polarized intensities add up to 0.9 * unpolarized intensity (slightly attenuated to account for wollaston transmission loss)
+    #check sum of 0 and 90 image is the same as the sum of 45 and 135 image
+    assert (image_star_corgi_x + image_star_corgi_y)  == pytest.approx(image_star_corgi_unpol * 0.9, rel=0.1)
+    assert (image_star_corgi_x + image_star_corgi_y) == pytest.approx(image_star_corgi_45 + image_star_corgi_135, rel=0.1)
+    assert (image_comp_corgi_x + image_comp_corgi_y)  == pytest.approx(image_comp_corgi_unpol * 0.9, rel=0.1)
+    assert (image_comp_corgi_x + image_comp_corgi_y) == pytest.approx(image_comp_corgi_45 + image_comp_corgi_135, rel=0.1)
 
-    #since cgisim does not have the option to generate polarized point sources, this will instead check
-    #to see if the sum of orthogonal polarized intensities add up to the total unpolarized intensity for the point source
-    sim_scene_unpol = optics.inject_point_sources(base_scene)
-    image_comp_unpol = sim_scene_unpol.point_source_image.data
-    image_comp_pol_combined = image_comp_corgi_x + image_comp_corgi_y
-    assert image_comp_unpol == pytest.approx(image_comp_pol_combined, rel=0.1)
 
 if __name__ == '__main__':
     test_polarimetry()

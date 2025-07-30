@@ -1,5 +1,4 @@
 ### file containing functions and data useful for simulating polarimetric observations
-
 import numpy as np
 from scipy import interpolate
 
@@ -20,18 +19,15 @@ def check_stokes_vector_validity(pol_state):
     if (np.sqrt((pol_state[1] ** 2) + (pol_state[2] ** 2) + (pol_state[3] ** 2)) > pol_state[0]):
         raise ValueError(f'Invalid stokes parameters of {pol_state}. Please make sure sum of polarized intensity does not exceed that of total intensity')
 
-def get_instrument_mueller_matrix(lam_um):
+def get_instrument_mueller_matrix(lam_band):
     """
-    Calculate the average Mueller matrix response of the instrument in a given passband
+    Calculate the average Mueller matrix of the instrument for a given band
     
     Args:
-        lam_um (float array): Array starting from the lower wavelength cutoff of the selected instrument filter and containing
-        wavelength values increasing in a certain increment with the last value being the higher wavelength cutoff of the filter.
-        Values are in units of microns. This parameter is predefined in CorgiOptics when an object of this class is constructed with
-        a specified and valid bandpass filter. 
+        lam_band (float array): Array containing the sampled wavelengths for a given band, ordered from shortest to longest. 
 
     Returns:
-        passband_mm (4 by 4 float array): Averaged instrument mueller matrix for the given passband
+        mm_passband (4 by 4 float array): Averaged instrument Mueller matrix for the given passband
     """
     # field-independent pupil averaged Mueller matrices modeling instrument polarization
     # 21 indexes, goes from 450nm to 950nm in increments of 25nm
@@ -144,24 +140,24 @@ def get_instrument_mueller_matrix(lam_um):
     ])
     
     #wavelength increments corresponding to the instrument Mueller matrix data
-    mm_lam_um = np.array([0.450, 0.475, 0.500, 0.525, 0.550, 0.575, 0.600, 0.625, 0.650, 
+    lam_mm = np.array([0.450, 0.475, 0.500, 0.525, 0.550, 0.575, 0.600, 0.625, 0.650, 
                  0.675, 0.700, 0.725, 0.750, 0.775, 0.800, 0.825, 0.850, 0.875, 
                  0.900, 0.925, 0.950])
     
-    passband_mm = np.zeros((4, 4), dtype=float)
+    mm_passband = np.zeros((4, 4), dtype=float)
     # find interpolated value at a given wavelength in the passband for each MM coefficient at i,j
     # averages each MM coefficient at i,j over all wavelengths in the passband to obtain final MM
     for i in range(4):
         for j in range(4):
-            mm_interp = interpolate.interp1d(mm_lam_um, matrices[:,i,j])
-            mm_coefficients_i_j = mm_interp(lam_um)
-            passband_mm[i, j] = np.mean(mm_coefficients_i_j)
+            mm_interp = interpolate.interp1d(lam_mm, matrices[:,i,j])
+            mm_coefficients_i_j = mm_interp(lam_band)
+            mm_passband[i, j] = np.mean(mm_coefficients_i_j)
     
-    return passband_mm
+    return mm_passband
 
 def get_wollaston_mueller_matrix(angle):
     """
-    Calculate the mueller matrix response for one of the two orthogonal polarization directions the light is split into, can
+    Calculate the Mueller matrix response for one of the two orthogonal polarization directions the light is split into, can
     be treated like a linear polarizer oriented at a certain angle. Used to calculate polarization for point sources
 
     Args:
@@ -169,26 +165,10 @@ def get_wollaston_mueller_matrix(angle):
         for the prism oriented at 0 degrees and 45/135 degrees for second prism oriented at 45 degrees.
 
     Returns:
-        The 4x4 mueller matrix describing the transformation from light going into the wollaston to one of the two pathes the light is split into
+        The 4x4 Mueller matrix describing the transformation from light going into the wollaston to one of the two pathes the light is split into
     """
     theta = angle * (np.pi / 180) * 2
-    return 0.5 * np.array([[1, np.cos(theta), np.sin(theta), 0],
+    return 0.45 * np.array([[1, np.cos(theta), np.sin(theta), 0],
                    [np.cos(theta), (np.cos(theta)) ** 2, (np.cos(theta)) * (np.sin(theta)), 0],
                    [np.sin(theta), (np.cos(theta)) * (np.sin(theta)), (np.sin(theta)) ** 2, 0],
                    [0, 0, 0, 0]])
-
-def get_wollaston_jones_matrix(angle):
-    """
-    Calculate the jones matrix response for one of the two orthogonal polarization directions the light is split into, can
-    be treated like a linear polarizer oriented at a certain angle. Used to calculate polarization for host star
-
-    Args:
-        angle (float): The linear polarization angle of transmission in degrees. Default for the wollaston prisms is 0/90 degrees
-        for the prism oriented at 0 degrees and 45/135 degrees for second prism oriented at 45 degrees.
-
-    Returns:
-        The 2x2 jones matrix describing the transformation from light going into the wollaston to one of the two pathes the light is split into
-    """
-    theta = angle * (np.pi / 180)
-    return np.array([[np.cos(theta) ** 2, np.cos(theta) * np.sin(theta)],
-                    [np.cos(theta) * np.sin(theta), np.sin(theta) ** 2]], dtype=np.complex128)
