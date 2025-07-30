@@ -21,7 +21,13 @@ def check_stokes_vector_validity(pol_state):
 
 def get_instrument_mueller_matrix(lam_band):
     """
-    Calculate the average Mueller matrix of the instrument for a given band
+    Calculate the average Mueller matrix of the instrument for a given band.
+    The pupil-averaged Mueller matrix of the instrument as a function of wavelength
+    is provided for every 25nm wavelength interval between 450nm and 950nm. This data
+    is interpolated so that a matrix can be obtained for any wavelength in between each
+    25nm interval. Then, for each wavelength sampled in a given passband, we obtain the
+    interpolated Mueller matrix at that wavelength and average it to obtain the average
+    instrument Mueller matrix for the band. 
     
     Args:
         lam_band (float array): Array containing the sampled wavelengths for a given band, ordered from shortest to longest. 

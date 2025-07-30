@@ -34,15 +34,15 @@ def test_polarimetry():
     dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/hlc_ni_3e-8_dm1_v.fits' )
     dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/hlc_ni_3e-8_dm2_v.fits' )
 
-    proper_keywords_0_90 = {'cor_type':cor_type, 'use_errors':2, 'polaxis':-10, 'output_dim':output_dim,\
+    optics_keywords_0_90 = {'cor_type':cor_type, 'use_errors':2, 'polaxis':-10, 'output_dim':output_dim,\
                     'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
     
 
     #Generate 0/90 image pair
     wollaston_prism = 1
-    proper_keywords_0_90 = {'cor_type':cor_type, 'use_errors':2, 'polaxis':-10, 'output_dim':output_dim,\
+    optics_keywords_0_90 = {'cor_type':cor_type, 'use_errors':2, 'polaxis':-10, 'output_dim':output_dim,\
                     'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
-    optics_0_90 = instrument.CorgiOptics(cgi_mode, bandpass_corgisim, wollaston_prism=wollaston_prism, proper_keywords=proper_keywords_0_90, if_quiet=True, integrate_pixels=True)
+    optics_0_90 = instrument.CorgiOptics(cgi_mode, bandpass_corgisim, wollaston_prism=wollaston_prism, optics_keywords=optics_keywords_0_90, if_quiet=True, integrate_pixels=True)
     sim_scene_0_90 = optics_0_90.get_host_star_psf_polarized(base_scene)
     image_star_corgi_x = sim_scene_0_90.host_star_image.data[0]
     image_star_corgi_y = sim_scene_0_90.host_star_image.data[1]
@@ -52,9 +52,9 @@ def test_polarimetry():
 
     #Generate 45/135 image pair
     wollaston_prism = 2
-    proper_keywords_45_135 = {'cor_type':cor_type, 'use_errors':2, 'polaxis':-10, 'output_dim':output_dim,\
+    optics_keywords_45_135 = {'cor_type':cor_type, 'use_errors':2, 'polaxis':-10, 'output_dim':output_dim,\
                     'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
-    optics_45_135 = instrument.CorgiOptics(cgi_mode, bandpass_corgisim, wollaston_prism=wollaston_prism, proper_keywords=proper_keywords_45_135, if_quiet=True, integrate_pixels=True)
+    optics_45_135 = instrument.CorgiOptics(cgi_mode, bandpass_corgisim, wollaston_prism=wollaston_prism, optics_keywords=optics_keywords_45_135, if_quiet=True, integrate_pixels=True)
     sim_scene_45_135 = optics_45_135.get_host_star_psf_polarized(base_scene)
     image_star_corgi_45 = sim_scene_45_135.host_star_image.data[0]
     image_star_corgi_135 = sim_scene_45_135.host_star_image.data[1]
@@ -64,9 +64,9 @@ def test_polarimetry():
 
     #Generate unpolarized image
     wollaston_prism = 0
-    proper_keywords_unpol = {'cor_type':cor_type, 'use_errors':2, 'polaxis':-10, 'output_dim':output_dim,\
+    optics_keywords_unpol = {'cor_type':cor_type, 'use_errors':2, 'polaxis':-10, 'output_dim':output_dim,\
                     'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
-    optics_unpol = instrument.CorgiOptics(cgi_mode, bandpass_corgisim, wollaston_prism=wollaston_prism, proper_keywords=proper_keywords_unpol, if_quiet=True, integrate_pixels=True)
+    optics_unpol = instrument.CorgiOptics(cgi_mode, bandpass_corgisim, wollaston_prism=wollaston_prism, optics_keywords=optics_keywords_unpol, if_quiet=True, integrate_pixels=True)
     sim_scene_unpol = optics_unpol.get_host_star_psf(base_scene)
     image_star_corgi_unpol = sim_scene_unpol.host_star_image.data
     sim_scene_unpol = optics_unpol.inject_point_sources(base_scene, sim_scene_unpol)
