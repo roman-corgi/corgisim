@@ -77,11 +77,11 @@ class CorgiOptics():
 
 
         valid_cgi_modes = ['excam', 'spec', 'lowfs', 'excam_efield']
-        valid_cor_types = ['hlc', 'hlc_band1', 'spc-wide', 'spc-wide_band4', 
+        valid_cor_types = ['hlc', 'hlc_band1', 'spc-spec', 'spc-spec_band2', 'spc-spec_band3', 'spc-wide', 'spc-wide_band4', 
                         'spc-wide_band1', 'hlc_band2', 'hlc_band3', 'hlc_band4', 'spc-spec_rotated', 'spc-spec_band2_rotated', 'spc-spec_band3_rotated']
         
         #these cor_type is availbale in cgisim, but are currently untested in corgisim
-        untest_cor_types = ['spc-spec', 'spc-spec_band2', 'spc-spec_band3', 'spc-mswc', 'spc-mswc_band4','spc-mswc_band1', 'zwfs']
+        untest_cor_types = ['spc-mswc', 'spc-mswc_band4','spc-mswc_band1', 'zwfs']
 
         valid_wollaston_prisms = [0, 1, 2]
 
