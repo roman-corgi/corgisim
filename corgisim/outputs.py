@@ -77,7 +77,7 @@ def create_hdu_list(data, header_info, sim_info=None):
     exthdr['SPAM_H'], exthdr['SPAM_V'], exthdr['SPAMNAME'], exthdr['SPAMSP_H'],exthdr['SPAMSP_V'] = write_headers_SPAM(header_info['cor_type'])
     exthdr['LSAM_H'], exthdr['LSAM_V'], exthdr['LSAMNAME'], exthdr['LSAMSP_H'],exthdr['LSAMSP_V'] = write_headers_LSAM(header_info['cor_type'])
     exthdr['CFAM_H'], exthdr['CFAM_V'], exthdr['CFAMNAME'], exthdr['CFAMSP_H'],exthdr['CFAMSP_V'] = write_headers_CFAM(header_info['bandpass'])
-    exthdr['DPAM_H'], exthdr['DPAM_V'], exthdr['DPAMNAME'], exthdr['DPAMSP_H'],exthdr['DPAMSP_V'] = write_headers_DPAM(header_info['cgi_mode'], header_info['polaxis'])
+    exthdr['DPAM_H'], exthdr['DPAM_V'], exthdr['DPAMNAME'], exthdr['DPAMSP_H'],exthdr['DPAMSP_V'] = write_headers_DPAM(header_info['cgi_mode'], header_info['polarization_basis'])
     
     ##### need to update later
     exthdr['FPAM_H'], exthdr['FPAM_V'], exthdr['FPAMNAME'], exthdr['FPAMSP_H'],exthdr['FPAMSP_V'] = write_headers_FPAM(header_info['cor_type'], header_info['bandpass'])
@@ -389,19 +389,33 @@ def write_headers_CFAM(band_pass):
     
     
 
-def write_headers_DPAM(cor_mode, polaxis):
-     ### determine the value for DPAM based on simulation mode and polaxis number
+def write_headers_DPAM(cor_mode, polarization_basis):
+     ### determine the value for DPAM based on simulation mode and polarization basis
     
-    if (cor_mode == 'excam') & (polaxis in ['0', '10']):
-        DPAM_H = 38917.1
-        DPAM_V = 26016.9
-        DPAMNAME = 'IMAGING'
-        DPAMSP_H = 38917.1
-        DPAMSP_V = 26016.9
+    if (cor_mode == 'excam'):
+        if polarization_basis == 'None':
+            #no wollaston
+            DPAM_H = 38917.1
+            DPAM_V = 26016.9
+            DPAMNAME = 'IMAGING'
+            DPAMSP_H = 38917.1
+            DPAMSP_V = 26016.
+        elif polarization_basis == '0/90 degrees':
+            #0/90 polarization
+            DPAM_H = 8991.3
+            DPAM_V = 1261.3
+            DPAMNAME = 'POL0'
+            DPAMSP_H = 8991.3
+            DPAMSP_V = 1261.3
+        else:
+            #45/135 polarization
+            DPAM_H = 44660.1
+            DPAM_V = 1261.3
+            DPAMNAME = 'POL45'
+            DPAMSP_H = 44660.1
+            DPAMSP_V = 1261.3
     if cor_mode == 'spec':
         raise ValueError('Spec mode has not been implemented')
-    if (cor_mode == 'excam') & (polaxis not in ['0', '10']):
-        raise ValueError('Polarimetry mode has not been implemented')
 
     return DPAM_H, DPAM_V, DPAMNAME,  DPAMSP_H,  DPAMSP_V
 
