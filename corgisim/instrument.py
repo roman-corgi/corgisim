@@ -750,9 +750,8 @@ class CorgiOptics():
         
         return prf_cube
 
-    def convolve_2d_scene(self, scene, **kwargs):
+    def convolve_2d_scene(self, input_scene, sim_scene=None, **kwargs):
         """
-
         Simulate a two-dimensional scene through the current CGI configuration.
 
         TODO - add emccd_detect to the scene, and add the detector noise to the scene.
@@ -843,7 +842,7 @@ class CorgiOptics():
             prf_grid_azimuths = kwargs.get('prf_grid_azimuths')
 
             # Apply convolution
-            conv2d = convolve_with_prfs(scene._twoD_scene.data, prf_cube, prf_grid_radii, prf_grid_azimuths, PIXEL_SCALE_ARCSEC * 1e3, self.res_mas, use_bilinear_interpolation)
+            conv2d = convolve_with_prfs(input_scene._twoD_scene.data, prf_cube, prf_grid_radii, prf_grid_azimuths, PIXEL_SCALE_ARCSEC * 1e3, self.res_mas, use_bilinear_interpolation)
 
         else:
             # Mode 2: Generate cube
@@ -868,15 +867,50 @@ class CorgiOptics():
             prf_cube = self.make_prf_cube(radii_lamD, azimuths_deg)
                 
             # Apply convolution
-            conv2d = convolve_with_prfs(scene._twoD_scene.data, prf_cube, radii_lamD, azimuths_deg, PIXEL_SCALE_ARCSEC * 1e3, self.res_mas, use_bilinear_interpolation)
+            conv2d = convolve_with_prfs(input_scene._twoD_scene.data, prf_cube, radii_lamD, azimuths_deg, PIXEL_SCALE_ARCSEC * 1e3, self.res_mas, use_bilinear_interpolation)
         
+
         # Update the scene with the convolved image
-        if isinstance(scene, SimulatedImage):
-            scene.twoD_image = conv2d
-        elif isinstance(scene, Scene):
-            scene.background_scene = conv2d
+        if isinstance(input_scene, SimulatedImage):
+            input_scene.twoD_image = conv2d
+        elif isinstance(input_scene, Scene):
+            input_scene.background_scene = conv2d
         else:
-            raise ValueError(f"Unsupported scene type: {type(scene)}")
+            raise ValueError(f"Unsupported scene type: {type(input_scene)}")
+
+
+
+        if self.cgi_mode in ['spec', 'lowfs', 'excam_efield']:
+            raise ValueError(f"The mode '{self.cgi_mode}' has not been implemented yet!")
+        
+        # Initialize SimulatedImage class to restore the output psf
+        if sim_scene == None:
+            sim_scene = scene.SimulatedImage(input_scene)
+        
+        
+        # Prepare additional information to be added as COMMENT headers in the primary HDU.
+        # These are different from the default L1 headers, but extra comments that are used to track simulation-specific details.
+        sim_info = {'ref_flag': False,
+                    'cgi_mode':self.cgi_mode,
+                    'cor_type': self.proper_keywords['cor_type'],
+                    'bandpass':self.bandpass_header,
+                    'over_sampling_factor':self.oversampling_factor,
+                    'return_oversample': self.return_oversample,
+                    'output_dim': self.proper_keywords['output_dim'],
+                    'nd_filter':self.nd}
+
+        # Define specific keys from self.proper_keywords to include in the header            
+        keys_to_include_in_header = ['use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
+                            'use_lyot_stop','use_field_stop','fsm_x_offset_mas','fsm_y_offset_mas']  # Specify keys to include
+        subset = {key: self.proper_keywords[key] for key in keys_to_include_in_header if key in self.proper_keywords}
+        sim_info.update(subset)
+        sim_info['includ_dectector_noise'] = 'False'
+        # Create the HDU object with the generated header information
+
+        sim_scene.twoD_image = outputs.create_hdu(conv2d, sim_info =sim_info)
+
+        return sim_scene
+
         
     def inject_point_sources(self, input_scene, sim_scene=None, on_the_fly=False):
         '''
