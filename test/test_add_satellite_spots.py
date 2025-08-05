@@ -52,7 +52,6 @@ def test_add_satellite_spots():
     sim_scene = optics.get_host_star_psf(base_scene)
     image_star = sim_scene.host_star_image.data
 
-
     ## 2) simulate satellite spots by modifying the DM1 solutions ##
     optics_keywords_ss ={'cor_type':cor_type, 'use_errors':2, 'polaxis':polaxis, 'output_dim':output_dim,\
                         'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
@@ -74,7 +73,7 @@ def test_add_satellite_spots():
     guess_x = xcen+shift[0]/pix_scale
     guess_y = ycen+shift[1]/pix_scale
 
-    peak_ref,fwhm_ref,x_ref,y_ref=gaussfit2d(image_star_corgi,guess_x,guess_y)
+    peak_ref,fwhm_ref,x_ref,y_ref=gaussfit2d(image_star,guess_x,guess_y,guesspeak= np.nanmax(image_star))
 
     ## 2) satellite spots
     fitresult=[]
@@ -88,7 +87,7 @@ def test_add_satellite_spots():
         guess_y2 = ycen-sep*np.sin(np.radians(angle))/pix_scale
 
         for guess_x,guess_y in zip([guess_x1,guess_x2],[guess_y1,guess_y2]):
-            peak,fwhm,x,y=gaussfit2d(image_star_with_spots_corgi,guess_x,guess_y)
+            peak,fwhm,x,y=gaussfit2d(image_star_with_spots,guess_x,guess_y)
             fitresult.append([peak,fwhm,x,y])
 
     #### check location, averaged coordinates the four satellite spots are located at the FoV center
@@ -100,3 +99,6 @@ def test_add_satellite_spots():
     # TODO: need to check the conversion factor
     peak_satspots_ave = np.mean(np.array(fitresult)[:,0])
     assert peak_satspots_ave/(peak_ref*contrast) < 5, peak_satspots_ave/(peak_ref*contrast) > 0.2 # so far threshold is set to a factor of 5, as the test sees a difference by a factor of ~3
+
+if __name__ == '__main__':
+    test_add_satellite_spots()
