@@ -124,10 +124,16 @@ class CorgiOptics():
                 'prism': 'None', # named DPAM prism
                 'wav_step_um': 1E-3 # wavelength step size of the prism dispersion model, in microns 
             }
-            spec_kw_allowed = {
-                'slit': ['None', 'R1C2', 'R6C5', 'R3C1'],
-                'prism': ['None', 'PRISM3', 'PRISM2']
-            }
+            #### allowed slit for band2 
+            if '2' in self.bandpass:     
+                spec_kw_allowed = {
+                    'slit': ['None', 'R6C5', 'R3C1'],
+                    'prism': ['None', 'PRISM3', 'PRISM2']}
+            #### allowed slit for band3
+            elif '3' in self.bandpass:
+                spec_kw_allowed = {
+                    'slit': ['None', 'R1C2', 'R3C1'],
+                    'prism': ['None', 'PRISM3', 'PRISM2']}
             for attr_name, default_value in spec_kw_defaults.items():
                 if attr_name in optics_keywords:
                     value = optics_keywords[attr_name]

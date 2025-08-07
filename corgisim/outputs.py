@@ -82,7 +82,7 @@ def create_hdu_list(data, header_info, sim_info=None):
     
     ##### need to update later
     exthdr['FPAM_H'], exthdr['FPAM_V'], exthdr['FPAMNAME'], exthdr['FPAMSP_H'],exthdr['FPAMSP_V'] = write_headers_FPAM(header_info['cor_type'], header_info['bandpass'], header_info['use_fpm'])
-    exthdr['FSAM_H'], exthdr['FSAM_V'], exthdr['FSAMNAME'], exthdr['FSAMSP_H'],exthdr['FSAMSP_V'] = write_headers_FSAM(header_info['cor_type'], header_info['bandpass'], header_info['slit'])
+    exthdr['FSAM_H'], exthdr['FSAM_V'], exthdr['FSAMNAME'], exthdr['FSAMSP_H'],exthdr['FSAMSP_V'] = write_headers_FSAM(header_info['cor_type'], header_info['bandpass'], header_info['slit'], header_info['polaxis'])
 
 
 
@@ -416,14 +416,20 @@ def write_headers_DPAM(cor_mode, polaxis, prism):
             DPAMNAME = 'PRISM2'
             DPAMSP_H = 62496
             DPAMSP_V = 1261.3
-        elif prism == 'PRISM3':
+        if prism == 'PRISM3':
             DPAM_H = 26824.2
             DPAM_V = 1261.3
             DPAMNAME = 'PRISM3'
             DPAMSP_H = 26824.2
             DPAMSP_V = 1261.3
-        else:
-            raise ValueError('Please specify the prism type when cor_mode is spec for simulation of formal L1 products')
+        if prism == 'None':
+            DPAM_H = 38917.1
+            DPAM_V = 26016.9
+            DPAMNAME = 'IMAGING'
+            DPAMSP_H = 38917.1
+            DPAMSP_V = 26016.9
+
+        
     if (cor_mode == 'excam') & (polaxis not in ['0', '10']):
         raise ValueError('Polarimetry mode has not been implemented')
 
@@ -520,7 +526,7 @@ def write_headers_FPAM(cor_type, band_pass,use_fpm):
     return FPAM_H, FPAM_V, FPAMNAME, FPAMSP_H, FPAMSP_V
 
 
-def write_headers_FSAM(cor_type, band_pass,slit):
+def write_headers_FSAM(cor_type, band_pass,slit,polaxis):
 
     ### determine the value for FSAM based on coronagraph type and bandpass
     if 'hlc' in cor_type:
@@ -553,12 +559,14 @@ def write_headers_FSAM(cor_type, band_pass,slit):
             FSAMSP_V = 21238
 
     if 'wide' in cor_type:
-        
-        FSAM_H = 6687
-        FSAM_V = 13738
-        FSAMNAME = 'R1C5'
-        FSAMSP_H = 6687
-        FSAMSP_V = 13738
+        if polaxis in ['0', '10']:
+            FSAM_H =30677.2
+            FSAM_V = 2959.5
+            FSAMNAME = 'OPEN'
+            FSAMSP_H = 30677.2
+            FSAMSP_V = 2959.5
+        else:
+            raise ValueError("Polarimetry mode has not been implemented for FSAM")
 
     if ('spec' in cor_type) & ('rotated' not in cor_type):
         if '2' in band_pass:
@@ -574,8 +582,13 @@ def write_headers_FSAM(cor_type, band_pass,slit):
                 FSAMNAME = 'R3C1'
                 FSAMSP_H = 26937
                 FSAMSP_V = 21238
-            else:
-                raise ValueError("Please specify the slit type when spec mode for simulation of formal L1 products")
+            if slit == "None":
+                FSAM_H =30677.2
+                FSAM_V = 2959.5
+                FSAMNAME = 'OPEN'
+                FSAMSP_H = 30677.2
+                FSAMSP_V = 2959.5
+                
 
         if '3' in band_pass:
             if slit == "R1C2":
@@ -590,8 +603,12 @@ def write_headers_FSAM(cor_type, band_pass,slit):
                 FSAMNAME = 'R3C1'
                 FSAMSP_H = 26937
                 FSAMSP_V = 21238
-            else:
-                raise ValueError("Please specify the slit type when spec mode for simulation of formal L1 products")
+            if slit == "None":
+                FSAM_H =30677.2
+                FSAM_V = 2959.5
+                FSAMNAME = 'OPEN'
+                FSAMSP_H = 30677.2
+                FSAMSP_V = 2959.5
 
     if 'rotated' in cor_type:
         if '2' in band_pass:
