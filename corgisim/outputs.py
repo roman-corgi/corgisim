@@ -81,7 +81,7 @@ def create_hdu_list(data, header_info, sim_info=None):
     exthdr['DPAM_H'], exthdr['DPAM_V'], exthdr['DPAMNAME'], exthdr['DPAMSP_H'],exthdr['DPAMSP_V'] = write_headers_DPAM(header_info['cgi_mode'], header_info['polaxis'], header_info['prism'])
     
     ##### need to update later
-    exthdr['FPAM_H'], exthdr['FPAM_V'], exthdr['FPAMNAME'], exthdr['FPAMSP_H'],exthdr['FPAMSP_V'] = write_headers_FPAM(header_info['cor_type'], header_info['bandpass'], header_info['use_fpm'])
+    exthdr['FPAM_H'], exthdr['FPAM_V'], exthdr['FPAMNAME'], exthdr['FPAMSP_H'],exthdr['FPAMSP_V'] = write_headers_FPAM(header_info['cor_type'], header_info['bandpass'], header_info['use_fpm'], header_info['nd_filter'])
     exthdr['FSAM_H'], exthdr['FSAM_V'], exthdr['FSAMNAME'], exthdr['FSAMSP_H'],exthdr['FSAMSP_V'] = write_headers_FSAM(header_info['cor_type'], header_info['bandpass'], header_info['slit'], header_info['polaxis'])
 
 
@@ -435,15 +435,38 @@ def write_headers_DPAM(cor_mode, polaxis, prism):
 
     return DPAM_H, DPAM_V, DPAMNAME,  DPAMSP_H,  DPAMSP_V
 
-def write_headers_FPAM(cor_type, band_pass,use_fpm):
+def write_headers_FPAM(cor_type, band_pass,use_fpm,nd_filter):
     ### determine the value for FPAM based on coronagraph type and bandpass, and if use fpm
     if not use_fpm:
-        FPAM_H = -9999
-        FPAM_V = -9999
-        FPAMNAME = 'N/A'
-        FPAMSP_H = -9999
-        FPAMSP_V = -9999
-
+        ## not using foca plane mask, typically for non-occulted stars
+        if (nd_filter == '0'):
+            ## no ND filter
+            if ('1' in band_pass) or ('2' in band_pass):
+                FPAM_H = 3509.4
+                FPAM_V = 32824.7
+                FPAMNAME = 'OPEN_12'
+                FPAMSP_H = 3509.4
+                FPAMSP_V = 32824.7
+            if ('3' in band_pass) or ('4' in band_pass):
+                FPAM_H = 60251.2
+                FPAM_V = 2248.5
+                FPAMNAME = 'OPEN_34'
+                FPAMSP_H = 60251.2
+                FPAMSP_V = 2248.5
+        if (nd_filter == '1'):
+            ## ND filter1 
+            FPAM_H = 61507.8
+            FPAM_V = 25612.4
+            FPAMNAME = 'ND225'
+            FPAMSP_H = 61507.8
+            FPAMSP_V = 25612.4
+        if (nd_filter == '2'):
+            ## ND filter2
+            FPAM_H = 2503.7
+            FPAM_V = 6124.9
+            FPAMNAME = 'ND475'
+            FPAMSP_H = 2503.7
+            FPAMSP_V = 6124.9
     else:
         if 'hlc' in cor_type:
             ##hlc NFOV imaging mode

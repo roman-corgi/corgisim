@@ -203,9 +203,20 @@ class CorgiOptics():
         self.return_oversample = return_oversample
 
 
-        self.nd = 0  # integer: 1, 3, or 4 (0 = no ND, the default); this is the ND filter identifier, NOT the amount of ND
-        if "nd" in kwargs: self.nd = kwargs.get("nd")
-
+        self.nd = 0  # integer: 1, 2, or 3 (0 = no ND, the default); this is the ND filter identifier, NOT the amount of ND
+        #if "nd" in kwargs: self.nd = kwargs.get("nd")
+        if "nd" in optics_keywords.keys():
+            if optics_keywords["nd"] ==1:
+                self.nd = '2.25'
+            elif optics_keywords["nd"] ==2:
+                self.nd = '4.75fpam'
+            elif optics_keywords["nd"] ==3:
+                self.nd = '4.75fsam'
+            elif optics_keywords["nd"] ==0:
+                self.nd = 0
+            else:
+                raise ValueError(f"Invalid ND filter value: {optics_keywords['nd']}. Must be 0, 1, 2, or 3.")
+            
         # Initialize the bandpass class (from synphot)
         # bp: wavelegth is in unit of angstrom
         # bp: throughput is unitless, including transmission, reflectivity and EMCCD quantum efficiency 
@@ -781,7 +792,7 @@ class CorgiDetector():
             
             header_info = {'EXPTIME': exptime,'EMGAIN_C':self.emccd_keywords_default['em_gain'],'PSFREF':ref_flag,
                            'PHTCNT':self.photon_counting,'KGAINPAR':self.emccd_keywords_default['e_per_dn'],'cor_type':sim_info['cor_type'], 'bandpass':sim_info['bandpass'],
-                           'cgi_mode': sim_info['cgi_mode'], 'polaxis':sim_info['polaxis'],'use_fpm':use_fpm}
+                           'cgi_mode': sim_info['cgi_mode'], 'polaxis':sim_info['polaxis'],'use_fpm':use_fpm,'nd_filter':sim_info['nd_filter']}
             if 'fsm_x_offset_mas' in sim_info:
                 header_info['FSMX'] = float(sim_info['fsm_x_offset_mas'])
             if 'fsm_y_offset_mas' in sim_info:
