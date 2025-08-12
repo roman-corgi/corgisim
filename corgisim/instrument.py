@@ -55,7 +55,7 @@ class CorgiOptics():
         """
         '''
         
-         # Initialize proper_keywords safely
+         # Initialize optics_keywords safely
         if optics_keywords is None:
             raise KeyError(f"ERROR: optics_keywords are required to create an Optics object")
         
@@ -165,6 +165,7 @@ class CorgiOptics():
         self.sampling_lamref_div_D = mode_data['sampling_lamref_div_D'] 
         self.lamref_um = mode_data['lamref_um'] ## ref wavelength in micron
         self.owa_lamref = mode_data['owa_lamref'] ## out working angle
+        
         if self.cgi_mode == 'spec':
             baseline_mode_data, _ = cgisim.cgisim_read_mode('excam', 'hlc_band1', '1', info_dir=info_dir)
             self.sampling_um = baseline_mode_data['sampling_um']
@@ -183,8 +184,8 @@ class CorgiOptics():
         #self.area = (self.diam/2)**2 * np.pi - (self.diam/2*0.303)**2 * np.pi
         self.area =  35895.212    # primary effective area from cgisim cm^2 
         self.grid_dim_out = optics_keywords_internal['output_dim'] # number of grid in output image in one dimension
-        self.proper_keywords = optics_keywords_internal  # Store the keywords for PROPER package
-        self.proper_keywords['lam0']=self.lam0_um
+        self.optics_keywords = optics_keywords_internal  # Store the keywords for PROPER package
+        self.optics_keywords['lam0']=self.lam0_um
 
         # polarization
         
