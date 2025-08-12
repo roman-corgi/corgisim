@@ -47,11 +47,11 @@ def test_L1_product_fits_format():
     dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm1_v.fits' )
     dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm2_v.fits' )
 
-    proper_keywords ={'cor_type':cor_type, 'use_errors':1, 'polaxis':10, 'output_dim':201,\
+    optics_keywords ={'cor_type':cor_type, 'use_errors':1, 'polaxis':10, 'output_dim':201,\
                     'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1, }
                 
 
-    optics = instrument.CorgiOptics(cgi_mode, bandpass, proper_keywords=proper_keywords, if_quiet=True)
+    optics = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords, if_quiet=True)
     sim_scene = optics.get_host_star_psf(base_scene)
 
     sim_scene = optics.inject_point_sources(base_scene,sim_scene)
@@ -121,6 +121,18 @@ def test_L1_product_fits_format():
     assert exthdr['DPAMSP_H'] == 38917.1, f"Expected data DPAMSP_H=38917.1, but got {exthdr['DPAMSP_H']}"
     assert exthdr['DPAMSP_V'] == 26016.9, f"Expected data DPAMSP_V=26016.9, but got {exthdr['DPAMSP_V']}"
 
+    assert exthdr['FPAM_H'] ==  6757.2, f"Expected data FPAM_H= 6757.2, but got {exthdr['FPAM_H']}"
+    assert exthdr['FPAM_V'] == 22424, f"Expected data FPAM_V=22424, but got {exthdr['FPAM_V']}"
+    assert exthdr['FPAMNAME'] == 'HLC12_C2R1', f"Expected data FPAMNAME='HLC12_C2R1', but got {exthdr['FPAMNAME']}"
+    assert exthdr['FPAMSP_H'] ==  6757.2, f"Expected data FPAMSP_H= 6757.2, but got {exthdr['FPAMSP_H']}"
+    assert exthdr['FPAMSP_V'] == 22424, f"Expected data FPAMSP_V=22424, but got {exthdr['FPAMSP_V']}"
+
+    assert exthdr['FSAM_H'] ==  29387, f"Expected data FSAM_H=29387, but got {exthdr['FSAM_H']}"
+    assert exthdr['FSAM_V'] == 12238, f"Expected data FSAM_V=12238, but got {exthdr['FSAM_V']}"
+    assert exthdr['FSAMNAME'] == 'R1C1', f"Expected data FSAMNAME='R1C1', but got {exthdr['FSAMNAME']}"
+    assert exthdr['FSAMSP_H'] ==  29387, f"Expected data FSAMSP_H=29387, but got {exthdr['FSAMSP_H']}"
+    assert exthdr['FSAMSP_V'] == 12238, f"Expected data FSAMSP_V=12238, but got {exthdr['FSAMSP_V']}"
+
 
 
     ### delete file after testing
@@ -159,13 +171,13 @@ def test_L1_product_fits_format():
     dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm1_v.fits' )
     dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm2_v.fits' )
 
-    proper_keywords ={'cor_type':cor_type, 'use_errors':1, 'polaxis':10, 'output_dim':201,\
+    optics_keywords ={'cor_type':cor_type, 'use_errors':1, 'polaxis':10, 'output_dim':201,\
                     'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1,
                     'fsm_x_offset_mas':10.0,'fsm_y_offset_mas':20.0 }
                 ##pass fsm_x_offset_mas and fsm_y_offset_mas for no zero value as test
 
 
-    optics = instrument.CorgiOptics(cgi_mode, bandpass, proper_keywords=proper_keywords, if_quiet=True)
+    optics = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords, if_quiet=True)
     sim_scene = optics.get_host_star_psf(base_scene)
 
     sim_scene = optics.inject_point_sources(base_scene,sim_scene)

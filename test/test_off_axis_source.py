@@ -49,14 +49,16 @@ def test_off_axis_source():
     dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm1_v.fits' )
     dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm2_v.fits' )
 
-    proper_keywords ={'cor_type':cor_type, 'use_errors':2, 'polaxis':10, 'output_dim':201,\
+    optics_keywords ={'cor_type':cor_type, 'use_errors':2, 'polaxis':10, 'output_dim':201,\
                     'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
    
-    optics = instrument.CorgiOptics(cgi_mode,  bandpass_corgisim, proper_keywords=proper_keywords, if_quiet=True)
+    optics = instrument.CorgiOptics(cgi_mode,  bandpass_corgisim, optics_keywords=optics_keywords, if_quiet=True)
     sim_scene = optics.get_host_star_psf(base_scene)
     image_star_corgi = sim_scene.host_star_image.data
+    assert optics.optics_keywords['output_dim'] == optics_keywords['output_dim'], f"output_dim={optics_keywords['output_dim']}, but got {optics.optics_keywords['output_dim']}"
 
     sim_scene = optics.inject_point_sources(base_scene,sim_scene)
+    assert optics.optics_keywords['output_dim'] == optics_keywords['output_dim'], f"output_dim={optics_keywords['output_dim']}, but got {optics.optics_keywords['output_dim']}"
     image_comp_corgi = sim_scene.point_source_image.data 
     tot_counts_corgi = np.sum(image_comp_corgi+image_star_corgi, dtype = np.float64)
 

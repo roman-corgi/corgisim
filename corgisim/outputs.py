@@ -80,8 +80,8 @@ def create_hdu_list(data, header_info, sim_info=None):
     exthdr['DPAM_H'], exthdr['DPAM_V'], exthdr['DPAMNAME'], exthdr['DPAMSP_H'],exthdr['DPAMSP_V'] = write_headers_DPAM(header_info['cgi_mode'], header_info['polaxis'])
     
     ##### need to update later
-    exthdr['FPAM_H'], exthdr['FPAM_V'], exthdr['FPAMNAME'], exthdr['FPAMSP_H'],exthdr['FPAMSP_V'] = 'N/A','N/A','N/A','N/A','N/A'
-    exthdr['FSAM_H'], exthdr['FSAM_V'], exthdr['FSAMNAME'], exthdr['FSAMSP_H'],exthdr['FSAMSP_V'] = 'N/A','N/A','N/A','N/A','N/A'
+    exthdr['FPAM_H'], exthdr['FPAM_V'], exthdr['FPAMNAME'], exthdr['FPAMSP_H'],exthdr['FPAMSP_V'] = write_headers_FPAM(header_info['cor_type'], header_info['bandpass'])
+    exthdr['FSAM_H'], exthdr['FSAM_V'], exthdr['FSAMNAME'], exthdr['FSAMSP_H'],exthdr['FSAMSP_V'] = write_headers_FSAM(header_info['cor_type'], header_info['bandpass'])
 
 
 
@@ -404,5 +404,165 @@ def write_headers_DPAM(cor_mode, polaxis):
         raise ValueError('Polarimetry mode has not been implemented')
 
     return DPAM_H, DPAM_V, DPAMNAME,  DPAMSP_H,  DPAMSP_V
+
+def write_headers_FPAM(cor_type, band_pass):
+    ### determine the value for FPAM based on coronagraph type and bandpass
+    if 'hlc' in cor_type:
+        if '1' in band_pass:
+            FPAM_H = 6757.2
+            FPAM_V = 22424
+            FPAMNAME = 'HLC12_C2R1'
+            FPAMSP_H = 6757.2
+            FPAMSP_V = 22424
+        
+        if '2' in band_pass:
+            FPAM_H = 55306.4
+            FPAM_V = 9901.9
+            FPAMNAME = 'HLC34_R7C1'
+            FPAMSP_H = 55306.4
+            FPAMSP_V = 9901.9
+
+        if '3' in band_pass:
+            FPAM_H = 52005.1
+            FPAM_V = 8004.2
+            FPAMNAME = 'HLC34_R5C1'
+            FPAMSP_H = 52005.1
+            FPAMSP_V = 8004.2
+
+        if '4' in band_pass:
+            FPAM_H = 52003.8
+            FPAM_V = 6104.2
+            FPAMNAME = 'HLC34_R3C1'
+            FPAMSP_H = 52003.8
+            FPAMSP_V = 6104.2
+
+    if 'wide' in cor_type:
+        if '1' in band_pass:
+            FPAM_H = 23719.6
+            FPAM_V = 2278.1
+            FPAMNAME = 'SPC12_R1C1'
+            FPAMSP_H = 23719.6
+            FPAMSP_V = 2278.1
+
+        if '4' in band_pass:
+            FPAM_H = 35354.3
+            FPAM_V =27622.6
+            FPAMNAME = 'SPC34_R5C1'
+            FPAMSP_H = 35354.3
+            FPAMSP_V = 27622.6
+
+        if ('spec' in cor_type) & ('rotated' not in cor_type):
+            if '2' in band_pass:
+                FPAM_H = 25866.4
+                FPAM_V = 7129.5
+                FPAMNAME = 'SPC12_R3C2'
+                FPAMSP_H = 25866.4
+                FPAMSP_V = 7129.5
+
+            if '3' in band_pass:
+                FPAM_H = 37005.5
+                FPAM_V = 22573
+                FPAMNAME = 'SPC34_R2C2'
+                FPAMSP_H = 37005.5
+                FPAMSP_V = 22573
+
+        if 'rotated' in cor_type:
+            if '2' in band_pass:
+                FPAM_H = 22666.4
+                FPAM_V = 7127.4
+                FPAMNAME = 'SPC12_R3C1'
+                FPAMSP_H = 22666.4
+                FPAMSP_V = 7127.4
+
+            if '3' in band_pass:
+                FPAM_H = 40505.5
+                FPAM_V = 22573.8
+                FPAMNAME = 'SPC34_R2C3'
+                FPAMSP_H = 40505.5
+                FPAMSP_V = 22573.8
+
+    return FPAM_H, FPAM_V, FPAMNAME, FPAMSP_H, FPAMSP_V
+
+
+def write_headers_FSAM(cor_type, band_pass):
+
+    ### determine the value for FSAM based on coronagraph type and bandpass
+    if 'hlc' in cor_type:
+        if '1' in band_pass:
+            FSAM_H = 29387
+            FSAM_V = 12238
+            FSAMNAME = 'R1C1'
+            FSAMSP_H = 29387
+            FSAMSP_V = 12238
+
+        if '2' in band_pass:
+            FSAM_H = 17937
+            FSAM_V = 21238
+            FSAMNAME = 'R3C3'
+            FSAMSP_H = 17937
+            FSAMSP_V = 21238
+
+        if '3' in band_pass:
+            FSAM_H = 13437
+            FSAM_V = 21238
+            FSAMNAME = 'R3C4'
+            FSAMSP_H = 13437
+            FSAMSP_V = 21238
+
+        if '4' in band_pass:
+            FSAM_H = 8937
+            FSAM_V = 21238
+            FSAMNAME = 'R3C5'
+            FSAMSP_H = 8937
+            FSAMSP_V = 21238
+
+    if 'wide' in cor_type:
+        
+        FSAM_H = 6687
+        FSAM_V = 13738
+        FSAMNAME = 'R1C5'
+        FSAMSP_H = 6687
+        FSAMSP_V = 13738
+
+    if ('spec' in cor_type) & ('rotated' not in cor_type):
+        if '2' in band_pass:
+            FSAM_H = 11187
+            FSAM_V = 17438
+            FSAMNAME = 'R2C5'
+            FSAMSP_H = 11187
+            FSAMSP_V = 17438
+
+        if '3' in band_pass:
+            FSAM_H = 24087
+            FSAM_V = 12238
+            FSAMNAME = 'R1C2'
+            FSAMSP_H = 24087
+            FSAMSP_V = 12238
+
+    if 'rotated' in cor_type:
+        if '2' in band_pass:
+            FSAM_H = 20187
+            FSAM_V = 25038
+            FSAMNAME = 'R4C3'
+            FSAMSP_H = 20187
+            FSAMSP_V = 25038
+
+        if '3' in band_pass:
+            FSAM_H = 24687
+            FSAM_V = 17438
+            FSAMNAME = 'R2C2'
+            FSAMSP_H = 24687
+            FSAMSP_V = 17438
+
+    return FSAM_H, FSAM_V, FSAMNAME, FSAMSP_H, FSAMSP_V
+
+       
+       
+
+
+
+
+
+
 
 
