@@ -27,7 +27,7 @@ class Input():
         #Defaults dictionnaries
 
         # All possible proper keywords, as defined in roman_proper_preflight
-        proper_keywords_default = { 'use_cvs' : 0,                 # use CVS instead of telescope? (1=yes, 0=no)
+        optics_keywords_default = { 'use_cvs' : 0,                 # use CVS instead of telescope? (1=yes, 0=no)
                                     'cvs_stop_x_shift_m' : 0,      # shift of CVS entrance pupil mask in meters
                                     'cvs_stop_y_shift_m' : 0,
                                     'cvs_stop_z_shift_m' : 0,     # shift of CVS entrance pupil mask along optical axis (+ is downstream)
@@ -155,9 +155,9 @@ class Input():
 
 
         # To make attributes 'read-only'
-        for key in list(proper_keywords_default):
-            proper_keywords_default['_'+key] = proper_keywords_default.pop(key)       
-        vars(self).update(proper_keywords_default)
+        for key in list(optics_keywords_default):
+            optics_keywords_default['_'+key] = optics_keywords_default.pop(key)       
+        vars(self).update(optics_keywords_default)
 
         for key in list(emccd_keywords_default):
             emccd_keywords_default['_'+key] = emccd_keywords_default.pop(key) 
@@ -167,8 +167,8 @@ class Input():
             host_star_properties_default['_'+key] = host_star_properties_default.pop(key) 
         vars(self).update(host_star_properties_default)
 
-        for key in list(proper_keywords_default):
-            proper_keywords_default[key[1:]] = proper_keywords_default.pop(key)    
+        for key in list(optics_keywords_default):
+            optics_keywords_default[key[1:]] = optics_keywords_default.pop(key)    
 
         for key in list(emccd_keywords_default):
             emccd_keywords_default[key[1:]] = emccd_keywords_default.pop(key) 
@@ -176,9 +176,8 @@ class Input():
         for key in list(host_star_properties_default):
             host_star_properties_default[key[1:]] = host_star_properties_default.pop(key)
 
-
         # Create mutable copies for internal use during initialization
-        self.__mutable_proper_keywords = proper_keywords_default.copy()
+        self.__mutable_optics_keywords = optics_keywords_default.copy()
         self.__mutable_emccd_keywords = emccd_keywords_default.copy()
         self.__mutable_host_star_properties = host_star_properties_default.copy()
 
@@ -202,15 +201,16 @@ class Input():
         # Update the default input with kwargs
 
         # Update dictionaries
-        if 'proper_keywords' in kwargs : 
-            new_proper_keywords = kwargs['proper_keywords'].copy()
-            self.__mutable_proper_keywords.update(new_proper_keywords)
+
+        if 'optics_keywords' in kwargs : 
+            new_optics_keywords = kwargs['optics_keywords'].copy()
+            self.__mutable_optics_keywords.update(new_optics_keywords)
             # Put dictionary value into attributes
-            for key in list(kwargs['proper_keywords']):
-                new_proper_keywords['_'+key] = new_proper_keywords.pop(key)    
-            vars(self).update(new_proper_keywords)
+            for key in list(kwargs['optics_keywords']):
+                new_optics_keywords['_'+key] = new_optics_keywords.pop(key)    
+            vars(self).update(new_optics_keywords)
                     
-            del kwargs['proper_keywords']
+            del kwargs['optics_keywords']
 
         if 'emccd_keywords' in kwargs : 
             new_emccd_keywords = kwargs['emccd_keywords'].copy()
@@ -238,15 +238,15 @@ class Input():
         
         # Make sure there are no discrepancies between dictionnaries and individual values
         for key, val in kwargs.items():
-            if key[1:] in self.__mutable_proper_keywords:
-                self.__mutable_proper_keywords[key[1:]] = val
+            if key[1:] in self.__mutable_optics_keywords:
+                self.__mutable_optics_keywords[key[1:]] = val
             elif key[1:] in self.__mutable_emccd_keywords:
                 self.__mutable_emccd_keywords[key[1:]] = val
             elif key[1:] in self.__mutable_host_star_properties:
                 self.__mutable_host_star_properties[key[1:]] = val
 
         # Now, create the immutable views of the dictionaries
-        self._proper_keywords = types.MappingProxyType(self.__mutable_proper_keywords)
+        self._optics_keywords = types.MappingProxyType(self.__mutable_optics_keywords)
         self._emccd_keywords = types.MappingProxyType(self.__mutable_emccd_keywords)
         self._host_star_properties = types.MappingProxyType(self.__mutable_host_star_properties)
 
@@ -356,13 +356,13 @@ def load_cpgs_data(filepath, return_input=False):
     # Only mode implemented for now
     cgi_mode = 'excam'
 
-    proper_keywords ={'cor_type':cor_type, 'polaxis':polaxis, 'output_dim':201}
+    optics_keywords ={'cor_type':cor_type, 'polaxis':polaxis, 'output_dim':201}
 
     if return_input == True :
-        input = Input(cgi_mode=cgi_mode, bandpass=bandpass, proper_keywords=proper_keywords,host_star_properties=host_star_properties_target, cpgs_file = filepath) 
+        input = Input(cgi_mode=cgi_mode, bandpass=bandpass, optics_keywords=optics_keywords,host_star_properties=host_star_properties_target, cpgs_file = filepath) 
         return input
     else:
-        optics = instrument.CorgiOptics(cgi_mode, bandpass, proper_keywords=proper_keywords, if_quiet=True)
+        optics = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords, if_quiet=True)
         return scene_list, optics
 
 

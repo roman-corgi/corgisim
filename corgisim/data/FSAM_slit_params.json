@@ -1,0 +1,15 @@
+{
+    "_comment": "FSAM slit aperture dimensions in microns; values from Riggs et al., JATIS Vol. 11, 2 (2025)",
+    "R1C2": {
+        "width": 60.8,
+        "height": 364.8
+    },
+    "R6C5": {
+        "width": 55.0,
+        "height": 329.7
+    },
+    "R3C1": {
+        "width": 115.7,
+        "height": 347.2
+    }
+}
