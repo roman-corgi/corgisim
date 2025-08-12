@@ -56,4 +56,4 @@ jobs:
 
     - name: Test with pytest
       run: |
-        pytest ./test
+        pytest --durations=0 ./test
