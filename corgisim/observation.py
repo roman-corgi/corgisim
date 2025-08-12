@@ -53,7 +53,7 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, f
 
     return simulatedImage_list
 
-def generate_observation_scenario_from_cpgs(filepath, save_as_fit= False, output_dir=None, full_frame=False, loc_x=None, loc_y=None ):
+def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, output_dir=None, full_frame=False, loc_x=None, loc_y=None ):
     """Generates an observation scenario by loading instrument, scene, and visit
     information from a CPGS file.
 
@@ -87,7 +87,7 @@ def generate_observation_scenario_from_cpgs(filepath, save_as_fit= False, output
 
         simulatedImage_list.extend(simulatedImage_visit)
 
-    if save_as_fit:
+    if save_as_fits:
         # Save the images as fits in output_dir if specified, in corgisim/test/testdata if not
         # Simulation needs to be full frame to be written as L1
         if output_dir == None:
