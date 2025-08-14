@@ -17,6 +17,7 @@ from corgisim import outputs
 from corgisim import spec
 import os
 from scipy import interpolate
+import warnings
 
 class CorgiOptics():
     '''
@@ -154,12 +155,24 @@ class CorgiOptics():
                     raise FileNotFoundError(f"Prism parameter file {prism_param_fname} does not exist")
                 else:
                     setattr(self, 'prism_param_fname', prism_param_fname)
+
+            else:
+                warnings.warn("No prism selected in spec mode, the dispersion model will not be applied to the image cube.")
+
+            if (self.prism == 'PRISM2')&('3' in self.bandpass):
+                warnings.warn("PRISM2 is selected for Band 3, which is not the default setting for the Roman CGI, but it can still be simulated with CorgiSim.")
+            if (self.prism == 'PRISM3')&('2' in self.bandpass):
+                warnings.warn("PRISM3 is selected for Band 2, which is not the default setting for the Roman CGI, but it can still be simulated with CorgiSim.")
+            
             if self.slit != 'None':
                 slit_param_fname = os.path.join(ref_data_dir, 'FSAM_slit_params.json')
                 if not os.path.exists(slit_param_fname):
                     raise FileNotFoundError(f"Slit aperture parameter file {slit_param_fname} does not exist")
                 else:
                     setattr(self, 'slit_param_fname', slit_param_fname)
+            else:
+                warnings.warn("No slit selected in spec mode, the slit mask will not be applied to the image cube.")
+            
 
         self.lam0_um = bandpass_data["lam0_um"] ##central wavelength of the filter in micron
         self.nlam = bandpass_data["nlam"] 

@@ -2,7 +2,7 @@ from astropy.io import fits
 from corgidrp import mocks
 import os
 from datetime import datetime, timezone, timedelta
-import warnings
+#import warnings
 
 def create_hdu_list(data, header_info, sim_info=None):
     """
