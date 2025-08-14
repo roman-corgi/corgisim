@@ -158,7 +158,8 @@ class CorgiOptics():
 
             else:
                 warnings.warn("No prism selected in spec mode, the dispersion model will not be applied to the image cube.")
-
+            
+            ### give a warning if the prism is not the default one for the bandpass
             if (self.prism == 'PRISM2')&('3' in self.bandpass):
                 warnings.warn("PRISM2 is selected for Band 3, which is not the default setting for the Roman CGI, but it can still be simulated with CorgiSim.")
             if (self.prism == 'PRISM3')&('2' in self.bandpass):
