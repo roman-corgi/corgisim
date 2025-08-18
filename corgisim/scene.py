@@ -58,16 +58,10 @@ class Scene():
             raise KeyError(f"ERROR: host_star_properties are required to create a Scene object")
 
         host_star_properties_internal = host_star_properties.copy()
+        point_source_info_internal = copy.deepcopy(point_source_info)
 
-        if point_source_info is not None:
-            point_source_info_internal = point_source_info.copy()
-        else:
-            point_source_info_internal = None
-
-        if twoD_scene_hdu is not None:
-            self._twoD_scene = twoD_scene_hdu.copy()
-        else:
-            self._twoD_scene = None  
+        self._twoD_scene = copy.deepcopy(twoD_scene_hdu)
+ 
               
         self._host_star_Vmag = host_star_properties_internal['Vmag']  ## host star Vband magnitude
 
