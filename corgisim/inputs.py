@@ -35,22 +35,23 @@ class Input():
                                     'small_spc_grid' : 0,          # set to 1 to use 500 pix across pupil, else 1000 (baseline SPCs only)
                                     'pupil_array' : 0,             # 2D array containing pupil pattern (overrides default)
                                     'pupil_mask_array' : 0,        # 2D array containing SPC pupil mask pattern (overrides default)
-                                    'fpm_array' : 0,               # 2D array containing FPM mask pattern (overrides default)
+                                    #'fpm_array' : 0,              # 2D array containing FPM mask pattern (overrides default)
+                                                                   # Not populated by default because it necessissates another default value in roman_preflight
                                     'fpm_mask' : 0,                # 2D array where 1=FPM pattern defined, 0=substrate
                                     'lyot_stop_array' : 0,         # 2D array containing Lyot stop mask pattern (overrides default)
-                                    'field_stop_array' : 0,        # 2D array containing field stop mask pattern (overrides default)
-
+                                    #'field_stop_array' : 0,        # 2D array containing field stop mask pattern (overrides default)
+                                                                   # Not populated by default because it necessissates another default value in roman_preflight
                                     'cor_type' : 'hlc',            # coronagraph type ('hlc', 'spc-spec_band2', 'spc-spec_band3', 'spc-wide', 'none')
                                     'source_x_offset_mas' : 0,     # source offset in mas (tilt applied at primary)
                                     'source_y_offset_mas' : 0,                
-                                    'source_x_offset' : 0,   # source offset in lambda0_m/D radians (tilt applied at primary)
-                                    'source_y_offset' : 0,          
+                                    #'source_x_offset' : 0,   # source offset in lambda0_m/D radians (tilt applied at primary)
+                                    #'source_y_offset' : 0,          
                                     'cvs_source_z_offset_m' : 0,             # additional distance between CVS source and next optic, in meters
                               
       'cvs_jitter_mirror_x_offset_mas' : 0,      # source offset in milliarcsec (tilt applied at CVS jitter mirror)
                                     'cvs_jitter_mirror_y_offset_mas' : 0,      # 
-                                    'cvs_jitter_mirror_x_offset' : 0,          # source offset in lambda0_m/D radians (tilt applied at CVS jitter mirror) 
-                                    'cvs_jitter_mirror_y_offset' : 0,
+                                    #'cvs_jitter_mirror_x_offset' : 0,          # source offset in lambda0_m/D radians (tilt applied at CVS jitter mirror) 
+                                    #'cvs_jitter_mirror_y_offset' : 0,
                                     'polaxis' : 0,                 # polarization axis aberrations: 
                                                                 #    -2 : -45d in, Y out 
                                                                 #    -1 : -45d in, X out 
@@ -65,15 +66,15 @@ class Input():
                                     'sm_despace_m' : 0,            # secondary mirror despace (meters) 
                                     'use_pupil_defocus' : 1,       # include pupil defocus
                                     'use_aperture' : 0,            # use apertures on all optics? 1 or 0
-                                    'cgi_x_shift_pupdiam' : 0,     # X,Y shear of wavefront at FSM (bulk displacement of CGI); normalized relative to pupil diameter
-                                    'cgi_y_shift_pupdiam' : 0,          
+                                    #'cgi_x_shift_pupdiam' : 0,     # X,Y shear of wavefront at FSM (bulk displacement of CGI); normalized relative to pupil diameter
+                                    #'cgi_y_shift_pupdiam' : 0,          
                                     'cgi_x_shift_m' : 0,           # X,Y shear of wavefront at FSM (bulk displacement of CGI) in meters
                                     'cgi_y_shift_m' : 0,          
                                 #    'end_at_fsm' : 0,              # end propagation after propagating to FSM (no FSM errors)
                                     'fsm_x_offset_mas' : 0,       # offset in focal plane caused by tilt of FSM in mas
                                     'fsm_y_offset_mas' : 0,         
-                                    'fsm_x_offset' : 0,            # offset in focal plane caused by tilt of FSM in lambda0/D
-                                    'fsm_y_offset' : 0,            
+                                    #'fsm_x_offset' : 0,            # offset in focal plane caused by tilt of FSM in lambda0/D
+                                    #'fsm_y_offset' : 0,            
                                     'fcm_z_shift_m' : 0,          # offset (meters) of focus correction mirror (+ increases path length)
                                     'use_dm1' : 0,                 # use DM1? 1 or 0
                                     'use_dm2' : 0,                 # use DM2? 1 or 0
@@ -93,34 +94,34 @@ class Input():
                                     'dm2_xtilt_deg' : 9.65, 
                                     'dm2_ytilt_deg' : 0,
                                     'dm2_ztilt_deg' : 0,
-                                    'spam_x_shift_pupdiam' : 0,    # X,Y shift of wavefront at SPAM; normalized relative to pupil diameter
-                                    'spam_y_shift_pupdiam' : 0,
+                                    #'spam_x_shift_pupdiam' : 0,    # X,Y shift of wavefront at SPAM; normalized relative to pupil diameter
+                                    #'spam_y_shift_pupdiam' : 0,
                                     'spam_x_shift_m' : 0,          # X,Y shift of wavefront at SPAM in meters
                                     'spam_y_shift_m' : 0,
                                     'use_pupil_mask' : 1,          # SPC only: use SPC pupil mask (0 or 1)
-                                    'mask_x_shift_pupdiam' : 0,    # X,Y shear of shaped pupil mask; normalized relative to pupil diameter
-                                    'mask_y_shift_pupdiam' : 0,          
+                                    #'mask_x_shift_pupdiam' : 0,    # X,Y shear of shaped pupil mask; normalized relative to pupil diameter
+                                    #'mask_y_shift_pupdiam' : 0,          
                                     'mask_x_shift_m' : 0,          # X,Y shear of shaped pupil mask in meters
                                     'mask_y_shift_m' : 0,          
                                     'mask_rotation_deg' : 0,
                                     'use_fpm' : 1,                 # use occulter? 1 or 0
-                                    'fpm_x_offset' : 0,            # FPM x,y offset in lambda0/D
-                                    'fpm_y_offset' : 0,
+                                    #'fpm_x_offset' : 0,            # FPM x,y offset in lambda0/D
+                                    #'fpm_y_offset' : 0,
                                     'fpm_x_offset_m' : 0,          # FPM x,y offset in meters
                                     'fpm_y_offset_m' : 0,
                                     'fpm_z_shift_m' : 0,           # occulter offset in meters along optical axis (+ : away from prior optics)
                                     'pinhole_diam_m' : 0,          # FPM pinhole diameter in meters
                                 #    'end_at_fpm_exit_pupil' : 0,   # return field at FPM exit pupil?
                                     'use_lyot_stop' : 1,           # use Lyot stop? 1 or 0
-                                    'lyot_x_shift_pupdiam' : 0,    # X,Y shear of Lyot stop mask; normalized relative to pupil diameter
-                                    'lyot_y_shift_pupdiam' : 0,  
+                                    #'lyot_x_shift_pupdiam' : 0,    # X,Y shear of Lyot stop mask; normalized relative to pupil diameter
+                                    #'lyot_y_shift_pupdiam' : 0,  
                                     'lyot_x_shift_m' : 0,          # X,Y shear of Lyot stop mask in meters
                                     'lyot_y_shift_m' : 0,  
                                     'lyot_rotation_deg' : 0,
                                     'use_field_stop' : 1,          # use field stop (HLC)? 1 or 0
-                                    'field_stop_radius_lam0' : 0,  # field stop radius in lambda0/D
-                                    'field_stop_x_offset' : 0,     # field stop offset in lambda0/D
-                                    'field_stop_y_offset' : 0,
+                                    'field_stop_radius_lam0' : 9.7,  # field stop radius in lambda0/D, default value with hlc
+                                    #'field_stop_x_offset' : 0,     # field stop offset in lambda0/D
+                                    #'field_stop_y_offset' : 0,
                                     'field_stop_x_offset_m' : 0,   # field stop offset in meters
                                     'field_stop_y_offset_m' : 0,
                                     'use_pupil_lens' : 0,          # use pupil imaging lens? 0 or 1
@@ -151,7 +152,8 @@ class Input():
 
         host_star_properties_default = {'spectral_type' : 'G0V',
                                         'Vmag' :  5  , 
-                                        'magtype' : 'vegamag'}
+                                        'magtype' : 'vegamag',
+                                        'ref_flag' : False}
 
 
         # To make attributes 'read-only'
@@ -261,15 +263,36 @@ class Input():
 
 
 def load_cpgs_data(filepath, return_input=False):
-    """
-    Creates a scene and optics based on the content of a cpgs file
+    """Creates a scene and optics based on the content of a CPGS file.
 
-    :param filepath: path to the input file
-    :type filepath: string
-    :param return_input: if True, returns an Input object
-    .
-    :return: a scene list and optics if return_input is False; an Input if return_input is True
+    This function parses the CPGS file to extract simulation parameters for
+    target and, if present, reference stars, along with visit-specific details.
 
+    Args:
+        filepath (str): Path to the input CPGS XML file.
+        return_input (bool, optional): If True, an :py:class:`Input` object populated with CPGS data
+            will be returned instead of the scene, optics, and detector objects.
+            Defaults to False.
+
+    Returns:
+        tuple or corgisim.inputs.Input:
+            If "return_input" is False (default):
+                A tuple containing:
+                - "scene_target" (:py:class:`corgisim.scene.Scene`): The scene object for the target star.
+                - "scene_reference" (:py:class:`corgisim.scene.Scene`, optional): The scene object for the reference star, if present.
+                - "optics" (:py:class:`corgisim.instrument.CorgiOptics`): The optics object configured from the CPGS file.
+                - "detector_target" (:py:class:`corgisim.instrument.CorgiDetector`): The detector object for target observations.
+                - "detector_reference" (:py:class:`corgisim.instrument.CorgiDetector`, optional): The detector object for reference observations, if present.
+                - "visit_list" (list): A list of dictionaries, where each dictionary describes a single observation visit.
+            If "return_input" is True:
+                - "input" (:py:class:`corgisim.inputs.Input`): An Input object containing all parsed simulation parameters.
+
+    Raises:
+        FileNotFoundError: If the specified `filepath` does not exist.
+        xml.etree.ElementTree.ParseError: If the file at `filepath` is not a valid XML file.
+        Exception: For unsupported target IDs or other parsing issues within the CPGS structure.
+        NotImplementedError: If a specific configuration (e.g., polarization, filter, coronagraph mask)
+            from the CPGS file is not yet implemented in the simulation.
     """
     # Parse the file 
     try: 
@@ -281,47 +304,95 @@ def load_cpgs_data(filepath, return_input=False):
 
 
     root = tree.getroot()
-    
+    cpgs_input = root.find('cpgs_input')
+
     # Create a host star and scene for each target
     target_list = root.find('target_list')
-    host_star_properties_list = []
-    scene_list = []
+    reference_star_present = False
     for target in target_list.iter('target'):
         Vmag = float(target.find('v_mag').text)
         # Luminosity currently not an attribute of the target in cpgs file
-        sptype = target.find('spec_type').text + target.find('sub_type').text 
+        sptype = target.find('spec_type').text + target.find('sub_type').text[:1] 
         # MAG Type not currently not an attribute of the target in cpgs file, using vegamag by default
         magtype = "vegamag"
-        host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype':magtype}
-        base_scene = scene.Scene(host_star_properties)
-
-        host_star_properties_list.append(host_star_properties)
-        scene_list.append(base_scene)
         if (target.find('target_id').text == '1'):
-            host_star_properties_target =host_star_properties
-    # Create optics and detector for every visit
+            host_star_properties_target = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype':magtype, 'ref_flag': False}
+            scene_target = scene.Scene(host_star_properties_target)
+        elif (target.find('target_id').text == '2'):
+            host_star_properties_reference = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype':magtype, 'ref_flag': True}
+            scene_reference = scene.Scene(host_star_properties_reference)
+            reference_star_present = True
+        else:
+            raise Exception('Target ID not supported')
 
-    cpgs_input = root.find('cpgs_input')
+    
+    if (cpgs_input.find('target_autogain').text == '0'):
+        photon_counting = (cpgs_input.find('target_pcounting')=='1')
+        em_gain = float(cpgs_input.find('target_gain').text)
+        # em_gain cannot be under 1 in emccd. Since it's possible to set it to less than 1 in CPGS for now, we overwrite it
+        if em_gain < 1 : 
+            em_gain = 1.0 
+        detector_target = instrument.CorgiDetector(emccd_keywords={'em_gain':em_gain}, photon_counting=photon_counting) 
+    elif (cpgs_input.find('target_autogain').text == '1'):
+        raise NotImplementedError("Autogain is not implemented.") 
 
+    if reference_star_present :
+        if (cpgs_input.find('reference_autogain').text == '0'):
+            photon_counting = (cpgs_input.find('reference_pcounting')=='1')
+            em_gain = float(cpgs_input.find('reference_gain').text)
+            # em_gain cannot be under 1 in emccd. Since it's possible to set it to less than 1 in CPGS for now, we overwrite it
+            if em_gain < 1 : 
+                em_gain = 1.0             
+            detector_reference = instrument.CorgiDetector(emccd_keywords={'em_gain':em_gain}, photon_counting=photon_counting) 
+        elif (cpgs_input.find('reference_autogain').text == '1'):
+            detector_reference = instrument.CorgiDetector(emccd_keywords=None) 
+
+
+    # Create visits
+    visits = root.find('visit_list')
+    visit_list = []
+
+    for visit in visits.iter('cgi_visit'):
+        isNotHowfsc =  (visit.find('cgi_howfsc').find('is_howfsc_visit').text == 'N')
+        if isNotHowfsc :
+            if reference_star_present :
+                isReference = (visit.find('fixed_target').find('reference_target').text == 'Y')
+            else:
+                isReference = False
+            excam = visit.find('cgi_excam')
+            roll_angle = visit.find('position_angle').text
+            visit_id = visit.attrib['number']
+            visit_type = visit.find('cgi_visit_type').text
+            if (excam.find('auto_gain').text == 'Y'):
+                #Only one frame, exp_time in hours
+                number_of_frames = 1
+                exp_time = float(excam.find('exposure_duration').text)*3600
+            else:
+                number_of_frames = int(excam.find('number_of_frames').text)
+                exp_time =  float(excam.find('exposure_duration').text)
+
+            visit_dict = {'number_of_frames': number_of_frames,'exp_time': exp_time, 'roll_angle':roll_angle, 'visit_id':visit_id, 'isReference':isReference}
+
+
+            visit_list.append(visit_dict)
 
     # For now, filter can only take two values in cpgs:
-    #   1 <-> Band 1 (575 nm)
-    #   2 <-> Band 4 (825 nm)
-    filter_dict = {'1':'1', '2':'4'}
+    #   1 <-> Band 1F (575 nm)
+    #   2 <-> Band 4F (825 nm)
+    filter_dict = {'1':'1F', '2':'4F'}
     filt = cpgs_input.find('filter').text
     bandpass = filter_dict[filt]
     # For now, coronagraph_mask can only take one value in cpgs:
-    #   1 <-> hlc
-    
+    #   1 <-> hlc  
     coronograph_mask = cpgs_input.find('coronagraph_mask').text
 
     match bandpass:
-        case '1':
+        case '1F':
             if coronograph_mask == '1':
                 cor_type = 'hlc_band1'
             else:
                 raise NotImplementedError("HLC is the only implemented mode")
-        case '4':
+        case '4F':
             if coronograph_mask == '1':
                 cor_type = 'hlc_band4'
             else:
@@ -350,14 +421,17 @@ def load_cpgs_data(filepath, return_input=False):
     # Only mode implemented for now
     cgi_mode = 'excam'
 
-    optics_keywords ={'cor_type':cor_type, 'polaxis':polaxis, 'output_dim':201}
 
+    optics_keywords ={'cor_type':cor_type, 'polaxis':polaxis, 'output_dim':201}
+    optics = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords, if_quiet=True)
     if return_input == True :
         input = Input(cgi_mode=cgi_mode, bandpass=bandpass, optics_keywords=optics_keywords,host_star_properties=host_star_properties_target, cpgs_file = filepath) 
         return input
     else:
-        optics = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords, if_quiet=True)
-        return scene_list, optics
+        if reference_star_present :
+            return scene_target, scene_reference, optics, detector_target, detector_reference, visit_list
+        else:
+            return scene_target, optics, detector_target, visit_list
 
 
 
