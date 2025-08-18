@@ -96,9 +96,9 @@ def test_add_satellite_spots():
     assert np.sqrt((guessx_star-xcen)**2+(guessy_star-ycen)**2) < 0.5
 
     #### check PSF amplitude, averaged peak value of the satellite spots are consistent with the scaled stellar PSF at the given contrast
-    # TODO: need to check the conversion factor
     peak_satspots_ave = np.mean(np.array(fitresult)[:,0])
-    assert peak_satspots_ave/(peak_ref*contrast) < 5, peak_satspots_ave/(peak_ref*contrast) > 0.2 # so far threshold is set to a factor of 5, as the test sees a difference by a factor of ~3
+    assert peak_satspots_ave/(peak_ref*contrast) < 1.5, peak_satspots_ave/(peak_ref*contrast) > 0.5 
+    #threshold is set to 50%
 
 if __name__ == '__main__':
     test_add_satellite_spots()

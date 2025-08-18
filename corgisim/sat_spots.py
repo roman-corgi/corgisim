@@ -2,7 +2,7 @@ import numpy as np
 
 def add_cos_pattern_dm(dm_volts, sep_lamD=6, angle_deg=[0,90], contrast=1e-6, wavelength_m=0.575e-6):
     """
-    Add 2D cosine phase pattern(s) to Roman CGI DM solution (in volts).
+    Add 2D cosine phase pattern(s) to Roman CGI DM solution (in volts). Reference: JPL codes from AJ Riggs and Vanessa Bailey
 
     Parameters:
         dm_volts: 2D numpy array (original DM in volts)
@@ -15,8 +15,8 @@ def add_cos_pattern_dm(dm_volts, sep_lamD=6, angle_deg=[0,90], contrast=1e-6, wa
         dm_volts_with_pattern: 2D numpy array (in volts), updated DM map with added cosine patterns
     """
 
-    gain_nm_per_V = 3.6 # nm/V, rough value provided by John Krist
-    # actuator_pitch_m = 0.9906e-3  # actuator spacing in meters
+    gain_nm_per_V = 6 # nm/V; hardcoded for cgisim, but it is dependent on actuator capacitance
+    # see Figure 15 in https://doi.org/10.1117/1.JATIS.11.3.031504
 
     # Roman DM properties - hardcoded
     D_pup_x = 47.41  # in actuators
