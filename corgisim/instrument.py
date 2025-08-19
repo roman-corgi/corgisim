@@ -683,7 +683,10 @@ class CorgiDetector():
         emccd_keywords: A dictionary with the keywords that are used to set up the emccd model
         photon_counting: if use photon_counting mode, default is True
         '''
-        self.emccd_keywords = emccd_keywords.copy()  # Store the keywords for later use
+        if emccd_keywords is None:
+            self.emccd_keywords = None
+        else:
+            self.emccd_keywords = emccd_keywords.copy()  # Store the keywords for later use
         #self.exptime = exptime ##expsoure time in second
         self.photon_counting = photon_counting
 
