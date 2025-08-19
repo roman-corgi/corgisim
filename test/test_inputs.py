@@ -1,6 +1,8 @@
 from corgisim import scene, instrument, inputs
 import pytest
 import os
+from astropy.io import fits
+
 def test_cpgs_loading():
     script_dir = os.path.dirname(__file__) 
     # script_dir = os.getcwd()
@@ -8,34 +10,57 @@ def test_cpgs_loading():
     # Test error handling 
     filepath = 'wrong/file/path'
     with pytest.raises(FileNotFoundError) as excinfo:  
-        scene_list, optics = inputs.load_cpgs_data(filepath)  
+        scene_target, scene_reference, optics, detector_target, detector_reference, visit_list = inputs.load_cpgs_data(filepath)  
     assert str(excinfo.value) == filepath +" does not exists." 
     
     filepath = 'test/test_data/cpgs_incorrect_type.txt'
     abs_path =  os.path.join(script_dir, '..', filepath)
 
     with pytest.raises(TypeError) as excinfo:  
-        scene_list, optics = inputs.load_cpgs_data(abs_path)  
+        sscene_target, scene_reference, optics, detector_target, detector_reference, visit_list = inputs.load_cpgs_data(abs_path)  
     assert str(excinfo.value) == abs_path +" is not an xml file." 
 
-    # Test polarization not implemented
+    # Test autogain not implemented
     filepath = 'test/test_data/cpgs_default.xml'
     abs_path =  os.path.join(script_dir, '..', filepath)
 
     with pytest.raises(NotImplementedError) as excinfo:  
-        scene_list, optics = inputs.load_cpgs_data(abs_path)  
-    assert str(excinfo.value) == "Only 0/90 deg and 45/135 deg are implemented" 
+        scene_target, scene_reference, optics, detector_target, detector_reference, visit_list = inputs.load_cpgs_data(abs_path)  
+    assert str(excinfo.value) == "Autogain is not implemented." 
 
+    # Test polarization not implemented
+    # TO DO Add a file without autogain with polarization to test the error handling 
+    
     # Test object creation 
     filepath = 'test/test_data/cpgs_without_polarization.xml'
     abs_path =  os.path.join(script_dir, '..', filepath)
 
-    scene_list, optics = inputs.load_cpgs_data(abs_path)
-    assert isinstance(scene_list[0], scene.Scene)
+    scene_target, scene_reference, optics, detector_target, detector_reference, visit_list = inputs.load_cpgs_data(abs_path)
+    assert isinstance(scene_target, scene.Scene)
+    assert isinstance(scene_reference, scene.Scene)
+    assert isinstance(detector_target, instrument.CorgiDetector)
+    assert isinstance(detector_reference, instrument.CorgiDetector)
     assert isinstance(optics, instrument.CorgiOptics)
+    assert isinstance(visit_list, list)
+    assert len(visit_list) > 0
 
+    sim_scene_target  = optics.get_host_star_psf(scene_target)
+    sim_scene_reference  = optics.get_host_star_psf(scene_reference)
+
+    assert isinstance(sim_scene_target.host_star_image, fits.hdu.image.PrimaryHDU)
+    assert isinstance(sim_scene_reference.host_star_image, fits.hdu.image.PrimaryHDU)
+
+    exp_time_target = visit_list[1]['exp_time']
+    exp_time_reference = visit_list[0]['exp_time']
+
+    sim_image_target = detector_target.generate_detector_image(sim_scene_target,exp_time_target)
+    sim_image_reference = detector_reference.generate_detector_image(sim_scene_reference,exp_time_reference)
+
+    assert isinstance(sim_image_target.image_on_detector, fits.hdu.image.PrimaryHDU)
+    assert isinstance(sim_image_reference.image_on_detector, fits.hdu.image.PrimaryHDU)
     # Test correctness of information ?
-  
+
+
 def test_input():
     #test creation
     #For brevity's sake, not all values are tested
@@ -100,7 +125,7 @@ def test_input_from_cpgs():
     # Test that the correct file is used
     assert input.cpgs_file == abs_path
 
-    scene_list, optics = inputs.load_cpgs_data(abs_path)
+    scene_target, scene_reference, optics, detector_target, detector_reference, visit_list = inputs.load_cpgs_data(abs_path)
 
     scene_input = scene.Scene(input.host_star_properties)
     optics_input =  instrument.CorgiOptics(input.cgi_mode, input.bandpass, optics_keywords=input.optics_keywords, if_quiet=True, integrate_pixels=True)
@@ -122,7 +147,7 @@ def test_input_from_cpgs():
                 assert optics_input.__dict__[key] == val
 
 
-    for key, val in scene_list[0].__dict__.items():
+    for key, val in scene_target.__dict__.items():
         # No equality operator for synphot objects 
         if type(val).__module__ == 'synphot.spectrum':
             pass
@@ -132,10 +157,12 @@ def test_input_from_cpgs():
         else:
             # For dictionnaries, we only check that the key that are presents have the same values 
             if key in ['optics_keywords', 'emccd_keywords', 'host_star_properties']:
-                for keyword in (scene_list[0].__dict__['optics_keywords'].keys() & scene_input.__dict__['optics_keywords'].keys()):
-                    assert scene_list[0].__dict__[key][keyword] == scene_input.__dict__[key][keyword]
+                for keyword in (scene_target.__dict__['optics_keywords'].keys() & scene_input.__dict__['optics_keywords'].keys()):
+                    assert scene_target.__dict__[key][keyword] == scene_input.__dict__[key][keyword]
+
             else:
                 assert scene_input.__dict__[key] == val
+ 
 
 if __name__ == '__main__':
     test_cpgs_loading()
