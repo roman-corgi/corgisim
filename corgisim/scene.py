@@ -53,35 +53,32 @@ class Scene():
         ValueError: If the provided spectral type is invalid.
     '''
     def __init__(self, host_star_properties=None, point_source_info=None, twoD_scene_hdu=None):
-
-        if host_star_properties is None:
-            raise KeyError(f"ERROR: host_star_properties are required to create a Scene object")
-
-        host_star_properties_internal = host_star_properties.copy()
+        self._twoD_scene = copy.deepcopy(twoD_scene_hdu)
         point_source_info_internal = copy.deepcopy(point_source_info)
 
-        self._twoD_scene = copy.deepcopy(twoD_scene_hdu)
- 
-              
-        self._host_star_Vmag = host_star_properties_internal['Vmag']  ## host star Vband magnitude
+        if host_star_properties is None:
+            host_star_properties_internal = None
+        else:
+            host_star_properties_internal = host_star_properties.copy()
 
-        # Validate the magnitude type
-        if host_star_properties_internal['magtype'] not in ['vegamag', 'ABmag']:
-            raise ValueError("Invalid magnitude type. Valid options are: 'vegamag' or 'ABmag'.")
-        # Store the magnitude type
-        self._host_star_magtype = host_star_properties_internal['magtype']  # Type of magnitude (Vega or AB)
+            self._host_star_Vmag = host_star_properties_internal['Vmag']  ## host star Vband magnitude
 
-        ### check if input spectral type is valid
-        if is_valid_spectral_type(host_star_properties_internal['spectral_type']):
-           self._host_star_sptype = host_star_properties_internal['spectral_type']  
+            # Validate the magnitude type
+            if host_star_properties_internal['magtype'] not in ['vegamag', 'ABmag']:
+                raise ValueError("Invalid magnitude type. Valid options are: 'vegamag' or 'ABmag'.")
+            # Store the magnitude type
+            self._host_star_magtype = host_star_properties_internal['magtype']  # Type of magnitude (Vega or AB)
 
-        # Set the reference flag from host_star_properties, defaulting to False if not provided
-        self.ref_flag = host_star_properties_internal.get('ref_flag', False)
-        
-        ### Retrieve the stellar spectrum based on spectral type and V-band magnitude
-        ### The self.stellar_spectrum attribute is an instance of the SourceSpectrum class (from synphot), 
-        ### used to store and retrieve the wavelength and stellar flux.
-        self.stellar_spectrum = self.get_stellar_spectrum( self._host_star_sptype, self._host_star_Vmag, magtype =self._host_star_magtype)
+            ### check if input spectral type is valid
+            if is_valid_spectral_type(host_star_properties_internal['spectral_type']):
+                self._host_star_sptype = host_star_properties_internal['spectral_type']  
+            # Set the reference flag from host_star_properties, defaulting to False if not provided
+            self.ref_flag = host_star_properties_internal.get('ref_flag', False)
+            
+            ### Retrieve the stellar spectrum based on spectral type and V-band magnitude
+            ### The self.stellar_spectrum attribute is an instance of the SourceSpectrum class (from synphot), 
+            ### used to store and retrieve the wavelength and stellar flux.
+            self.stellar_spectrum = self.get_stellar_spectrum( self._host_star_sptype, self._host_star_Vmag, magtype =self._host_star_magtype)
 
         #self._point_source_list = point_source_info
         # Extract V-band magnitude and magnitude type from point source info
