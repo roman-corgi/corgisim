@@ -56,4 +56,5 @@ jobs:
 
     - name: environment variables
       run: |
+        export LONGTEST="True"
         python -c "import os; print(os.environ)"
