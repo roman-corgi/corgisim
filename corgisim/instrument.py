@@ -17,6 +17,7 @@ from corgisim import outputs
 from corgisim import spec
 import os
 from scipy import interpolate
+import warnings
 
 class CorgiOptics():
     '''
@@ -75,10 +76,10 @@ class CorgiOptics():
 
         valid_cgi_modes = ['excam', 'spec', 'lowfs', 'excam_efield']
         valid_cor_types = ['hlc', 'hlc_band1', 'spc-wide', 'spc-wide_band4', 
-                        'spc-wide_band1', 'hlc_band2', 'hlc_band3', 'hlc_band4', 'spc-spec_rotated', 'spc-spec_band2_rotated', 'spc-spec_band3_rotated']
+                        'spc-wide_band1', 'hlc_band2', 'hlc_band3', 'hlc_band4','spc-spec', 'spc-spec_band2', 'spc-spec_band3' ]
         
         #these cor_type is availbale in cgisim, but are currently untested in corgisim
-        untest_cor_types = ['spc-spec', 'spc-spec_band2', 'spc-spec_band3', 'spc-mswc', 'spc-mswc_band4','spc-mswc_band1', 'zwfs']
+        untest_cor_types = ['spc-spec_rotated', 'spc-spec_band2_rotated', 'spc-spec_band3_rotated','spc-mswc', 'spc-mswc_band4','spc-mswc_band1', 'zwfs']
 
 
         if cgi_mode not in valid_cgi_modes:
@@ -124,10 +125,16 @@ class CorgiOptics():
                 'prism': 'None', # named DPAM prism
                 'wav_step_um': 1E-3 # wavelength step size of the prism dispersion model, in microns 
             }
-            spec_kw_allowed = {
-                'slit': ['None', 'R1C2', 'R6C5', 'R3C1'],
-                'prism': ['None', 'PRISM3', 'PRISM2']
-            }
+            #### allowed slit for band2 
+            if '2' in self.bandpass:     
+                spec_kw_allowed = {
+                    'slit': ['None', 'R6C5', 'R3C1'],
+                    'prism': ['None', 'PRISM3', 'PRISM2']}
+            #### allowed slit for band3
+            elif '3' in self.bandpass:
+                spec_kw_allowed = {
+                    'slit': ['None', 'R1C2', 'R3C1'],
+                    'prism': ['None', 'PRISM3', 'PRISM2']}
             for attr_name, default_value in spec_kw_defaults.items():
                 if attr_name in optics_keywords:
                     value = optics_keywords[attr_name]
@@ -148,12 +155,25 @@ class CorgiOptics():
                     raise FileNotFoundError(f"Prism parameter file {prism_param_fname} does not exist")
                 else:
                     setattr(self, 'prism_param_fname', prism_param_fname)
+
+            else:
+                warnings.warn("No prism selected in spec mode, the dispersion model will not be applied to the image cube.")
+            
+            ### give a warning if the prism is not the default one for the bandpass
+            if (self.prism == 'PRISM2')&('3' in self.bandpass):
+                warnings.warn("PRISM2 is selected for Band 3, which is not the default setting for the Roman CGI, but it can still be simulated with CorgiSim.")
+            if (self.prism == 'PRISM3')&('2' in self.bandpass):
+                warnings.warn("PRISM3 is selected for Band 2, which is not the default setting for the Roman CGI, but it can still be simulated with CorgiSim.")
+            
             if self.slit != 'None':
                 slit_param_fname = os.path.join(ref_data_dir, 'FSAM_slit_params.json')
                 if not os.path.exists(slit_param_fname):
                     raise FileNotFoundError(f"Slit aperture parameter file {slit_param_fname} does not exist")
                 else:
                     setattr(self, 'slit_param_fname', slit_param_fname)
+            else:
+                warnings.warn("No slit selected in spec mode, the slit mask will not be applied to the image cube.")
+            
 
         self.lam0_um = bandpass_data["lam0_um"] ##central wavelength of the filter in micron
         self.nlam = bandpass_data["nlam"] 
@@ -197,9 +217,20 @@ class CorgiOptics():
         self.return_oversample = return_oversample
 
 
-        self.nd = 0  # integer: 1, 3, or 4 (0 = no ND, the default); this is the ND filter identifier, NOT the amount of ND
-        if "nd" in kwargs: self.nd = kwargs.get("nd")
-
+        self.nd = 0  # integer: 1, 2, or 3 (0 = no ND, the default); this is the ND filter identifier, NOT the amount of ND
+        #if "nd" in kwargs: self.nd = kwargs.get("nd")
+        if "nd" in optics_keywords.keys():
+            if optics_keywords["nd"] ==1:
+                self.nd = '2.25'
+            elif optics_keywords["nd"] ==2:
+                self.nd = '4.75fpam'
+            elif optics_keywords["nd"] ==3:
+                self.nd = '4.75fsam'
+            elif optics_keywords["nd"] ==0:
+                self.nd = 0
+            else:
+                raise ValueError(f"Invalid ND filter value: {optics_keywords['nd']}. Must be 0, 1, 2, or 3.")
+            
         # Initialize the bandpass class (from synphot)
         # bp: wavelegth is in unit of angstrom
         # bp: throughput is unitless, including transmission, reflectivity and EMCCD quantum efficiency 
@@ -361,7 +392,8 @@ class CorgiOptics():
 
         # Define specific keys from self.optics_keywords to include in the header            
         keys_to_include_in_header = ['use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
-                            'use_lyot_stop','use_field_stop','fsm_x_offset_mas','fsm_y_offset_mas']  # Specify keys to include
+                            'use_lyot_stop','use_field_stop','fsm_x_offset_mas','fsm_y_offset_mas','slit','prism',
+                            'slit_x_offset_mas','slit_y_offset_mas']  # Specify keys to include
         subset = {key: self.optics_keywords[key] for key in keys_to_include_in_header if key in self.optics_keywords}
         sim_info.update(subset)
         sim_info['includ_dectector_noise'] = 'False'
@@ -655,7 +687,8 @@ class CorgiOptics():
                             
                 # Define specific keys from self.optics_keywords to include in the header            
         keys_to_include_in_header = [ 'use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
-                            'use_lyot_stop','use_field_stop','fsm_x_offset_mas','fsm_y_offset_mas']  # Specify keys to include
+                            'use_lyot_stop','use_field_stop','fsm_x_offset_mas','fsm_y_offset_mas','slit','prism',
+                            'slit_x_offset_mas','slit_y_offset_mas']  # Specify keys to include
         subset = {key: self.optics_keywords[key] for key in keys_to_include_in_header if key in self.optics_keywords}
         sim_info.update(subset)
         sim_info['includ_dectector_noise'] = 'False'
@@ -766,13 +799,26 @@ class CorgiDetector():
                 ref_flag = False
             if (sim_info['ref_flag'] == 'True') or (sim_info['ref_flag'] == '1'):
                 ref_flag = True
+            if (sim_info['use_fpm'] == 'False') or (sim_info['use_fpm'] == '0'):
+                use_fpm = False
+            if (sim_info['use_fpm'] == 'True') or (sim_info['use_fpm'] == '1'):
+                use_fpm = True
+            
             header_info = {'EXPTIME': exptime,'EMGAIN_C':self.emccd_keywords_default['em_gain'],'PSFREF':ref_flag,
                            'PHTCNT':self.photon_counting,'KGAINPAR':self.emccd_keywords_default['e_per_dn'],'cor_type':sim_info['cor_type'], 'bandpass':sim_info['bandpass'],
-                           'cgi_mode': sim_info['cgi_mode'], 'polaxis':sim_info['polaxis']}
+                           'cgi_mode': sim_info['cgi_mode'], 'polaxis':sim_info['polaxis'],'use_fpm':use_fpm,'nd_filter':sim_info['nd_filter']}
             if 'fsm_x_offset_mas' in sim_info:
                 header_info['FSMX'] = float(sim_info['fsm_x_offset_mas'])
             if 'fsm_y_offset_mas' in sim_info:
                 header_info['FSMY'] = float(sim_info['fsm_y_offset_mas'])
+            if 'slit' in sim_info:
+                header_info['slit'] = sim_info['slit']
+            else:
+                header_info['slit'] = None
+            if 'prism' in sim_info:
+                header_info['prism'] = sim_info['prism']
+            else:
+                header_info['prism'] = None
             simulated_scene.image_on_detector = outputs.create_hdu_list(Im_noisy, sim_info=sim_info, header_info = header_info)
         else:
             simulated_scene.image_on_detector = outputs.create_hdu(Im_noisy, sim_info=sim_info)
