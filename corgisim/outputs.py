@@ -2,6 +2,7 @@ from astropy.io import fits
 from corgidrp import mocks
 import os
 from datetime import datetime, timezone, timedelta
+#import warnings
 
 def create_hdu_list(data, header_info, sim_info=None):
     """
@@ -77,11 +78,11 @@ def create_hdu_list(data, header_info, sim_info=None):
     exthdr['SPAM_H'], exthdr['SPAM_V'], exthdr['SPAMNAME'], exthdr['SPAMSP_H'],exthdr['SPAMSP_V'] = write_headers_SPAM(header_info['cor_type'])
     exthdr['LSAM_H'], exthdr['LSAM_V'], exthdr['LSAMNAME'], exthdr['LSAMSP_H'],exthdr['LSAMSP_V'] = write_headers_LSAM(header_info['cor_type'])
     exthdr['CFAM_H'], exthdr['CFAM_V'], exthdr['CFAMNAME'], exthdr['CFAMSP_H'],exthdr['CFAMSP_V'] = write_headers_CFAM(header_info['bandpass'])
-    exthdr['DPAM_H'], exthdr['DPAM_V'], exthdr['DPAMNAME'], exthdr['DPAMSP_H'],exthdr['DPAMSP_V'] = write_headers_DPAM(header_info['cgi_mode'], header_info['polaxis'])
+    exthdr['DPAM_H'], exthdr['DPAM_V'], exthdr['DPAMNAME'], exthdr['DPAMSP_H'],exthdr['DPAMSP_V'] = write_headers_DPAM(header_info['cgi_mode'], header_info['polaxis'], header_info['prism'])
     
     ##### need to update later
-    exthdr['FPAM_H'], exthdr['FPAM_V'], exthdr['FPAMNAME'], exthdr['FPAMSP_H'],exthdr['FPAMSP_V'] = write_headers_FPAM(header_info['cor_type'], header_info['bandpass'])
-    exthdr['FSAM_H'], exthdr['FSAM_V'], exthdr['FSAMNAME'], exthdr['FSAMSP_H'],exthdr['FSAMSP_V'] = write_headers_FSAM(header_info['cor_type'], header_info['bandpass'])
+    exthdr['FPAM_H'], exthdr['FPAM_V'], exthdr['FPAMNAME'], exthdr['FPAMSP_H'],exthdr['FPAMSP_V'] = write_headers_FPAM(header_info['cor_type'], header_info['bandpass'], header_info['use_fpm'], header_info['nd_filter'])
+    exthdr['FSAM_H'], exthdr['FSAM_V'], exthdr['FSAMNAME'], exthdr['FSAMSP_H'],exthdr['FSAMSP_V'] = write_headers_FSAM(header_info['cor_type'], header_info['bandpass'], header_info['slit'], header_info['polaxis'])
 
 
 
@@ -200,6 +201,7 @@ def write_headers_SPAM(cor_type):
 
     ### determine the value for SPAM based on coronagraph type
     if 'hlc' in cor_type:
+        ## hlc NFOV imaging mode
         SPAM_H = 1001.3
         SPAM_V = 16627
         SPAMNAME = 'OPEN'
@@ -207,6 +209,7 @@ def write_headers_SPAM(cor_type):
         SPAMSP_V = 16627
 
     if 'wide' in cor_type:
+        ## spc WFOV imaging mode
         SPAM_H = 26254.7
         SPAM_V = 8657
         SPAMNAME = 'WFOV'
@@ -214,6 +217,7 @@ def write_headers_SPAM(cor_type):
         SPAMSP_V = 8657
 
     if ('spec' in cor_type) & ('rotated' not in cor_type):
+        ## spc spec mode, not rotated
         SPAM_H = 26250.4
         SPAM_V = 27254.4
         SPAMNAME = 'SPEC'
@@ -221,6 +225,7 @@ def write_headers_SPAM(cor_type):
         SPAMSP_V = 27254.4
 
     if 'rotated' in cor_type:
+        ## spc spec mode, rotated
         SPAM_H =44850.4
         SPAM_V = 8654.4
         SPAMNAME = 'SPECROT'
@@ -237,6 +242,7 @@ def write_headers_LSAM(cor_type):
 
     ### determine the value for LSAM based on coronagraph type
     if 'hlc' in cor_type:
+        ## hlc NFOV imaging mode
         LSAM_H = 36898.7
         LSAM_V = 4636.2
         LSAMNAME = 'NFOV'
@@ -244,6 +250,7 @@ def write_headers_LSAM(cor_type):
         LSAMSP_V = 4636.2
 
     if 'wide' in cor_type:
+        ## spc WFOV imaging mode
         LSAM_H = 1424.3
         LSAM_V = 29440.2
         LSAMNAME = 'WFOV'
@@ -251,6 +258,7 @@ def write_headers_LSAM(cor_type):
         LSAMSP_V = 29440.2
 
     if ('spec' in cor_type) & ('rotated' not in cor_type):
+        ## spc spec mode, not rotated
         LSAM_H = 36936.3
         LSAM_V = 29389.3
         LSAMNAME = 'SPEC'
@@ -258,6 +266,7 @@ def write_headers_LSAM(cor_type):
         LSAMSP_V = 29389.3
 
     if 'rotated' in cor_type:
+        ## spc spec mode, rotated
         LSAM_H =  1426.6
         LSAM_V = 4581.4
         LSAMNAME = 'SPECROT'
@@ -389,69 +398,124 @@ def write_headers_CFAM(band_pass):
     
     
 
-def write_headers_DPAM(cor_mode, polaxis):
+def write_headers_DPAM(cor_mode, polaxis, prism):
      ### determine the value for DPAM based on simulation mode and polaxis number
     
     if (cor_mode == 'excam') & (polaxis in ['0', '10']):
+        ## excam imaging mode, no polarimetry
         DPAM_H = 38917.1
         DPAM_V = 26016.9
         DPAMNAME = 'IMAGING'
         DPAMSP_H = 38917.1
         DPAMSP_V = 26016.9
     if cor_mode == 'spec':
-        raise ValueError('Spec mode has not been implemented')
+        #raise ValueError('Spec mode has not been implemented')
+        if prism == 'PRISM2':
+            DPAM_H = 62496
+            DPAM_V = 1261.3
+            DPAMNAME = 'PRISM2'
+            DPAMSP_H = 62496
+            DPAMSP_V = 1261.3
+        if prism == 'PRISM3':
+            DPAM_H = 26824.2
+            DPAM_V = 1261.3
+            DPAMNAME = 'PRISM3'
+            DPAMSP_H = 26824.2
+            DPAMSP_V = 1261.3
+        if prism == 'None':
+            DPAM_H = 38917.1
+            DPAM_V = 26016.9
+            DPAMNAME = 'IMAGING'
+            DPAMSP_H = 38917.1
+            DPAMSP_V = 26016.9
+
+        
     if (cor_mode == 'excam') & (polaxis not in ['0', '10']):
         raise ValueError('Polarimetry mode has not been implemented')
 
     return DPAM_H, DPAM_V, DPAMNAME,  DPAMSP_H,  DPAMSP_V
 
-def write_headers_FPAM(cor_type, band_pass):
-    ### determine the value for FPAM based on coronagraph type and bandpass
-    if 'hlc' in cor_type:
-        if '1' in band_pass:
-            FPAM_H = 6757.2
-            FPAM_V = 22424
-            FPAMNAME = 'HLC12_C2R1'
-            FPAMSP_H = 6757.2
-            FPAMSP_V = 22424
-        
-        if '2' in band_pass:
-            FPAM_H = 55306.4
-            FPAM_V = 9901.9
-            FPAMNAME = 'HLC34_R7C1'
-            FPAMSP_H = 55306.4
-            FPAMSP_V = 9901.9
+def write_headers_FPAM(cor_type, band_pass,use_fpm,nd_filter):
+    ### determine the value for FPAM based on coronagraph type and bandpass, and if use fpm
+    if not use_fpm:
+        ## not using foca plane mask, typically for non-occulted stars
+        if (nd_filter == '0'):
+            ## no ND filter
+            if ('1' in band_pass) or ('2' in band_pass):
+                FPAM_H = 3509.4
+                FPAM_V = 32824.7
+                FPAMNAME = 'OPEN_12'
+                FPAMSP_H = 3509.4
+                FPAMSP_V = 32824.7
+            if ('3' in band_pass) or ('4' in band_pass):
+                FPAM_H = 60251.2
+                FPAM_V = 2248.5
+                FPAMNAME = 'OPEN_34'
+                FPAMSP_H = 60251.2
+                FPAMSP_V = 2248.5
+        if (nd_filter == '1'):
+            ## ND filter1 
+            FPAM_H = 61507.8
+            FPAM_V = 25612.4
+            FPAMNAME = 'ND225'
+            FPAMSP_H = 61507.8
+            FPAMSP_V = 25612.4
+        if (nd_filter == '2'):
+            ## ND filter2
+            FPAM_H = 2503.7
+            FPAM_V = 6124.9
+            FPAMNAME = 'ND475'
+            FPAMSP_H = 2503.7
+            FPAMSP_V = 6124.9
+    else:
+        if 'hlc' in cor_type:
+            ##hlc NFOV imaging mode
+            if '1' in band_pass:
+                FPAM_H = 6757.2
+                FPAM_V = 22424
+                FPAMNAME = 'HLC12_C2R1'
+                FPAMSP_H = 6757.2
+                FPAMSP_V = 22424
+            
+            if '2' in band_pass:
+                FPAM_H = 55306.4
+                FPAM_V = 9901.9
+                FPAMNAME = 'HLC34_R7C1'
+                FPAMSP_H = 55306.4
+                FPAMSP_V = 9901.9
 
-        if '3' in band_pass:
-            FPAM_H = 52005.1
-            FPAM_V = 8004.2
-            FPAMNAME = 'HLC34_R5C1'
-            FPAMSP_H = 52005.1
-            FPAMSP_V = 8004.2
+            if '3' in band_pass:
+                FPAM_H = 52005.1
+                FPAM_V = 8004.2
+                FPAMNAME = 'HLC34_R5C1'
+                FPAMSP_H = 52005.1
+                FPAMSP_V = 8004.2
 
-        if '4' in band_pass:
-            FPAM_H = 52003.8
-            FPAM_V = 6104.2
-            FPAMNAME = 'HLC34_R3C1'
-            FPAMSP_H = 52003.8
-            FPAMSP_V = 6104.2
+            if '4' in band_pass:
+                FPAM_H = 52003.8
+                FPAM_V = 6104.2
+                FPAMNAME = 'HLC34_R3C1'
+                FPAMSP_H = 52003.8
+                FPAMSP_V = 6104.2
 
-    if 'wide' in cor_type:
-        if '1' in band_pass:
-            FPAM_H = 23719.6
-            FPAM_V = 2278.1
-            FPAMNAME = 'SPC12_R1C1'
-            FPAMSP_H = 23719.6
-            FPAMSP_V = 2278.1
+        if 'wide' in cor_type:
+            ##spc WFOV imaging mode
+            if '1' in band_pass:
+                FPAM_H = 23719.6
+                FPAM_V = 2278.1
+                FPAMNAME = 'SPC12_R1C1'
+                FPAMSP_H = 23719.6
+                FPAMSP_V = 2278.1
 
-        if '4' in band_pass:
-            FPAM_H = 35354.3
-            FPAM_V =27622.6
-            FPAMNAME = 'SPC34_R5C1'
-            FPAMSP_H = 35354.3
-            FPAMSP_V = 27622.6
+            if '4' in band_pass:
+                FPAM_H = 35354.3
+                FPAM_V =27622.6
+                FPAMNAME = 'SPC34_R5C1'
+                FPAMSP_H = 35354.3
+                FPAMSP_V = 27622.6
 
         if ('spec' in cor_type) & ('rotated' not in cor_type):
+                ## spc spec mode, not rotated
             if '2' in band_pass:
                 FPAM_H = 25866.4
                 FPAM_V = 7129.5
@@ -467,6 +531,7 @@ def write_headers_FPAM(cor_type, band_pass):
                 FPAMSP_V = 22573
 
         if 'rotated' in cor_type:
+            ## spc spec mode, rotated
             if '2' in band_pass:
                 FPAM_H = 22666.4
                 FPAM_V = 7127.4
@@ -484,7 +549,7 @@ def write_headers_FPAM(cor_type, band_pass):
     return FPAM_H, FPAM_V, FPAMNAME, FPAMSP_H, FPAMSP_V
 
 
-def write_headers_FSAM(cor_type, band_pass):
+def write_headers_FSAM(cor_type, band_pass,slit,polaxis):
 
     ### determine the value for FSAM based on coronagraph type and bandpass
     if 'hlc' in cor_type:
@@ -517,27 +582,56 @@ def write_headers_FSAM(cor_type, band_pass):
             FSAMSP_V = 21238
 
     if 'wide' in cor_type:
-        
-        FSAM_H = 6687
-        FSAM_V = 13738
-        FSAMNAME = 'R1C5'
-        FSAMSP_H = 6687
-        FSAMSP_V = 13738
+        if polaxis in ['0', '10']:
+            FSAM_H =30677.2
+            FSAM_V = 2959.5
+            FSAMNAME = 'OPEN'
+            FSAMSP_H = 30677.2
+            FSAMSP_V = 2959.5
+        else:
+            raise ValueError("Polarimetry mode has not been implemented for FSAM")
 
     if ('spec' in cor_type) & ('rotated' not in cor_type):
         if '2' in band_pass:
-            FSAM_H = 11187
-            FSAM_V = 17438
-            FSAMNAME = 'R2C5'
-            FSAMSP_H = 11187
-            FSAMSP_V = 17438
+            if slit == "R6C5":
+                FSAM_H = 11187
+                FSAM_V = 32638
+                FSAMNAME = 'R6C5'
+                FSAMSP_H = 11187
+                FSAMSP_V = 32638
+            elif slit == "R3C1":
+                FSAM_H = 26937
+                FSAM_V = 21238
+                FSAMNAME = 'R3C1'
+                FSAMSP_H = 26937
+                FSAMSP_V = 21238
+            if slit == "None":
+                FSAM_H =30677.2
+                FSAM_V = 2959.5
+                FSAMNAME = 'OPEN'
+                FSAMSP_H = 30677.2
+                FSAMSP_V = 2959.5
+                
 
         if '3' in band_pass:
-            FSAM_H = 24087
-            FSAM_V = 12238
-            FSAMNAME = 'R1C2'
-            FSAMSP_H = 24087
-            FSAMSP_V = 12238
+            if slit == "R1C2":
+                FSAM_H = 24087
+                FSAM_V = 12238
+                FSAMNAME = 'R1C2'
+                FSAMSP_H = 24087
+                FSAMSP_V = 12238
+            elif slit == "R3C1":
+                FSAM_H = 26937
+                FSAM_V = 21238
+                FSAMNAME = 'R3C1'
+                FSAMSP_H = 26937
+                FSAMSP_V = 21238
+            if slit == "None":
+                FSAM_H =30677.2
+                FSAM_V = 2959.5
+                FSAMNAME = 'OPEN'
+                FSAMSP_H = 30677.2
+                FSAMSP_V = 2959.5
 
     if 'rotated' in cor_type:
         if '2' in band_pass:
