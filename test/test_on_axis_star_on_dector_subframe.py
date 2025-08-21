@@ -15,6 +15,10 @@ import cgisim
 def test_on_axis_star_on_detector_subframe():
     print('testrun')
     
+    # Test scene creation with None host star 
+    base_scene = scene.Scene()
+    assert isinstance(base_scene, scene.Scene)
+
     #Define the host star properties
     #host_star_properties = {'v_mag': 1, 'spectral_type': 'G2V', 'ra': 0, 'dec': 0}
     Vmag = 5

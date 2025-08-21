@@ -13,8 +13,8 @@ from synphot.units import validate_wave_unit, convert_flux, VEGAMAG
 import matplotlib.pyplot as plt
 from emccd_detect.emccd_detect import EMCCDDetectBase, EMCCDDetect
 from corgidrp import mocks
-from corgisim import outputs
-from corgisim import spec
+from corgisim import outputs, spec
+import copy
 import os
 from scipy import interpolate
 import warnings
@@ -55,13 +55,16 @@ class CorgiOptics():
         - KeyError: If forbidden keywords are included.
         """
         '''
+        
          # Initialize optics_keywords safely
         if optics_keywords is None:
-            optics_keywords = {}
-
+            raise KeyError(f"ERROR: optics_keywords are required to create an Optics object")
+        
+        optics_keywords_internal = optics_keywords.copy()
         #some parameters to the PROPER prescription are required, including 'cor_type', 'polaxis'
         required_keys = {'cor_type', 'polaxis', 'output_dim'}
-        missing_keys = required_keys - optics_keywords.keys()
+        missing_keys = required_keys - optics_keywords_internal.keys()
+
         if missing_keys:
             raise KeyError(f"ERROR: Missing required optics_keywords: {missing_keys}")
 
@@ -69,7 +72,8 @@ class CorgiOptics():
         ## 'final_sampling_m' is directly choosed based on different cgi mode 
         ## 'end_at_fpm_exit_pupil','end_at_fsm' are not allowed because they will give outimage at fsm 
         forbidden_keys = {'final_sampling_lam0', 'final_sampling_m', 'end_at_fpm_exit_pupil','end_at_fsm'}
-        forbidden_found = forbidden_keys & optics_keywords.keys()
+        forbidden_found = forbidden_keys & optics_keywords_internal.keys()
+
         if forbidden_found:
             raise KeyError(f"ERROR: Forbidden keywords detected in optics_keywords: {forbidden_found}")
 
@@ -86,14 +90,15 @@ class CorgiOptics():
             raise Exception('ERROR: Requested mode does not match any available mode')
      
 
-        if optics_keywords['cor_type'] not in valid_cor_types and optics_keywords['cor_type'] not in untest_cor_types:
+        if optics_keywords_internal['cor_type'] not in valid_cor_types and optics_keywords_internal['cor_type'] not in untest_cor_types:
             raise Exception('ERROR: Requested coronagraph does not match any available types')
         
-        if optics_keywords['cor_type'] in untest_cor_types:
+        if optics_keywords_internal['cor_type'] in untest_cor_types:
             warnings.warn('Warning: Requested coronagraph is currently untested and might not work as expected')
 
         self.cgi_mode = cgi_mode
-        self.cor_type = optics_keywords['cor_type']
+        self.cor_type = optics_keywords_internal['cor_type']
+
         if bandpass  in ['1F','2F','3F','4F']:
             self.bandpass = bandpass.split('F')[0]
         else:
@@ -102,13 +107,12 @@ class CorgiOptics():
         # self.bandpass is used as the keyword for cgisim, while self.bandpass_header is used for setting the FITS header.
         # The distinction arises from differences in naming conventions for filters between cgisim and the latest wiki page.
 
-
-
         #self.bandpass = bandpass 
 
         # get mode and bandpass parameters:
         info_dir = cgisim.lib_dir + '/cgisim_info_dir/'
-        mode_data, bandpass_data = cgisim.cgisim_read_mode( cgi_mode, optics_keywords['cor_type'], self.bandpass, info_dir )
+
+        mode_data, bandpass_data = cgisim.cgisim_read_mode( cgi_mode, optics_keywords_internal['cor_type'], self.bandpass, info_dir )
 
         # Set directory containing reference data for parameters external to CGISim
         ref_data_dir = os.path.join(corgisim.lib_dir, 'data')
@@ -181,6 +185,7 @@ class CorgiOptics():
         self.sampling_lamref_div_D = mode_data['sampling_lamref_div_D'] 
         self.lamref_um = mode_data['lamref_um'] ## ref wavelength in micron
         self.owa_lamref = mode_data['owa_lamref'] ## out working angle
+        
         if self.cgi_mode == 'spec':
             baseline_mode_data, _ = cgisim.cgisim_read_mode('excam', 'hlc_band1', '1', info_dir=info_dir)
             self.sampling_um = baseline_mode_data['sampling_um']
@@ -193,20 +198,20 @@ class CorgiOptics():
         else:
             self.sampling_um = mode_data['sampling_um'] ### size of pixel in micron
 
-        self.diam = diam  ## diameter of Roman primary in cm, default is 236.114 cm
+        self.diam = diam ## diameter of Roman primary in cm, default is 236.114 cm
         # Effective collecting area in unit of cm^2, 
         # 30.3% central obscuration of the telescope entrance pupil (diameter ratio) from IPAC-Roman website
         #self.area = (self.diam/2)**2 * np.pi - (self.diam/2*0.303)**2 * np.pi
         self.area =  35895.212    # primary effective area from cgisim cm^2 
-        self.grid_dim_out = optics_keywords['output_dim'] # number of grid in output image in one dimension
-        self.optics_keywords = optics_keywords  # Store the keywords for PROPER package
+        self.grid_dim_out = optics_keywords_internal['output_dim'] # number of grid in output image in one dimension
+        self.optics_keywords = optics_keywords_internal  # Store the keywords for PROPER package
         self.optics_keywords['lam0']=self.lam0_um
         if 'use_fpm' not in self.optics_keywords:
             self.optics_keywords['use_fpm'] = 1  # use fpm by default
 
         # polarization
         
-        if optics_keywords['polaxis'] != 10 and optics_keywords['polaxis'] != -10 and optics_keywords['polaxis'] != 0:
+        if optics_keywords_internal['polaxis'] != 10 and optics_keywords_internal['polaxis'] != -10 and optics_keywords_internal['polaxis'] != 0:
             self.polarizer_transmission = 0.45
         else:
             self.polarizer_transmission = 1.0
@@ -713,7 +718,10 @@ class CorgiDetector():
         emccd_keywords: A dictionary with the keywords that are used to set up the emccd model
         photon_counting: if use photon_counting mode, default is True
         '''
-        self.emccd_keywords = emccd_keywords  # Store the keywords for later use
+        if emccd_keywords is None:
+            self.emccd_keywords = None
+        else:
+            self.emccd_keywords = emccd_keywords.copy()  # Store the keywords for later use
         #self.exptime = exptime ##expsoure time in second
         self.photon_counting = photon_counting
 

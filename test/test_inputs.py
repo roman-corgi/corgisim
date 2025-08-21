@@ -129,7 +129,8 @@ def test_input_from_cpgs():
 
     scene_input = scene.Scene(input.host_star_properties)
     optics_input =  instrument.CorgiOptics(input.cgi_mode, input.bandpass, optics_keywords=input.optics_keywords, if_quiet=True, integrate_pixels=True)
-    
+    detector_input = instrument.CorgiDetector( input.emccd_keywords)
+
     # Check that the two methods return the same objects       
     for key, val in optics.__dict__.items():
         # No equality operator for synphot objects 
