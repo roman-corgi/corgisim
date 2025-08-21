@@ -4,10 +4,9 @@
 name: Python application
 
 on:
-  push:
-    branches: [ "main"]
-  pull_request:
-    branches: [ "main"]
+    schedule:
+    cron:
+      - 0 23 * * 5
 
 permissions:
   contents: read
@@ -57,4 +56,4 @@ jobs:
     - name: environment variables
       run: |
         export LONGTEST="True"
-        python -c "import os; print(os.environ)"
+        pytest
