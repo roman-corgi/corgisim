@@ -201,6 +201,8 @@ class CorgiOptics():
         self.grid_dim_out = optics_keywords['output_dim'] # number of grid in output image in one dimension
         self.optics_keywords = optics_keywords  # Store the keywords for PROPER package
         self.optics_keywords['lam0']=self.lam0_um
+        if 'use_fpm' not in self.optics_keywords:
+            self.optics_keywords['use_fpm'] = 1  # use fpm by default
 
         # polarization
         
