@@ -1180,7 +1180,7 @@ class CorgiDetector():
                 Im_noisy = self.emccd.sim_sub_frame(img, exptime).astype(np.uint16)
         else:
             if full_frame:
-                #images separated 7.5" or 344 pix on the detector (1"=0.0218 pix)
+                #images separated 7.5" or 344 pix on the detector (1 pix=0.0218")
                 #0/90 degree images are placed on x-axis symmetric about the user defined location
                 #45/135 degree images are placed on -45 degree axis symmetric about the user defined location
                 if sim_info['polarization_basis'] == '0/90 degrees':
