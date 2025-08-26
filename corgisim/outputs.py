@@ -408,7 +408,7 @@ def write_headers_DPAM(cor_mode, polarization_basis, prism):
             DPAM_V = 26016.9
             DPAMNAME = 'IMAGING'
             DPAMSP_H = 38917.1
-            DPAMSP_V = 26016.
+            DPAMSP_V = 26016.9
         elif polarization_basis == '0/90 degrees':
             #0/90 polarization
             DPAM_H = 8991.3
