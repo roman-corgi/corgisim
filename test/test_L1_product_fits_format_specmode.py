@@ -128,7 +128,7 @@ def test_L1_product_fits_format_specmode():
         assert exthdr['FPAM_H'] ==  37005.5, f"Expected data FPAM_H= 37005.5, but got {exthdr['FPAM_H']}"
         assert exthdr['FPAM_V'] == 22573, f"Expected data FPAM_V=22573, but got {exthdr['FPAM_V']}"
         assert exthdr['FPAMNAME'] == 'SPC34_R2C2', f"Expected data FPAMNAME='SPC34_R2C2', but got {exthdr['FPAMNAME']}"
-        assert exthdr['FPAMSP_H'] ==  37005.5, f"Expected data FPAMSP_H= 37005.5, but got {exthdr['FPAMSP_H']}"
+        assert exthdr['FPAMSP_H'] ==  37005.5, f"Expected data FPAMSP_H=37005.5, but got {exthdr['FPAMSP_H']}"
         assert exthdr['FPAMSP_V'] == 22573, f"Expected data FPAMSP_V=22573, but got {exthdr['FPAMSP_V']}"
 
         assert exthdr['FSAM_H'] ==  24087, f"Expected data FSAM_H=24087, but got {exthdr['FSAM_H']}"
@@ -141,6 +141,83 @@ def test_L1_product_fits_format_specmode():
         print('Deleted the FITS file after testing headers populated with default values')
         os.remove(f)
 
+    # Test the L1 format for a no-slit + prism configuration
+    mas_per_lamD = 63.72 # Band 3
+    source_y_offset = 6.0 #lam/D
+
+    noslit_optics_keywords ={'cor_type':cor_type, 'use_errors':0, 'polaxis':polaxis, 'output_dim':output_dim, 
+        'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2, 'use_fpm':0, 'use_lyot_stop':1, 'fsm_y_offset':source_y_offset,
+        'prism':'PRISM3', 'wav_step_um':2E-3}
+
+    optics_noslit_prism_cfam3F = instrument.CorgiOptics(cgi_mode, bandpass='3F', optics_keywords=noslit_optics_keywords, 
+                                                        if_quiet=True, oversample = overfac, return_oversample = False)
+    sim_unocc_noslit_prism_cfam3F = optics_noslit_prism_cfam3F.get_host_star_psf(base_scene)
+
+    short_exptime = 0.5
+    emccd_keywords_unitygain = {'cr_rate':0.0, 'em_gain':1}
+    detector_unitygain = instrument.CorgiDetector(emccd_keywords_unitygain)
+
+    unoccstar_prism_fullframe_sim = detector_unitygain.generate_detector_image(sim_unocc_noslit_prism_cfam3F, short_exptime, 
+                                                                               full_frame=True, loc_x=512, loc_y=512)
+
+    ### save the L1 product fits file to test/testdata folder
+    local_path = corgisim.lib_dir
+    outdir = os.path.join(local_path.split('corgisim')[0], 'corgisim/test/testdata')
+    outputs.save_hdu_to_fits(sim_unocc_noslit_prism_cfam3F.image_on_detector,outdir=outdir, write_as_L1=True)
+
+    ### read the L1 product fits file
+    prihdr = sim_unocc_noslit_prism_cfam3F.image_on_detector[0].header
+    exthdr = sim_unocc_noslit_prism_cfam3F.image_on_detector[1].header
+    time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
+    filename = f"CGI_{prihdr['VISITID']}_{time_in_name}_L1_.fits"
+
+    f = os.path.join( outdir , filename)
+
+    with fits.open(f) as hdul:
+        data = hdul[1].data
+        prihr = hdul[0].header
+        exthr = hdul[1].header
+        
+        # Check that the dtype is exactly uint16
+        assert exthdr['SPAM_H'] ==  26250.4, f"Expected data SPAM_H=26250.4, but got {exthdr['SPAM_H']}"
+        assert exthdr['SPAM_V']== 27254.4,  f"Expected data SPAM_V = 27254.4, but got {exthdr['SPAM_V']}"
+        assert exthdr['SPAMNAME'] =='SPEC' , f"Expected data SPAMNAME ='SPEC', but got {exthdr['SPAMNAME']}"
+        assert exthdr['SPAMSP_H']== 26250.4, f"Expected data SPAMSP_H=26250.4, but got {exthdr['SPAMSP_H']}"
+        assert exthdr['SPAMSP_V'] == 27254.4, f"Expected data SPAMSP_V=27254.4, but got {exthdr['SPAMSP_V']}"
+
+        assert exthdr['LSAM_H'] ==  36936.3, f"Expected data LSAM_H=36936.3, but got {exthdr['LSAM_H']}"
+        assert exthdr['LSAM_V']== 29389.3,  f"Expected data LSAM_V = 29389.3, but got {exthdr['LSAM_V']}"
+        assert exthdr['LSAMNAME'] =='SPEC' , f"Expected data LSAMNAME ='SPEC', but got {exthdr['LSAMNAME']}"
+        assert exthdr['LSAMSP_H']== 36936.3, f"Expected data LSAMSP_H=36936.3, but got {exthdr['LSAMSP_H']}"
+        assert exthdr['LSAMSP_V'] == 29389.3, f"Expected data LSAMSP_V=29389.3, but got {exthdr['LSAMSP_V']}"
+
+        assert exthdr['CFAM_H'] == 2329.2, f"Expected data CFAM_H=2329.2, but got {exthdr['CFAM_H']}"
+        assert exthdr['CFAM_V'] == 24002.7, f"Expected data CFAM_V=24002.7, but got {exthdr['CFAM_V']}"
+        assert exthdr['CFAMNAME'] == '3F', f"Expected data CFAMNAME='3F', but got {exthdr['CFAMNAME']}"
+        assert exthdr['CFAMSP_H'] == 2329.2, f"Expected data CFAMSP_H=2329.2, but got {exthdr['CFAMSP_H']}"
+        assert exthdr['CFAMSP_V'] == 24002.7, f"Expected data CFAMSP_V=24002.7, but got {exthdr['CFAMSP_V']}"
+
+        assert exthdr['DPAM_H'] == 26824.2, f"Expected data DPAM_H=26824.2, but got {exthdr['DPAM_H']}"
+        assert exthdr['DPAM_V'] == 1261.3, f"Expected data DPAM_V=1261.3, but got {exthdr['DPAM_V']}"
+        assert exthdr['DPAMNAME'] == 'PRISM3', f"Expected data DPAMNAME='PRISM3', but got {exthdr['DPAMNAME']}"
+        assert exthdr['DPAMSP_H'] == 26824.2, f"Expected data DPAMSP_H=26824.2, but got {exthdr['DPAMSP_H']}"
+        assert exthdr['DPAMSP_V'] == 1261.3, f"Expected data DPAMSP_V=1261.3, but got {exthdr['DPAMSP_V']}"
+
+        assert exthdr['FPAM_H'] ==  60251.2, f"Expected data FPAM_H= 60251.2, but got {exthdr['FPAM_H']}"
+        assert exthdr['FPAM_V'] == 2248.5, f"Expected data FPAM_V=2248.5, but got {exthdr['FPAM_V']}"
+        assert exthdr['FPAMNAME'] == 'OPEN_34', f"Expected data FPAMNAME='OPEN_34', but got {exthdr['FPAMNAME']}"
+        assert exthdr['FPAMSP_H'] ==  60251.2, f"Expected data FPAMSP_H= 60251.2, but got {exthdr['FPAMSP_H']}"
+        assert exthdr['FPAMSP_V'] == 2248.5, f"Expected data FPAMSP_V=2248.5, but got {exthdr['FPAMSP_V']}"
+
+        assert exthdr['FSAM_H'] ==  30677.2, f"Expected data FSAM_H=30677.2, but got {exthdr['FSAM_H']}"
+        assert exthdr['FSAM_V'] == 2959.5, f"Expected data FSAM_V=2959.5, but got {exthdr['FSAM_V']}"
+        assert exthdr['FSAMNAME'] == 'OPEN', f"Expected data FSAMNAME='OPEN', but got {exthdr['FSAMNAME']}"
+        assert exthdr['FSAMSP_H'] ==  30677.2, f"Expected data FSAMSP_H=30677.2, but got {exthdr['FSAMSP_H']}"
+        assert exthdr['FSAMSP_V'] == 2959.5, f"Expected data FSAMSP_V=2959.5, but got {exthdr['FSAMSP_V']}"
+
+        ### delete file after testing
+        print('Deleted the FITS file after testing headers populated with default values')
+        os.remove(f)
 
 if __name__ == '__main__':
     #run_sim()

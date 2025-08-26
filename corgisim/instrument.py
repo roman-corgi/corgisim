@@ -816,11 +816,11 @@ class CorgiDetector():
             if 'slit' in sim_info:
                 header_info['slit'] = sim_info['slit']
             else:
-                header_info['slit'] = None
+                header_info['slit'] = 'None'
             if 'prism' in sim_info:
                 header_info['prism'] = sim_info['prism']
             else:
-                header_info['prism'] = None
+                header_info['prism'] = 'None'
             simulated_scene.image_on_detector = outputs.create_hdu_list(Im_noisy, sim_info=sim_info, header_info = header_info)
         else:
             simulated_scene.image_on_detector = outputs.create_hdu(Im_noisy, sim_info=sim_info)
