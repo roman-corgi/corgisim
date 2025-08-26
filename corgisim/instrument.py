@@ -33,7 +33,7 @@ class CorgiOptics():
 
     '''
 
-    def __init__(self, cgi_mode = None, bandpass= None,  diam = 236.3114, wollaston_prism=0, optics_keywords=None, oversampling_factor = 7, return_oversample = False, **kwargs):
+    def __init__(self, cgi_mode = None, bandpass= None,  diam = 236.3114, optics_keywords=None, oversampling_factor = 7, return_oversample = False, **kwargs):
         '''
 
         Initialize the class a keyword dictionary that defines the setup of cgisim/PROPER 
@@ -45,12 +45,9 @@ class CorgiOptics():
         - cor_type (str): define coronagraphic observing modes
         - bandpass (str): pre-difined bandpass for Roman-CGI
         - diam (float) in meter: diameter of the primaru mirror, the default value is 2.363114 meter
-        - wollaston_prism (int): define whether to use wollaston prisms in the optical path for polarimetry data
-          0 (default): no wollastons used, 1: image 0/90 degree polarization, 2: image 45/135 degree polarization
         - optics_keywords: A dictionary with the keywords that are used to set up the proper model
         - oversample: An integer that defines the oversampling factor of the detector when generating the image
         - return_oversample: A boolean that defines whether the function should return the oversampled image or not.
-    
 
         Raises:
         - ValueError: If `cgi_mode` or `cor_type` is invalid.
@@ -84,8 +81,6 @@ class CorgiOptics():
         #these cor_type is availbale in cgisim, but are currently untested in corgisim
         untest_cor_types = ['spc-spec_rotated', 'spc-spec_band2_rotated', 'spc-spec_band3_rotated','spc-mswc', 'spc-mswc_band4','spc-mswc_band1', 'zwfs']
 
-        valid_wollaston_prisms = [0, 1, 2]
-
         if cgi_mode not in valid_cgi_modes:
             raise Exception('ERROR: Requested mode does not match any available mode')
      
@@ -95,9 +90,6 @@ class CorgiOptics():
         
         if optics_keywords['cor_type'] in untest_cor_types:
             warnings.warn('Warning: Requested coronagraph is currently untested and might not work as expected')
-        
-        if wollaston_prism not in valid_wollaston_prisms:
-            raise Exception('Error: Requested wollaston setting does not match any available mode')
 
         self.cgi_mode = cgi_mode
         self.cor_type = optics_keywords['cor_type']
@@ -106,7 +98,6 @@ class CorgiOptics():
         else:
             self.bandpass = bandpass.lower()
         self.bandpass_header = bandpass
-        self.wollaston_prism = wollaston_prism
         # self.bandpass is used as the keyword for cgisim, while self.bandpass_header is used for setting the FITS header.
         # The distinction arises from differences in naming conventions for filters between cgisim and the latest wiki page.
 
@@ -124,6 +115,17 @@ class CorgiOptics():
             raise FileNotFoundError(f"Directory does not exist: {ref_data_dir}")
         else:
             self.ref_data_dir = ref_data_dir
+        #set polarimetry wollaston prism parameter
+        if self.cgi_mode == 'excam':
+            #DPAM prisms allowed for polarimetry
+            valid_prisms = ['None', 'POL0', 'POL45']
+            if 'prism' in optics_keywords:
+                if optics_keywords['prism'] not in valid_prisms:
+                    raise ValueError(f'Invalid value for prism: {optics_keywords['prism']}.'
+                                     f'Must be one of: {valid_prisms}')
+                setattr(self, 'prism', optics_keywords['prism'])
+            else:
+                setattr(self, 'prism', 'None')
         # Set the spectroscopy parameters
         if self.cgi_mode == 'spec':
             spec_kw_defaults = {
@@ -463,7 +465,7 @@ class CorgiOptics():
 
         '''
         
-        if self.wollaston_prism == 0:
+        if self.prism == 'None':
             raise Exception("This function is for use with the wollaston prisms only")
 
         if self.cgi_mode == 'excam':
@@ -484,7 +486,7 @@ class CorgiOptics():
             self.optics_keywords['output_dim']=grid_dim_out_tem
             self.optics_keywords['final_sampling_m']=sampling_um_tem *1e-6
             
-            if (self.wollaston_prism == 1):
+            if (self.prism == 'POL0'):
                 #0/90 case
                 polaxis_params = [-1, 1, -2, 2]
                 fields = []
@@ -539,11 +541,10 @@ class CorgiOptics():
 
                 images_1[i,:,:] = images_1[i,:,:] * counts
                 images_2[i,:,:] = images_2[i,:,:] * counts
-        elif self.cgi_mode == 'spec':
-            raise ValueError("Spec mode can not be used in combination with polarimetry")
-        image = np.array([np.sum(images_1, axis=0), np.sum(images_2, axis=0)])
-        if self.cgi_mode in ['lowfs', 'excam_efield']:
-            raise ValueError(f"The mode '{self.cgi_mode}' has not been implemented yet!")
+            image = np.array([np.sum(images_1, axis=0), np.sum(images_2, axis=0)])
+
+        if self.cgi_mode in ['spec', 'lowfs', 'excam_efield']:
+            raise ValueError(f"The mode '{self.cgi_mode}' cannot be used in combination with polarimetry")
         
         # Initialize SimulatedImage class to restore the output psf
         if sim_scene == None:
@@ -551,7 +552,7 @@ class CorgiOptics():
 
         # Prepare additional information to be added as COMMENT headers in the primary HDU.
         # These are different from the default L1 headers, but extra comments that are used to track simulation-specific details.
-        if self.wollaston_prism == 1:
+        if self.prism == 'POL0':
             polarization_basis = '0/90 degrees'
         else:
             polarization_basis = '45/135 degrees'
@@ -920,7 +921,7 @@ class CorgiOptics():
         A length 2 array containing the simulated scene with point sources add in imaged in orthogonal polarizations. 
         '''
 
-        if self.wollaston_prism == 0:
+        if self.prism == 'None':
             raise Exception("This function is for use with the wollaston prisms only")
         
         if self.cgi_mode == 'excam':
@@ -1011,7 +1012,7 @@ class CorgiOptics():
                 #renormalize since instrument Mueller matrix attenuates total intensity
                 source_pol_after_instrument = np.matmul(pol.get_instrument_mueller_matrix(self.lam_um), point_source_pol[j])
                 source_pol_after_instrument = source_pol_after_instrument / source_pol_after_instrument[0]
-                if (self.wollaston_prism == 1):
+                if (self.prism == 'POL0'):
                     source_pol_path_1 = np.matmul(pol.get_wollaston_mueller_matrix(0), source_pol_after_instrument)
                     source_pol_path_2 = np.matmul(pol.get_wollaston_mueller_matrix(90), source_pol_after_instrument)
                 else:
@@ -1060,7 +1061,7 @@ class CorgiOptics():
             sim_info[f'position_y_mas_{i}'] = input_scene.point_source_y[i]
 
         # Third: global simulation settings
-        if self.wollaston_prism == 1:
+        if self.prism == 'POL0':
             polarization_basis = '0/90 degrees'
         else:
             polarization_basis = '45/135 degrees'
