@@ -6,14 +6,18 @@ A simulation suite for the Nancy Grace Roman Space Telescope Coronagraphic Instr
 ### Install Proper
 Proper is an optical propagation library that is needed for CGISim to function
 Go to the [Proper website](https://sourceforge.net/projects/proper-library/) and download proper_v3.3.3_python.zip
-Unzip it in you working directory
+Unzip it in your working directory
 Enter the directory that contains setup.py and run the following: 
 ```
 python -m pip install .
 ```
 ### Install roman_preflight_proper and CGISIm
-Go to the [CGISim website](https://sourceforge.net/projects/cgisim/) and download roman_preflight_proper_public_v2.0.1_python.zip and cgisim_v4.0.zip
-Unzip them in you working directory. For each of them, enter the directory that contains setup.py and run the following: 
+In your working directory, first clone [roman_preflight_proper](https://github.com/roman-corgi/cgisim_cpp):
+```
+git clone https://github.com/roman-corgi/cgisim_cpp.git
+```
+Go to the [CGISim website](https://sourceforge.net/projects/cgisim/) and download cgisim_v4.0.zip
+Unzip it in your working directory. For each of them, enter the directory that contains setup.py and run the following: 
 ```
 python -m pip install .
 ```

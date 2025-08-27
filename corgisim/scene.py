@@ -4,6 +4,7 @@ import re
 from synphot.models import BlackBodyNorm1D, Box1D, ConstFlux1D
 from synphot import units, SourceSpectrum, SpectralElement, Observation
 from synphot.units import validate_wave_unit, convert_flux, VEGAMAG
+from corgisim import pol
 import cgisim
 import os
 import copy
@@ -41,6 +42,8 @@ class Scene():
                 Y-coordinate of the source position in mas, relative to the host star.
             - "Custom_Spectrum" (optional): 
                 A custom spectrum for the source. If provided, this spectrum will override the default spectrum generated based on Vmag.
+            - "pol_state" (float array): optional, vector of length 4 consisting of the I, Q, U and V components of the stokes parameter
+                describing how the source light is polarized, default is unpolarized or [1,0,0,0]
             Notes:
                 - The coordinates should be provided in the same reference frame and orientation as the background scene (typically North-up, East-left).
                 - All magnitudes must be consistent with their respective magnitude type.
@@ -51,6 +54,7 @@ class Scene():
 
     Raises:
         ValueError: If the provided spectral type is invalid.
+        ValueError: If the provided stokes vector is not of length 4 or the polarized intensity magnitude exceeds the total intensity magnitude
     '''
     def __init__(self, host_star_properties=None, point_source_info=None, twoD_scene_hdu=None):
         self._twoD_scene = copy.deepcopy(twoD_scene_hdu)
@@ -97,6 +101,14 @@ class Scene():
             self.off_axis_source_spectrum = self.get_off_axis_source_spectrum(self._point_source_Vmag,
                                                                             spectrum=self.point_source_spectrum,
                                                                             magtype=self._point_source_magtype)
+            
+            #Set the polarization state of sources, default to [1,0,0,0] if none provided
+            self.point_source_pol_state = [source.get('pol_state', np.array([1,0,0,0])) for source in point_source_info]
+
+            #check validity of source stoke vector and normalizes it
+            for source in range(n_off_axis_source):
+                pol.check_stokes_vector_validity(self.point_source_pol_state[source])
+                self.point_source_pol_state[source] = np.divide(self.point_source_pol_state[source], self.point_source_pol_state[source][0])
 
         
         
@@ -508,6 +520,4 @@ def is_valid_spectral_type(spectral_type):
         raise ValueError(error_message)
 
     return bool(match)
-
-
 
