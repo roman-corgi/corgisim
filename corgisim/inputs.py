@@ -266,7 +266,40 @@ class Input():
         if name in  self.__dict__ :
             return self.__dict__[name]
 
+def create_variation_input(old_input, **kwargs):
+    """
+    This function creates a new input which is identical to the old input except for the specified keywords. 
+    This allows for easily creating variations of a simulation input without modifying the original object.
 
+    Args:
+        **kwargs: Keyword arguments representing the attributes to be
+                    overwritten in the new Input object.
+
+    Returns:
+        corgisim.inputs.Input: A new Input object with the specified
+                                variations.
+
+    Raises:
+        KeyError: If an unknown keyword argument is provided that is not a
+                    valid attribute of the Input class.
+    """
+    old_input_dict_intern = {k[1:]: v for k, v in old_input.__dict__.items()}
+    old_input_dict_intern.pop('initialized', None)
+    for key, value in kwargs.items():
+        if key in old_input_dict_intern.keys():
+            if key in ['optics_keywords', 'emccd_keywords', 'host_star_properties']:
+                for k,v in kwargs[key].items():
+                    if k in old_input_dict_intern[key].keys():
+                         old_input_dict_intern[k]=v
+                    else:
+                        raise NameError(k + ' is not an ' + key)
+            else:
+                old_input_dict_intern[key] = value
+
+        else:
+            raise NameError(key + ' is not an input parameter')
+    new_input = Input(**old_input_dict_intern) 
+    return new_input
 
 def load_cpgs_data(filepath, return_input=False):
     """Creates a scene and optics based on the content of a CPGS file.
