@@ -280,7 +280,7 @@ def create_variation_input(old_input, **kwargs):
                                 variations.
 
     Raises:
-        KeyError: If an unknown keyword argument is provided that is not a
+        NameError: If an unknown keyword argument is provided that is not a
                     valid attribute of the Input class.
     """
     old_input_dict_intern = {k[1:]: v for k, v in old_input.__dict__.items()}
