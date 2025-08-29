@@ -1,6 +1,7 @@
 ### Functions that will be run to simulate an observation. 
 ## This will likely contain functions simmilar to the functionality in Jorge's corgisims_obs 
 import corgisim
+import os
 from corgisim import scene, instrument, inputs, observation, outputs
 
 def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, full_frame= False, loc_x=None, loc_y=None):
