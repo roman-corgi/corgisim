@@ -1,6 +1,6 @@
 ### Functions that will be run to simulate an observation. 
 ## This will likely contain functions simmilar to the functionality in Jorge's corgisims_obs 
-
+import corgisim
 from corgisim import scene, instrument, inputs, observation, outputs
 
 def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, full_frame= False, loc_x=None, loc_y=None):
@@ -83,7 +83,7 @@ def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, outpu
     if point_source_info is not None:
         host_star_properties = {'Vmag': scene_target._host_star_Vmag, 'spectral_type': scene_target._host_star_sptype, 'magtype': scene_target._host_star_magtype, 'ref_flag': False}
         scene_target = scene.Scene(host_star_properties, point_source_info)
-        
+
     for visit in visit_list:
         #optics.roll_angle = visit['roll_angle'] Commented out for now
         if visit['isReference']:
