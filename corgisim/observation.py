@@ -53,7 +53,7 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, f
 
     return simulatedImage_list
 
-def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, output_dir=None, full_frame=False, loc_x=None, loc_y=None ):
+def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, output_dir=None, full_frame=False, loc_x=None, loc_y=None, point_source_info=None):
     """Generates an observation scenario by loading instrument, scene, and visit
     information from a CPGS file.
 
@@ -62,7 +62,10 @@ def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, outpu
 
     Args:
         filepath (str): The path to the CPGS XML file.
-
+        loc_x (int): The horizontal coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True, 
+                     and image from CorgiOptics has size is smaller than 1024×1024
+        loc_y (int): The vertical coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True,
+                     and image from CorgiOptics has size is smaller than 1024×1024
     Returns:
         list[corgisim.scene.SimulatedImage]: A list of SimulatedImage objects,
         representing the complete observation scenario across all visits
@@ -77,7 +80,10 @@ def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, outpu
     except ValueError:
         scene_target, optics, detector_target, visit_list = inputs.load_cpgs_data(filepath)
 
-
+    if point_source_info is not None:
+        host_star_properties = {'Vmag': scene_target._host_star_Vmag, 'spectral_type': scene_target._host_star_sptype, 'magtype': scene_target._host_star_magtype, 'ref_flag': False}
+        scene_target = scene.Scene(host_star_properties, point_source_info)
+        
     for visit in visit_list:
         #optics.roll_angle = visit['roll_angle'] Commented out for now
         if visit['isReference']:
