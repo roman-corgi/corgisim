@@ -47,7 +47,8 @@ class CorgiOptics():
         - optics_keywords: A dictionary with the keywords that are used to set up the proper model
         - oversample: An integer that defines the oversampling factor of the detector when generating the image
         - return_oversample: A boolean that defines whether the function should return the oversampled image or not.
-        - roll_angle : float, optional, Telescope roll angle in degrees (0 to 360). Default is 0 deg. A value of 0 means North is up and East is to the left
+        - roll_angle : float, optional, Telescope roll angle in degrees (0 to 360). Default is 0 deg.
+                        A value of 0 means North is up and East is to the left. Positive values rotate the field counterclockwise. 
     
 
         Raises:
@@ -155,14 +156,16 @@ class CorgiOptics():
                     setattr(self, attr_name, value)
                 else:
                     setattr(self, attr_name, default_value)
-            # Rotate slit offsets to align the slit with the companion after roll.
+            # Rotate slit location to align the slit with the companion after roll.
             # Assumes the input slit and companion location are the same.
             if self.roll_angle != 0.0:                  
-                ##### rotate the slit based on Roll angle
-                sep_slit= np.sqrt(self.slit_x_offset_mas**2 + self.slit_y_offset_mas**2)
+                # Rotate slit offsets to match the companion after telescope roll.
+                # Convention: x=East, y=North. Telescope roll = +θ.
+                # Because we rotate the *companion coords*, use the opposite sense: θ_comp = -θ_tel.
+                rotate_angle = -1 * self.roll_angle
                 PA_slit = calculate_PA(self.slit_x_offset_mas, self.slit_y_offset_mas) ## rad
-                x_offset_slit= sep_slit * np.sin( PA_slit + np.deg2rad(self.roll_angle) )
-                y_offset_slit = sep_slit * np.cos( PA_slit + np.deg2rad(self.roll_angle) )
+                x_offset_slit= sep_slit * np.sin( PA_slit + np.deg2rad(rotate_angle) )
+                y_offset_slit = sep_slit * np.cos( PA_slit + np.deg2rad(rotate_angle) )
                 self.slit_x_offset_mas, self.slit_y_offset_mas = x_offset_slit,y_offset_slit 
             
             if self.prism != 'None':
@@ -573,11 +576,14 @@ class CorgiOptics():
                     x_offset_source_j = point_source_x[j]
                     y_offset_source_j = point_source_y[j]
                 else:
-                    ##### rotate the telescope based on Roll angle
+                    # Rotate the telescope based on roll angle
+                    # Convention: x=East, y=North. Telescope roll = +theta.
+                    # Because we rotate the *companion coords*, use the opposite sense: θ_comp = -θ_tel.
+                    rotate_angle = -1 * self.roll_angle
                     sep_source_j = np.sqrt(point_source_x[j]**2 +  point_source_y[j]**2)
                     PA_source_j = calculate_PA(point_source_x[j], point_source_y[j]) ## rad
-                    x_offset_source_j = sep_source_j * np.sin( PA_source_j + np.deg2rad(self.roll_angle) )
-                    y_offset_source_j = sep_source_j * np.cos( PA_source_j + np.deg2rad(self.roll_angle) )
+                    x_offset_source_j = sep_source_j * np.sin( PA_source_j + np.deg2rad(rotate_angle) )
+                    y_offset_source_j = sep_source_j * np.cos( PA_source_j + np.deg2rad(rotate_angle) )
 
                 self.optics_keywords_comp.update({'output_dim': grid_dim_out_tem,
                                             'final_sampling_m': sampling_um_tem * 1e-6,
@@ -654,11 +660,14 @@ class CorgiOptics():
                     x_offset_source_j = point_source_x[j]
                     y_offset_source_j = point_source_y[j]
                 else:
-                    ##### rotate the telescope based on Roll angle
+                    # Rotate the telescope based on roll angle
+                    # Convention: x=East, y=North. Telescope roll = +theta.
+                    # Because we rotate the *companion coords*, use the opposite sense: θ_comp = -θ_tel.
+                    rotate_angle = -1 * self.roll_angle
                     sep_source_j = np.sqrt(point_source_x[j]**2 +  point_source_y[j]**2)
                     PA_source_j = calculate_PA(point_source_x[j], point_source_y[j]) ## rad
-                    x_offset_source_j = sep_source_j * np.sin( PA_source_j + np.deg2rad(self.roll_angle) )
-                    y_offset_source_j = sep_source_j * np.cos( PA_source_j + np.deg2rad(self.roll_angle) )
+                    x_offset_source_j = sep_source_j * np.sin( PA_source_j + np.deg2rad(rotate_angle))
+                    y_offset_source_j = sep_source_j * np.cos( PA_source_j + np.deg2rad(rotate_angle)) 
 
                 self.optics_keywords_comp.update({'output_dim': grid_dim_out_tem,
                                             'final_sampling_m': sampling_um_tem * 1e-6,
