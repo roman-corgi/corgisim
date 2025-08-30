@@ -163,6 +163,7 @@ class CorgiOptics():
                 # Convention: x=East, y=North. Telescope roll = +θ.
                 # Because we rotate the *companion coords*, use the opposite sense: θ_comp = -θ_tel.
                 rotate_angle = -1 * self.roll_angle
+                sep_slit = np.sqrt(self.slit_x_offset_mas**2 +   self.slit_y_offset_mas**2)
                 PA_slit = calculate_PA(self.slit_x_offset_mas, self.slit_y_offset_mas) ## rad
                 x_offset_slit= sep_slit * np.sin( PA_slit + np.deg2rad(rotate_angle) )
                 y_offset_slit = sep_slit * np.cos( PA_slit + np.deg2rad(rotate_angle) )
