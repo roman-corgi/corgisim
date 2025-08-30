@@ -248,11 +248,11 @@ class CorgiOptics():
 
         if 'if_quiet'in kwargs:self.quiet = kwargs.get("if_quiet")
 
-        ##self.SATSPOT is the value to be populated to L1 header prihdr[SATSPOTS]
+        ##self.SATSPOTS is the value to be populated to L1 header prihdr[SATSPOTS]
         # prihdr[SATSPOTS]= 0: No satellite spots present 
         # prihdr[SATSPOTS]= 1: Satellite spots present
         if satspot_keywords == None:
-            self.SATSPOT = int(0)
+            self.SATSPOTS = int(0)
         else:
             # check keywords
             if optics_keywords['use_dm1'] != 1:
@@ -265,7 +265,7 @@ class CorgiOptics():
             #### call self.add_satspot() to satellite spots in DM files, update the dm1 info in self.optics_keywords
             self.optics_keywords['dm1_v'] = self.add_satspot(satspot_keywords=satspot_keywords)
 
-            self.SATSPOT = int(1)
+            self.SATSPOTS = int(1)
             print("satellite spots are added to DM1.")
 
         print("CorgiOptics initialized with proper keywords.")
@@ -423,7 +423,7 @@ class CorgiOptics():
         subset = {key: self.optics_keywords[key] for key in keys_to_include_in_header if key in self.optics_keywords}
         sim_info.update(subset)
         ## add sattelite spots info 
-        #sim_info[SATSPOT] = self.SATSPOT
+        sim_info['SATSPOTS'] = self.SATSPOTS
         sim_info['includ_dectector_noise'] = 'False'
         # Create the HDU object with the generated header information
 
@@ -721,7 +721,7 @@ class CorgiOptics():
         sim_info.update(subset)
 
         ## add sattelite spots info
-        #sim_info[SATSPOT] = self.SATSPOT
+        sim_info['SATSPOTS'] = self.SATSPOTS
         sim_info['includ_dectector_noise'] = 'False'
         # Create the HDU object with the generated header information
 
@@ -869,7 +869,7 @@ class CorgiDetector():
             
             header_info = {'EXPTIME': exptime,'EMGAIN_C':self.emccd_keywords_default['em_gain'],'PSFREF':ref_flag,
                            'PHTCNT':self.photon_counting,'KGAINPAR':self.emccd_keywords_default['e_per_dn'],'cor_type':sim_info['cor_type'], 'bandpass':sim_info['bandpass'],
-                           'cgi_mode': sim_info['cgi_mode'], 'polaxis':sim_info['polaxis'],'use_fpm':use_fpm,'nd_filter':sim_info['nd_filter']}
+                           'cgi_mode': sim_info['cgi_mode'], 'polaxis':sim_info['polaxis'],'use_fpm':use_fpm,'nd_filter':sim_info['nd_filter'],'SATSPOTS':sim_info['SATSPOTS']}
             if 'fsm_x_offset_mas' in sim_info:
                 header_info['FSMX'] = float(sim_info['fsm_x_offset_mas'])
             if 'fsm_y_offset_mas' in sim_info:
