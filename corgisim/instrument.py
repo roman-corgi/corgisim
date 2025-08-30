@@ -45,10 +45,9 @@ class CorgiOptics():
         - bandpass (str): pre-difined bandpass for Roman-CGI
         - diam (float) in meter: diameter of the primaru mirror, the default value is 2.363114 meter
         - optics_keywords: A dictionary with the keywords that are used to set up the proper model
-	- satspot_keywords: A dictionary with the keywords that are used to add satellite spots. See add_satspot for the keywords.
+	    - satspot_keywords: A dictionary with the keywords that are used to add satellite spots. See add_satspot for the keywords.
         - oversample: An integer that defines the oversampling factor of the detector when generating the image
         - return_oversample: A boolean that defines whether the function should return the oversampled image or not.
-        - satspot_keywords: A dictionary with the keywords that are used to add satellite spots
     
 
         Raises:
@@ -720,11 +719,8 @@ class CorgiOptics():
                             'slit_x_offset_mas','slit_y_offset_mas']  # Specify keys to include
         subset = {key: self.optics_keywords[key] for key in keys_to_include_in_header if key in self.optics_keywords}
         sim_info.update(subset)
-<<<<<<< HEAD
+
         ## add sattelite spots info
-=======
-        ## add sattelite spots info 
->>>>>>> 8d691eb (add lines to update sim_info)
         #sim_info[SATSPOT] = self.SATSPOT
         sim_info['includ_dectector_noise'] = 'False'
         # Create the HDU object with the generated header information
