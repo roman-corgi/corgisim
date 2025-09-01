@@ -88,7 +88,7 @@ def test_generate_observation_scenario_from_cpgs():
     dx= [3*49.3]
     dy= [3*49.3]
     point_source_info = [{'Vmag': mag_companion[0], 'magtype': 'vegamag','position_x':dx[0] , 'position_y':dy[0]}]
-    simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, point_source_info)
+    simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, point_source_info=point_source_info)
 
     for simulatedImage in simulatedImage_list:
         #Check that the target has a point source and the target doesn't  
@@ -100,7 +100,7 @@ def test_generate_observation_scenario_from_cpgs():
             assert simulatedImage.input_scene._point_source_magtype == ['vegamag']
             assert simulatedImage.input_scene.point_source_x == dx
             assert simulatedImage.input_scene.point_source_y == dy
-            assert isinstance(simulatedImage.point_source_image, astropy.io.fits.hdu.image.PrimaryHDU)  
+            assert isinstance(simulatedImage.point_source_image, fits.hdu.image.PrimaryHDU)  
 
 
     #Test with only target
