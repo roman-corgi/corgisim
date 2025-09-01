@@ -13,10 +13,11 @@ from synphot.units import validate_wave_unit, convert_flux, VEGAMAG
 import matplotlib.pyplot as plt
 from emccd_detect.emccd_detect import EMCCDDetectBase, EMCCDDetect
 from corgidrp import mocks
-from corgisim import outputs
-from corgisim import spec
+from corgisim import outputs, spec
+import copy
 import os
 from scipy import interpolate
+import warnings
 
 class CorgiOptics():
     '''
@@ -54,13 +55,16 @@ class CorgiOptics():
         - KeyError: If forbidden keywords are included.
         """
         '''
+        
          # Initialize optics_keywords safely
         if optics_keywords is None:
-            optics_keywords = {}
-
+            raise KeyError(f"ERROR: optics_keywords are required to create an Optics object")
+        
+        optics_keywords_internal = optics_keywords.copy()
         #some parameters to the PROPER prescription are required, including 'cor_type', 'polaxis'
         required_keys = {'cor_type', 'polaxis', 'output_dim'}
-        missing_keys = required_keys - optics_keywords.keys()
+        missing_keys = required_keys - optics_keywords_internal.keys()
+
         if missing_keys:
             raise KeyError(f"ERROR: Missing required optics_keywords: {missing_keys}")
 
@@ -68,31 +72,33 @@ class CorgiOptics():
         ## 'final_sampling_m' is directly choosed based on different cgi mode 
         ## 'end_at_fpm_exit_pupil','end_at_fsm' are not allowed because they will give outimage at fsm 
         forbidden_keys = {'final_sampling_lam0', 'final_sampling_m', 'end_at_fpm_exit_pupil','end_at_fsm'}
-        forbidden_found = forbidden_keys & optics_keywords.keys()
+        forbidden_found = forbidden_keys & optics_keywords_internal.keys()
+
         if forbidden_found:
             raise KeyError(f"ERROR: Forbidden keywords detected in optics_keywords: {forbidden_found}")
 
 
         valid_cgi_modes = ['excam', 'spec', 'lowfs', 'excam_efield']
         valid_cor_types = ['hlc', 'hlc_band1', 'spc-wide', 'spc-wide_band4', 
-                        'spc-wide_band1', 'hlc_band2', 'hlc_band3', 'hlc_band4', 'spc-spec_rotated', 'spc-spec_band2_rotated', 'spc-spec_band3_rotated']
+                        'spc-wide_band1', 'hlc_band2', 'hlc_band3', 'hlc_band4','spc-spec', 'spc-spec_band2', 'spc-spec_band3' ]
         
         #these cor_type is availbale in cgisim, but are currently untested in corgisim
-        untest_cor_types = ['spc-spec', 'spc-spec_band2', 'spc-spec_band3', 'spc-mswc', 'spc-mswc_band4','spc-mswc_band1', 'zwfs']
+        untest_cor_types = ['spc-spec_rotated', 'spc-spec_band2_rotated', 'spc-spec_band3_rotated','spc-mswc', 'spc-mswc_band4','spc-mswc_band1', 'zwfs']
 
 
         if cgi_mode not in valid_cgi_modes:
             raise Exception('ERROR: Requested mode does not match any available mode')
      
 
-        if optics_keywords['cor_type'] not in valid_cor_types and optics_keywords['cor_type'] not in untest_cor_types:
+        if optics_keywords_internal['cor_type'] not in valid_cor_types and optics_keywords_internal['cor_type'] not in untest_cor_types:
             raise Exception('ERROR: Requested coronagraph does not match any available types')
         
-        if optics_keywords['cor_type'] in untest_cor_types:
+        if optics_keywords_internal['cor_type'] in untest_cor_types:
             warnings.warn('Warning: Requested coronagraph is currently untested and might not work as expected')
 
         self.cgi_mode = cgi_mode
-        self.cor_type = optics_keywords['cor_type']
+        self.cor_type = optics_keywords_internal['cor_type']
+
         if bandpass  in ['1F','2F','3F','4F']:
             self.bandpass = bandpass.split('F')[0]
         else:
@@ -101,13 +107,12 @@ class CorgiOptics():
         # self.bandpass is used as the keyword for cgisim, while self.bandpass_header is used for setting the FITS header.
         # The distinction arises from differences in naming conventions for filters between cgisim and the latest wiki page.
 
-
-
         #self.bandpass = bandpass 
 
         # get mode and bandpass parameters:
         info_dir = cgisim.lib_dir + '/cgisim_info_dir/'
-        mode_data, bandpass_data = cgisim.cgisim_read_mode( cgi_mode, optics_keywords['cor_type'], self.bandpass, info_dir )
+
+        mode_data, bandpass_data = cgisim.cgisim_read_mode( cgi_mode, optics_keywords_internal['cor_type'], self.bandpass, info_dir )
 
         # Set directory containing reference data for parameters external to CGISim
         ref_data_dir = os.path.join(corgisim.lib_dir, 'data')
@@ -124,10 +129,16 @@ class CorgiOptics():
                 'prism': 'None', # named DPAM prism
                 'wav_step_um': 1E-3 # wavelength step size of the prism dispersion model, in microns 
             }
-            spec_kw_allowed = {
-                'slit': ['None', 'R1C2', 'R6C5', 'R3C1'],
-                'prism': ['None', 'PRISM3', 'PRISM2']
-            }
+            #### allowed slit for band2 
+            if '2' in self.bandpass:     
+                spec_kw_allowed = {
+                    'slit': ['None', 'R6C5', 'R3C1'],
+                    'prism': ['None', 'PRISM3', 'PRISM2']}
+            #### allowed slit for band3
+            elif '3' in self.bandpass:
+                spec_kw_allowed = {
+                    'slit': ['None', 'R1C2', 'R3C1'],
+                    'prism': ['None', 'PRISM3', 'PRISM2']}
             for attr_name, default_value in spec_kw_defaults.items():
                 if attr_name in optics_keywords:
                     value = optics_keywords[attr_name]
@@ -148,12 +159,25 @@ class CorgiOptics():
                     raise FileNotFoundError(f"Prism parameter file {prism_param_fname} does not exist")
                 else:
                     setattr(self, 'prism_param_fname', prism_param_fname)
+
+            else:
+                warnings.warn("No prism selected in spec mode, the dispersion model will not be applied to the image cube.")
+            
+            ### give a warning if the prism is not the default one for the bandpass
+            if (self.prism == 'PRISM2')&('3' in self.bandpass):
+                warnings.warn("PRISM2 is selected for Band 3, which is not the default setting for the Roman CGI, but it can still be simulated with CorgiSim.")
+            if (self.prism == 'PRISM3')&('2' in self.bandpass):
+                warnings.warn("PRISM3 is selected for Band 2, which is not the default setting for the Roman CGI, but it can still be simulated with CorgiSim.")
+            
             if self.slit != 'None':
                 slit_param_fname = os.path.join(ref_data_dir, 'FSAM_slit_params.json')
                 if not os.path.exists(slit_param_fname):
                     raise FileNotFoundError(f"Slit aperture parameter file {slit_param_fname} does not exist")
                 else:
                     setattr(self, 'slit_param_fname', slit_param_fname)
+            else:
+                warnings.warn("No slit selected in spec mode, the slit mask will not be applied to the image cube.")
+            
 
         self.lam0_um = bandpass_data["lam0_um"] ##central wavelength of the filter in micron
         self.nlam = bandpass_data["nlam"] 
@@ -161,6 +185,7 @@ class CorgiOptics():
         self.sampling_lamref_div_D = mode_data['sampling_lamref_div_D'] 
         self.lamref_um = mode_data['lamref_um'] ## ref wavelength in micron
         self.owa_lamref = mode_data['owa_lamref'] ## out working angle
+        
         if self.cgi_mode == 'spec':
             baseline_mode_data, _ = cgisim.cgisim_read_mode('excam', 'hlc_band1', '1', info_dir=info_dir)
             self.sampling_um = baseline_mode_data['sampling_um']
@@ -173,18 +198,20 @@ class CorgiOptics():
         else:
             self.sampling_um = mode_data['sampling_um'] ### size of pixel in micron
 
-        self.diam = diam  ## diameter of Roman primary in cm, default is 236.114 cm
+        self.diam = diam ## diameter of Roman primary in cm, default is 236.114 cm
         # Effective collecting area in unit of cm^2, 
         # 30.3% central obscuration of the telescope entrance pupil (diameter ratio) from IPAC-Roman website
         #self.area = (self.diam/2)**2 * np.pi - (self.diam/2*0.303)**2 * np.pi
         self.area =  35895.212    # primary effective area from cgisim cm^2 
-        self.grid_dim_out = optics_keywords['output_dim'] # number of grid in output image in one dimension
-        self.optics_keywords = optics_keywords  # Store the keywords for PROPER package
+        self.grid_dim_out = optics_keywords_internal['output_dim'] # number of grid in output image in one dimension
+        self.optics_keywords = optics_keywords_internal  # Store the keywords for PROPER package
         self.optics_keywords['lam0']=self.lam0_um
+        if 'use_fpm' not in self.optics_keywords:
+            self.optics_keywords['use_fpm'] = 1  # use fpm by default
 
         # polarization
         
-        if optics_keywords['polaxis'] != 10 and optics_keywords['polaxis'] != -10 and optics_keywords['polaxis'] != 0:
+        if optics_keywords_internal['polaxis'] != 10 and optics_keywords_internal['polaxis'] != -10 and optics_keywords_internal['polaxis'] != 0:
             self.polarizer_transmission = 0.45
         else:
             self.polarizer_transmission = 1.0
@@ -197,9 +224,20 @@ class CorgiOptics():
         self.return_oversample = return_oversample
 
 
-        self.nd = 0  # integer: 1, 3, or 4 (0 = no ND, the default); this is the ND filter identifier, NOT the amount of ND
-        if "nd" in kwargs: self.nd = kwargs.get("nd")
-
+        self.nd = 0  # integer: 1, 2, or 3 (0 = no ND, the default); this is the ND filter identifier, NOT the amount of ND
+        #if "nd" in kwargs: self.nd = kwargs.get("nd")
+        if "nd" in optics_keywords.keys():
+            if optics_keywords["nd"] ==1:
+                self.nd = '2.25'
+            elif optics_keywords["nd"] ==2:
+                self.nd = '4.75fpam'
+            elif optics_keywords["nd"] ==3:
+                self.nd = '4.75fsam'
+            elif optics_keywords["nd"] ==0:
+                self.nd = 0
+            else:
+                raise ValueError(f"Invalid ND filter value: {optics_keywords['nd']}. Must be 0, 1, 2, or 3.")
+            
         # Initialize the bandpass class (from synphot)
         # bp: wavelegth is in unit of angstrom
         # bp: throughput is unitless, including transmission, reflectivity and EMCCD quantum efficiency 
@@ -361,7 +399,8 @@ class CorgiOptics():
 
         # Define specific keys from self.optics_keywords to include in the header            
         keys_to_include_in_header = ['use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
-                            'use_lyot_stop','use_field_stop','fsm_x_offset_mas','fsm_y_offset_mas']  # Specify keys to include
+                            'use_lyot_stop','use_field_stop','fsm_x_offset_mas','fsm_y_offset_mas','slit','prism',
+                            'slit_x_offset_mas','slit_y_offset_mas']  # Specify keys to include
         subset = {key: self.optics_keywords[key] for key in keys_to_include_in_header if key in self.optics_keywords}
         sim_info.update(subset)
         sim_info['includ_dectector_noise'] = 'False'
@@ -655,7 +694,8 @@ class CorgiOptics():
                             
                 # Define specific keys from self.optics_keywords to include in the header            
         keys_to_include_in_header = [ 'use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
-                            'use_lyot_stop','use_field_stop','fsm_x_offset_mas','fsm_y_offset_mas']  # Specify keys to include
+                            'use_lyot_stop','use_field_stop','fsm_x_offset_mas','fsm_y_offset_mas','slit','prism',
+                            'slit_x_offset_mas','slit_y_offset_mas']  # Specify keys to include
         subset = {key: self.optics_keywords[key] for key in keys_to_include_in_header if key in self.optics_keywords}
         sim_info.update(subset)
         sim_info['includ_dectector_noise'] = 'False'
@@ -678,7 +718,10 @@ class CorgiDetector():
         emccd_keywords: A dictionary with the keywords that are used to set up the emccd model
         photon_counting: if use photon_counting mode, default is True
         '''
-        self.emccd_keywords = emccd_keywords  # Store the keywords for later use
+        if emccd_keywords is None:
+            self.emccd_keywords = None
+        else:
+            self.emccd_keywords = emccd_keywords.copy()  # Store the keywords for later use
         #self.exptime = exptime ##expsoure time in second
         self.photon_counting = photon_counting
 
@@ -766,13 +809,26 @@ class CorgiDetector():
                 ref_flag = False
             if (sim_info['ref_flag'] == 'True') or (sim_info['ref_flag'] == '1'):
                 ref_flag = True
+            if (sim_info['use_fpm'] == 'False') or (sim_info['use_fpm'] == '0'):
+                use_fpm = False
+            if (sim_info['use_fpm'] == 'True') or (sim_info['use_fpm'] == '1'):
+                use_fpm = True
+            
             header_info = {'EXPTIME': exptime,'EMGAIN_C':self.emccd_keywords_default['em_gain'],'PSFREF':ref_flag,
                            'PHTCNT':self.photon_counting,'KGAINPAR':self.emccd_keywords_default['e_per_dn'],'cor_type':sim_info['cor_type'], 'bandpass':sim_info['bandpass'],
-                           'cgi_mode': sim_info['cgi_mode'], 'polaxis':sim_info['polaxis']}
+                           'cgi_mode': sim_info['cgi_mode'], 'polaxis':sim_info['polaxis'],'use_fpm':use_fpm,'nd_filter':sim_info['nd_filter']}
             if 'fsm_x_offset_mas' in sim_info:
                 header_info['FSMX'] = float(sim_info['fsm_x_offset_mas'])
             if 'fsm_y_offset_mas' in sim_info:
                 header_info['FSMY'] = float(sim_info['fsm_y_offset_mas'])
+            if 'slit' in sim_info:
+                header_info['slit'] = sim_info['slit']
+            else:
+                header_info['slit'] = 'None'
+            if 'prism' in sim_info:
+                header_info['prism'] = sim_info['prism']
+            else:
+                header_info['prism'] = 'None'
             simulated_scene.image_on_detector = outputs.create_hdu_list(Im_noisy, sim_info=sim_info, header_info = header_info)
         else:
             simulated_scene.image_on_detector = outputs.create_hdu(Im_noisy, sim_info=sim_info)
