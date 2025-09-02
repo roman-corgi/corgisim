@@ -32,7 +32,7 @@ class CorgiOptics():
 
     '''
 
-    def __init__(self, cgi_mode = None, bandpass= None,  diam = 236.3114, optics_keywords=None, oversampling_factor = 7, return_oversample = False, **kwargs):
+    def __init__(self, cgi_mode = None, bandpass= None,  diam = 236.3114, optics_keywords=None, roll_angle= 0, oversampling_factor = 7, return_oversample = False, **kwargs):
         '''
 
         Initialize the class a keyword dictionary that defines the setup of cgisim/PROPER 
@@ -47,6 +47,8 @@ class CorgiOptics():
         - optics_keywords: A dictionary with the keywords that are used to set up the proper model
         - oversample: An integer that defines the oversampling factor of the detector when generating the image
         - return_oversample: A boolean that defines whether the function should return the oversampled image or not.
+        - roll_angle : float, optional, Telescope roll angle in degrees (0 to 360). Default is 0 deg.
+                        A value of 0 means North is up and East is to the left. Positive values rotate the field counterclockwise. 
     
 
         Raises:
@@ -98,6 +100,7 @@ class CorgiOptics():
 
         self.cgi_mode = cgi_mode
         self.cor_type = optics_keywords_internal['cor_type']
+        self.roll_angle = roll_angle
 
         if bandpass  in ['1F','2F','3F','4F']:
             self.bandpass = bandpass.split('F')[0]
@@ -153,6 +156,19 @@ class CorgiOptics():
                     setattr(self, attr_name, value)
                 else:
                     setattr(self, attr_name, default_value)
+            # Rotate slit location to align the slit with the companion after roll.
+            # Assumes the input slit and companion location are the same.
+            if self.roll_angle != 0.0:                  
+                # Rotate slit offsets to match the companion after telescope roll.
+                # Convention: x=East, y=North. Telescope roll = +θ.
+                # Because we rotate the *companion coords*, use the opposite sense: θ_comp = -θ_tel.
+                rotate_angle = -1 * self.roll_angle
+                sep_slit = np.sqrt(self.slit_x_offset_mas**2 +   self.slit_y_offset_mas**2)
+                PA_slit = calculate_PA(self.slit_x_offset_mas, self.slit_y_offset_mas) ## rad
+                x_offset_slit= sep_slit * np.sin( PA_slit + np.deg2rad(rotate_angle) )
+                y_offset_slit = sep_slit * np.cos( PA_slit + np.deg2rad(rotate_angle) )
+                self.slit_x_offset_mas, self.slit_y_offset_mas = x_offset_slit,y_offset_slit 
+            
             if self.prism != 'None':
                 prism_param_fname = os.path.join(ref_data_dir, 'TVAC_{:s}_dispersion_profile.npz'.format(self.prism))
                 if not os.path.exists(prism_param_fname):
@@ -243,13 +259,15 @@ class CorgiOptics():
         # bp: throughput is unitless, including transmission, reflectivity and EMCCD quantum efficiency 
         self.bp = self.setup_bandpass(self.cgi_mode, self.bandpass, self.nd)
 
+        
+
 
 
         if 'if_quiet'in kwargs:self.quiet = kwargs.get("if_quiet")
 
 
 
-        print("CorgiOptics initialized with proper keywords.")
+        print("CorgiOptics initialized with optics keywords.")
      
 
     def get_host_star_psf(self, input_scene, sim_scene=None, on_the_fly=False):
@@ -395,7 +413,8 @@ class CorgiOptics():
                     'over_sampling_factor':self.oversampling_factor,
                     'return_oversample': self.return_oversample,
                     'output_dim': self.optics_keywords['output_dim'],
-                    'nd_filter':self.nd}
+                    'nd_filter':self.nd,
+                    'roll_angle':self.roll_angle}
 
         # Define specific keys from self.optics_keywords to include in the header            
         keys_to_include_in_header = ['use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
@@ -553,13 +572,26 @@ class CorgiOptics():
             point_source_image = []
             for j in range(len(point_source_spectra )):
             
-                optics_keywords_comp = self.optics_keywords.copy()
-                optics_keywords_comp.update({'output_dim': grid_dim_out_tem,
-                                            'final_sampling_m': sampling_um_tem * 1e-6,
-                                            'source_x_offset_mas': point_source_x[j],
-                                            'source_y_offset_mas': point_source_y[j]})
+                self.optics_keywords_comp = self.optics_keywords.copy()
+                if self.roll_angle == 0.0:
+                    x_offset_source_j = point_source_x[j]
+                    y_offset_source_j = point_source_y[j]
+                else:
+                    # Rotate the telescope based on roll angle
+                    # Convention: x=East, y=North. Telescope roll = +theta.
+                    # Because we rotate the *companion coords*, use the opposite sense: θ_comp = -θ_tel.
+                    rotate_angle = -1 * self.roll_angle
+                    sep_source_j = np.sqrt(point_source_x[j]**2 +  point_source_y[j]**2)
+                    PA_source_j = calculate_PA(point_source_x[j], point_source_y[j]) ## rad
+                    x_offset_source_j = sep_source_j * np.sin( PA_source_j + np.deg2rad(rotate_angle) )
+                    y_offset_source_j = sep_source_j * np.cos( PA_source_j + np.deg2rad(rotate_angle) )
 
-                (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE= optics_keywords_comp ,QUIET=True)
+                self.optics_keywords_comp.update({'output_dim': grid_dim_out_tem,
+                                            'final_sampling_m': sampling_um_tem * 1e-6,
+                                            'source_x_offset_mas': x_offset_source_j,
+                                            'source_y_offset_mas': y_offset_source_j})
+
+                (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE= self.optics_keywords_comp ,QUIET=True)
                 images_tem = np.abs(fields)**2
 
                 # Initialize the image array based on whether oversampling is returned
@@ -622,13 +654,28 @@ class CorgiOptics():
             
             point_source_image = []
             for j in range(len(point_source_spectra )):
-                optics_keywords_comp = self.optics_keywords.copy()
-                optics_keywords_comp.update({'output_dim': grid_dim_out_tem,
-                                            'final_sampling_m': sampling_um_tem * 1e-6,
-                                            'source_x_offset_mas': point_source_x[j],
-                                            'source_y_offset_mas': point_source_y[j]})
+                self.optics_keywords_comp = self.optics_keywords.copy()
 
-                (fields, sampling) = proper.prop_run_multi('roman_preflight', self.lam_um, 1024, PASSVALUE=optics_keywords_comp ,QUIET=True)
+                ###add roll angle for spec mode
+                if self.roll_angle == 0.0:
+                    x_offset_source_j = point_source_x[j]
+                    y_offset_source_j = point_source_y[j]
+                else:
+                    # Rotate the telescope based on roll angle
+                    # Convention: x=East, y=North. Telescope roll = +theta.
+                    # Because we rotate the *companion coords*, use the opposite sense: θ_comp = -θ_tel.
+                    rotate_angle = -1 * self.roll_angle
+                    sep_source_j = np.sqrt(point_source_x[j]**2 +  point_source_y[j]**2)
+                    PA_source_j = calculate_PA(point_source_x[j], point_source_y[j]) ## rad
+                    x_offset_source_j = sep_source_j * np.sin( PA_source_j + np.deg2rad(rotate_angle))
+                    y_offset_source_j = sep_source_j * np.cos( PA_source_j + np.deg2rad(rotate_angle)) 
+
+                self.optics_keywords_comp.update({'output_dim': grid_dim_out_tem,
+                                            'final_sampling_m': sampling_um_tem * 1e-6,
+                                            'source_x_offset_mas': x_offset_source_j,
+                                            'source_y_offset_mas': y_offset_source_j})
+
+                (fields, sampling) = proper.prop_run_multi('roman_preflight', self.lam_um, 1024, PASSVALUE=self.optics_keywords_comp ,QUIET=True)
                 images_tem = np.abs(fields)**2
 
                 # If a prism was selected, apply the dispersion model and overwrite the image cube and wavelength array.
@@ -682,6 +729,7 @@ class CorgiOptics():
             sim_info[f'pl_magtype_{i}']= input_scene.point_source_magtype[i]
             sim_info[f'position_x_mas_{i}'] = input_scene.point_source_x[i]
             sim_info[f'position_y_mas_{i}'] = input_scene.point_source_y[i]
+            
 
         # Third: global simulation settings
         sim_info['cgi_mode'] = self.cgi_mode
@@ -691,6 +739,7 @@ class CorgiOptics():
         sim_info['return_oversample'] = self.return_oversample
         sim_info['output_dim'] = self.optics_keywords['output_dim'] 
         sim_info['nd_filter'] = self.nd
+        sim_info['roll_angle'] = self.roll_angle
                             
                 # Define specific keys from self.optics_keywords to include in the header            
         keys_to_include_in_header = [ 'use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
@@ -816,7 +865,7 @@ class CorgiDetector():
             
             header_info = {'EXPTIME': exptime,'EMGAIN_C':self.emccd_keywords_default['em_gain'],'PSFREF':ref_flag,
                            'PHTCNT':self.photon_counting,'KGAINPAR':self.emccd_keywords_default['e_per_dn'],'cor_type':sim_info['cor_type'], 'bandpass':sim_info['bandpass'],
-                           'cgi_mode': sim_info['cgi_mode'], 'polaxis':sim_info['polaxis'],'use_fpm':use_fpm,'nd_filter':sim_info['nd_filter']}
+                           'cgi_mode': sim_info['cgi_mode'], 'polaxis':sim_info['polaxis'],'ROLL':float(sim_info['roll_angle']),'use_fpm':use_fpm,'nd_filter':sim_info['nd_filter']}
             if 'fsm_x_offset_mas' in sim_info:
                 header_info['FSMX'] = float(sim_info['fsm_x_offset_mas'])
             if 'fsm_y_offset_mas' in sim_info:
@@ -928,7 +977,7 @@ class CorgiDetector():
                                   'em_gain': 1000.0 ,                      # EM gain
                                   'bias': 0,
                                   'pixel_pitch': 13e-6 ,                # detector pixel size in meters
-                                  'apply_smear': True ,                 # (LOWFS only) Apply fast readout smear?  
+                                  'apply_smear': False ,                 # (LOWFS only) Apply fast readout smear?  
                                   'e_per_dn':8.7  ,                    # post-multiplied electrons per data unit
                                   'nbits': 14  ,                        # ADC bits
                                   'numel_gain_register': 604,           # Number of gain register elements 
@@ -963,3 +1012,40 @@ class CorgiDetector():
         return emccd
 
 
+def calculate_PA(dx, dy):
+    """
+    Compute the position angle (PA) in radians from offsets in x and y.
+
+    The position angle is measured counterclockwise from North (positive y-axis)
+    to the direction of the vector (dx, dy), following astronomical convention.
+
+    Parameters
+    ----------
+    dx : float
+        Offset in the x-direction (East).
+    dy : float
+        Offset in the y-direction (North).
+
+    Returns
+    -------
+    PA : float
+        Position angle in radians, in the range [0, 2pi).
+    """
+    if dy == 0:
+        if dx > 0:
+            PA = np.pi / 2
+        else:
+            PA = 3 * np.pi / 2
+    else:
+        rat_pos = dx / dy
+        if rat_pos > 0:
+            if dx > 0:
+                PA = np.arctan(rat_pos)
+            else:
+                PA = np.arctan(abs(rat_pos)) + np.pi
+        else:
+            if dx > 0:
+                PA = np.pi - np.arctan(abs(rat_pos))
+            else:
+                PA = 2 * np.pi - np.arctan(abs(rat_pos))
+    return PA
