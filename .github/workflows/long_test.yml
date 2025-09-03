@@ -5,7 +5,8 @@ on:
     schedule:
       - cron: "0 23 * * 5"
     workflow_dispatch: {}
-    
+      push:
+    branches: [ "82-the-automatic-testing-takes-for-too-long"]
 permissions:
   contents: read
 
@@ -54,4 +55,4 @@ jobs:
     - name: environment variables
       run: |
         export LONGTEST="True"
-        pytest ./test
+        pytest ./test --durations=0 ./test
