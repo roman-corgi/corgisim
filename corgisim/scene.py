@@ -109,7 +109,12 @@ class Scene():
                 self.point_source_pol_state[source] = np.divide(self.point_source_pol_state[source], self.point_source_pol_state[source][0])
 
         
-        
+        self._twoD_scene = twoD_scene_hdu
+        self.twD_scene_spectrum = self.get_stellar_spectrum( self._host_star_sptype, self._host_star_Vmag+twoD_scene_hdu['contrast'], magtype =self._host_star_magtype) 
+        self.twoD_corgi_prf_cubes = twoD_scene_hdu['prf_cube_path'] 
+        self.twoD_radii_lamD = twoD_scene_hdu['radii_lamD']
+        self.twoD_azimuths_deg = twoD_scene_hdu['azimuths_deg']
+
     @property
     def host_star_sptype(self):
         """

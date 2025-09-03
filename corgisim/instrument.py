@@ -826,8 +826,10 @@ class CorgiOptics():
         """
 
         # seeing which mode we are in
-        has_prf_cube = 'prf_cube' in kwargs
+        # has_prf_cube = 'prf_cube' in kwargs
+        has_prf_cube = input_scene.twoD_corgi_prf_cubes 
         has_grid_params = 'iwa' in kwargs or 'owa' in kwargs
+
 
         # Extract optional parameter that applies to both modes
         use_bilinear_interpolation = kwargs.get('use_bilinear_interpolation', False)
@@ -835,15 +837,23 @@ class CorgiOptics():
         if has_prf_cube == has_grid_params:
             raise ValueError("Provide either prf_cube or grid parameters")
         
+        # input disk model
+        # need normalization 
+        disk_model = fits.open(input_scene._twoD_scene['disk_model_path'])[0]  # 2D array
+        disk_model.data = disk_model.data/np.nansum(disk_model.data, axis=(0,1))
+
         if has_prf_cube:
             # Mode 1: Pre-computed PRF cube
-            prf_cube = kwargs.get('prf_cube')
-            prf_grid_radii = kwargs.get('prf_grid_radii')
-            prf_grid_azimuths = kwargs.get('prf_grid_azimuths')
-
-            # Apply convolution
-            conv2d = convolve_with_prfs(input_scene._twoD_scene.data, prf_cube, prf_grid_radii, prf_grid_azimuths, PIXEL_SCALE_ARCSEC * 1e3, self.res_mas, use_bilinear_interpolation)
-
+            # prf_cube = kwargs.get('prf_cube')
+            # prf_grid_radii = kwargs.get('prf_grid_radii')
+            # prf_grid_azimuths = kwargs.get('prf_grid_azimuths')
+            prf_cube = fits.open(input_scene.twoD_corgi_prf_cubes)[0].data
+            prf_grid_radii = input_scene.twoD_radii_lamD 
+            prf_grid_azimuths = input_scene.twoD_azimuths_deg
+            # Apply convolution 
+            # conv2d = convolve_with_prfs(input_scene._twoD_scene.data, prf_cube, prf_grid_radii, prf_grid_azimuths, PIXEL_SCALE_ARCSEC * 1e3, self.res_mas, use_bilinear_interpolation)
+            conv2d = convolve_with_prfs(disk_model.data, prf_cube, prf_grid_radii, prf_grid_azimuths, PIXEL_SCALE_ARCSEC * 1e3, self.res_mas, use_bilinear_interpolation)
+ 
         else:
             # Mode 2: Generate cube
             required = ['owa', 'inner_step', 'mid_step', 'outer_step', 'step_deg']
@@ -867,8 +877,21 @@ class CorgiOptics():
             prf_cube = self.make_prf_cube(radii_lamD, azimuths_deg)
                 
             # Apply convolution
-            conv2d = convolve_with_prfs(input_scene._twoD_scene.data, prf_cube, radii_lamD, azimuths_deg, PIXEL_SCALE_ARCSEC * 1e3, self.res_mas, use_bilinear_interpolation)
+            conv2d = convolve_with_prfs(disk_model.data, prf_cube, radii_lamD, azimuths_deg, PIXEL_SCALE_ARCSEC * 1e3, self.res_mas, use_bilinear_interpolation)
         
+        # normalize to the given contrast
+        # obs: flux is in unit of photons/s/cm^2/angstrom
+        obs = Observation(input_scene.twD_scene_spectrum, self.bp)
+        counts = np.zeros((self.lam_um.shape[0]))
+        for i in range(self.lam_um.shape[0]):
+            dlam_um = self.lam_um[1]-self.lam_um[0]
+            lam_um_l = (self.lam_um[i]- 0.5*dlam_um) * 1e4 ## unit of anstrom
+            lam_um_u = (self.lam_um[i]+ 0.5*dlam_um) * 1e4 ## unit of anstrom
+            counts[i] = (self.polarizer_transmission * obs.countrate(area=self.area, waverange=[lam_um_l, lam_um_u])).value
+
+        psf_area = np.pi*(self.res_mas/(PIXEL_SCALE_ARCSEC*1e3)/2)**2 # area of the PSF FWHM in the unit of pixel
+        disk_region = (conv2d > 0.5*np.max(conv2d)).sum()  # number of pixs in the disk region (>=50% maximum disk flux) 
+        conv2d *= np.sum(counts, axis=0) * disk_region/psf_area   # per resolution element
 
         # Update the scene with the convolved image
         if isinstance(input_scene, SimulatedImage):
@@ -877,7 +900,6 @@ class CorgiOptics():
             input_scene.background_scene = conv2d
         else:
             raise ValueError(f"Unsupported scene type: {type(input_scene)}")
-
 
 
         if self.cgi_mode in ['spec', 'lowfs', 'excam_efield']:
