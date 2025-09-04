@@ -827,9 +827,9 @@ class CorgiOptics():
 
         # seeing which mode we are in
         # has_prf_cube = 'prf_cube' in kwargs
-        has_prf_cube = input_scene.twoD_corgi_prf_cubes 
-        has_grid_params = 'iwa' in kwargs or 'owa' in kwargs
-
+        if input_scene.twoD_scene_info['prf_cube_path'] is not None:
+            has_prf_cube = True 
+            has_grid_params = False
 
         # Extract optional parameter that applies to both modes
         use_bilinear_interpolation = kwargs.get('use_bilinear_interpolation', False)
@@ -838,22 +838,17 @@ class CorgiOptics():
             raise ValueError("Provide either prf_cube or grid parameters")
         
         # input disk model
-        # need normalization 
-        disk_model = fits.open(input_scene._twoD_scene['disk_model_path'])[0]  # 2D array
-        disk_model.data = disk_model.data/np.nansum(disk_model.data, axis=(0,1))
+        disk_model_data = fits.getdata(input_scene.twoD_scene_info['disk_model_path'])
+        disk_model_norm = disk_model_data/np.nansum(disk_model_data, axis=(0,1)) # normalisation of the disk
+
+        prf_cube_path = input_scene.twoD_scene_info['prf_cube_path'] 
+        radii_lamD = input_scene.twoD_scene_info['radii_lamD'] # arrays 
+        azimuths_deg = input_scene.twoD_scene_info['azimuths_deg'] # arrays 
 
         if has_prf_cube:
-            # Mode 1: Pre-computed PRF cube
-            # prf_cube = kwargs.get('prf_cube')
-            # prf_grid_radii = kwargs.get('prf_grid_radii')
-            # prf_grid_azimuths = kwargs.get('prf_grid_azimuths')
-            prf_cube = fits.open(input_scene.twoD_corgi_prf_cubes)[0].data
-            prf_grid_radii = input_scene.twoD_radii_lamD 
-            prf_grid_azimuths = input_scene.twoD_azimuths_deg
-            # Apply convolution 
-            # conv2d = convolve_with_prfs(input_scene._twoD_scene.data, prf_cube, prf_grid_radii, prf_grid_azimuths, PIXEL_SCALE_ARCSEC * 1e3, self.res_mas, use_bilinear_interpolation)
-            conv2d = convolve_with_prfs(disk_model.data, prf_cube, prf_grid_radii, prf_grid_azimuths, PIXEL_SCALE_ARCSEC * 1e3, self.res_mas, use_bilinear_interpolation)
- 
+            # Mode 1: Pre-computed PRF cube: Apply convolution 
+            conv2d = convolve_with_prfs(obj=disk_model_norm, prfs_array=fits.getdata(prf_cube_path), radii_lamD=radii_lamD , 
+                azimuths_deg=azimuths_deg, pix_scale_mas=PIXEL_SCALE_ARCSEC * 1e3, res_mas=self.res_mas, use_bilinear_interpolation=use_bilinear_interpolation)
         else:
             # Mode 2: Generate cube
             required = ['owa', 'inner_step', 'mid_step', 'outer_step', 'step_deg']
@@ -879,9 +874,10 @@ class CorgiOptics():
             # Apply convolution
             conv2d = convolve_with_prfs(disk_model.data, prf_cube, radii_lamD, azimuths_deg, PIXEL_SCALE_ARCSEC * 1e3, self.res_mas, use_bilinear_interpolation)
         
+        # TODO - simplify the steps below for the count and flux calculation
         # normalize to the given contrast
         # obs: flux is in unit of photons/s/cm^2/angstrom
-        obs = Observation(input_scene.twD_scene_spectrum, self.bp)
+        obs = Observation(input_scene.twoD_scene_spectrum, self.bp)
         counts = np.zeros((self.lam_um.shape[0]))
         for i in range(self.lam_um.shape[0]):
             dlam_um = self.lam_um[1]-self.lam_um[0]
@@ -909,7 +905,6 @@ class CorgiOptics():
         if sim_scene == None:
             sim_scene = scene.SimulatedImage(input_scene)
         
-        
         # Prepare additional information to be added as COMMENT headers in the primary HDU.
         # These are different from the default L1 headers, but extra comments that are used to track simulation-specific details.
         sim_info = {'ref_flag': False,
@@ -927,8 +922,8 @@ class CorgiOptics():
         subset = {key: self.proper_keywords[key] for key in keys_to_include_in_header if key in self.proper_keywords}
         sim_info.update(subset)
         sim_info['includ_dectector_noise'] = 'False'
+        
         # Create the HDU object with the generated header information
-
         sim_scene.twoD_image = outputs.create_hdu(conv2d, sim_info =sim_info)
 
         return sim_scene
