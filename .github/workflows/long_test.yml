@@ -2,11 +2,12 @@
 name: Long Test
 
 on:
-    schedule:
-      - cron: "0 23 * * 5"
-    workflow_dispatch: {}
-      push:
-    branches: [ "82-the-automatic-testing-takes-for-too-long"]
+    workflow_dispatch:
+    push:
+        branches: [ "82-the-automatic-testing-takes-for-too-long"]
+    schedule: 
+        - cron: '0 23 * * 5'
+
 permissions:
   contents: read
 
