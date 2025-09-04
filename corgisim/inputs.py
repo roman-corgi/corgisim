@@ -189,7 +189,7 @@ class Input():
 
         # Remaining inputs for Optics
         self._cgi_mode = 'excam'
-        self._bandpass = '1b'
+        self._bandpass = '1B'
         self._diam =  236.3114
         
         self._oversampling_factor = 7
