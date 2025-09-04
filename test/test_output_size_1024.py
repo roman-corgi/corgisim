@@ -13,7 +13,6 @@ from synphot.units import validate_wave_unit, convert_flux, VEGAMAG
 from astropy import units as u
 import os
 
-@pytest.mark.skipif("LONGTEST" not in os.environ, reason="Long test")
 def test_off_axis_source():
     print('This is a test file to check if the simulated off-axis sources from corgisim agree with those from cgisim')
     

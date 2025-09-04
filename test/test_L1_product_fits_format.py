@@ -10,7 +10,6 @@ import pytest
 import cgisim
 import os, shutil
 
-@pytest.mark.skipif("LONGTEST" not in os.environ, reason="Long test")
 def test_L1_product_fits_format():
     """Test the headers of saved L1 product FITS file
     """
@@ -231,7 +230,6 @@ def test_L1_product_fits_format():
     print('Deleted the FITS file after testing headers populated with non-dafult values(inputs)')
     os.remove(f)
     
-@pytest.mark.skipif("LONGTEST" not in os.environ, reason="Long test")
 def test_L1_product_from_CPGS():
     """Test the saving of files from CPGS
     """

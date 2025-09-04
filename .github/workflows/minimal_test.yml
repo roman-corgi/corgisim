@@ -1,12 +1,8 @@
 
-name: Long Test
+name: Minimal Test
 
 on:
-    workflow_dispatch:
-    push:
-        branches: [ "82-the-automatic-testing-takes-for-too-long"]
-    schedule: 
-        - cron: '0 23 * * 5'
+  workflow_dispatch:
 
 
 permissions:
@@ -56,5 +52,4 @@ jobs:
 
     - name: environment variables
       run: |
-        export LONGTEST="True"
-        pytest ./test --durations=0 ./test
+        pytest ./test/test_minimal.py
