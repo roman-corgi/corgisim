@@ -1,6 +1,6 @@
 import numpy as np
 
-def add_cos_pattern_dm(dm_volts, num_pairs=2, sep_lamD=7, angle_deg=[0,90], contrast=1e-6, wavelength_m=0.575e-6):
+def add_cos_pattern_dm(dm_volts, num_pairs=2, sep_lamD=7, angle_deg=[0,90], contrast=1e-6, wavelength_m=0.575e-6, gain_nm_per_V=None):
     """
     Add 2D cosine phase pattern(s) to Roman CGI DM solution (in volts). Reference: JPL codes from AJ Riggs and Vanessa Bailey
 
@@ -10,6 +10,7 @@ def add_cos_pattern_dm(dm_volts, num_pairs=2, sep_lamD=7, angle_deg=[0,90], cont
         angle_deg: int, float, or a list of ints/floats. Orientation angle (degrees, 0 = along X-axis)
         contrast: int, float, or a list of ints/floats. Expected contrast of sattelite spots, assuming amplitude_rad = 2*sqrt(contrast), where amplitude is a phase amplitude in radians
         wavelength_m: float. Wavelength in meters
+	gain_nm_per_V: (optional) gain to convert the DM solution from a nm unit to volts
 
     Returns:
         dm_volts_with_pattern: 2D numpy array (in volts), updated DM map with added cosine patterns
@@ -60,10 +61,11 @@ def add_cos_pattern_dm(dm_volts, num_pairs=2, sep_lamD=7, angle_deg=[0,90], cont
     dm_volts_with_pattern = dm_volts.copy()
 
     # define the gain value
-    if num_pairs == 1:
-        gain_nm_per_V = 6.11 # nm/V; empirically hardcoded for cgisim to match the scaled off-axis PSF, but it is dependent on actuator capacitance.
-    else: # num_pairs is 2
-        gain_nm_per_V = 5.70 # nm/V; empirically hardcoded for cgisim to match the scaled off-axis PSF, but it is dependent on actuator capacitance.
+    if gain_nm_per_V is None:
+        if num_pairs == 1:
+            gain_nm_per_V = 6.11 # nm/V; empirically hardcoded for cgisim to match the scaled off-axis PSF, but it is dependent on actuator capacitance.
+        else: # num_pairs is 2
+            gain_nm_per_V = 5.70 # nm/V; empirically hardcoded for cgisim to match the scaled off-axis PSF, but it is dependent on actuator capacitance.
     # see Figure 15 in https://doi.org/10.1117/1.JATIS.11.3.031504
     # If you use a smaller value of sep_lamD than the default, the extracted contrast can be biased by the other satellite spots, particularly in an two-pair case.
 
