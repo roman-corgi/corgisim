@@ -50,6 +50,7 @@ def create_hdu_list(data, header_info, sim_info=None):
     ### currently we don't have sequence smulation, so the time per frame == exposure time
     ### it needs to be updated later
     prihdr['FRAMET'] = header_info['EXPTIME']
+    prihdr['SATSPOTS'] = int(header_info['SATSPOTS'])
 
     ### wait this for tachi to add sattlite spots function
     #prihdr['SATSPOTS'] = header_info['SATSPOTS'] 
