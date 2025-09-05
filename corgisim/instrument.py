@@ -257,7 +257,7 @@ class CorgiOptics():
             # check keywords
             if optics_keywords['use_dm1'] != 1:
                 raise KeyError('ERROR: use_dm1 in optics_keywords is not set 1')
-            required_keys_satspot = {'sep_lamD', 'angle_deg', 'contrast', 'wavelength_m'}
+            required_keys_satspot = {'num_pairs','sep_lamD', 'angle_deg', 'contrast', 'wavelength_m'}
             missing_keys = required_keys_satspot - satspot_keywords.keys()
             if missing_keys:
                 raise KeyError(f"ERROR: Missing required satspot_keywords: {missing_keys}")
@@ -751,12 +751,13 @@ class CorgiOptics():
         dm1_input = proper_keywords['dm1_v']
 
         # extract satspot_keywords
+        num_pairs = satspot_keywords['num_pairs']
         sep_lamD = satspot_keywords['sep_lamD']
         angle_deg = satspot_keywords['angle_deg']
         contrast = satspot_keywords['contrast']
         wavelength_m = satspot_keywords['wavelength_m']
 
-        dm1_cos_added = add_cos_pattern_dm(dm1_input,sep_lamD,angle_deg,contrast,wavelength_m)
+        dm1_cos_added = add_cos_pattern_dm(dm1_input,num_pairs,sep_lamD,angle_deg,contrast,wavelength_m)
 
         return dm1_cos_added
 

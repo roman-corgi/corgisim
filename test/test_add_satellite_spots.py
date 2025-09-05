@@ -55,7 +55,7 @@ def test_add_satellite_spots():
     ## 2) simulate satellite spots by modifying the DM1 solutions ##
     optics_keywords_ss ={'cor_type':cor_type, 'use_errors':2, 'polaxis':polaxis, 'output_dim':output_dim,\
                         'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
-    satspot_keywords = {'sep_lamD': 6, 'angle_deg': [0,90], 'contrast': contrast, 'wavelength_m': wavelength}
+    satspot_keywords = {'num_pairs':2, 'sep_lamD': 7, 'angle_deg': [0,90], 'contrast': contrast, 'wavelength_m': wavelength}
 
     ##define the corgi.optics class that hold all information about the instrument paramters                    
     optics_with_spots = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords_ss, satspot_keywords=satspot_keywords, if_quiet=True)
@@ -77,7 +77,7 @@ def test_add_satellite_spots():
 
     ## 2) satellite spots
     fitresult=[]
-    for angle in satspot_keywords['angle_deg']:
+    for angle in satspot_keywords['angle_deg']: # note: this line does not work if angle_deg is not list
         sep = satspot_keywords['sep_lamD']*lam_D # mas
 
         guess_x1 = xcen+sep*np.cos(np.radians(angle))/pix_scale
