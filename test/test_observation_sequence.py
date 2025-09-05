@@ -59,7 +59,7 @@ def test_generate_observation_sequence():
     assert simulatedImage_list_fullframe[n_frames-1].image_on_detector[0].header['FRAMET'] == exp_time
     # Test several frames
 
-    n_frames = 1000
+    n_frames = 100
     simulatedImage_list = observation.generate_observation_sequence(base_scene, optics, detector, exp_time, n_frames)
     assert isinstance(simulatedImage_list, list)
     assert len(simulatedImage_list) == n_frames

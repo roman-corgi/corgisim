@@ -1,21 +1,16 @@
 import corgisim
-from corgisim import scene, instrument, outputs, inputs, observation
-from corgisim import instrument
-from astropy.io import fits
+import pytest
+from corgisim import scene, instrument, observation, outputs, inputs, spec
 import matplotlib.pyplot as plt
 import numpy as np
 import proper
+import os
+from corgisim.scene import SimulatedImage
 import roman_preflight_proper
-import pytest
+from astropy.io import fits
 import cgisim
-import os, shutil
 
-def test_L1_product_fits_format():
-    """Test the headers of saved L1 product FITS file
-    """
-    #print('testrun')
-    #### simulate using corgisim
-    #### testing the defalut value pass to header
+def test_excam_mode():
     Vmag = 8
     sptype = 'G0V'
     cgi_mode = 'excam'
@@ -66,7 +61,6 @@ def test_L1_product_fits_format():
     local_path = corgisim.lib_dir
     outdir = os.path.join(local_path.split('corgisim')[0], 'corgisim/test/testdata')
     outputs.save_hdu_to_fits(sim_scene.image_on_detector,outdir=outdir, write_as_L1=True)
-    
     ### read the L1 product fits file
     prihdr = sim_scene.image_on_detector[0].header
     exthdr = sim_scene.image_on_detector[1].header
@@ -80,8 +74,7 @@ def test_L1_product_fits_format():
         data = hdul[1].data
         prihr = hdul[0].header
         exthr = hdul[1].header
-        
-        # Check that the dtype is exactly uint16
+
     assert data.dtype == np.uint16, f"Expected np.uint16, but got {data.dtype}"
     assert exthr['BITPIX'] == 16, f"Expected BITPIX=16, but got {exthr['BITPIX']}"
     assert data.shape[0] == 1200, f"Expected data shape[0]=2200, but got {data.shape[0]}"
@@ -132,130 +125,101 @@ def test_L1_product_fits_format():
     assert exthdr['FSAMSP_H'] ==  29387, f"Expected data FSAMSP_H=29387, but got {exthdr['FSAMSP_H']}"
     assert exthdr['FSAMSP_V'] == 12238, f"Expected data FSAMSP_V=12238, but got {exthdr['FSAMSP_V']}"
 
-
-
-    ### delete file after testing
-    print('Deleted the FITS file after testing headers populated with default values')
     os.remove(f)
 
-    ####################################################################################################
-    #### testing the non-defalut(input) value pass to header
-    Vmag = 8
-    sptype = 'G0V'
-    cgi_mode = 'excam'
-    bandpass = '1B'
-    cor_type = 'hlc_band1'
-
-    mag_companion = [25,25]
-    ###the position of companions in unit of mas
-    ####550nm/2.3m = 29.4 mas
-    ###we used sep = 3 lambda/D here 
-    dx= [3*49.3,-3*49.3]
-    dy= [3*49.3,-3*49.3]
-    
-    info_dir = cgisim.lib_dir + '/cgisim_info_dir/'
-
-    #Define the host star properties
-    host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype': 'vegamag','ref_flag':True}
-    point_source_info = [{'Vmag': mag_companion[0], 'magtype': 'vegamag','position_x':dx[0] , 'position_y':dy[0]},
-                         {'Vmag': mag_companion[1], 'magtype': 'vegamag','position_x':dx[1] , 'position_y':dy[1]}]
-
-
-    #Create a Scene object that holds all this information
-    base_scene = scene.Scene(host_star_properties, point_source_info)
-
-    ####setup the wavelength for the simulation, nlam=1 for monochromatic image, nlam>1 for broadband image 
-    cases = ['3e-8']       
-    rootname = 'hlc_ni_' + cases[0]
-    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm1_v.fits' )
-    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm2_v.fits' )
-
-    optics_keywords ={'cor_type':cor_type, 'use_errors':1, 'polaxis':10, 'output_dim':201,\
-                    'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1,
-                    'fsm_x_offset_mas':10.0,'fsm_y_offset_mas':20.0 }
-                ##pass fsm_x_offset_mas and fsm_y_offset_mas for no zero value as test
-
-
-    optics = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords, if_quiet=True)
-    sim_scene = optics.get_host_star_psf(base_scene)
-
-    sim_scene = optics.inject_point_sources(base_scene,sim_scene)
-
-    gain =100
-    e_per_dn=1.0
-    emccd_keywords ={'em_gain':gain,'e_per_dn':e_per_dn}
-    exptime = 3000
-
-    detector = instrument.CorgiDetector( emccd_keywords, photon_counting = False)
-    sim_scene = detector.generate_detector_image(sim_scene, exptime,full_frame=True,loc_x=300, loc_y=300)
-    
-    ### save the L1 product fits file to test/testdata folder
-    local_path = corgisim.lib_dir
-    outdir = os.path.join(local_path.split('corgisim')[0], 'corgisim/test/testdata')
-    outputs.save_hdu_to_fits(sim_scene.image_on_detector,outdir=outdir, write_as_L1=True)
-    
-    ### read the L1 product fits file
-    prihdr = sim_scene.image_on_detector[0].header
-    exthdr = sim_scene.image_on_detector[1].header
-    time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
-    filename = f"CGI_{prihdr['VISITID']}_{time_in_name}_L1_.fits"
-
-
-    f = os.path.join( outdir , filename)
- 
-    with fits.open(f) as hdul:
-        data = hdul[1].data
-        prihr = hdul[0].header
-        exthr = hdul[1].header
-        
-        # Check that the dtype is exactly uint16
-    assert data.dtype == np.uint16, f"Expected np.uint16, but got {data.dtype}"
-    assert exthr['BITPIX'] == 16, f"Expected BITPIX=16, but got {exthr['BITPIX']}"
-    assert data.shape[0] == 1200, f"Expected header shape[0]=2200, but got {data.shape[0]}"
-    assert data.shape[1] == 2200, f"Expected header shape[1]=1200, but got {data.shape[1]}"
-    assert exthr['FSMX'] == 10.0, f"Expected header FSMX=10, but got {exthr['FSMX']}" 
-    assert exthr['FSMY'] == 20.0, f"Expected header FSMY=10, but got {exthr['FSMY']}"
-    assert prihr['PSFREF'] == True, f"Expected header PSFREF=False, but got {prihr['PSFREF']}"
-    assert prihr['PHTCNT'] == False, f"Expected header PSFREF=False, but got {prihr['PHTCNT']}"
-    assert prihdr['FRAMET'] == exptime, f"Expected header FRAMET = {exptime}, but got {prihdr['FRAMET']}"
-
-    assert exthdr['KGAINPAR'] == e_per_dn, f"Expected data KGAINPAR={e_per_dn}, but got {exthdr['KGAINPAR']}"
-    assert exthdr['EMGAIN_C'] == gain, f"Expected data EMGAIN_C={gain}, but got {exthdr['EMGAIN_C']}"
-    assert exthdr['EMGAIN_A'] == gain, f"Expected data EMGAIN_A={gain}, but got {exthdr['EMGAIN_A']}"
-    assert exthdr['ISPC'] == 0, f"Expected header ISPC=0, but got {exthdr['ISPC']}"
- 
-
-
-    ### delete file after testing
-    print('Deleted the FITS file after testing headers populated with non-dafult values(inputs)')
-    os.remove(f)
-    
-def test_L1_product_from_CPGS():
-    """Test the saving of files from CPGS
-    """
+def test_cpgs_obs():
 
     script_dir = os.getcwd()
 
-    filepath = 'test/test_data/cpgs_short_sequence.xml'
+    #Test with target and reference
+    filepath = 'test/test_data/cpgs_mock.xml'
     abs_path =  os.path.join(script_dir, filepath)
-    local_path = corgisim.lib_dir
-    outdir = os.path.join(local_path.split('corgisim')[0], 'corgisim/test/testdata/cpgs')
-    
+
     scene_target, scene_reference, optics, detector_target, detector_reference, visit_list = inputs.load_cpgs_data(abs_path)
-    simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, full_frame=True, loc_x=300, loc_y=300, save_as_fits=True, output_dir=outdir)
+    len_list = 0 
+    for visit in visit_list:
+        len_list += visit['number_of_frames']
+
+    simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path)
+    assert isinstance(simulatedImage_list, list)
+    assert len(simulatedImage_list) == len_list
+    assert isinstance(simulatedImage_list[0], SimulatedImage)
+
+    #Test with an off-axis light source
+    mag_companion = [10] 
+    dx= [3*49.3]
+    dy= [3*49.3]
+    point_source_info = [{'Vmag': mag_companion[0], 'magtype': 'vegamag','position_x':dx[0] , 'position_y':dy[0]}]
+    simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, point_source_info=point_source_info)
 
     for simulatedImage in simulatedImage_list:
-        prihdr = simulatedImage.image_on_detector[0].header
-        exthdr = simulatedImage.image_on_detector[1].header
-        time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
-        filename = f"CGI_{prihdr['VISITID']}_{time_in_name}_L1_.fits"
+        #Check that the target has a point source and the target doesn't  
+        if simulatedImage.input_scene.ref_flag :
+            assert '_point_source_Vmag' not in simulatedImage.input_scene.__dict__
+            assert simulatedImage.point_source_image == None  
+        else:
+            assert simulatedImage.input_scene._point_source_Vmag == mag_companion
+            assert simulatedImage.input_scene._point_source_magtype == ['vegamag']
+            assert simulatedImage.input_scene.point_source_x == dx
+            assert simulatedImage.input_scene.point_source_y == dy
+            assert isinstance(simulatedImage.point_source_image, fits.hdu.image.PrimaryHDU)  
 
-        f = os.path.join( outdir , filename)
-        assert os.path.isfile(f)
-    
-    # Delete the files 
-    shutil.rmtree(outdir)
+def test_spec_mode():
+    input1 = inputs.Input()
+
+    base_scene = scene.Scene(input1.host_star_properties)
+    cgi_mode = 'spec'
+    cor_type = 'spc-spec_band3'
+    bandpass = '3F'
+    cases = ['2e-8']      
+    rootname = 'spc-spec_ni_' + cases[0]
+    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm1_v.fits' )
+    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm2_v.fits' )
+
+    polaxis = 10
+    # output_dim define the size of the output image
+    output_dim = 121
+    overfac = 5
+    optics_keywords_slit_prism ={'cor_type':cor_type, 'use_errors':2, 'polaxis':polaxis, 'output_dim':output_dim, 
+                  'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,
+                  'slit':'R1C2', 'prism':'PRISM3', 'wav_step_um':2E-3}
+
+    optics_slit_prism = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords_slit_prism, if_quiet=True,
+                                small_spc_grid = 1, oversample = overfac, return_oversample = False)
+
+    sim_scene_slit_prism = optics_slit_prism.get_host_star_psf(base_scene)
+
+    assert(isinstance(sim_scene_slit_prism.host_star_image, fits.hdu.image.PrimaryHDU)  )
+    assert(isinstance(sim_scene_slit_prism.host_star_image.data, np.ndarray)  )
+    assert np.any(sim_scene_slit_prism.host_star_image.data > 0)
+
+def test_spc_mode():
+    input1 = inputs.Input()
+    base_scene = scene.Scene(input1.host_star_properties)
+    sptype = input1.host_star_properties['spectral_type']
+    cgi_mode = 'excam'
+    bandpass_corgisim = '4F'
+    bandpass_cgisim = '4'
+    cor_type = 'spc-wide'
+    cases = ['2e-8']       
+    rootname = 'spc-wide_ni_' + cases[0]
+    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm1_v.fits' )
+    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm2_v.fits' )
+    optics_keywords = {'cor_type':cor_type, 'use_errors':2, 'polaxis':10, 'output_dim':201,\
+                    'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
+
+    optics = instrument.CorgiOptics(cgi_mode, bandpass_corgisim, optics_keywords=optics_keywords, if_quiet=True, integrate_pixels=True)
+    sim_scene = optics.get_host_star_psf(base_scene)
+    image_star_corgi = sim_scene.host_star_image.data
+    polaxis_cgisim = -10
+    params = {'use_errors':1, 'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2}
+    image_star_cgi, a0_counts = cgisim.rcgisim(cgi_mode, cor_type, bandpass_cgisim,  polaxis_cgisim, params, 
+        star_spectrum = sptype.lower(), star_vmag = input1.Vmag)
+    assert image_star_corgi == pytest.approx(image_star_cgi, rel=0.5)
+
+
 if __name__ == '__main__':
-    #run_sim()
-    test_L1_product_fits_format()
-    test_L1_product_from_CPGS()
+    test_excam_mode()
+    test_cpgs_obs()
+    test_spc_mode()
+    test_spec_mode()

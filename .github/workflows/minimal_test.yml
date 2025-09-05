@@ -1,14 +1,10 @@
-# This workflow will install Python dependencies, run tests and lint with a single version of Python
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 
-name: Python application
+name: Minimal Test
 
 on:
-  push:
-    branches: [ "main"]
-  pull_request:
-    branches: [ "main"]
   workflow_dispatch:
+
+
 permissions:
   contents: read
 
@@ -54,6 +50,6 @@ jobs:
       with:
         swap-size-gb: 10
 
-    - name: Test with pytest
+    - name: environment variables
       run: |
-        pytest ./test
+        pytest ./test/test_minimal.py
