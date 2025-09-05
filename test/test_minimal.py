@@ -189,6 +189,10 @@ def test_spec_mode():
 
     sim_scene_slit_prism = optics_slit_prism.get_host_star_psf(base_scene)
 
+    assert(isinstance(sim_scene_slit_prism.host_star_image, fits.hdu.image.PrimaryHDU)  )
+    assert(isinstance(sim_scene_slit_prism.host_star_image.data, np.ndarray)  )
+    assert np.any(sim_scene_slit_prism.host_star_image.data > 0)
+
 def test_spc_mode():
     input1 = inputs.Input()
     base_scene = scene.Scene(input1.host_star_properties)
