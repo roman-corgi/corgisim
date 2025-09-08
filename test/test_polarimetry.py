@@ -39,10 +39,10 @@ def test_polarimetry():
     optics_keywords_0_90 = {'cor_type':cor_type, 'use_errors':2, 'polaxis':-10, 'output_dim':output_dim, 'prism':'POL0',\
                     'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
     optics_0_90 = instrument.CorgiOptics(cgi_mode, bandpass_corgisim, optics_keywords=optics_keywords_0_90, if_quiet=True, integrate_pixels=True)
-    sim_scene_0_90 = optics_0_90.get_host_star_psf_polarized(base_scene)
+    sim_scene_0_90 = optics_0_90.get_host_star_psf(base_scene)
     image_star_corgi_x = sim_scene_0_90.host_star_image.data[0]
     image_star_corgi_y = sim_scene_0_90.host_star_image.data[1]
-    sim_scene_0_90 = optics_0_90.inject_point_sources_polarized(base_scene, sim_scene_0_90)
+    sim_scene_0_90 = optics_0_90.inject_point_sources(base_scene, sim_scene_0_90)
     image_comp_corgi_x = sim_scene_0_90.point_source_image.data[0]
     image_comp_corgi_y = sim_scene_0_90.point_source_image.data[1]
 
@@ -50,10 +50,10 @@ def test_polarimetry():
     optics_keywords_45_135 = {'cor_type':cor_type, 'use_errors':2, 'polaxis':-10, 'output_dim':output_dim, 'prism':'POL45',\
                     'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
     optics_45_135 = instrument.CorgiOptics(cgi_mode, bandpass_corgisim, optics_keywords=optics_keywords_45_135, if_quiet=True, integrate_pixels=True)
-    sim_scene_45_135 = optics_45_135.get_host_star_psf_polarized(base_scene)
+    sim_scene_45_135 = optics_45_135.get_host_star_psf(base_scene)
     image_star_corgi_45 = sim_scene_45_135.host_star_image.data[0]
     image_star_corgi_135 = sim_scene_45_135.host_star_image.data[1]
-    sim_scene_45_135 = optics_45_135.inject_point_sources_polarized(base_scene, sim_scene_0_90)
+    sim_scene_45_135 = optics_45_135.inject_point_sources(base_scene, sim_scene_0_90)
     image_comp_corgi_45 = sim_scene_45_135.point_source_image.data[0]
     image_comp_corgi_135 = sim_scene_45_135.point_source_image.data[1]
 
