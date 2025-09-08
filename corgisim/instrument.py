@@ -303,10 +303,36 @@ class CorgiOptics():
 
             self.optics_keywords['output_dim']=grid_dim_out_tem
             self.optics_keywords['final_sampling_m']=sampling_um_tem *1e-6
-            
-            #if polaxis is set to -10, obtain full aberration model by individually summing intensities obtained from polaxis=-2, -1, 1, 2
-            #otherwise, use built in polaxis settings to obtain specific/averaged aberration 
-            if self.optics_keywords['polaxis'] == -10:
+
+            #if polarimetry mode is enabled
+            if self.prism == 'POL0':
+                #0/90 case
+                polaxis_params = [-1, 1, -2, 2]
+                fields = []
+                optics_keywords_pol_xy = self.optics_keywords.copy()
+                for polaxis in polaxis_params:
+                    optics_keywords_pol_xy['polaxis'] = polaxis
+                    (field, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=optics_keywords_pol_xy,QUIET=self.quiet)
+                    fields.append(field)
+                #obtain 0/90 degree polarization intensities
+                intensity_x = ((np.abs(fields[0]) ** 2) + (np.abs(fields[1]) ** 2)) / 2
+                intensity_y = ((np.abs(fields[2]) ** 2) + (np.abs(fields[3]) ** 2)) / 2
+                images_tem = [intensity_x, intensity_y]
+            elif self.prism == 'POL45':
+                #45/135 case
+                polaxis_params = [-3, 3, -4, 4]
+                fields = []
+                optics_keywords_pol_45 = self.optics_keywords.copy()
+                for polaxis in polaxis_params:
+                    optics_keywords_pol_45['polaxis'] = polaxis
+                    (field, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=optics_keywords_pol_45,QUIET=self.quiet)
+                    fields.append(field)
+                #obtain 45/135 degree polarization intensities
+                intensity_45 = ((np.abs(fields[0]) ** 2) + (np.abs(fields[1]) ** 2)) / 2
+                intensity_135 = ((np.abs(fields[2]) ** 2) + (np.abs(fields[3]) ** 2)) / 2
+                images_tem = [intensity_45, intensity_135]
+            elif self.optics_keywords['polaxis'] == -10:
+                # if polaxis is set to -10, obtain full aberration model by individually summing intensities obtained from polaxis=-2, -1, 1, 2
                 optics_keywords_m10 = self.optics_keywords.copy()
                 polaxis_params = [-2, -1, 1, 2]
                 images_pol = []
@@ -316,33 +342,64 @@ class CorgiOptics():
                     images_pol.append(np.abs(fields) ** 2)
                 images_tem = np.array(sum(images_pol)) / 4
             else: 
+                # use built in polaxis settings to obtain specific/averaged aberration 
                 (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=self.optics_keywords,QUIET=self.quiet)
                 images_tem = np.abs(fields)**2
+            # construct the correct image array size depending on if wollaston is used or not
+            if self.prism in ['POL0', 'POL45']:
+                # Initialize the image array based on whether oversampling is returned
+                images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if self.return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
+                images_1 = np.zeros(images_shape, dtype=float)
+                images_2 = np.zeros(images_shape, dtype=float)
 
-            # Initialize the image array based on whether oversampling is returned
-            images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if self.return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
-            images = np.zeros(images_shape, dtype=float)
-
-            for i in range(images_tem.shape[0]):
-                if self.return_oversample:
-                    ##return the oversampled PSF, default 7 grid per pixel
-                    images[i,:,:] +=  images_tem[i,:,:]
-                else:
+                for i in range(images_tem[0].shape[0]):
+                    if self.return_oversample:
+                        ##return the oversampled PSF, default 7 grid per pixel
+                        images_1[i,:,:] +=  images_tem[0][i,:,:]
+                        images_2[i,:,:] += images_tem[1][i,:,:]
+                    else:
                     ## integrate oversampled PSF back to one grid per pixel
-                    images[i,:,:] +=  images_tem[i,:,:].reshape((self.grid_dim_out,self.oversampling_factor,self.grid_dim_out,self.oversampling_factor)).mean(3).mean(1) * self.oversampling_factor**2
-                    ## update the optics_keywords['output_dim'] baclk to non_oversample size
-                    self.optics_keywords['output_dim'] = self.grid_dim_out
+                        images_1[i,:,:] +=  images_tem[0][i,:,:].reshape((self.grid_dim_out,self.oversampling_factor,self.grid_dim_out,self.oversampling_factor)).mean(3).mean(1) * self.oversampling_factor**2
+                        images_2[i,:,:] +=  images_tem[1][i,:,:].reshape((self.grid_dim_out,self.oversampling_factor,self.grid_dim_out,self.oversampling_factor)).mean(3).mean(1) * self.oversampling_factor**2
 
-                dlam_um = self.lam_um[1]-self.lam_um[0]
-                lam_um_l = (self.lam_um[i]- 0.5*dlam_um) * 1e4 ## unit of anstrom
-                lam_um_u = (self.lam_um[i]+ 0.5*dlam_um) * 1e4 ## unit of anstrom
-                # ares in unit of cm^2
-                # counts in unit of photos/s
-                counts = self.polarizer_transmission * obs.countrate(area=self.area, waverange=[lam_um_l, lam_um_u])
+                    dlam_um = self.lam_um[1]-self.lam_um[0]
+                    lam_um_l = (self.lam_um[i]- 0.5*dlam_um) * 1e4 ## unit of anstrom
+                    lam_um_u = (self.lam_um[i]+ 0.5*dlam_um) * 1e4 ## unit of anstrom
+                    # ares in unit of cm^2
+                    # counts in unit of photos/s
+                    counts = 0.45 * obs.countrate(area=self.area, waverange=[lam_um_l, lam_um_u])
 
-                images[i,:,:] = images[i,:,:] * counts
+                    images_1[i,:,:] = images_1[i,:,:] * counts
+                    images_2[i,:,:] = images_2[i,:,:] * counts
 
-            image = np.sum(images, axis=0)
+                # 3D datacube with the 3rd axis being polarization 
+                image = np.array([np.sum(images_1, axis=0), np.sum(images_2, axis=0)])
+            else:
+                # Initialize the image array based on whether oversampling is returned
+                images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if self.return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
+                images = np.zeros(images_shape, dtype=float)
+
+                for i in range(images_tem.shape[0]):
+                    if self.return_oversample:
+                        ##return the oversampled PSF, default 7 grid per pixel
+                        images[i,:,:] +=  images_tem[i,:,:]
+                    else:
+                        ## integrate oversampled PSF back to one grid per pixel
+                        images[i,:,:] +=  images_tem[i,:,:].reshape((self.grid_dim_out,self.oversampling_factor,self.grid_dim_out,self.oversampling_factor)).mean(3).mean(1) * self.oversampling_factor**2
+                        ## update the optics_keywords['output_dim'] baclk to non_oversample size
+                        self.optics_keywords['output_dim'] = self.grid_dim_out
+
+                    dlam_um = self.lam_um[1]-self.lam_um[0]
+                    lam_um_l = (self.lam_um[i]- 0.5*dlam_um) * 1e4 ## unit of anstrom
+                    lam_um_u = (self.lam_um[i]+ 0.5*dlam_um) * 1e4 ## unit of anstrom
+                    # ares in unit of cm^2
+                    # counts in unit of photos/s
+                    counts = self.polarizer_transmission * obs.countrate(area=self.area, waverange=[lam_um_l, lam_um_u])
+
+                    images[i,:,:] = images[i,:,:] * counts
+                
+                # 2D array if no wollaston is used
+                image = np.sum(images, axis=0)
 
         elif self.cgi_mode == 'spec':
             if self.slit != 'None':
@@ -415,6 +472,13 @@ class CorgiOptics():
         
         # Prepare additional information to be added as COMMENT headers in the primary HDU.
         # These are different from the default L1 headers, but extra comments that are used to track simulation-specific details.
+        ## determine header info based on prism used
+        if self.prism == 'POL0':
+            polarization_basis = '0/90 degrees'
+        elif self.prism == 'POL45':
+            polarization_basis = '45/135 degrees'
+        else:
+            polarization_basis = 'None'
         sim_info = {'host_star_sptype':input_scene.host_star_sptype,
                     'host_star_Vmag':input_scene.host_star_Vmag,
                     'host_star_magtype':input_scene.host_star_magtype,
@@ -422,7 +486,7 @@ class CorgiOptics():
                     'cgi_mode':self.cgi_mode,
                     'cor_type': self.optics_keywords['cor_type'],
                     'bandpass':self.bandpass_header,
-                    'polarization_basis': 'None',
+                    'polarization_basis': polarization_basis,
                     'over_sampling_factor':self.oversampling_factor,
                     'return_oversample': self.return_oversample,
                     'output_dim': self.optics_keywords['output_dim'],
@@ -673,10 +737,11 @@ class CorgiOptics():
         if self.cgi_mode == 'excam':
 
 
-            # Extract point source spectra and positions
+            # Extract point source spectra, positions, and polarization
             point_source_spectra = input_scene.off_axis_source_spectrum
             point_source_x = input_scene.point_source_x
             point_source_y = input_scene.point_source_y
+            point_source_pol = input_scene.point_source_pol_state
 
             # Ensure all inputs are lists for uniform processing
             if not isinstance(point_source_spectra, list):
@@ -765,9 +830,30 @@ class CorgiOptics():
                     # counts in unit of photos/s
                     counts[i] = self.polarizer_transmission * obs_point_source[j].countrate(area=self.area, waverange=[lam_um_l, lam_um_u]).value
 
-                images *= counts[:, np.newaxis, np.newaxis]
-                image = np.sum(images, axis=0)
-                point_source_image.append(image) 
+                # if wollaston is used, compute point source stokes vector and scale brightness accordingly
+                if self.prism in ['POL0', 'POL45']:
+                    images_1 = np.zeros(images_shape, dtype=float)
+                    images_2 = np.zeros(images_shape, dtype=float)
+                    #transform point source stokes vector by instrument Mueller matrix
+                    #renormalize since instrument Mueller matrix attenuates total intensity
+                    source_pol_after_instrument = np.matmul(pol.get_instrument_mueller_matrix(self.lam_um), point_source_pol[j])
+                    source_pol_after_instrument = source_pol_after_instrument / source_pol_after_instrument[0]
+                    if (self.prism == 'POL0'):
+                        source_pol_path_1 = np.matmul(pol.get_wollaston_mueller_matrix(0), source_pol_after_instrument)
+                        source_pol_path_2 = np.matmul(pol.get_wollaston_mueller_matrix(90), source_pol_after_instrument)
+                    else:
+                        source_pol_path_1 = np.matmul(pol.get_wollaston_mueller_matrix(45), source_pol_after_instrument)
+                        source_pol_path_2 = np.matmul(pol.get_wollaston_mueller_matrix(135), source_pol_after_instrument)
+                    counts_after_wollaston = [counts * source_pol_path_1[0], counts * source_pol_path_2[0]]
+                    images_1[i,:,:] = images[i,:,:] * counts_after_wollaston[0]
+                    images_2[i,:,:] = images[i,:,:] * counts_after_wollaston[1]
+                    # 3D datacube of point source by polarization state if wollaston is used
+                    point_source_image.append(np.array(np.sum(images_1, axis=0), np.sum(images_2, axis=0)))
+                else:
+                    images *= counts[:, np.newaxis, np.newaxis]
+                    image = np.sum(images, axis=0)
+                    # singular unpolarized image if no wollaston
+                    point_source_image.append(image) 
         elif self.cgi_mode == 'spec':
             # Extract point source spectra and positions
             point_source_spectra = input_scene.off_axis_source_spectrum
@@ -876,10 +962,16 @@ class CorgiOptics():
             sim_info[f'position_y_mas_{i}'] = input_scene.point_source_y[i]
 
         # Third: global simulation settings
+        if self.prism == 'POL0':
+            polarization_basis = '0/90 degrees'
+        elif self.prism == 'POL45':
+            polarization_basis = '45/135 degrees'
+        else:
+            polarization_basis = 'None'
         sim_info['cgi_mode'] = self.cgi_mode
         sim_info['cor_type'] = self.optics_keywords.get('cor_type')
         sim_info['bandpass'] = self.bandpass_header
-        sim_info['polarization_basis'] = 'None'
+        sim_info['polarization_basis'] = polarization_basis,
         sim_info['over_sampling_factor'] = self.oversampling_factor
         sim_info['return_oversample'] = self.return_oversample
         sim_info['output_dim'] = self.optics_keywords['output_dim'] 
