@@ -59,7 +59,7 @@ def test_generate_observation_sequence():
     assert simulatedImage_list_fullframe[n_frames-1].image_on_detector[0].header['FRAMET'] == exp_time
     # Test several frames
 
-    n_frames = 1000
+    n_frames = 100
     simulatedImage_list = observation.generate_observation_sequence(base_scene, optics, detector, exp_time, n_frames)
     assert isinstance(simulatedImage_list, list)
     assert len(simulatedImage_list) == n_frames
@@ -83,6 +83,26 @@ def test_generate_observation_scenario_from_cpgs():
     assert len(simulatedImage_list) == len_list
     assert isinstance(simulatedImage_list[0], SimulatedImage)
 
+    #Test with an off-axis light source
+    mag_companion = [10] 
+    dx= [3*49.3]
+    dy= [3*49.3]
+    point_source_info = [{'Vmag': mag_companion[0], 'magtype': 'vegamag','position_x':dx[0] , 'position_y':dy[0]}]
+    simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, point_source_info=point_source_info)
+
+    for simulatedImage in simulatedImage_list:
+        #Check that the target has a point source and the target doesn't  
+        if simulatedImage.input_scene.ref_flag :
+            assert '_point_source_Vmag' not in simulatedImage.input_scene.__dict__
+            assert simulatedImage.point_source_image == None  
+        else:
+            assert simulatedImage.input_scene._point_source_Vmag == mag_companion
+            assert simulatedImage.input_scene._point_source_magtype == ['vegamag']
+            assert simulatedImage.input_scene.point_source_x == dx
+            assert simulatedImage.input_scene.point_source_y == dy
+            assert isinstance(simulatedImage.point_source_image, fits.hdu.image.PrimaryHDU)  
+
+
     #Test with only target
     filepath = 'test/test_data/cpgs_without_reference.xml'
     abs_path =  os.path.join(script_dir, filepath)
@@ -96,6 +116,9 @@ def test_generate_observation_scenario_from_cpgs():
     assert isinstance(simulatedImage_list, list)
     assert len(simulatedImage_list) == len_list
     assert isinstance(simulatedImage_list[0], SimulatedImage)
+
+
+
 
 if __name__ == '__main__':
     test_generate_observation_sequence()

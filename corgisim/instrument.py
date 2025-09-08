@@ -1,10 +1,10 @@
-
 import proper
 import warnings
 import numpy as np
 from astropy.io import fits
 import roman_preflight_proper
 from corgisim import scene
+from corgisim.sat_spots import add_cos_pattern_dm
 import cgisim
 import corgisim
 from synphot.models import BlackBodyNorm1D, Box1D,Empirical1D
@@ -32,7 +32,7 @@ class CorgiOptics():
 
     '''
 
-    def __init__(self, cgi_mode = None, bandpass= None,  diam = 236.3114, optics_keywords=None, oversampling_factor = 7, return_oversample = False, **kwargs):
+    def __init__(self, cgi_mode = None, bandpass= None,  diam = 236.3114, optics_keywords=None, satspot_keywords=None, oversampling_factor = 7, return_oversample = False, **kwargs):
         '''
 
         Initialize the class a keyword dictionary that defines the setup of cgisim/PROPER 
@@ -45,6 +45,7 @@ class CorgiOptics():
         - bandpass (str): pre-difined bandpass for Roman-CGI
         - diam (float) in meter: diameter of the primaru mirror, the default value is 2.363114 meter
         - optics_keywords: A dictionary with the keywords that are used to set up the proper model
+	    - satspot_keywords: A dictionary with the keywords that are used to add satellite spots. See add_satspot for the keywords.
         - oversample: An integer that defines the oversampling factor of the detector when generating the image
         - return_oversample: A boolean that defines whether the function should return the oversampled image or not.
 
@@ -256,7 +257,25 @@ class CorgiOptics():
 
         if 'if_quiet'in kwargs:self.quiet = kwargs.get("if_quiet")
 
+        ##self.SATSPOTS is the value to be populated to L1 header prihdr[SATSPOTS]
+        # prihdr[SATSPOTS]= 0: No satellite spots present 
+        # prihdr[SATSPOTS]= 1: Satellite spots present
+        if satspot_keywords == None:
+            self.SATSPOTS = int(0)
+        else:
+            # check keywords
+            if optics_keywords['use_dm1'] != 1:
+                raise KeyError('ERROR: use_dm1 in optics_keywords is not set 1')
+            required_keys_satspot = {'num_pairs','sep_lamD', 'angle_deg', 'contrast', 'wavelength_m'}
+            missing_keys = required_keys_satspot - satspot_keywords.keys()
+            if missing_keys:
+                raise KeyError(f"ERROR: Missing required satspot_keywords: {missing_keys}")
 
+            #### call self.add_satspot() to satellite spots in DM files, update the dm1 info in self.optics_keywords
+            self.optics_keywords['dm1_v'] = self.add_satspot(satspot_keywords=satspot_keywords)
+
+            self.SATSPOTS = int(1)
+            print("satellite spots are added to DM1.")
 
         print("CorgiOptics initialized with proper keywords.")
      
@@ -498,6 +517,8 @@ class CorgiOptics():
                             'slit_x_offset_mas','slit_y_offset_mas']  # Specify keys to include
         subset = {key: self.optics_keywords[key] for key in keys_to_include_in_header if key in self.optics_keywords}
         sim_info.update(subset)
+        ## add sattelite spots info 
+        sim_info['SATSPOTS'] = self.SATSPOTS
         sim_info['includ_dectector_noise'] = 'False'
         # Create the HDU object with the generated header information
 
@@ -840,12 +861,48 @@ class CorgiOptics():
                             'slit_x_offset_mas','slit_y_offset_mas']  # Specify keys to include
         subset = {key: self.optics_keywords[key] for key in keys_to_include_in_header if key in self.optics_keywords}
         sim_info.update(subset)
+
+        ## add sattelite spots info
+        sim_info['SATSPOTS'] = self.SATSPOTS
         sim_info['includ_dectector_noise'] = 'False'
         # Create the HDU object with the generated header information
 
         sim_scene.point_source_image = outputs.create_hdu( np.sum(point_source_image,axis=0), sim_info =sim_info)
 
         return sim_scene
+
+    def add_satspot(self,satspot_keywords):
+        """
+        Add satellite spots to deformable mirror (DM) settings.
+        This function modifies the deformable mirror settings stored in `self.optics_keywords['dm1_v']` 
+        by injecting satellite spots according to the provided `satspot_keywords`.
+        Parameters:
+        ----------
+        satspot_keywords : dict
+            Dictionary specifying the parameters needed to define and inject 
+            satellite spots (sep_lamD, angle_deg, contrast, wavelength_m).
+        Returns:
+        -------
+        dm1_cos_added : 2D ndarray
+            Updated DM1 voltage map with satellite spots added.
+       
+        """
+
+        # extract DM1
+        proper_keywords = self.optics_keywords.copy()
+        dm1_input = proper_keywords['dm1_v']
+
+        # extract satspot_keywords
+        num_pairs = satspot_keywords['num_pairs']
+        sep_lamD = satspot_keywords['sep_lamD']
+        angle_deg = satspot_keywords['angle_deg']
+        contrast = satspot_keywords['contrast']
+        wavelength_m = satspot_keywords['wavelength_m']
+
+        dm1_cos_added = add_cos_pattern_dm(dm1_input,num_pairs,sep_lamD,angle_deg,contrast,wavelength_m)
+
+        return dm1_cos_added
+
     
 class CorgiDetector(): 
     
@@ -976,7 +1033,7 @@ class CorgiDetector():
             
             header_info = {'EXPTIME': exptime,'EMGAIN_C':self.emccd_keywords_default['em_gain'],'PSFREF':ref_flag,
                            'PHTCNT':self.photon_counting,'KGAINPAR':self.emccd_keywords_default['e_per_dn'],'cor_type':sim_info['cor_type'], 'bandpass':sim_info['bandpass'],
-                           'cgi_mode': sim_info['cgi_mode'], 'polaxis':sim_info['polaxis'],'use_fpm':use_fpm,'nd_filter':sim_info['nd_filter'], 'polarization_basis': sim_info['polarization_basis']}
+                           'cgi_mode': sim_info['cgi_mode'], 'polaxis':sim_info['polaxis'],'use_fpm':use_fpm,'nd_filter':sim_info['nd_filter'], 'polarization_basis': sim_info['polarization_basis'],'SATSPOTS':sim_info['SATSPOTS']}
             if 'fsm_x_offset_mas' in sim_info:
                 header_info['FSMX'] = float(sim_info['fsm_x_offset_mas'])
             if 'fsm_y_offset_mas' in sim_info:
@@ -984,11 +1041,11 @@ class CorgiDetector():
             if 'slit' in sim_info:
                 header_info['slit'] = sim_info['slit']
             else:
-                header_info['slit'] = None
+                header_info['slit'] = 'None'
             if 'prism' in sim_info:
                 header_info['prism'] = sim_info['prism']
             else:
-                header_info['prism'] = None
+                header_info['prism'] = 'None'
             simulated_scene.image_on_detector = outputs.create_hdu_list(Im_noisy, sim_info=sim_info, header_info = header_info)
         else:
             simulated_scene.image_on_detector = outputs.create_hdu(Im_noisy, sim_info=sim_info)
