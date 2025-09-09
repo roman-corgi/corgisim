@@ -35,10 +35,8 @@ class Scene():
             - "magtype" (str): The photometric system used for the magnitude. Must be one of:
                 - "vegamag": Vega magnitude system
                 - "ABmag": AB magnitude system
-            - "position_x" (float): 
-                X-coordinate of the source position in mas, relative to the host star.
-            - "position_y" (float): 
-                Y-coordinate of the source position in mas, relative to the host star.
+            - "position_x" (float): Offset in Right Ascension (dRA) from the host star, in milliarcseconds (mas), in sky coordinates.
+            - "position_y" (float): Offset in Declination (dDEC) from the host star, in milliarcseconds (mas), in sky coordinates.
             - "Custom_Spectrum" (optional): 
                 A custom spectrum for the source. If provided, this spectrum will override the default spectrum generated based on Vmag.
             Notes:
