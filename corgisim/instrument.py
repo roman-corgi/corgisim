@@ -326,6 +326,11 @@ class CorgiOptics():
             #if polarimetry mode is enabled
             if self.prism == 'POL0':
                 #0/90 case
+                # models the polarization aberration of the speckle field
+                # polaxis=-1 and 1 gives -45->X and 45->X aberrations, incoherently
+                # averaging the two gives the x polarized intensity data.
+                # polaxis=-2 and 2 gives -45->Y and 45->Y aberrations, incoherently
+                # averaging the two gives the y polarized intensity data. 
                 polaxis_params = [-1, 1, -2, 2]
                 fields = []
                 optics_keywords_pol_xy = self.optics_keywords.copy()
@@ -339,6 +344,11 @@ class CorgiOptics():
                 images_tem = [intensity_x, intensity_y]
             elif self.prism == 'POL45':
                 #45/135 case
+                # models the polarization aberration of the speckle field
+                # polaxis=-3 and 3 gives -45->45 and 45->45 aberrations, incoherently
+                # averaging the two gives the 45 degree polarized intensity data.
+                # polaxis=-2 and 2 gives -45->-45 and 45->-45 aberrations, incoherently
+                # averaging the two gives the -45 degree polarized intensity data. 
                 polaxis_params = [-3, 3, -4, 4]
                 fields = []
                 optics_keywords_pol_45 = self.optics_keywords.copy()
@@ -439,13 +449,7 @@ class CorgiOptics():
             
             if self.optics_keywords['polaxis'] == -10:
                 optics_keywords_m10 = self.optics_keywords.copy()
-                polaxis_params = [-2, -1, 1, 2]
-                images_pol = []
-                for polaxis in polaxis_params:
-                    optics_keywords_m10['polaxis'] = polaxis
-                    (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=optics_keywords_m10,QUIET=self.quiet)
-                    images_pol.append(np.abs(fields) ** 2)
-                images_tem = np.array(sum(images_pol)) / 4
+                images_tem = self.generate_full_aberration_psf(optics_keywords_m10)
             else: 
                 (fields, sampling) = proper.prop_run_multi('roman_preflight', self.lam_um, 1024, PASSVALUE=self.optics_keywords, QUIET=self.quiet)
                 images_tem = np.abs(fields)**2
@@ -677,13 +681,7 @@ class CorgiOptics():
                 
                 if self.optics_keywords['polaxis'] == -10:
                     optics_keywords_comp_m10 = optics_keywords_comp.copy()
-                    polaxis_params = [-2, -1, 1, 2]
-                    images_pol = []
-                    for polaxis in polaxis_params:
-                        optics_keywords_comp_m10['polaxis'] = polaxis
-                        (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=optics_keywords_comp_m10,QUIET=True)
-                        images_pol.append(np.abs(fields) ** 2)
-                    images_tem = np.array(sum(images_pol)) / 4
+                    images_tem = self.generate_full_aberration_psf(optics_keywords_comp_m10)
                 else: 
                     (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE= optics_keywords_comp ,QUIET=True)
                     images_tem = np.abs(fields)**2
@@ -708,12 +706,15 @@ class CorgiOptics():
                     # counts in unit of photos/s
                     counts[i] = self.polarizer_transmission * obs_point_source[j].countrate(area=self.area, waverange=[lam_um_l, lam_um_u]).value
 
-                # if wollaston is used, compute point source stokes vector and scale brightness accordingly
+                # if wollaston is used, compute point source stokes vector and scale intensity accordingly
+                # multiply input point source stokes vector by instrument mueller matrix, renormalize, then
+                # multiply that by the 0/90/45/135 degree polarizer matrix of the CGI wollaston
                 if self.prism in ['POL0', 'POL45']:
                     images_1 = np.zeros(images_shape, dtype=float)
                     images_2 = np.zeros(images_shape, dtype=float)
-                    #transform point source stokes vector by instrument Mueller matrix
-                    #renormalize since instrument Mueller matrix attenuates total intensity
+                    # transform point source stokes vector by instrument Mueller matrix
+                    # renormalize since instrument Mueller matrix decreases total intensity, and that should already
+                    # be accounted for in the proper model
                     source_pol_after_instrument = np.matmul(pol.get_instrument_mueller_matrix(self.lam_um), point_source_pol[j])
                     source_pol_after_instrument = source_pol_after_instrument / source_pol_after_instrument[0]
                     if (self.prism == 'POL0'):
@@ -903,6 +904,31 @@ class CorgiOptics():
 
         return dm1_cos_added
 
+    def generate_full_aberration_psf(self, optics_keywords):
+        '''
+        Calls proper.prop_run_multi() with polaxis set to -2, 2, -1, and 1 in order to obtain fields with
+        polarization aberrations describing -45->Y, 45->Y, -45->X, and 45->X, incoherently average those
+        four fields to obtain an intensity image containing the full polarization aberration information
+
+        Arguments:
+            optics_keywords: A dictionary with the keywords that are used to set up the proper model
+        
+        Returns:
+            images: 3D datacube containing the PSFs sampled at various wavelengths in the pass band
+        '''    
+        # polaxis values to be passed into the proper model
+        polaxis_params = [-2, -1, 1, 2]
+        images_pol = []
+
+        # compute the field for each polaxis value
+        for polaxis in polaxis_params:
+            optics_keywords['polaxis'] = polaxis
+            (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=optics_keywords,QUIET=True)
+            images_pol.append(np.abs(fields) ** 2)
+
+        # compute the average intensity
+        images = np.array(sum(images_pol)) / 4
+        return images
     
 class CorgiDetector(): 
     
