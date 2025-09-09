@@ -849,7 +849,7 @@ class CorgiOptics():
         sim_info['cgi_mode'] = self.cgi_mode
         sim_info['cor_type'] = self.optics_keywords.get('cor_type')
         sim_info['bandpass'] = self.bandpass_header
-        sim_info['polarization_basis'] = polarization_basis,
+        sim_info['polarization_basis'] = polarization_basis
         sim_info['over_sampling_factor'] = self.oversampling_factor
         sim_info['return_oversample'] = self.return_oversample
         sim_info['output_dim'] = self.optics_keywords['output_dim'] 

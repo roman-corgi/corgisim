@@ -16,6 +16,7 @@ In your working directory, first clone [roman_preflight_proper](https://github.c
 ```
 git clone https://github.com/roman-corgi/cgisim_cpp.git
 ```
+Please note that this is not the official version, but a modified version needed to implement certain functions<br />
 Go to the [CGISim website](https://sourceforge.net/projects/cgisim/) and download cgisim_v4.0.zip
 Unzip it in your working directory. For each of them, enter the directory that contains setup.py and run the following: 
 ```
