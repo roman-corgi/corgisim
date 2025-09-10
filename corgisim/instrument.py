@@ -222,7 +222,8 @@ class CorgiOptics():
         # polarization
         
         if optics_keywords_internal['polaxis'] != 10 and optics_keywords_internal['polaxis'] != -10 and optics_keywords_internal['polaxis'] != 0:
-            self.polarizer_transmission = 0.45
+            # wollaston transmission is around 0.96%, divide by two to split between polarization
+            self.polarizer_transmission = 0.48
         else:
             self.polarizer_transmission = 1.0
 
@@ -396,7 +397,8 @@ class CorgiOptics():
                     lam_um_u = (self.lam_um[i]+ 0.5*dlam_um) * 1e4 ## unit of anstrom
                     # ares in unit of cm^2
                     # counts in unit of photos/s
-                    counts = 0.45 * obs.countrate(area=self.area, waverange=[lam_um_l, lam_um_u])
+                    # wollaston transmission is around 0.96%, divide by two to split between polarization
+                    counts = 0.48 * obs.countrate(area=self.area, waverange=[lam_um_l, lam_um_u])
 
                     images_1[i,:,:] = images_1[i,:,:] * counts
                     images_2[i,:,:] = images_2[i,:,:] * counts

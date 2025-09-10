@@ -174,7 +174,8 @@ def get_wollaston_mueller_matrix(angle):
         The 4x4 Mueller matrix describing the transformation from light going into the wollaston to one of the two pathes the light is split into
     """
     theta = angle * (np.pi / 180) * 2
-    return 0.45 * np.array([[1, np.cos(theta), np.sin(theta), 0],
+    # wollaston prism has 96% transmission, split in half for each polarization
+    return 0.48 * np.array([[1, np.cos(theta), np.sin(theta), 0],
                    [np.cos(theta), (np.cos(theta)) ** 2, (np.cos(theta)) * (np.sin(theta)), 0],
                    [np.sin(theta), (np.cos(theta)) * (np.sin(theta)), (np.sin(theta)) ** 2, 0],
                    [0, 0, 0, 0]])

@@ -67,11 +67,11 @@ def test_polarimetry():
     sim_scene_unpol = optics_unpol.inject_point_sources(base_scene, sim_scene_unpol)
     image_comp_corgi_unpol = sim_scene_unpol.point_source_image.data
     
-    #check polarized intensities add up to 0.9 * unpolarized intensity (slightly attenuated to account for wollaston transmission loss)
+    #check polarized intensities add up to 0.96 * unpolarized intensity (wollaston have 96% transmission)
     #check sum of 0 and 90 image is the same as the sum of 45 and 135 image
-    assert (image_star_corgi_x + image_star_corgi_y)  == pytest.approx(image_star_corgi_unpol * 0.9, rel=0.05)
+    assert (image_star_corgi_x + image_star_corgi_y)  == pytest.approx(image_star_corgi_unpol * 0.96, rel=0.05)
     assert (image_star_corgi_x + image_star_corgi_y) == pytest.approx(image_star_corgi_45 + image_star_corgi_135, rel=0.05)
-    assert (image_comp_corgi_x + image_comp_corgi_y)  == pytest.approx(image_comp_corgi_unpol * 0.9, rel=0.05)
+    assert (image_comp_corgi_x + image_comp_corgi_y)  == pytest.approx(image_comp_corgi_unpol * 0.96, rel=0.05)
     assert (image_comp_corgi_x + image_comp_corgi_y) == pytest.approx(image_comp_corgi_45 + image_comp_corgi_135, rel=0.05)
 
 
