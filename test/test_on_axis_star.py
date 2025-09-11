@@ -39,6 +39,10 @@ def test_on_axis_star():
     optics_keywords_copy = copy.deepcopy(optics_keywords)
     optics = instrument.CorgiOptics(cgi_mode, bandpass_corgisim, optics_keywords=optics_keywords, if_quiet=True, integrate_pixels=True)
 
+    efields = optics.get_e_field()
+
+    assert type(efields) == np.ndarray
+
     sim_scene = optics.get_host_star_psf(base_scene)
     
     for key, value in optics_keywords.items():
