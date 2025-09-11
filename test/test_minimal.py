@@ -46,6 +46,12 @@ def test_excam_mode():
                 
 
     optics = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords, if_quiet=True)
+    
+    efields = optics.get_e_field()
+
+    assert type(efields) == np.ndarray
+    assert efields.shape == (7, optics_keywords['output_dim'],  optics_keywords['output_dim'])
+     
     sim_scene = optics.get_host_star_psf(base_scene)
 
     sim_scene = optics.inject_point_sources(base_scene,sim_scene)
