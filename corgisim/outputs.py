@@ -135,6 +135,7 @@ def save_hdu_to_fits( hdul, outdir=None, overwrite=True, write_as_L1=False, file
             - write_as_L1 (bool): If True, the file will be named according to the L1 naming convention.
             - filename (str, optional): Name of the output FITS file (without ".fits" extension). 
                                     Required if write_as_L1 is False.
+                                    
         """
         if outdir is None:
             outdir = os.getcwd()
