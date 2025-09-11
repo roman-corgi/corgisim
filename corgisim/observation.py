@@ -62,17 +62,13 @@ def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, outpu
     If only target information is available, it proceeds with that.
 
     Args:
-        filepath (str): The path to the CPGS XML file.
-        loc_x (int): The horizontal coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True, 
-                     and image from CorgiOptics has size is smaller than 1024×1024
-        loc_y (int): The vertical coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True,
-                     and image from CorgiOptics has size is smaller than 1024×1024
-        point_sources_info (list): A list of dictionaries, each representing an off-axis point source in the scene.
+        - filepath (str): The path to the CPGS XML file.
+        - loc_x (int): The horizontal coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True, and image from CorgiOptics has size is smaller than 1024×1024
+        - loc_y (int): The vertical coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True, and image from CorgiOptics has size is smaller than 1024×1024
+        - point_sources_info (list): A list of dictionaries, each representing an off-axis point source in the scene.
                              
     Returns:
-        list[corgisim.scene.SimulatedImage]: A list of SimulatedImage objects,
-        representing the complete observation scenario across all visits
-        defined in the CPGS file.
+        - list[corgisim.scene.SimulatedImage]: A list of SimulatedImage objects, representing the complete observation scenario across all visits defined in the CPGS file.
     """
     # Get the detector, scene and optics used in generate obeservation sequence from CPGS file
     simulatedImage_list = []

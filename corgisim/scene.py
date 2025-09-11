@@ -213,14 +213,14 @@ class Scene():
         to a given magnitude.
 
         Args:
-            sptype (str): The spectral type of the star (e.g., "G2V", "M5III").
-            magnitude (float): The magnitude of the star in the specified system.
-            magtype (str, optional): The magnitude type ('vegamag' by default).
-            return_teff (bool, optional): If True, also return the effective temperature inferred from the spectral type. Default is False. 
+            - sptype (str): The spectral type of the star (e.g., "G2V", "M5III").
+            - magnitude (float): The magnitude of the star in the specified system.
+            - magtype (str, optional): The magnitude type ('vegamag' by default).
+            - return_teff (bool, optional): If True, also return the effective temperature inferred from the spectral type. Default is False. 
 
         Returns:
-            sp_scale (SourceSpectrum): The scaled stellar spectrum.
-            v0 (float, optional): Returned only if `return_teff` is True. The effective temperature of the star in Kelvin.
+            - sp_scale (SourceSpectrum): The scaled stellar spectrum.
+            - v0 (float, optional): Returned only if `return_teff` is True. The effective temperature of the star in Kelvin.
 
 
         Raises:
