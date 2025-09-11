@@ -820,12 +820,10 @@ class CorgiDetector():
         The input_image probably has to be in electrons. 
 
         Arguments:
-            - simulated_scene: a corgisim.scene.SimulatedScen object that contains the noise-free scene from CorgiOptics
-        full_frame: if generated full_frame image in detetor
-            - loc_x (int): The horizontal coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True, 
-                     and image from CorgiOptics has size is smaller than 1024×1024
-            - loc_y (int): The vertical coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True,
-                     and image from CorgiOptics has size is smaller than 1024×1024
+            - simulated_scene: a corgisim.scene.SimulatedScen object that contains the noise-free scene from CorgiOptics 
+            - full_frame: if generated full_frame image in detetor
+            - loc_x (int): The horizontal coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True, and image from CorgiOptics has size is smaller than 1024×1024
+            - loc_y (int): The vertical coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True, and image from CorgiOptics has size is smaller than 1024×1024
             - exptime: exptime in second
 
         Returns:
@@ -938,12 +936,10 @@ class CorgiDetector():
             - loc_y (int): The vertical coordinate (in pixels) of the center where the sub_frame will be inserted.
 
         Returns:
-            - numpy.ndarray: A 1024x1024 2D array (detector frame) with the sub_frame placed at the specified 
-                        center location and the remaining areas padded with zeros.
+            - numpy.ndarray: A 1024x1024 2D array (detector frame) with the sub_frame placed at the specified center location and the remaining areas padded with zeros.
 
         Raises:
-            - ValueError: If the sub_frame, when placed at the specified location, exceeds the bounds of the 1024x1024 detector
-                        array or if negative indices result.
+            - ValueError: If the sub_frame, when placed at the specified location, exceeds the bounds of the 1024x1024 detector array or if negative indices result.
         """
         # Create the large 1024x1024 array filled with zeros
         full_frame = np.zeros((1024, 1024))
@@ -996,8 +992,7 @@ class CorgiDetector():
             - date4traps (float, optional): Decimal year of observation; only applicable if `use_traps` is True. Defaults to 2028.0.
 
         Returns:
-            - emccd (EMCCDDetectBase): A configured EMCCD detector object. If `use_traps` is True, the detector's CTI is updated
-                         using the corresponding trap model.
+            - emccd (EMCCDDetectBase): A configured EMCCD detector object. If `use_traps` is True, the detector's CTI is updated using the corresponding trap model.
         
         '''
         # Initialize emccd_keywords safely
