@@ -42,7 +42,8 @@ def test_on_axis_star():
     efields = optics.get_e_field()
 
     assert type(efields) == np.ndarray
-
+    assert efields.shape == (7, optics_keywords['output_dim'],  optics_keywords['output_dim'])
+     
     sim_scene = optics.get_host_star_psf(base_scene)
     
     for key, value in optics_keywords.items():
