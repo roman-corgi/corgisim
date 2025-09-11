@@ -270,7 +270,35 @@ class CorgiOptics():
 
         print("CorgiOptics initialized with proper keywords.")
      
+    def get_e_field(self):
+        '''
+        Function that only returns the e fields
+        Returns: 
+            fields: an array that contains the field
 
+        '''
+        grid_dim_out_tem = self.grid_dim_out * self.oversampling_factor
+        sampling_um_tem = self.sampling_um / self.oversampling_factor
+
+        self.optics_keywords['output_dim']=grid_dim_out_tem
+        self.optics_keywords['final_sampling_m']=sampling_um_tem *1e-6
+        
+        
+        (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=self.optics_keywords,QUIET=self.quiet)
+        #images_tem = np.abs(fields)**2
+
+        # Initialize the image array based on whether oversampling is returned
+        images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if self.return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
+        images = np.zeros(images_shape, dtype=complex)
+    
+        for i in range(fields.shape[0]):
+            ## integrate oversampled PSF back to one grid per pixel
+            images[i,:,:] +=  fields[i,:,:].reshape((self.grid_dim_out,self.oversampling_factor,self.grid_dim_out,self.oversampling_factor)).mean(3).mean(1) * self.oversampling_factor**2
+            ## update the optics_keywords['output_dim'] baclk to non_oversample size
+        self.optics_keywords['output_dim'] = self.grid_dim_out
+
+        return images
+        
     def get_host_star_psf(self, input_scene, sim_scene=None, on_the_fly=False):
         '''
         
