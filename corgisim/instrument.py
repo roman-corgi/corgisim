@@ -272,7 +272,7 @@ class CorgiOptics():
      
     def get_e_field(self):
         '''
-        Function that only returns the e fields
+        Function that only returns the e fields 
         Returns: 
             fields: an array that contains the field
 
@@ -285,7 +285,6 @@ class CorgiOptics():
         
         
         (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=self.optics_keywords,QUIET=self.quiet)
-        #images_tem = np.abs(fields)**2
 
         # Initialize the image array based on whether oversampling is returned
         images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if self.return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
