@@ -40,20 +40,22 @@ class CorgiOptics():
 
 
         Initialize the class with two dictionaries: 
-        - cgi_mode (str): define cgi simulation mode, valid values: 'excam', 'spec', ‘lowfs’, ‘excam_efield’
-        - cor_type (str): define coronagraphic observing modes
-        - bandpass (str): pre-difined bandpass for Roman-CGI
-        - diam (float) in meter: diameter of the primaru mirror, the default value is 2.363114 meter
-        - optics_keywords: A dictionary with the keywords that are used to set up the proper model
-	    - satspot_keywords: A dictionary with the keywords that are used to add satellite spots. See add_satspot for the keywords.
-        - oversample: An integer that defines the oversampling factor of the detector when generating the image
-        - return_oversample: A boolean that defines whether the function should return the oversampled image or not.
+        Args:
+            - cgi_mode (str): define cgi simulation mode, valid values: 'excam', 'spec', ‘lowfs’, ‘excam_efield’
+            - cor_type (str): define coronagraphic observing modes
+            - bandpass (str): pre-difined bandpass for Roman-CGI
+            - diam (float) in meter: diameter of the primaru mirror, the default value is 2.363114 meter
+            - optics_keywords: A dictionary with the keywords that are used to set up the proper model
+	        - satspot_keywords: A dictionary with the keywords that are used to add satellite spots. See add_satspot for the keywords.
+            - oversample: An integer that defines the oversampling factor of the detector when generating the image
+            - return_oversample: A boolean that defines whether the function should return the oversampled image or not.
+    
 
         Raises:
-        - ValueError: If `cgi_mode` or `cor_type` is invalid.
-        - KeyError: If required `optics_keywords` are missing.
-        - KeyError: If forbidden keywords are included.
-        """
+            - ValueError: If `cgi_mode` or `cor_type` is invalid.
+            - KeyError: If required `optics_keywords` are missing.
+            - KeyError: If forbidden keywords are included.
+        
         '''
         
          # Initialize optics_keywords safely
@@ -280,7 +282,34 @@ class CorgiOptics():
 
         print("CorgiOptics initialized with proper keywords.")
      
+    def get_e_field(self):
+        '''
+        Function that only returns the e fields 
+        Returns: 
+            - fields: an array that contains the field
 
+        '''
+        grid_dim_out_tem = self.grid_dim_out * self.oversampling_factor
+        sampling_um_tem = self.sampling_um / self.oversampling_factor
+
+        self.optics_keywords['output_dim']=grid_dim_out_tem
+        self.optics_keywords['final_sampling_m']=sampling_um_tem *1e-6
+        
+        
+        (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=self.optics_keywords,QUIET=self.quiet)
+
+        # Initialize the image array based on whether oversampling is returned
+        images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if self.return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
+        images = np.zeros(images_shape, dtype=complex)
+    
+        for i in range(fields.shape[0]):
+            ## integrate oversampled PSF back to one grid per pixel
+            images[i,:,:] +=  fields[i,:,:].reshape((self.grid_dim_out,self.oversampling_factor,self.grid_dim_out,self.oversampling_factor)).mean(3).mean(1) * self.oversampling_factor**2
+            ## update the optics_keywords['output_dim'] baclk to non_oversample size
+        self.optics_keywords['output_dim'] = self.grid_dim_out
+
+        return images
+        
     def get_host_star_psf(self, input_scene, sim_scene=None, on_the_fly=False):
         '''
         
@@ -540,12 +569,12 @@ class CorgiOptics():
         wavelength boundaries, and retrieves throughput data.
 
         Args:
-            cgimode (str): The CGI mode to be used.
-            bandpass_name (str): Name of the bandpass filter.
-            nd (int): Neutral density filter index.
+            - cgimode (str): The CGI mode to be used.
+            - bandpass_name (str): Name of the bandpass filter.
+            - nd (int): Neutral density filter index.
 
         Returns:
-            bp (SpectralElement): A spectral element object containing the bandpass data.
+            - bp (SpectralElement): A spectral element object containing the bandpass data.
 
         """
         info_dir = cgisim.lib_dir + '/cgisim_info_dir/'
@@ -584,11 +613,11 @@ class CorgiOptics():
                 and put the output of this function into the twoD_image attribute
 
         Arguments: 
-        scene: A corgisim.scene.Scene object that contains the scene to be simulated.
-        on_the_fly: A boolean that defines whether the PSFs should be generated on the fly.
+            - scene: A corgisim.scene.Scene object that contains the scene to be simulated.
+            - on_the_fly: A boolean that defines whether the PSFs should be generated on the fly.
         
         Returns: 
-        corgisim.scene.Simulated_Scene: A scene object with the background_scene attribute populated with an astropy
+            - corgisim.scene.Simulated_Scene: A scene object with the background_scene attribute populated with an astropy
                                         HDU that contains the simulated scene.
         '''
         pass
@@ -610,13 +639,13 @@ class CorgiOptics():
                 and put the output of this function into the point_source_image attribute
 
         Arguments: 
-        scene: A corgisim.scene.Scene object that contains the scene to be simulated.
-        sim_scene: A corgisim.SimulatedImage object to contains the simylated scene.
-        on_the_fly: A boolean that defines whether the PSFs should be generated on the fly.
+            - scene: A corgisim.scene.Scene object that contains the scene to be simulated.
+            - sim_scene: A corgisim.SimulatedImage object to contains the simylated scene.
+            - on_the_fly: A boolean that defines whether the PSFs should be generated on the fly.
         
 
         Returns: 
-        A 2D numpy array that contains the scene with the injected point sources. 
+            - A 2D numpy array that contains the scene with the injected point sources. 
         '''
         if self.cgi_mode == 'excam':
 
@@ -879,11 +908,13 @@ class CorgiOptics():
         Add satellite spots to deformable mirror (DM) settings.
         This function modifies the deformable mirror settings stored in `self.optics_keywords['dm1_v']` 
         by injecting satellite spots according to the provided `satspot_keywords`.
+
         Parameters:
         ----------
         satspot_keywords : dict
             Dictionary specifying the parameters needed to define and inject 
             satellite spots (sep_lamD, angle_deg, contrast, wavelength_m).
+
         Returns:
         -------
         dm1_cos_added : 2D ndarray
@@ -939,8 +970,8 @@ class CorgiDetector():
         Initialize the class with a dictionary that defines the EMCCD_DETECT input parameters. 
 
         Arguments: 
-        emccd_keywords: A dictionary with the keywords that are used to set up the emccd model
-        photon_counting: if use photon_counting mode, default is True
+            - emccd_keywords: A dictionary with the keywords that are used to set up the emccd model
+            - photon_counting: if use photon_counting mode, default is True
         '''
         if emccd_keywords is None:
             self.emccd_keywords = None
@@ -960,16 +991,14 @@ class CorgiDetector():
         The input_image probably has to be in electrons. 
 
         Arguments:
-        simulated_scene: a corgisim.scene.SimulatedScen object that contains the noise-free scene from CorgiOptics
-        full_frame: if generated full_frame image in detetor
-        loc_x (int): The horizontal coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True, 
-                     and image from CorgiOptics has size is smaller than 1024×1024
-        loc_y (int): The vertical coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True,
-                     and image from CorgiOptics has size is smaller than 1024×1024
-        exptime: exptime in second
+            - simulated_scene: a corgisim.scene.SimulatedScen object that contains the noise-free scene from CorgiOptics 
+            - full_frame: if generated full_frame image in detetor
+            - loc_x (int): The horizontal coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True, and image from CorgiOptics has size is smaller than 1024×1024
+            - loc_y (int): The vertical coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True, and image from CorgiOptics has size is smaller than 1024×1024
+            - exptime: exptime in second
 
         Returns:
-        A corgisim.scene.SimulatedImage object that contains the detector image in the 
+            - A corgisim.scene.SimulatedImage object that contains the detector image in the 
         '''
         # List of possible image components (in order of addition)
 
@@ -1094,17 +1123,15 @@ class CorgiDetector():
             end users.
 
         Args:
-            sub_frame (numpy.ndarray): A 2D array representing the simulated scene to be placed on the detector.
-            loc_x (int): The horizontal coordinate (in pixels) of the center where the sub_frame will be inserted.
-            loc_y (int): The vertical coordinate (in pixels) of the center where the sub_frame will be inserted.
+            - sub_frame (numpy.ndarray): A 2D array representing the simulated scene to be placed on the detector.
+            - loc_x (int): The horizontal coordinate (in pixels) of the center where the sub_frame will be inserted.
+            - loc_y (int): The vertical coordinate (in pixels) of the center where the sub_frame will be inserted.
 
         Returns:
-            numpy.ndarray: A 1024x1024 2D array (detector frame) with the sub_frame placed at the specified 
-                        center location and the remaining areas padded with zeros.
+            - numpy.ndarray: A 1024x1024 2D array (detector frame) with the sub_frame placed at the specified center location and the remaining areas padded with zeros.
 
         Raises:
-            ValueError: If the sub_frame, when placed at the specified location, exceeds the bounds of the 1024x1024 detector
-                        array or if negative indices result.
+            - ValueError: If the sub_frame, when placed at the specified location, exceeds the bounds of the 1024x1024 detector array or if negative indices result.
         """
         # Create the large 1024x1024 array filled with zeros
         full_frame = np.zeros((1024, 1024))
@@ -1140,26 +1167,25 @@ class CorgiDetector():
         the detector object using a trap model.
 
         Args:
-        # default values match requirements, except QE, which is year 0 curve (already accounted for in counts)
-        em_gain (float, optional): EM gain, default 1000.
-        full_well_image (float, optional): image full well; 50K is requirement, 60K is CBE
-        full_well_serial (float, optional): full well for serial register; 90K is requirement, 100K is CBE
-        dark_rate (float, optional): Dark current rate, e-/pix/s; 1.0 is requirement, 0.00042/0.00056 is CBE for 0/5 years
-        cic_noise (float, optional): Clock-induced charge noise, e-/pix/frame; Defaults to 0.01.
-        read_noise (float, optional): Read noise, e-/pix/frame; 125 is requirement, 100 is CBE
-        bias (int, optional): Bias level (in digital numbers). Defaults to 0.
-        qe (float): Quantum efficiency, set to 1 here, because already counted in counts
-        cr_rate (int, optional): Cosmic ray event rate, hits/cm^2/s (0 for none, 5 for L2) 
-        pixel_pitch (float, optional): Pixel pitch (in meters). Defaults to 13e-6.
-        e_per_dn (float, optional): post-multiplied electrons per data unit
-        numel_gain_register (int, optional): Number of elements in the gain register. Defaults to 604.
-        nbits (int, optional): Number of bits in the analog-to-digital converter. Defaults to 14.
-        use_traps (bool, optional): Flag indicating whether to simulate CTI effects using trap models. Defaults to False.
-        date4traps (float, optional): Decimal year of observation; only applicable if `use_traps` is True. Defaults to 2028.0.
+            - # default values match requirements, except QE, which is year 0 curve (already accounted for in counts)
+            - em_gain (float, optional): EM gain, default 1000.
+            - full_well_image (float, optional): image full well; 50K is requirement, 60K is CBE
+            - full_well_serial (float, optional): full well for serial register; 90K is requirement, 100K is CBE
+            - dark_rate (float, optional): Dark current rate, e-/pix/s; 1.0 is requirement, 0.00042/0.00056 is CBE for 0/5 years
+            - cic_noise (float, optional): Clock-induced charge noise, e-/pix/frame; Defaults to 0.01.
+            - read_noise (float, optional): Read noise, e-/pix/frame; 125 is requirement, 100 is CBE
+            - bias (int, optional): Bias level (in digital numbers). Defaults to 0.
+            - qe (float): Quantum efficiency, set to 1 here, because already counted in counts
+            - cr_rate (int, optional): Cosmic ray event rate, hits/cm^2/s (0 for none, 5 for L2) 
+            - pixel_pitch (float, optional): Pixel pitch (in meters). Defaults to 13e-6.
+            - e_per_dn (float, optional): post-multiplied electrons per data unit
+            - numel_gain_register (int, optional): Number of elements in the gain register. Defaults to 604.
+            - nbits (int, optional): Number of bits in the analog-to-digital converter. Defaults to 14.
+            - use_traps (bool, optional): Flag indicating whether to simulate CTI effects using trap models. Defaults to False.
+            - date4traps (float, optional): Decimal year of observation; only applicable if `use_traps` is True. Defaults to 2028.0.
 
         Returns:
-        emccd (EMCCDDetectBase): A configured EMCCD detector object. If `use_traps` is True, the detector's CTI is updated
-                         using the corresponding trap model.
+            - emccd (EMCCDDetectBase): A configured EMCCD detector object. If `use_traps` is True, the detector's CTI is updated using the corresponding trap model.
         
         '''
         # Initialize emccd_keywords safely

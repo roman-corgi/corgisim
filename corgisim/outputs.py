@@ -129,12 +129,13 @@ def save_hdu_to_fits( hdul, outdir=None, overwrite=True, write_as_L1=False, file
         Save an Astropy HDUList to a FITS file.
 
         Parameters:
-        - hdul (astropy.io.fits.HDUList): The HDUList object to be saved.
-        - outdir (str, optional): Output directory. Defaults to the current working directory.
-        - overwrite (bool): If True, overwrite the file if it already exists. Default is True.
-        - write_as_L1 (bool): If True, the file will be named according to the L1 naming convention.
-        - filename (str, optional): Name of the output FITS file (without ".fits" extension). 
+            - hdul (astropy.io.fits.HDUList): The HDUList object to be saved.
+            - outdir (str, optional): Output directory. Defaults to the current working directory.
+            - overwrite (bool): If True, overwrite the file if it already exists. Default is True.
+            - write_as_L1 (bool): If True, the file will be named according to the L1 naming convention.
+            - filename (str, optional): Name of the output FITS file (without ".fits" extension). 
                                     Required if write_as_L1 is False.
+                                    
         """
         if outdir is None:
             outdir = os.getcwd()
