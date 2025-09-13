@@ -30,7 +30,7 @@ def get_instrument_mueller_matrix(lam_band):
     instrument Mueller matrix for the band. 
     
     Args:
-        lam_band (float array): Array containing the sampled wavelengths for a given band, ordered from shortest to longest. 
+        lam_band (float array): Array containing the sampled wavelengths for a given band in microns, ordered from shortest to longest. 
 
     Returns:
         mm_passband (4 by 4 float array): Averaged instrument Mueller matrix for the given passband

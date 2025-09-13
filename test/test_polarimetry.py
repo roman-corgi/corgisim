@@ -1,5 +1,4 @@
-from corgisim import scene
-from corgisim import instrument
+from corgisim import scene, instrument, pol
 import numpy as np
 import proper
 import roman_preflight_proper
@@ -73,6 +72,29 @@ def test_polarimetry():
     assert (image_star_corgi_x + image_star_corgi_y) == pytest.approx(image_star_corgi_45 + image_star_corgi_135, rel=0.05)
     assert (image_comp_corgi_x + image_comp_corgi_y)  == pytest.approx(image_comp_corgi_unpol * 0.96, rel=0.05)
     assert (image_comp_corgi_x + image_comp_corgi_y) == pytest.approx(image_comp_corgi_45 + image_comp_corgi_135, rel=0.05)
+
+    ## double check the output polarized intensities of the point sources is what's expected
+    # instrument mueller matrix at 575nm, the band 1 center
+    instrument_mm = pol.get_instrument_mueller_matrix([0.575])
+    # the four wollaston mueller matrices
+    wollaston_mm_0 = pol.get_wollaston_mueller_matrix(0)
+    wollaston_mm_45 = pol.get_wollaston_mueller_matrix(45)
+    wollaston_mm_90 = pol.get_wollaston_mueller_matrix(90)
+    wollaston_mm_135 = pol.get_wollaston_mueller_matrix(135)
+    # apply instrument polarization effects to source stokes vector
+    companion_pol = instrument_mm @ companion_pol
+    companion_pol = companion_pol / companion_pol[0]
+    # apply polarizer
+    i_0 = (wollaston_mm_0 @ companion_pol)[0]
+    i_45 = (wollaston_mm_45 @ companion_pol)[0]
+    i_90 = (wollaston_mm_90 @ companion_pol)[0]
+    i_135 = (wollaston_mm_135 @ companion_pol)[0]
+    # check that the calculated polarized intensities here matches up with the simulation
+    assert image_comp_corgi_x == pytest.approx(i_0 * image_comp_corgi_unpol, rel=0.05)
+    assert image_comp_corgi_45 == pytest.approx(i_45 * image_comp_corgi_unpol, rel=0.05)
+    assert image_comp_corgi_y == pytest.approx(i_90 * image_comp_corgi_unpol, rel=0.05)
+    assert image_comp_corgi_135 == pytest.approx(i_135 * image_comp_corgi_unpol, rel=0.05)
+
 
 
 if __name__ == '__main__':
