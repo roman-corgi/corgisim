@@ -13,7 +13,7 @@ from synphot.units import validate_wave_unit, convert_flux, VEGAMAG
 import matplotlib.pyplot as plt
 from emccd_detect.emccd_detect import EMCCDDetectBase, EMCCDDetect
 from corgidrp import mocks
-from corgisim import outputs, spec
+from corgisim import outputs, spec, pol
 import copy
 import os
 from scipy import interpolate
@@ -87,7 +87,6 @@ class CorgiOptics():
         #these cor_type is availbale in cgisim, but are currently untested in corgisim
         untest_cor_types = ['spc-spec_rotated', 'spc-spec_band2_rotated', 'spc-spec_band3_rotated','spc-mswc', 'spc-mswc_band4','spc-mswc_band1', 'zwfs']
 
-
         if cgi_mode not in valid_cgi_modes:
             raise Exception('ERROR: Requested mode does not match any available mode')
      
@@ -122,6 +121,17 @@ class CorgiOptics():
             raise FileNotFoundError(f"Directory does not exist: {ref_data_dir}")
         else:
             self.ref_data_dir = ref_data_dir
+        #set polarimetry wollaston prism parameter
+        if self.cgi_mode == 'excam':
+            #DPAM prisms allowed for polarimetry
+            valid_prisms = ['None', 'POL0', 'POL45']
+            if 'prism' in optics_keywords:
+                if optics_keywords['prism'] not in valid_prisms:
+                    raise ValueError(f'Invalid value for prism: {optics_keywords['prism']}.'
+                                     f'Must be one of: {valid_prisms}')
+                setattr(self, 'prism', optics_keywords['prism'])
+            else:
+                setattr(self, 'prism', 'None')
         # Set the spectroscopy parameters
         if self.cgi_mode == 'spec':
             spec_kw_defaults = {
@@ -214,7 +224,8 @@ class CorgiOptics():
         # polarization
         
         if optics_keywords_internal['polaxis'] != 10 and optics_keywords_internal['polaxis'] != -10 and optics_keywords_internal['polaxis'] != 0:
-            self.polarizer_transmission = 0.45
+            # wollaston transmission is around 0.96%, divide by two to split between polarization
+            self.polarizer_transmission = 0.48
         else:
             self.polarizer_transmission = 1.0
 
@@ -341,35 +352,114 @@ class CorgiOptics():
 
             self.optics_keywords['output_dim']=grid_dim_out_tem
             self.optics_keywords['final_sampling_m']=sampling_um_tem *1e-6
-            
-            
-            (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=self.optics_keywords,QUIET=self.quiet)
-            images_tem = np.abs(fields)**2
 
-            # Initialize the image array based on whether oversampling is returned
-            images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if self.return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
-            images = np.zeros(images_shape, dtype=float)
+            #if polarimetry mode is enabled
+            if self.prism == 'POL0':
+                #0/90 case
+                # models the polarization aberration of the speckle field
+                # polaxis=-1 and 1 gives -45->X and 45->X aberrations, incoherently
+                # averaging the two gives the x polarized intensity data.
+                # polaxis=-2 and 2 gives -45->Y and 45->Y aberrations, incoherently
+                # averaging the two gives the y polarized intensity data. 
+                polaxis_params = [-1, 1, -2, 2]
+                fields = []
+                optics_keywords_pol_xy = self.optics_keywords.copy()
+                for polaxis in polaxis_params:
+                    optics_keywords_pol_xy['polaxis'] = polaxis
+                    (field, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=optics_keywords_pol_xy,QUIET=self.quiet)
+                    fields.append(field)
+                #obtain 0/90 degree polarization intensities
+                intensity_x = ((np.abs(fields[0]) ** 2) + (np.abs(fields[1]) ** 2)) / 2
+                intensity_y = ((np.abs(fields[2]) ** 2) + (np.abs(fields[3]) ** 2)) / 2
+                images_tem = [intensity_x, intensity_y]
+            elif self.prism == 'POL45':
+                #45/135 case
+                # models the polarization aberration of the speckle field
+                # polaxis=-3 and 3 gives -45->45 and 45->45 aberrations, incoherently
+                # averaging the two gives the 45 degree polarized intensity data.
+                # polaxis=-2 and 2 gives -45->-45 and 45->-45 aberrations, incoherently
+                # averaging the two gives the -45 degree polarized intensity data. 
+                polaxis_params = [-3, 3, -4, 4]
+                fields = []
+                optics_keywords_pol_45 = self.optics_keywords.copy()
+                for polaxis in polaxis_params:
+                    optics_keywords_pol_45['polaxis'] = polaxis
+                    (field, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=optics_keywords_pol_45,QUIET=self.quiet)
+                    fields.append(field)
+                #obtain 45/135 degree polarization intensities
+                intensity_45 = ((np.abs(fields[0]) ** 2) + (np.abs(fields[1]) ** 2)) / 2
+                intensity_135 = ((np.abs(fields[2]) ** 2) + (np.abs(fields[3]) ** 2)) / 2
+                images_tem = [intensity_45, intensity_135]
+            elif self.optics_keywords['polaxis'] == -10:
+                # if polaxis is set to -10, obtain full aberration model by individually summing intensities obtained from polaxis=-2, -1, 1, 2
+                optics_keywords_m10 = self.optics_keywords.copy()
+                polaxis_params = [-2, -1, 1, 2]
+                images_pol = []
+                for polaxis in polaxis_params:
+                    optics_keywords_m10['polaxis'] = polaxis
+                    (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=optics_keywords_m10,QUIET=self.quiet)
+                    images_pol.append(np.abs(fields) ** 2)
+                images_tem = np.array(sum(images_pol)) / 4
+            else: 
+                # use built in polaxis settings to obtain specific/averaged aberration 
+                (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=self.optics_keywords,QUIET=self.quiet)
+                images_tem = np.abs(fields)**2
+            # construct the correct image array size depending on if wollaston is used or not
+            if self.prism in ['POL0', 'POL45']:
+                # Initialize the image array based on whether oversampling is returned
+                images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if self.return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
+                images_1 = np.zeros(images_shape, dtype=float)
+                images_2 = np.zeros(images_shape, dtype=float)
 
-            for i in range(images_tem.shape[0]):
-                if self.return_oversample:
-                    ##return the oversampled PSF, default 7 grid per pixel
-                    images[i,:,:] +=  images_tem[i,:,:]
-                else:
+                for i in range(images_tem[0].shape[0]):
+                    if self.return_oversample:
+                        ##return the oversampled PSF, default 7 grid per pixel
+                        images_1[i,:,:] +=  images_tem[0][i,:,:]
+                        images_2[i,:,:] += images_tem[1][i,:,:]
+                    else:
                     ## integrate oversampled PSF back to one grid per pixel
-                    images[i,:,:] +=  images_tem[i,:,:].reshape((self.grid_dim_out,self.oversampling_factor,self.grid_dim_out,self.oversampling_factor)).mean(3).mean(1) * self.oversampling_factor**2
-                    ## update the optics_keywords['output_dim'] baclk to non_oversample size
-                    self.optics_keywords['output_dim'] = self.grid_dim_out
+                        images_1[i,:,:] +=  images_tem[0][i,:,:].reshape((self.grid_dim_out,self.oversampling_factor,self.grid_dim_out,self.oversampling_factor)).mean(3).mean(1) * self.oversampling_factor**2
+                        images_2[i,:,:] +=  images_tem[1][i,:,:].reshape((self.grid_dim_out,self.oversampling_factor,self.grid_dim_out,self.oversampling_factor)).mean(3).mean(1) * self.oversampling_factor**2
 
-                dlam_um = self.lam_um[1]-self.lam_um[0]
-                lam_um_l = (self.lam_um[i]- 0.5*dlam_um) * 1e4 ## unit of anstrom
-                lam_um_u = (self.lam_um[i]+ 0.5*dlam_um) * 1e4 ## unit of anstrom
-                # ares in unit of cm^2
-                # counts in unit of photos/s
-                counts = self.polarizer_transmission * obs.countrate(area=self.area, waverange=[lam_um_l, lam_um_u])
+                    dlam_um = self.lam_um[1]-self.lam_um[0]
+                    lam_um_l = (self.lam_um[i]- 0.5*dlam_um) * 1e4 ## unit of anstrom
+                    lam_um_u = (self.lam_um[i]+ 0.5*dlam_um) * 1e4 ## unit of anstrom
+                    # ares in unit of cm^2
+                    # counts in unit of photos/s
+                    # wollaston transmission is around 0.96%, divide by two to split between polarization
+                    counts = 0.48 * obs.countrate(area=self.area, waverange=[lam_um_l, lam_um_u])
 
-                images[i,:,:] = images[i,:,:] * counts
+                    images_1[i,:,:] = images_1[i,:,:] * counts
+                    images_2[i,:,:] = images_2[i,:,:] * counts
 
-            image = np.sum(images, axis=0)
+                # 3D datacube with the 3rd axis being polarization 
+                image = np.array([np.sum(images_1, axis=0), np.sum(images_2, axis=0)])
+            else:
+                # Initialize the image array based on whether oversampling is returned
+                images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if self.return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
+                images = np.zeros(images_shape, dtype=float)
+
+                for i in range(images_tem.shape[0]):
+                    if self.return_oversample:
+                        ##return the oversampled PSF, default 7 grid per pixel
+                        images[i,:,:] +=  images_tem[i,:,:]
+                    else:
+                        ## integrate oversampled PSF back to one grid per pixel
+                        images[i,:,:] +=  images_tem[i,:,:].reshape((self.grid_dim_out,self.oversampling_factor,self.grid_dim_out,self.oversampling_factor)).mean(3).mean(1) * self.oversampling_factor**2
+                        ## update the optics_keywords['output_dim'] baclk to non_oversample size
+                        self.optics_keywords['output_dim'] = self.grid_dim_out
+
+                    dlam_um = self.lam_um[1]-self.lam_um[0]
+                    lam_um_l = (self.lam_um[i]- 0.5*dlam_um) * 1e4 ## unit of anstrom
+                    lam_um_u = (self.lam_um[i]+ 0.5*dlam_um) * 1e4 ## unit of anstrom
+                    # ares in unit of cm^2
+                    # counts in unit of photos/s
+                    counts = self.polarizer_transmission * obs.countrate(area=self.area, waverange=[lam_um_l, lam_um_u])
+
+                    images[i,:,:] = images[i,:,:] * counts
+                
+                # 2D array if no wollaston is used
+                image = np.sum(images, axis=0)
 
         elif self.cgi_mode == 'spec':
             if self.slit != 'None':
@@ -388,8 +478,12 @@ class CorgiOptics():
             self.optics_keywords['output_dim']=grid_dim_out_tem
             self.optics_keywords['final_sampling_m']=sampling_um_tem *1e-6
             
-            (fields, sampling) = proper.prop_run_multi('roman_preflight', self.lam_um, 1024, PASSVALUE=self.optics_keywords, QUIET=self.quiet)
-            images_tem = np.abs(fields)**2
+            if self.optics_keywords['polaxis'] == -10:
+                optics_keywords_m10 = self.optics_keywords.copy()
+                images_tem = self.generate_full_aberration_psf(optics_keywords_m10)
+            else: 
+                (fields, sampling) = proper.prop_run_multi('roman_preflight', self.lam_um, 1024, PASSVALUE=self.optics_keywords, QUIET=self.quiet)
+                images_tem = np.abs(fields)**2
 
             # If a prism was selected, apply the dispersion model and overwrite the image cube and wavelength array.
             if self.prism != 'None': 
@@ -432,6 +526,13 @@ class CorgiOptics():
         
         # Prepare additional information to be added as COMMENT headers in the primary HDU.
         # These are different from the default L1 headers, but extra comments that are used to track simulation-specific details.
+        ## determine header info based on prism used
+        if self.prism == 'POL0':
+            polarization_basis = '0/90 degrees'
+        elif self.prism == 'POL45':
+            polarization_basis = '45/135 degrees'
+        else:
+            polarization_basis = 'None'
         sim_info = {'host_star_sptype':input_scene.host_star_sptype,
                     'host_star_Vmag':input_scene.host_star_Vmag,
                     'host_star_magtype':input_scene.host_star_magtype,
@@ -439,6 +540,7 @@ class CorgiOptics():
                     'cgi_mode':self.cgi_mode,
                     'cor_type': self.optics_keywords['cor_type'],
                     'bandpass':self.bandpass_header,
+                    'polarization_basis': polarization_basis,
                     'over_sampling_factor':self.oversampling_factor,
                     'return_oversample': self.return_oversample,
                     'output_dim': self.optics_keywords['output_dim'],
@@ -548,10 +650,11 @@ class CorgiOptics():
         if self.cgi_mode == 'excam':
 
 
-            # Extract point source spectra and positions
+            # Extract point source spectra, positions, and polarization
             point_source_spectra = input_scene.off_axis_source_spectrum
             point_source_x = input_scene.point_source_x
             point_source_y = input_scene.point_source_y
+            point_source_pol = input_scene.point_source_pol_state
 
             # Ensure all inputs are lists for uniform processing
             if not isinstance(point_source_spectra, list):
@@ -576,7 +679,6 @@ class CorgiOptics():
                 FOV_index = 0
             elif (self.cor_type.find('spec') != -1):
                 FOV_index = 1
-                raise Exception('ERROR: Spectroscopy mode not yet implemented')
                 #todo: Add conditions checking if point source is within azimuthal angle range once spectroscopy mode is implemented
             else:
                 FOV_index = 2
@@ -607,9 +709,13 @@ class CorgiOptics():
                                             'final_sampling_m': sampling_um_tem * 1e-6,
                                             'source_x_offset_mas': point_source_x[j],
                                             'source_y_offset_mas': point_source_y[j]})
-
-                (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE= optics_keywords_comp ,QUIET=True)
-                images_tem = np.abs(fields)**2
+                
+                if self.optics_keywords['polaxis'] == -10:
+                    optics_keywords_comp_m10 = optics_keywords_comp.copy()
+                    images_tem = self.generate_full_aberration_psf(optics_keywords_comp_m10)
+                else: 
+                    (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE= optics_keywords_comp ,QUIET=True)
+                    images_tem = np.abs(fields)**2
 
                 # Initialize the image array based on whether oversampling is returned
                 images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if self.return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
@@ -631,9 +737,33 @@ class CorgiOptics():
                     # counts in unit of photos/s
                     counts[i] = self.polarizer_transmission * obs_point_source[j].countrate(area=self.area, waverange=[lam_um_l, lam_um_u]).value
 
-                images *= counts[:, np.newaxis, np.newaxis]
-                image = np.sum(images, axis=0)
-                point_source_image.append(image) 
+                # if wollaston is used, compute point source stokes vector and scale intensity accordingly
+                # multiply input point source stokes vector by instrument mueller matrix, renormalize, then
+                # multiply that by the 0/90/45/135 degree polarizer matrix of the CGI wollaston
+                if self.prism in ['POL0', 'POL45']:
+                    images_1 = np.zeros(images_shape, dtype=float)
+                    images_2 = np.zeros(images_shape, dtype=float)
+                    # transform point source stokes vector by instrument Mueller matrix
+                    # renormalize since instrument Mueller matrix decreases total intensity, and that should already
+                    # be accounted for in the proper model
+                    source_pol_after_instrument = np.matmul(pol.get_instrument_mueller_matrix(self.lam_um), point_source_pol[j])
+                    source_pol_after_instrument = source_pol_after_instrument / source_pol_after_instrument[0]
+                    if (self.prism == 'POL0'):
+                        source_pol_path_1 = np.matmul(pol.get_wollaston_mueller_matrix(0), source_pol_after_instrument)
+                        source_pol_path_2 = np.matmul(pol.get_wollaston_mueller_matrix(90), source_pol_after_instrument)
+                    else:
+                        source_pol_path_1 = np.matmul(pol.get_wollaston_mueller_matrix(45), source_pol_after_instrument)
+                        source_pol_path_2 = np.matmul(pol.get_wollaston_mueller_matrix(135), source_pol_after_instrument)
+                    counts_after_wollaston = [counts * source_pol_path_1[0], counts * source_pol_path_2[0]]
+                    images_1 = images * counts_after_wollaston[0][:, np.newaxis, np.newaxis]
+                    images_2 = images * counts_after_wollaston[1][:, np.newaxis, np.newaxis]
+                    # 3D datacube of point source by polarization state if wollaston is used
+                    point_source_image.append(np.array([np.sum(images_1, axis=0), np.sum(images_2, axis=0)]))
+                else:
+                    images *= counts[:, np.newaxis, np.newaxis]
+                    image = np.sum(images, axis=0)
+                    # singular unpolarized image if no wollaston
+                    point_source_image.append(image) 
         elif self.cgi_mode == 'spec':
             # Extract point source spectra and positions
             point_source_spectra = input_scene.off_axis_source_spectrum
@@ -676,9 +806,18 @@ class CorgiOptics():
                                             'final_sampling_m': sampling_um_tem * 1e-6,
                                             'source_x_offset_mas': point_source_x[j],
                                             'source_y_offset_mas': point_source_y[j]})
-
-                (fields, sampling) = proper.prop_run_multi('roman_preflight', self.lam_um, 1024, PASSVALUE=optics_keywords_comp ,QUIET=True)
-                images_tem = np.abs(fields)**2
+                if self.optics_keywords['polaxis'] == -10:
+                    optics_keywords_comp_m10 = optics_keywords_comp.copy()
+                    polaxis_params = [-2, -1, 1, 2]
+                    images_pol = []
+                    for polaxis in polaxis_params:
+                        optics_keywords_comp_m10['polaxis'] = polaxis
+                        (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=optics_keywords_comp_m10,QUIET=True)
+                        images_pol.append(np.abs(fields) ** 2)
+                    images_tem = np.array(sum(images_pol)) / 4
+                else: 
+                    (fields, sampling) = proper.prop_run_multi('roman_preflight', self.lam_um, 1024, PASSVALUE=optics_keywords_comp ,QUIET=True)
+                    images_tem = np.abs(fields)**2
 
                 # If a prism was selected, apply the dispersion model and overwrite the image cube and wavelength array.
                 if self.prism != 'None': 
@@ -733,9 +872,16 @@ class CorgiOptics():
             sim_info[f'position_y_mas_{i}'] = input_scene.point_source_y[i]
 
         # Third: global simulation settings
+        if self.prism == 'POL0':
+            polarization_basis = '0/90 degrees'
+        elif self.prism == 'POL45':
+            polarization_basis = '45/135 degrees'
+        else:
+            polarization_basis = 'None'
         sim_info['cgi_mode'] = self.cgi_mode
         sim_info['cor_type'] = self.optics_keywords.get('cor_type')
         sim_info['bandpass'] = self.bandpass_header
+        sim_info['polarization_basis'] = polarization_basis
         sim_info['over_sampling_factor'] = self.oversampling_factor
         sim_info['return_oversample'] = self.return_oversample
         sim_info['output_dim'] = self.optics_keywords['output_dim'] 
@@ -791,6 +937,31 @@ class CorgiOptics():
 
         return dm1_cos_added
 
+    def generate_full_aberration_psf(self, optics_keywords):
+        '''
+        Calls proper.prop_run_multi() with polaxis set to -2, 2, -1, and 1 in order to obtain fields with
+        polarization aberrations describing -45->Y, 45->Y, -45->X, and 45->X, incoherently average those
+        four fields to obtain an intensity image containing the full polarization aberration information
+
+        Arguments:
+            optics_keywords: A dictionary with the keywords that are used to set up the proper model
+        
+        Returns:
+            images: 3D datacube containing the PSFs sampled at various wavelengths in the pass band
+        '''    
+        # polaxis values to be passed into the proper model
+        polaxis_params = [-2, -1, 1, 2]
+        images_pol = []
+
+        # compute the field for each polaxis value
+        for polaxis in polaxis_params:
+            optics_keywords['polaxis'] = polaxis
+            (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=optics_keywords,QUIET=True)
+            images_pol.append(np.abs(fields) ** 2)
+
+        # compute the average intensity
+        images = np.array(sum(images_pol)) / 4
+        return images
     
 class CorgiDetector(): 
     
@@ -813,7 +984,7 @@ class CorgiDetector():
         self.emccd = self.define_EMCCD(emccd_keywords=self.emccd_keywords)
     
 
-    def generate_detector_image(self, simulated_scene, exptime, full_frame= False, loc_x=None, loc_y=None):
+    def generate_detector_image(self, simulated_scene, exptime, full_frame= False, loc_x=512, loc_y=512):
         '''
         Function that generates a detector image from the input image, using emccd_detect. 
 
@@ -860,22 +1031,43 @@ class CorgiDetector():
         if img is None:
             raise ValueError('No valid simulated scene to put on detector')
       
-
-        if full_frame:
-            # If the simulated image is smaller than 1024×1024, place it on the full-frame detector at (loc_x, loc_y)
-            # If the image is exactly 1024×1024, assume it's already centered and use it directly
+        if sim_info['polarization_basis'] == 'None':
+            if full_frame:
+                # If the simulated image is smaller than 1024×1024, place it on the full-frame detector at (loc_x, loc_y)
+                # If the image is exactly 1024×1024, assume it's already centered and use it directly
             # If the image exceeds 1024×1024, raise an error
-            if (img.shape[0] < 1024) & (img.shape[1] < 1024):
-                flux_map = self.place_scene_on_detector( img , loc_x, loc_y)
-            if (img.shape[0] == 1024) & (img.shape[1] == 1024):
-                flux_map = img
-            if (img.shape[0] >1024) or (img.shape[1] >1024):
-                raise ValueError("Science image dimensions (excluding pre-scan area) cannot exceed 1024×1024.")
+                if (img.shape[0] < 1024) & (img.shape[1] < 1024):
+                    flux_map = self.place_scene_on_detector( img , loc_x, loc_y)
+                if (img.shape[0] == 1024) & (img.shape[1] == 1024):
+                    flux_map = img
+                if (img.shape[0] >1024) or (img.shape[1] >1024):
+                    raise ValueError("Science image dimensions (excluding pre-scan area) cannot exceed 1024×1024.")
            
-            Im_noisy = self.emccd.sim_full_frame(flux_map, exptime).astype(np.uint16)
+                Im_noisy = self.emccd.sim_full_frame(flux_map, exptime).astype(np.uint16)
+            else:
+                Im_noisy = self.emccd.sim_sub_frame(img, exptime).astype(np.uint16)
         else:
-            Im_noisy = self.emccd.sim_sub_frame(img, exptime).astype(np.uint16)
-
+            if full_frame:
+                #images separated 7.5" or 344 pix on the detector (1 pix=0.0218")
+                #0/90 degree images are placed on x-axis symmetric about the user defined location
+                #45/135 degree images are placed on -45 degree axis symmetric about the user defined location
+                if sim_info['polarization_basis'] == '0/90 degrees':
+                    loc_x_from_center = 172
+                    loc_y_from_center = 0
+                else:
+                    loc_x_from_center = 122
+                    loc_y_from_center = 122
+                if (img[0].shape[0] < 512) & (img[0].shape[1] < 512):
+                    flux_map = self.place_scene_on_detector(img[0] , loc_x-loc_x_from_center, loc_y+loc_y_from_center) + self.place_scene_on_detector(img[1] , loc_x+loc_x_from_center, loc_y-loc_y_from_center)
+                else:
+                    raise ValueError("Polarimetry mode image dimensions cannot exceed 512x512 to ensure images do not go off detector.")
+                Im_noisy = self.emccd.sim_full_frame(flux_map, exptime).astype(np.uint16)
+            else:
+                #currently runs sim_sub_frame twice for each image
+                #add warning about subframes having different noises
+                warnings.warn('Detector noise will be different for each sub frame in polarimetry mode. For accurate detector image with noise, please generate full frame image.')
+                Im_noisy = np.array([self.emccd.sim_sub_frame(img[0], exptime).astype(np.uint16), self.emccd.sim_sub_frame(img[1], exptime).astype(np.uint16)])
+            
         # Prepare additional information to be added as COMMENT headers in the primary HDU.
         # These are different from the default L1 headers, but extra comments that are used to track simulation-specific details.
         sim_info['includ_dectector_noise'] = 'True'
@@ -898,7 +1090,7 @@ class CorgiDetector():
             
             header_info = {'EXPTIME': exptime,'EMGAIN_C':self.emccd_keywords_default['em_gain'],'PSFREF':ref_flag,
                            'PHTCNT':self.photon_counting,'KGAINPAR':self.emccd_keywords_default['e_per_dn'],'cor_type':sim_info['cor_type'], 'bandpass':sim_info['bandpass'],
-                           'cgi_mode': sim_info['cgi_mode'], 'polaxis':sim_info['polaxis'],'use_fpm':use_fpm,'nd_filter':sim_info['nd_filter'],'SATSPOTS':sim_info['SATSPOTS']}
+                           'cgi_mode': sim_info['cgi_mode'], 'polaxis':sim_info['polaxis'],'use_fpm':use_fpm,'nd_filter':sim_info['nd_filter'], 'polarization_basis': sim_info['polarization_basis'],'SATSPOTS':sim_info['SATSPOTS']}
             if 'fsm_x_offset_mas' in sim_info:
                 header_info['FSMX'] = float(sim_info['fsm_x_offset_mas'])
             if 'fsm_y_offset_mas' in sim_info:
@@ -958,7 +1150,8 @@ class CorgiDetector():
             raise ValueError('The subframe cannot be placed in the given location without exceeding detector bounds.')
 
         # Insert the small array into the large array
-        full_frame[x_start:x_end, y_start:y_end] = sub_frame
+        #full_frame[x_start:x_end, y_start:y_end] = sub_frame
+        full_frame[y_start:y_end, x_start:x_end] = sub_frame
 
         return full_frame
 
