@@ -568,8 +568,6 @@ class CorgiOptics():
         """
         Simulate a two-dimensional scene through the current CGI configuration.
 
-        TODO - add emccd_detect to the scene, and add the detector noise to the scene.
-
         This method retrieves the image data from `scene.background_scene` (or from
         `scene.twoD_image` when `scene` is a `SimulatedImage`), then convolves it
         with a grid of off-axis PSFs (also termed PRFs) either generated on the fly
@@ -584,20 +582,24 @@ class CorgiOptics():
 
         Parameters
         ----------
-        scene : Scene or SimulatedImage
+        input_scene : Scene or SimulatedImage
             Scene object containing 2D image data to be convolved.
+        sim_scene : SimulatedImage, optional
+            Pre-initialized SimulatedImage object. If None, will be created.
             
         kwargs : keyword arguments
-
-            Mode 1 parameters (all required):
-            prf_cube : ndarray, shape (n_prfs, ny, nx)
-                Pre-computed PRF cube.
-            prf_grid_radii : array-like
+            
+            Mode 1 parameters (from scene.twoD_scene_info):
+            prf_cube_path : str
+                Path to pre-computed PRF cube file.
+            radii_lamD : array-like
                 Radial grid values in λ/D corresponding to PRF cube.
-            prf_grid_azimuths : array-like
+            azimuths_deg : array-like
                 Azimuthal grid values in degrees corresponding to PRF cube.
+            disk_model_path : str
+                Path to disk model file.
 
-            Mode 2 parameters:
+            Mode 2 parameters (from kwargs):
             iwa : float, optional
                 Inner working angle in λ/D. Default is 0.
             owa : float, required
@@ -625,12 +627,9 @@ class CorgiOptics():
 
         Examples
         --------
-        Mode 1 - Using pre-computed PRF cube:
-        >>> prf_cube = optics.make_prf_cube([0, 2, 4], [0, 90, 180, 270])
-        >>> result = optics.convolve_2d_scene(scene, 
-        ...                                   prf_cube=prf_cube,
-        ...                                   prf_grid_radii=[0, 2, 4], 
-        ...                                   prf_grid_azimuths=[0, 90, 180, 270])
+        Mode 1 - Using pre-computed PRF cube from scene:
+        >>> # Scene must have twoD_scene_info with prf_cube_path, radii_lamD, etc.
+        >>> result = optics.convolve_2d_scene(scene_with_prf_info)
         
         Mode 2 - Auto-generate PRF cube:
         >>> result = optics.convolve_2d_scene(scene,
@@ -678,7 +677,7 @@ class CorgiOptics():
             step_deg = kwargs['step_deg']
         
             # Extract optional parameters with defaults
-            iwa = kwargs.get('iwa', 0)
+            iwa = kwargs.get('iwa', 0) # default to 0 if not provided
             max_radius = kwargs.get('max_radius')
         
             radii_lamD = build_radial_grid(iwa, owa, inner_step, mid_step, outer_step, max_radius)
@@ -686,7 +685,7 @@ class CorgiOptics():
             prf_cube = self.make_prf_cube(radii_lamD, azimuths_deg)
                 
             # Apply convolution
-            conv2d = convolve_with_prfs(disk_model.data, prf_cube, radii_lamD, azimuths_deg, PIXEL_SCALE_ARCSEC * 1e3, self.res_mas, use_bilinear_interpolation)
+            conv2d = convolve_with_prfs(disk_model_norm, prf_cube, radii_lamD, azimuths_deg, PIXEL_SCALE_ARCSEC * 1e3, self.res_mas, use_bilinear_interpolation)
         
         # TODO - simplify the steps below for the count and flux calculation
         # normalize to the given contrast
