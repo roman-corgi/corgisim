@@ -13,7 +13,7 @@ class Scene():
     - Information about the host star (brightness, spectral type, etc.)
     - A list of point sources (brightness, location, spectra?, etc.)
     - A 2D background scene that will be convolved with the off-axis PSFs
-        - Format needs to be determined. Likely a fits hdu with specific header keywords. 
+        - Dictionary contains info required for convolution
         - Input with North-Up East-Left orientation.
 
     Arguments: 
@@ -98,12 +98,21 @@ class Scene():
                                                                             spectrum=self.point_source_spectrum,
                                                                             magtype=self._point_source_magtype)
 
-        
-        self._twoD_scene = twoD_scene_hdu
-        self.twD_scene_spectrum = self.get_stellar_spectrum( self._host_star_sptype, self._host_star_Vmag+twoD_scene_hdu['contrast'], magtype =self._host_star_magtype) 
-        self.twoD_corgi_prf_cubes = twoD_scene_hdu['prf_cube_path'] 
-        self.twoD_radii_lamD = twoD_scene_hdu['radii_lamD']
-        self.twoD_azimuths_deg = twoD_scene_hdu['azimuths_deg']
+        # setting up the 2D scene
+        # twoD_scene_info: a dictionary containing 2D scene information
+        self.twoD_scene_info = twoD_scene_info
+        self.twoD_scene_spectrum = None
+        self.twoD_prf_cubes = None
+
+        # If a 2D scene is provided, generate its spectrum based on the host star's properties and the scene's contrast
+        # TODO - also need to figure out how to handle cases without pre-generated prf cube
+        # TODO - when generating prf, user should either save the input in the header, or we should create a function for that 
+        if twoD_scene_info is not None:
+            self.twoD_scene_spectrum = self.get_stellar_spectrum(
+                self._host_star_sptype,
+                self._host_star_Vmag + twoD_scene_info['contrast'],
+                magtype=self._host_star_magtype
+            )
 
     @property
     def host_star_sptype(self):
