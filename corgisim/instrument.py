@@ -699,6 +699,10 @@ class CorgiOptics():
         intensity = np.abs(fields)**2
         weighted_img = np.tensordot(wavelength_weights, intensity, axes=(0, 0))
 
+        # TODO - Currently we skipped counts when calculating off-axis PSF for convolution
+        # input_scene.twoD_scene_spectrum
+ 
+
         # Bin down to detector resolution
         binned = weighted_img.reshape(
             (self.grid_dim_out, self.oversampling_factor,
@@ -725,6 +729,7 @@ class CorgiOptics():
         prf_cube : ndarray, shape (N_positions, Ny, Nx)
             Cube of PSFs at all requested (r, θ) positions.
         """
+        # TODO - source_sed is currently not used, just assumed to be flat. For scene with extended source, here should be disk spectrum?
         wavelength_grid, wavelength_weights = create_wavelength_grid_and_weights(self.lam_um, source_sed)
         valid_positions = get_valid_polar_positions(radii_lamD, azimuths_deg)   
 
