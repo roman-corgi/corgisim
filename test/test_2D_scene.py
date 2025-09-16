@@ -211,7 +211,7 @@ def test_make_prf_cube(basic_optics):
          patch.object(basic_optics, '_compute_single_off_axis_psf') as mock_compute:
 
         mock_create_wavelength_grid_and_weights.return_value = (np.array([0.575]), np.array([1.0]))
-        # FIXED: Return the correct 5 positions that get_valid_polar_positions actually returns
+        # Return the correct 5 positions that get_valid_polar_positions actually returns
         # For radii=[0,1,2] and azimuths=[0,90], valid positions are:
         # (0,0°), (1,0°), (1,90°), (2,0°), (2,90°) = 5 total
         get_valid_polar_positions.return_value = [(0.0, 0 * u.deg), (1.0, 0 * u.deg), (1.0, 90 * u.deg), 
@@ -235,13 +235,11 @@ def test_convolve_2d_scene_parameter_validation(basic_optics):
     scene.twoD_scene_info = {
         'prf_cube_path': None,  # No PRF cube 
         'disk_model_path': '/fake/path/to/disk_model.fits',
-        # FIXED: Add the missing keys that the function expects
         'radii_lamD': None,  # Will not be used in Mode 2
         'azimuths_deg': None  # Will not be used in Mode 2
     }
     scene.twoD_scene_spectrum = Mock()
     
-    # FIXED: Mock fits.getdata to prevent FileNotFoundError
     with patch('astropy.io.fits.getdata') as mock_fits:
         mock_fits.return_value = np.ones((48, 48))
         
