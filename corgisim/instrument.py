@@ -382,8 +382,6 @@ class CorgiOptics():
                                         HDU that contains a noiseless on-axis PSF.
 
         '''
-        # TODO - check! Because changing to 1024 actually make a huge difference to teh output image, unlike what otehr people said? 
-        
         if self.cgi_mode == 'excam':
             
             # Compute the observed stellar spectrum within the defined bandpass
@@ -824,12 +822,13 @@ class CorgiOptics():
         ...                                   inner_step=1.0, mid_step=1.5, 
         ...                                   outer_step=2.0, step_deg=90.0)
         """
-
-        # seeing which mode we are in
-        # has_prf_cube = 'prf_cube' in kwargs
+        # Determine which mode to use based on provided kwargs
         if input_scene.twoD_scene_info['prf_cube_path'] is not None:
             has_prf_cube = True 
             has_grid_params = False
+        else:
+            has_prf_cube = False
+            has_grid_params = 'iwa' in kwargs or 'owa' in kwargs
 
         # Extract optional parameter that applies to both modes
         use_bilinear_interpolation = kwargs.get('use_bilinear_interpolation', False)
@@ -847,8 +846,7 @@ class CorgiOptics():
 
         if has_prf_cube:
             # Mode 1: Pre-computed PRF cube: Apply convolution 
-            conv2d = convolve_with_prfs(obj=disk_model_norm, prfs_array=fits.getdata(prf_cube_path), radii_lamD=radii_lamD , 
-                azimuths_deg=azimuths_deg, pix_scale_mas=PIXEL_SCALE_ARCSEC * 1e3, res_mas=self.res_mas, use_bilinear_interpolation=use_bilinear_interpolation)
+            conv2d = convolve_with_prfs(obj=disk_model_norm, prfs_array=fits.getdata(prf_cube_path), radii_lamD=radii_lamD , azimuths_deg=azimuths_deg, pix_scale_mas=PIXEL_SCALE_ARCSEC * 1e3, res_mas=self.res_mas, use_bilinear_interpolation=use_bilinear_interpolation)
         else:
             # Mode 2: Generate cube
             required = ['owa', 'inner_step', 'mid_step', 'outer_step', 'step_deg']
@@ -897,7 +895,6 @@ class CorgiOptics():
         else:
             raise ValueError(f"Unsupported scene type: {type(input_scene)}")
 
-
         if self.cgi_mode in ['spec', 'lowfs', 'excam_efield']:
             raise ValueError(f"The mode '{self.cgi_mode}' has not been implemented yet!")
         
@@ -917,18 +914,16 @@ class CorgiOptics():
                     'nd_filter':self.nd}
 
         # Define specific keys from self.proper_keywords to include in the header            
-        keys_to_include_in_header = ['use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
-                            'use_lyot_stop','use_field_stop','fsm_x_offset_mas','fsm_y_offset_mas']  # Specify keys to include
+        keys_to_include_in_header = ['use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm','use_lyot_stop','use_field_stop','fsm_x_offset_mas','fsm_y_offset_mas']  # Specify keys to include
         subset = {key: self.proper_keywords[key] for key in keys_to_include_in_header if key in self.proper_keywords}
         sim_info.update(subset)
-        sim_info['includ_dectector_noise'] = 'False'
-        
+        sim_info['include_detector_noise'] = 'False'
+
         # Create the HDU object with the generated header information
-        sim_scene.twoD_image = outputs.create_hdu(conv2d, sim_info =sim_info)
+        sim_scene.twoD_image = outputs.create_hdu(conv2d, sim_info=sim_info)
 
         return sim_scene
 
-        
     def inject_point_sources(self, input_scene, sim_scene=None, on_the_fly=False):
         '''
         Function that injects point sources into the scene. 

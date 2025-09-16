@@ -238,7 +238,7 @@ def get_valid_polar_positions(radii_lamD, azimuths_deg):
     
     # Filter out invalid positions: radius=0 with non-zero angle
     valid_mask = ~((radius_grid == 0) & (azimuth_grid != 0 * u.deg))
-    valid_radii = radius_grid.ravel()[valid_maskconvolve_with_prfs.ravel()]
+    valid_radii = radius_grid.ravel()[valid_mask.ravel()]
     valid_azimuths = azimuth_grid.ravel()[valid_mask.ravel()]
     
     return list(zip(valid_radii, valid_azimuths))
