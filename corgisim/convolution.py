@@ -13,6 +13,48 @@ import sys
 ARCSEC_PER_RAD = 206265
 PIXEL_SCALE_ARCSEC = 0.0218   # arcsec/pixel
 
+def binning(img: np.ndarray, binning_factor: int) -> np.ndarray:
+    """
+    Bin a 2D image by an integer factor, conserving total flux (sum over bins).
+
+    The function trims extra rows/columns if the image dimensions are not
+    divisible by the binning factor, then reshapes the image into blocks of
+    size (binning_factor x binning_factor) and sums each block.
+
+    Args:
+        img (np.ndarray): Input 2D image array.
+        binning_factor (int): Binning factor (block size in pixels). Must be > 0.
+
+    Returns:
+        np.ndarray: Binned 2D image with shape
+        (img.shape[0] // binning_factor, img.shape[1] // binning_factor).
+
+    Raises:
+        ValueError: If `binning_factor` is not a positive integer.
+
+    Notes:
+        - The output is flux-conserving (sums within bins).
+        - To get block averages instead of sums, divide the result by
+          ``binning_factor ** 2``.
+    """
+    if not isinstance(binning_factor, int) or binning_factor <= 0:
+        raise ValueError("binning_factor must be a positive integer")
+
+    # Resize array by getting rid of extra columns and rows
+    xedge = np.shape(img)[0] % binning_factor
+    yedge = np.shape(img)[1] % binning_factor
+    img = img[xedge:, yedge:]
+
+    # Reshape image to new size
+    binim = np.reshape(img, (int(np.shape(img)[0] // binning_factor), binning_factor,
+                              int(np.shape(img)[1] // binning_factor), binning_factor))
+
+    # Sum each bin x bin subarray
+    binim = np.sum(binim, axis=3)
+    binim = np.sum(binim, axis=1)
+
+    return binim
+
 def build_radial_grid(iwa, owa, inner_step, mid_step, outer_step, max_radius=None):
     """
     Build a combined radial grid in units of λ/D.
@@ -155,7 +197,7 @@ def get_valid_polar_positions(radii_lamD, azimuths_deg):
     
     # Filter out invalid positions: radius=0 with non-zero angle
     valid_mask = ~((radius_grid == 0) & (azimuth_grid != 0 * u.deg))
-    valid_radii = radius_grid.ravel()[valid_mask.ravel()]
+    valid_radii = radius_grid.ravel()[valid_maskconvolve_with_prfs.ravel()]
     valid_azimuths = azimuth_grid.ravel()[valid_mask.ravel()]
     
     return list(zip(valid_radii, valid_azimuths))
