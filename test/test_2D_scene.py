@@ -60,7 +60,7 @@ def basic_optics(optics_env):
         'fsm_y_offset_mas': 0.0
     }
 
-    optics = CorgiOptics('excam', '1', proper_keywords=keywords)
+    optics = CorgiOptics('excam', '1', optics_keywords=keywords)
     optics.quiet = True
     return optics 
 
