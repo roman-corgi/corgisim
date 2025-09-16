@@ -63,8 +63,7 @@ class Scene():
         ValueError: If the provided spectral type is invalid.
         ValueError: If the provided stokes vector is not of length 4 or the polarized intensity magnitude exceeds the total intensity magnitude
     '''
-    def __init__(self, host_star_properties=None, point_source_info=None, twoD_scene_hdu=None, spmethod='bpgs'):
-        self._twoD_scene = copy.deepcopy(twoD_scene_hdu)
+    def __init__(self, host_star_properties=None, point_source_info=None, twoD_scene_info=None, spmethod='bpgs'):
         point_source_info_internal = copy.deepcopy(point_source_info)
 
         if host_star_properties is None:
