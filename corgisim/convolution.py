@@ -55,6 +55,47 @@ def binning(img: np.ndarray, binning_factor: int) -> np.ndarray:
 
     return binim
 
+def resize_array (array: np.ndarray, size:int, cent = None) -> np.ndarray:
+    """
+    Resize the array to a given size. "cent" is optional. 
+
+    Args:
+        array (np.ndarray): 
+        size (int): 
+        cent (tuple, optional): Centred coordinate of the array. 
+            If defaults to None, cent equals to the centre of the array.
+
+    Returns:
+        Input Dimension == 3: 
+            resize_cube: [description]
+        Input Dimension == 2: 
+            resize_array: [description]
+
+    """
+    if array.ndim == 3: 
+        if cent == None:
+            cent = [np.shape(array[0])[0]//2, np.shape(array[0])[1]//2]
+            print(f'Centre of the image: %f' %(cent))
+        
+        _len = np.shape(array)[0]
+        resize_cube = np.zeros((_len,size, size))
+        
+        for i in range (_len):
+            resize_cube[i] = array[i][cent[0]- size//2:cent[0] +size//2,\
+                                      cent[0] - size//2:cent[0] +size//2]
+    
+        return resize_cube
+    
+    else:
+        if cent == None:
+            cent = [np.shape(array)[0]//2, np.shape(array)[1]//2]
+        # print(cent[0]- size//2,cent[1]+size//2,cent[0] - size//2,cent[0] +size//2)        
+
+        resize_array = array[cent[1] - size//2:cent[1] +size//2, \
+                             cent[0] - size//2:cent[0] +size//2]
+
+        return resize_array
+
 def build_radial_grid(iwa, owa, inner_step, mid_step, outer_step, max_radius=None):
     """
     Build a combined radial grid in units of λ/D.
