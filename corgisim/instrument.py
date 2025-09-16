@@ -686,7 +686,7 @@ class CorgiOptics():
         dy = radius_lamD * np.sin(azimuth_angle.to_value(u.rad))
         
         # Configure PROPER simulation options
-        simulation_options = dict(self.proper_keywords,
+        simulation_options = dict(self.optics_keywords,
                                 source_x_offset=dx,
                                 source_y_offset=dy,
                                 output_dim=self.grid_dim_out * self.oversampling_factor,
@@ -905,16 +905,16 @@ class CorgiOptics():
         # These are different from the default L1 headers, but extra comments that are used to track simulation-specific details.
         sim_info = {'ref_flag': False,
                     'cgi_mode':self.cgi_mode,
-                    'cor_type': self.proper_keywords['cor_type'],
+                    'cor_type': self.optics_keywords['cor_type'],
                     'bandpass':self.bandpass_header,
                     'over_sampling_factor':self.oversampling_factor,
                     'return_oversample': self.return_oversample,
-                    'output_dim': self.proper_keywords['output_dim'],
+                    'output_dim': self.optics_keywords['output_dim'],
                     'nd_filter':self.nd}
 
-        # Define specific keys from self.proper_keywords to include in the header            
+        # Define specific keys from self.optics_keywords to include in the header
         keys_to_include_in_header = ['use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm','use_lyot_stop','use_field_stop','fsm_x_offset_mas','fsm_y_offset_mas']  # Specify keys to include
-        subset = {key: self.proper_keywords[key] for key in keys_to_include_in_header if key in self.proper_keywords}
+        subset = {key: self.optics_keywords[key] for key in keys_to_include_in_header if key in self.optics_keywords}
         sim_info.update(subset)
         sim_info['include_detector_noise'] = 'False'
 
