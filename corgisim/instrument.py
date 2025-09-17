@@ -32,7 +32,7 @@ class CorgiOptics():
 
     '''
 
-    def __init__(self, cgi_mode = None, bandpass= None,  diam = 236.3114, optics_keywords=None, satspot_keywords=None, oversampling_factor = 7, return_oversample = False, **kwargs):
+    def __init__(self, cgi_mode = None, bandpass= None,  diam = 236.3114, optics_keywords=None, satspot_keywords=None, oversampling_factor = 3, return_oversample = False, **kwargs):
         '''
 
         Initialize the class a keyword dictionary that defines the setup of cgisim/PROPER 

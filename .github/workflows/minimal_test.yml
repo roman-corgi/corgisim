@@ -3,9 +3,9 @@ name: Minimal Test
 
 on:
   push:
-    branches: [ "develop-in-person-meeting"]
+    branches: [ "main"]
   pull_request:
-    branches: [ "develop-in-person-meeting"]
+    branches: [ "main"]
   workflow_dispatch:
 
 
