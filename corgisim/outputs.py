@@ -79,7 +79,7 @@ def create_hdu_list(data, header_info, sim_info=None):
     exthdr['SPAM_H'], exthdr['SPAM_V'], exthdr['SPAMNAME'], exthdr['SPAMSP_H'],exthdr['SPAMSP_V'] = write_headers_SPAM(header_info['cor_type'])
     exthdr['LSAM_H'], exthdr['LSAM_V'], exthdr['LSAMNAME'], exthdr['LSAMSP_H'],exthdr['LSAMSP_V'] = write_headers_LSAM(header_info['cor_type'])
     exthdr['CFAM_H'], exthdr['CFAM_V'], exthdr['CFAMNAME'], exthdr['CFAMSP_H'],exthdr['CFAMSP_V'] = write_headers_CFAM(header_info['bandpass'])
-    exthdr['DPAM_H'], exthdr['DPAM_V'], exthdr['DPAMNAME'], exthdr['DPAMSP_H'],exthdr['DPAMSP_V'] = write_headers_DPAM(header_info['cgi_mode'], header_info['polaxis'], header_info['prism'])
+    exthdr['DPAM_H'], exthdr['DPAM_V'], exthdr['DPAMNAME'], exthdr['DPAMSP_H'],exthdr['DPAMSP_V'] = write_headers_DPAM(header_info['cgi_mode'], header_info['polarization_basis'], header_info['prism'])
     
     ##### need to update later
     exthdr['FPAM_H'], exthdr['FPAM_V'], exthdr['FPAMNAME'], exthdr['FPAMSP_H'],exthdr['FPAMSP_V'] = write_headers_FPAM(header_info['cor_type'], header_info['bandpass'], header_info['use_fpm'], header_info['nd_filter'])
@@ -129,12 +129,13 @@ def save_hdu_to_fits( hdul, outdir=None, overwrite=True, write_as_L1=False, file
         Save an Astropy HDUList to a FITS file.
 
         Parameters:
-        - hdul (astropy.io.fits.HDUList): The HDUList object to be saved.
-        - outdir (str, optional): Output directory. Defaults to the current working directory.
-        - overwrite (bool): If True, overwrite the file if it already exists. Default is True.
-        - write_as_L1 (bool): If True, the file will be named according to the L1 naming convention.
-        - filename (str, optional): Name of the output FITS file (without ".fits" extension). 
+            - hdul (astropy.io.fits.HDUList): The HDUList object to be saved.
+            - outdir (str, optional): Output directory. Defaults to the current working directory.
+            - overwrite (bool): If True, overwrite the file if it already exists. Default is True.
+            - write_as_L1 (bool): If True, the file will be named according to the L1 naming convention.
+            - filename (str, optional): Name of the output FITS file (without ".fits" extension). 
                                     Required if write_as_L1 is False.
+                                    
         """
         if outdir is None:
             outdir = os.getcwd()
@@ -399,16 +400,31 @@ def write_headers_CFAM(band_pass):
     
     
 
-def write_headers_DPAM(cor_mode, polaxis, prism):
-     ### determine the value for DPAM based on simulation mode and polaxis number
+def write_headers_DPAM(cor_mode, polarization_basis, prism):
+     ### determine the value for DPAM based on simulation mode and polarization basis
     
-    if (cor_mode == 'excam') & (polaxis in ['0', '10']):
-        ## excam imaging mode, no polarimetry
-        DPAM_H = 38917.1
-        DPAM_V = 26016.9
-        DPAMNAME = 'IMAGING'
-        DPAMSP_H = 38917.1
-        DPAMSP_V = 26016.9
+    if (cor_mode == 'excam'):
+        if polarization_basis == 'None':
+            #no wollaston
+            DPAM_H = 38917.1
+            DPAM_V = 26016.9
+            DPAMNAME = 'IMAGING'
+            DPAMSP_H = 38917.1
+            DPAMSP_V = 26016.9
+        elif polarization_basis == '0/90 degrees':
+            #0/90 polarization
+            DPAM_H = 8991.3
+            DPAM_V = 1261.3
+            DPAMNAME = 'POL0'
+            DPAMSP_H = 8991.3
+            DPAMSP_V = 1261.3
+        else:
+            #45/135 polarization
+            DPAM_H = 44660.1
+            DPAM_V = 1261.3
+            DPAMNAME = 'POL45'
+            DPAMSP_H = 44660.1
+            DPAMSP_V = 1261.3
     if cor_mode == 'spec':
         #raise ValueError('Spec mode has not been implemented')
         if prism == 'PRISM2':
@@ -430,9 +446,6 @@ def write_headers_DPAM(cor_mode, polaxis, prism):
             DPAMSP_H = 38917.1
             DPAMSP_V = 26016.9
 
-        
-    if (cor_mode == 'excam') & (polaxis not in ['0', '10']):
-        raise ValueError('Polarimetry mode has not been implemented')
 
     return DPAM_H, DPAM_V, DPAMNAME,  DPAMSP_H,  DPAMSP_V
 
