@@ -379,12 +379,14 @@ class CorgiOptics():
                 image_centx = self.grid_dim_out // 2 + self.fsm_x_offset_mas / mas_pix
                 image_centy = self.grid_dim_out // 2 + self.fsm_y_offset_mas / mas_pix
                 print("source location (x, y) without prism = {:.3f}, {:.3f}".format(image_centx, image_centy))
-                dispersed_image_centx = image_centx + disp_shift_lam0_x / self.oversampling_factor 
-                dispersed_image_centy = image_centy + disp_shift_lam0_y / self.oversampling_factor 
-                print("source location (x, y) with prism = {:.3f}, {:.3f}".format(dispersed_image_centx, dispersed_image_centy))
-                dispersed_fullframe_centx = frame_loc_x + 1088 + (dispersed_image_centx - self.grid_dim_out // 2)
-                dispersed_fullframe_centy = frame_loc_y + 13 + (dispersed_image_centy - self.grid_dim_out // 2)
-                print("full frame source location (x, y) with prism = {:.3f}, {:.3f}".format(dispersed_fullframe_centx, dispersed_fullframe_centy))
+                self.optics_keywords['dispersed_image_centx'] = image_centx + disp_shift_lam0_x / self.oversampling_factor 
+                self.optics_keywords['dispersed_image_centy'] = image_centy + disp_shift_lam0_y / self.oversampling_factor 
+                print("source location (x, y) with prism = {:.3f}, {:.3f}".format(self.optics_keywords['dispersed_image_centx'], 
+                                                                                  self.optics_keywords['dispersed_image_centy']))
+                self.optics_keywords['dispersed_fullframe_centx'] = frame_loc_x + 1088 + (self.optics_keywords['dispersed_image_centx'] - self.grid_dim_out // 2)
+                self.optics_keywords['dispersed_fullframe_centy'] = frame_loc_y + 13 + (self.optics_keywords['dispersed_image_centy'] - self.grid_dim_out // 2)
+                print("full frame source location (x, y) with prism = {:.3f}, {:.3f}".format(self.optics_keywords['dispersed_fullframe_centx'],
+                                                                                             self.optics_keywords['dispersed_fullframe_centy']))
 
             # Initialize the image array based on whether oversampling is returned
             images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if self.return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
