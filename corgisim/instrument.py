@@ -434,7 +434,9 @@ class CorgiOptics():
         # Define specific keys from self.optics_keywords to include in the header            
         keys_to_include_in_header = ['use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
                             'use_lyot_stop','use_field_stop','fsm_x_offset_mas','fsm_y_offset_mas','slit','prism',
-                            'slit_x_offset_mas','slit_y_offset_mas']  # Specify keys to include
+                            'slit_x_offset_mas','slit_y_offset_mas',
+                            'dispersed_image_centx','dispersed_image_centy',
+                            'dispersed_fullframe_centx','dispersed_fullframe_centy']  # Specify keys to include
         subset = {key: self.optics_keywords[key] for key in keys_to_include_in_header if key in self.optics_keywords}
         sim_info.update(subset)
         ## add sattelite spots info 
