@@ -3,9 +3,9 @@ name: Minimal Test
 
 on:
   push:
-    branches: [ "main"]
+    branches: ["main"]
   pull_request:
-    branches: [ "main"]
+    branches: ["main"]
   workflow_dispatch:
 
 
@@ -54,6 +54,6 @@ jobs:
       with:
         swap-size-gb: 10
 
-    - name: environment variables
+    - name: Minimal test
       run: |
         pytest ./test/test_minimal.py
