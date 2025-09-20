@@ -1091,26 +1091,12 @@ class CorgiDetector():
             sim_info['position_on_detector_x'] = loc_x
             sim_info['position_on_detector_y'] = loc_y
             
-            if (sim_info['ref_flag'] == 'False') or (sim_info['ref_flag'] == '0'):
-                ref_flag = False
-            if (sim_info['ref_flag'] == 'True') or (sim_info['ref_flag'] == '1'):
-                ref_flag = True
-            if (sim_info['use_fpm'] == 'False') or (sim_info['use_fpm'] == '0'):
-                use_fpm = False
-            if (sim_info['use_fpm'] == 'True') or (sim_info['use_fpm'] == '1'):
-                use_fpm = True
-            if (sim_info['use_pupil_lens'] == 'True') or (sim_info['use_pupil_lens'] == '1'):
-                use_pupil_lens = True
-            if (sim_info['use_pupil_lens'] == 'False') or (sim_info['use_pupil_lens'] == '0'):
-                use_pupil_lens = False
-            if (sim_info['use_lyot_stop'] == 'True') or (sim_info['use_lyot_stop'] == '1'):
-                use_lyot_stop = True
-            if (sim_info['use_lyot_stop'] == 'False') or (sim_info['use_lyot_stop'] == '0'):
-                use_lyot_stop = False
-            if (sim_info['use_field_stop'] == 'True') or (sim_info['use_field_stop'] == '1'):
-                use_field_stop = True
-            if (sim_info['use_field_stop'] == 'False') or (sim_info['use_field_stop'] == '0'):
-                use_field_stop = False
+           
+            ref_flag = outputs.str2bool(sim_info['ref_flag'])
+            use_fpm = outputs.str2bool(sim_info['use_fpm'])
+            use_pupil_lens = outputs.str2bool(sim_info['use_pupil_lens'])
+            use_lyot_stop = outputs.str2bool(sim_info['use_lyot_stop'])
+            use_field_stop = outputs.str2bool(sim_info['use_field_stop'])   
             
             header_info = {'EXPTIME': exptime,'EMGAIN_C':self.emccd_keywords_default['em_gain'],'PSFREF':ref_flag,
                            'PHTCNT':self.photon_counting,'KGAINPAR':self.emccd_keywords_default['e_per_dn'],'cor_type':sim_info['cor_type'], 'bandpass':sim_info['bandpass'],
@@ -1120,14 +1106,9 @@ class CorgiDetector():
                 header_info['FSMX'] = float(sim_info['fsm_x_offset_mas'])
             if 'fsm_y_offset_mas' in sim_info:
                 header_info['FSMY'] = float(sim_info['fsm_y_offset_mas'])
-            if 'slit' in sim_info:
-                header_info['slit'] = sim_info['slit']
-            else:
-                header_info['slit'] = 'None'
-            if 'prism' in sim_info:
-                header_info['prism'] = sim_info['prism']
-            else:
-                header_info['prism'] = 'None'
+
+            header_info['slit'] = sim_info.get('slit', 'None')
+            header_info['prism'] = sim_info.get('prism', 'None')
             simulated_scene.image_on_detector = outputs.create_hdu_list(Im_noisy, sim_info=sim_info, header_info = header_info)
         else:
             simulated_scene.image_on_detector = outputs.create_hdu(Im_noisy, sim_info=sim_info)

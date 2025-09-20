@@ -684,6 +684,10 @@ def write_headers_FSAM(cor_type, band_pass,slit,polaxis,use_field_stop):
 
     return FSAM_H, FSAM_V, FSAMNAME, FSAMSP_H, FSAMSP_V
 
+def str2bool(value):
+    """Convert string representations of booleans/ints to actual bools."""
+    return str(value).lower() in ("true", "1")
+
        
        
 
