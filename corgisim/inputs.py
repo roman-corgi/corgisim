@@ -189,7 +189,7 @@ class Input():
 
         # Remaining inputs for Optics
         self._cgi_mode = 'excam'
-        self._bandpass = '1b'
+        self._bandpass = '1B'
         self._diam =  236.3114
         
         self._oversampling_factor = 7
@@ -266,7 +266,40 @@ class Input():
         if name in  self.__dict__ :
             return self.__dict__[name]
 
+def create_variation_input(old_input, **kwargs):
+    """
+    This function creates a new input which is identical to the old input except for the specified keywords. 
+    This allows for easily creating variations of a simulation input without modifying the original object.
 
+    Args:
+        **kwargs: Keyword arguments representing the attributes to be
+                    overwritten in the new Input object.
+
+    Returns:
+        corgisim.inputs.Input: A new Input object with the specified
+                                variations.
+
+    Raises:
+        NameError: If an unknown keyword argument is provided that is not a
+                    valid attribute of the Input class.
+    """
+    old_input_dict_intern = {k[1:]: v for k, v in old_input.__dict__.items()}
+    old_input_dict_intern.pop('initialized', None)
+    for key, value in kwargs.items():
+        if key in old_input_dict_intern.keys():
+            if key in ['optics_keywords', 'emccd_keywords', 'host_star_properties']:
+                for k,v in kwargs[key].items():
+                    if k in old_input_dict_intern[key].keys():
+                         old_input_dict_intern[k]=v
+                    else:
+                        raise NameError(k + ' is not an ' + key)
+            else:
+                old_input_dict_intern[key] = value
+
+        else:
+            raise NameError(key + ' is not an input parameter')
+    new_input = Input(**old_input_dict_intern) 
+    return new_input
 
 def load_cpgs_data(filepath, return_input=False):
     """Creates a scene and optics based on the content of a CPGS file.
@@ -284,21 +317,20 @@ def load_cpgs_data(filepath, return_input=False):
         tuple or corgisim.inputs.Input:
             If "return_input" is False (default):
                 A tuple containing:
-                - "scene_target" (:py:class:`corgisim.scene.Scene`): The scene object for the target star.
-                - "scene_reference" (:py:class:`corgisim.scene.Scene`, optional): The scene object for the reference star, if present.
-                - "optics" (:py:class:`corgisim.instrument.CorgiOptics`): The optics object configured from the CPGS file.
-                - "detector_target" (:py:class:`corgisim.instrument.CorgiDetector`): The detector object for target observations.
-                - "detector_reference" (:py:class:`corgisim.instrument.CorgiDetector`, optional): The detector object for reference observations, if present.
-                - "visit_list" (list): A list of dictionaries, where each dictionary describes a single observation visit.
+                    - "scene_target" (:py:class:`corgisim.scene.Scene`): The scene object for the target star.
+                    - "scene_reference" (:py:class:`corgisim.scene.Scene`, optional): The scene object for the reference star, if present.
+                    - "optics" (:py:class:`corgisim.instrument.CorgiOptics`): The optics object configured from the CPGS file.
+                    - "detector_target" (:py:class:`corgisim.instrument.CorgiDetector`): The detector object for target observations.
+                    - "detector_reference" (:py:class:`corgisim.instrument.CorgiDetector`, optional): The detector object for reference observations, if present.
+                    - "visit_list" (list): A list of dictionaries, where each dictionary describes a single observation visit.
             If "return_input" is True:
                 - "input" (:py:class:`corgisim.inputs.Input`): An Input object containing all parsed simulation parameters.
 
     Raises:
-        FileNotFoundError: If the specified `filepath` does not exist.
-        xml.etree.ElementTree.ParseError: If the file at `filepath` is not a valid XML file.
-        Exception: For unsupported target IDs or other parsing issues within the CPGS structure.
-        NotImplementedError: If a specific configuration (e.g., polarization, filter, coronagraph mask)
-            from the CPGS file is not yet implemented in the simulation.
+        - FileNotFoundError: If the specified `filepath` does not exist.
+        - xml.etree.ElementTree.ParseError: If the file at `filepath` is not a valid XML file.
+        - Exception: For unsupported target IDs or other parsing issues within the CPGS structure.
+        - NotImplementedError: If a specific configuration (e.g., polarization, filter, coronagraph mask) from the CPGS file is not yet implemented in the simulation.
     """
     # Parse the file 
     try: 

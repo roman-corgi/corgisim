@@ -1,16 +1,14 @@
-# This workflow will install Python dependencies, run tests and lint with a single version of Python
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 
-name: Python application
+name: Minimal Test
 
 on:
-  schedule:
-      - cron: "0 8 * * *"
   push:
-    branches: [ "main"]
+    branches: [ "develop-in-person-meeting"]
   pull_request:
-    branches: [ "main"]
+    branches: [ "develop-in-person-meeting"]
   workflow_dispatch:
+
+
 permissions:
   contents: read
 
@@ -40,8 +38,8 @@ jobs:
         cd ..        
     - name: Download and install Roman preflight
       run: |
-        git clone https://github.com/roman-corgi/cgisim_cpp
-        cd cgisim_cpp/
+        wget https://sourceforge.net/projects/cgisim/files/roman_preflight_proper_public_v2.0.1_python.zip && unzip roman_preflight_proper_public_v2.0.1_python.zip
+        cd roman_preflight_proper_public_v2.0.1_python/
         python -m pip install .
         cd ..        
     - name: Download and install CGISim
@@ -56,6 +54,6 @@ jobs:
       with:
         swap-size-gb: 10
 
-    - name: Test with pytest
+    - name: environment variables
       run: |
-        pytest ./test
+        pytest ./test/test_minimal.py

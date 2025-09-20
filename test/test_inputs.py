@@ -115,12 +115,63 @@ def test_input():
     assert str(excinfo.value) == "Cannot set attribute _cor_type" 
     assert input3.cor_type == 'hlc_band4'
 
+    # Test create variation from default
+    input4 = inputs.create_variation_input(input1, cor_type='hlc_band4',cgi_mode= 'spec', emccd_keywords=emccd_keywords)
+    # Check that the two inputs are identical except for the specified keywords
+    assert input4.cor_type == 'hlc_band4'
+    assert input4.optics_keywords['cor_type'] == 'hlc_band4'
+
+    assert input4.cgi_mode == 'spec'
+    assert input4.em_gain == 100.0
+    assert input4.emccd_keywords['em_gain'] == 100.0
+
+    for key, val in input4.__dict__.items():
+        if key[1:] in ['cor_type', 'cgi_mode', 'em_gain']:
+            pass
+        #Comparing arrays
+        elif type(val).__module__ == 'numpy':
+            assert (input1.__dict__[key] == val).all()
+
+        elif key[1:] in ['optics_keywords', 'emccd_keywords']:
+            for keyword, value in input4.__dict__[key].items():
+                if keyword[1:] in ['cor_type', 'em_gain']:
+                    pass
+                #Comparing arrays
+                elif type(value).__module__ == 'numpy':
+                    assert (input1.__dict__[key][keyword] == value).all()
+                else:
+                    assert input1.__dict__[key][keyword] ==  input4.__dict__[key][keyword]
+
+        else:
+            assert input1.__dict__[key] == val
+
+
+    # Test error handling
+    wrong_keyword = 'wrong'
+    with pytest.raises(NameError) as excinfo:  
+       input5 = inputs.create_variation_input(input1, cor_type='hlc_band4', cgi_mode= 'spec', wrong_keyword = 'wrong', emccd_keywords=emccd_keywords)
+    assert str(excinfo.value) =='wrong_keyword is not an input parameter' 
+
+    emccd_keywords = {'wrong_emccd_keyword': 100.0}
+    with pytest.raises(NameError) as excinfo:  
+       input5 = inputs.create_variation_input(input1, cor_type='hlc_band4', cgi_mode= 'spec', emccd_keywords=emccd_keywords)
+    assert str(excinfo.value) =='wrong_emccd_keyword is not an emccd_keywords' 
+
+
 def test_input_from_cpgs():
     script_dir = os.getcwd()
     filepath = 'test/test_data/cpgs_without_polarization.xml'
     abs_path =  os.path.join(script_dir, filepath)
 
     input = inputs.load_cpgs_data(abs_path, return_input=True)
+    # Test create variation from cpgs
+    emccd_keywords = {'em_gain': 100.0}
+    input2 = inputs.create_variation_input(input, cor_type='hlc_band4',cgi_mode= 'spec', emccd_keywords=emccd_keywords)
+    assert input2.cor_type == 'hlc_band4'
+    assert input2.optics_keywords['cor_type'] == 'hlc_band4'
+    assert input2.cgi_mode == 'spec'
+    assert input2.em_gain == 100.0
+    assert input2.emccd_keywords['em_gain'] == 100.0
 
     # Test that the correct file is used
     assert input.cpgs_file == abs_path
@@ -143,7 +194,7 @@ def test_input_from_cpgs():
             # For dictionnaries, we only check that the key that are presents have the same values 
             if key in ['optics_keywords', 'emccd_keywords', 'host_star_properties']:
                 for keyword in (optics.__dict__['optics_keywords'].keys() & optics_input.__dict__['optics_keywords'].keys()):
-                    assert optics.__dict__[key][keyword] == optics_input.__dict__[key][keyword]
+                    assert optics.__dict__[key][keyword] == optics_input.__dict__[key][keyword]                                   
             else:
                 assert optics_input.__dict__[key] == val
 
