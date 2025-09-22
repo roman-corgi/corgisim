@@ -55,3 +55,8 @@ roman_preflight_compact.py and roman_preflight.py need to be copied in the same 
 
 ### Documentation
 The automatic documentation is available at https://corgisim.readthedocs.io/en/latest/
+
+### Test
+test_minimal.py runs on every pull request and push to main. Make sure that this test passes before you request a review. 
+Put your 'nominal' case here. The goal is to ensure that developers don't break any existing functionality by mistake. If possible, insert your test in an existing test and only simulate images if necessary. 
+Longer tests and unit tests should be in another file. All other tests run on push to main (which includes when a branch is merged) and once a week. 
