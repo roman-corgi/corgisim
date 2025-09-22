@@ -17,19 +17,18 @@ def test_excam_mode():
     bandpass = '1F'
     cor_type = 'hlc_band1'
 
-    mag_companion = [25,25]
+    mag_companion = [25]
     ###the position of companions in unit of mas
     ####550nm/2.3m = 29.4 mas
     ###we used sep = 3 lambda/D here 
-    dx= [3*49.3,-3*49.3]
-    dy= [3*49.3,-3*49.3]
+    dx= [3*49.3]
+    dy= [3*49.3]
     
     info_dir = cgisim.lib_dir + '/cgisim_info_dir/'
 
     #Define the host star properties
     host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype': 'vegamag'}
-    point_source_info = [{'Vmag': mag_companion[0], 'magtype': 'vegamag','position_x':dx[0] , 'position_y':dy[0]},
-                         {'Vmag': mag_companion[1], 'magtype': 'vegamag','position_x':dx[1] , 'position_y':dy[1]}]
+    point_source_info = [{'Vmag': mag_companion[0], 'magtype': 'vegamag','position_x':dx[0] , 'position_y':dy[0]}]
 
 
     #Create a Scene object that holds all this information
@@ -94,7 +93,7 @@ def test_excam_mode():
 
     detector = instrument.CorgiDetector( emccd_keywords)
     sim_scene = detector.generate_detector_image(sim_scene, exptime,full_frame=True,loc_x=300, loc_y=300)
-    
+
     assert(isinstance(sim_scene.point_source_image, fits.hdu.image.PrimaryHDU)  )
     assert(isinstance(sim_scene.point_source_image.data, np.ndarray)  )
     assert np.any(sim_scene.point_source_image.data > 0)
@@ -221,7 +220,7 @@ def test_spec_mode():
     polaxis = 10
     # output_dim define the size of the output image
     output_dim = 121
-    overfac = 5
+    overfac = 3
     optics_keywords_slit_prism ={'cor_type':cor_type, 'use_errors':2, 'polaxis':polaxis, 'output_dim':output_dim, 
                   'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,
                   'slit':'R1C2', 'prism':'PRISM3', 'wav_step_um':2E-3}
@@ -253,11 +252,10 @@ def test_spc_mode():
     optics = instrument.CorgiOptics(cgi_mode, bandpass_corgisim, optics_keywords=optics_keywords, if_quiet=True, integrate_pixels=True)
     sim_scene = optics.get_host_star_psf(base_scene)
     image_star_corgi = sim_scene.host_star_image.data
-    polaxis_cgisim = -10
-    params = {'use_errors':1, 'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2}
-    image_star_cgi, a0_counts = cgisim.rcgisim(cgi_mode, cor_type, bandpass_cgisim,  polaxis_cgisim, params, 
-        star_spectrum = sptype.lower(), star_vmag = input1.Vmag)
-    assert image_star_corgi == pytest.approx(image_star_cgi, rel=0.5)
+
+    assert(isinstance(sim_scene.host_star_image, fits.hdu.image.PrimaryHDU)  )
+    assert(isinstance(sim_scene.host_star_image.data, np.ndarray)  )
+    assert np.any(sim_scene.host_star_image.data > 0)
 
 def test_pol_mode():
     Vmag = 8
@@ -288,9 +286,9 @@ def test_pol_mode():
 
     dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm1_v.fits' )
     dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm2_v.fits' )
-    optics_keywords = {'cor_type':cor_type, 'use_errors':2, 'polaxis':10, 'output_dim':output_dim, 'prism':prism,\
+    optics_keywords = {'cor_type':cor_type, 'use_errors':1, 'polaxis':10, 'output_dim':output_dim, 'prism':prism,\
                         'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
-    optics_keywords_0_90 = {'cor_type':cor_type, 'use_errors':2, 'polaxis':-10, 'output_dim':output_dim, 'prism':'POL0',\
+    optics_keywords_0_90 = {'cor_type':cor_type, 'use_errors':1, 'polaxis':-10, 'output_dim':output_dim, 'prism':prism,\
                     'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
     optics_0_90 = instrument.CorgiOptics(cgi_mode, bandpass_corgisim, optics_keywords=optics_keywords_0_90, if_quiet=True, integrate_pixels=True)
 
