@@ -11,6 +11,6 @@ jobs:
         with:
           dry-run: true 
 
-    name: Test with pytest
-    run: |
-        echo "Repo clean-up"
+      - name: Test with pytest
+        run: |
+          echo "Repo clean-up"
