@@ -10,7 +10,4 @@ jobs:
       - uses: fpicalausa/remove-stale-branches@v1.6.0
         with:
           dry-run: true 
-
-      - name: Test with pytest
-        run: |
-          echo "Repo clean-up"
+          ignore-branches-with-open-prs: true
