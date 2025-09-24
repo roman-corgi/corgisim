@@ -9,5 +9,4 @@ jobs:
     steps:
       - uses: fpicalausa/remove-stale-branches@v1.6.0
         with:
-          dry-run: true 
           ignore-branches-with-open-prs: true
