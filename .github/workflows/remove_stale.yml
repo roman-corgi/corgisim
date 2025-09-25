@@ -9,4 +9,4 @@ jobs:
     steps:
       - uses: fpicalausa/remove-stale-branches@v1.6.0
         with:
-          ignore-branches-with-open-prs: true
+          exempt-protected-branches: true
