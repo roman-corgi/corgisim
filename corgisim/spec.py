@@ -122,6 +122,10 @@ def apply_prism(optics, image_cube):
             - ndarray: Image cube after applying prism dispersion, with finer wavelength sampling,
                        shape (n_wavelengths_interp, n_y, n_x)
             - ndarray: Interpolated wavelength array (in microns) for the dispersed_cube
+            - float: Horizontal displacement of source at filter center wavelength, 
+                     in units of oversampled model pixels
+            - float: Vertical displacement of source at filter center wavelength, 
+                     in units of oversampled model pixels
 
     Notes:
         The function performs the following operations:
