@@ -501,7 +501,6 @@ class CorgiOptics():
 
             # If a prism was selected, apply the dispersion model and overwrite the image cube and wavelength array.
             if self.prism != 'None': 
-                # images_tem, dispersed_lam_um = spec.apply_prism(self, images_tem)
                 images_tem, dispersed_lam_um, disp_shift_lam0_x, disp_shift_lam0_y = spec.apply_prism(self, images_tem)
 
                 self.nlam = len(dispersed_lam_um)
@@ -852,7 +851,6 @@ class CorgiOptics():
 
                 # If a prism was selected, apply the dispersion model and overwrite the image cube and wavelength array.
                 if self.prism != 'None': 
-                    # images_tem, dispersed_lam_um = spec.apply_prism(self, images_tem)
                     images_tem, dispersed_lam_um, disp_shift_lam0_x, disp_shift_lam0_y = spec.apply_prism(self, images_tem)
     
                     self.nlam = len(dispersed_lam_um)
