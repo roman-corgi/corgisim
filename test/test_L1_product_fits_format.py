@@ -91,6 +91,7 @@ def test_L1_product_fits_format():
     assert prihr['PSFREF'] == False, f"Expected data PSFREF=False, but got {prihr['PSFREF']}"
     assert prihr['PHTCNT'] == True, f"Expected data PSFREF=True, but got {prihr['PHTCNT']}"
     assert prihr['SATSPOTS'] == 0, f"Expected data PSFREF=True, but got {prihr['PHTCNT']}"
+    assert prihr['ROLL'] == 0.0, f"Expected data ROLL=0, but got {prihr['ROLL']}"
 
     assert exthdr['KGAINPAR'] == 8.7, f"Expected data KGAINPAR=8.7, but got {exthdr['KGAINPAR']}"
     assert exthdr['EMGAIN_C'] == 1000, f"Expected data EMGAIN_C=1000, but got {exthdr['EMGAIN_C']}"
@@ -176,8 +177,8 @@ def test_L1_product_fits_format():
                     'fsm_x_offset_mas':10.0,'fsm_y_offset_mas':20.0 }
                 ##pass fsm_x_offset_mas and fsm_y_offset_mas for no zero value as test
 
-
-    optics = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords, if_quiet=True)
+    roll_angle=10.0 ##degree
+    optics = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords, if_quiet=True, roll_angle=roll_angle)
     sim_scene = optics.get_host_star_psf(base_scene)
 
     sim_scene = optics.inject_point_sources(base_scene,sim_scene)
@@ -219,6 +220,7 @@ def test_L1_product_fits_format():
     assert prihr['PSFREF'] == True, f"Expected header PSFREF=False, but got {prihr['PSFREF']}"
     assert prihr['PHTCNT'] == False, f"Expected header PSFREF=False, but got {prihr['PHTCNT']}"
     assert prihdr['FRAMET'] == exptime, f"Expected header FRAMET = {exptime}, but got {prihdr['FRAMET']}"
+    assert prihr['ROLL'] == 10.0, f"Expected data ROLL=10, but got {prihr['ROLL']}"
 
     assert exthdr['KGAINPAR'] == e_per_dn, f"Expected data KGAINPAR={e_per_dn}, but got {exthdr['KGAINPAR']}"
     assert exthdr['EMGAIN_C'] == gain, f"Expected data EMGAIN_C={gain}, but got {exthdr['EMGAIN_C']}"
@@ -360,4 +362,4 @@ def test_L1_product_from_CPGS():
 if __name__ == '__main__':
     #run_sim()
     test_L1_product_fits_format()
-    test_L1_product_from_CPGS()
+    #test_L1_product_from_CPGS()

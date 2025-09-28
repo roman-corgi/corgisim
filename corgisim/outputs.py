@@ -51,6 +51,7 @@ def create_hdu_list(data, header_info, sim_info=None):
     ### it needs to be updated later
     prihdr['FRAMET'] = header_info['EXPTIME']
     prihdr['SATSPOTS'] = int(header_info['SATSPOTS'])
+    prihdr['ROLL'] = header_info['ROLL']
 
     ### wait this for tachi to add sattlite spots function
     #prihdr['SATSPOTS'] = header_info['SATSPOTS'] 
