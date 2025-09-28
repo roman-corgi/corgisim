@@ -77,13 +77,13 @@ def create_hdu_list(data, header_info, sim_info=None):
         exthdr[key] = header_info[key] if key in header_info else 0  # set the header from header_info or default in cgisim
 
     exthdr['SPAM_H'], exthdr['SPAM_V'], exthdr['SPAMNAME'], exthdr['SPAMSP_H'],exthdr['SPAMSP_V'] = write_headers_SPAM(header_info['cor_type'])
-    exthdr['LSAM_H'], exthdr['LSAM_V'], exthdr['LSAMNAME'], exthdr['LSAMSP_H'],exthdr['LSAMSP_V'] = write_headers_LSAM(header_info['cor_type'])
+    exthdr['LSAM_H'], exthdr['LSAM_V'], exthdr['LSAMNAME'], exthdr['LSAMSP_H'],exthdr['LSAMSP_V'] = write_headers_LSAM(header_info['cor_type'], header_info['use_lyot_stop'] )
     exthdr['CFAM_H'], exthdr['CFAM_V'], exthdr['CFAMNAME'], exthdr['CFAMSP_H'],exthdr['CFAMSP_V'] = write_headers_CFAM(header_info['bandpass'])
-    exthdr['DPAM_H'], exthdr['DPAM_V'], exthdr['DPAMNAME'], exthdr['DPAMSP_H'],exthdr['DPAMSP_V'] = write_headers_DPAM(header_info['cgi_mode'], header_info['polaxis'], header_info['prism'])
+    exthdr['DPAM_H'], exthdr['DPAM_V'], exthdr['DPAMNAME'], exthdr['DPAMSP_H'],exthdr['DPAMSP_V'] = write_headers_DPAM(header_info['cgi_mode'], header_info['polarization_basis'], header_info['prism'], header_info['use_pupil_lens'])
     
     ##### need to update later
     exthdr['FPAM_H'], exthdr['FPAM_V'], exthdr['FPAMNAME'], exthdr['FPAMSP_H'],exthdr['FPAMSP_V'] = write_headers_FPAM(header_info['cor_type'], header_info['bandpass'], header_info['use_fpm'], header_info['nd_filter'])
-    exthdr['FSAM_H'], exthdr['FSAM_V'], exthdr['FSAMNAME'], exthdr['FSAMSP_H'],exthdr['FSAMSP_V'] = write_headers_FSAM(header_info['cor_type'], header_info['bandpass'], header_info['slit'], header_info['polaxis'])
+    exthdr['FSAM_H'], exthdr['FSAM_V'], exthdr['FSAMNAME'], exthdr['FSAMSP_H'],exthdr['FSAMSP_V'] = write_headers_FSAM(header_info['cor_type'], header_info['bandpass'], header_info['slit'], header_info['polaxis'], header_info['use_field_stop'])
 
 
 
@@ -129,12 +129,13 @@ def save_hdu_to_fits( hdul, outdir=None, overwrite=True, write_as_L1=False, file
         Save an Astropy HDUList to a FITS file.
 
         Parameters:
-        - hdul (astropy.io.fits.HDUList): The HDUList object to be saved.
-        - outdir (str, optional): Output directory. Defaults to the current working directory.
-        - overwrite (bool): If True, overwrite the file if it already exists. Default is True.
-        - write_as_L1 (bool): If True, the file will be named according to the L1 naming convention.
-        - filename (str, optional): Name of the output FITS file (without ".fits" extension). 
+            - hdul (astropy.io.fits.HDUList): The HDUList object to be saved.
+            - outdir (str, optional): Output directory. Defaults to the current working directory.
+            - overwrite (bool): If True, overwrite the file if it already exists. Default is True.
+            - write_as_L1 (bool): If True, the file will be named according to the L1 naming convention.
+            - filename (str, optional): Name of the output FITS file (without ".fits" extension). 
                                     Required if write_as_L1 is False.
+                                    
         """
         if outdir is None:
             outdir = os.getcwd()
@@ -239,40 +240,47 @@ def write_headers_SPAM(cor_type):
 
 
 
-def write_headers_LSAM(cor_type):
+def write_headers_LSAM(cor_type, use_lyot_stop):
+    if not use_lyot_stop:
+        ## not use lyot stop
+        LSAM_H = 20822
+        LSAM_V = 17393.9
+        LSAMNAME = 'OPEN'
+        LSAMSP_H =  20822
+        LSAMSP_V = 17393.9
+    if use_lyot_stop:
+        ### determine the value for LSAM based on coronagraph type
+        if 'hlc' in cor_type:
+            ## hlc NFOV imaging mode
+            LSAM_H = 36898.7
+            LSAM_V = 4636.2
+            LSAMNAME = 'NFOV'
+            LSAMSP_H = 36898.7
+            LSAMSP_V = 4636.2
 
-    ### determine the value for LSAM based on coronagraph type
-    if 'hlc' in cor_type:
-        ## hlc NFOV imaging mode
-        LSAM_H = 36898.7
-        LSAM_V = 4636.2
-        LSAMNAME = 'NFOV'
-        LSAMSP_H = 36898.7
-        LSAMSP_V = 4636.2
+        if 'wide' in cor_type:
+            ## spc WFOV imaging mode
+            LSAM_H = 1424.3
+            LSAM_V = 29440.2
+            LSAMNAME = 'WFOV'
+            LSAMSP_H = 1424.3
+            LSAMSP_V = 29440.2
 
-    if 'wide' in cor_type:
-        ## spc WFOV imaging mode
-        LSAM_H = 1424.3
-        LSAM_V = 29440.2
-        LSAMNAME = 'WFOV'
-        LSAMSP_H = 1424.3
-        LSAMSP_V = 29440.2
+        if ('spec' in cor_type) & ('rotated' not in cor_type):
+            ## spc spec mode, not rotated
+            LSAM_H = 36936.3
+            LSAM_V = 29389.3
+            LSAMNAME = 'SPEC'
+            LSAMSP_H = 36936.3
+            LSAMSP_V = 29389.3
 
-    if ('spec' in cor_type) & ('rotated' not in cor_type):
-        ## spc spec mode, not rotated
-        LSAM_H = 36936.3
-        LSAM_V = 29389.3
-        LSAMNAME = 'SPEC'
-        LSAMSP_H = 36936.3
-        LSAMSP_V = 29389.3
-
-    if 'rotated' in cor_type:
-        ## spc spec mode, rotated
-        LSAM_H =  1426.6
-        LSAM_V = 4581.4
-        LSAMNAME = 'SPECROT'
-        LSAMSP_H = 1426.6
-        LSAMSP_V = 4581.4
+        if 'rotated' in cor_type:
+            ## spc spec mode, rotated
+            LSAM_H =  1426.6
+            LSAM_V = 4581.4
+            LSAMNAME = 'SPECROT'
+            LSAMSP_H = 1426.6
+            LSAMSP_V = 4581.4
 
     return LSAM_H, LSAM_V, LSAMNAME, LSAMSP_H, LSAMSP_V
 
@@ -399,40 +407,59 @@ def write_headers_CFAM(band_pass):
     
     
 
-def write_headers_DPAM(cor_mode, polaxis, prism):
-     ### determine the value for DPAM based on simulation mode and polaxis number
-    
-    if (cor_mode == 'excam') & (polaxis in ['0', '10']):
-        ## excam imaging mode, no polarimetry
-        DPAM_H = 38917.1
-        DPAM_V = 26016.9
-        DPAMNAME = 'IMAGING'
-        DPAMSP_H = 38917.1
-        DPAMSP_V = 26016.9
-    if cor_mode == 'spec':
-        #raise ValueError('Spec mode has not been implemented')
-        if prism == 'PRISM2':
-            DPAM_H = 62496
-            DPAM_V = 1261.3
-            DPAMNAME = 'PRISM2'
-            DPAMSP_H = 62496
-            DPAMSP_V = 1261.3
-        if prism == 'PRISM3':
-            DPAM_H = 26824.2
-            DPAM_V = 1261.3
-            DPAMNAME = 'PRISM3'
-            DPAMSP_H = 26824.2
-            DPAMSP_V = 1261.3
-        if prism == 'None':
-            DPAM_H = 38917.1
-            DPAM_V = 26016.9
-            DPAMNAME = 'IMAGING'
-            DPAMSP_H = 38917.1
-            DPAMSP_V = 26016.9
+def write_headers_DPAM(cor_mode, polarization_basis, prism, use_pupil_lens):
+     ### determine the value for DPAM based on simulation mode and polarization basis
+    if use_pupil_lens :
+        ## pupil imaging
+        DPAM_H = 62626.4
+        DPAM_V = 21024.3
+        DPAMNAME = 'PUPIL'
+        DPAMSP_H = 62626.4
+        DPAMSP_V = 21024.3
+    if not use_pupil_lens:
+        if (cor_mode == 'excam'):
+            if polarization_basis == 'None':
+                #no wollaston
+                DPAM_H = 38917.1
+                DPAM_V = 26016.9
+                DPAMNAME = 'IMAGING'
+                DPAMSP_H = 38917.1
+                DPAMSP_V = 26016.9
+            elif polarization_basis == '0/90 degrees':
+                #0/90 polarization
+                DPAM_H = 8991.3
+                DPAM_V = 1261.3
+                DPAMNAME = 'POL0'
+                DPAMSP_H = 8991.3
+                DPAMSP_V = 1261.3
+            else:
+                #45/135 polarization
+                DPAM_H = 44660.1
+                DPAM_V = 1261.3
+                DPAMNAME = 'POL45'
+                DPAMSP_H = 44660.1
+                DPAMSP_V = 1261.3
+        if cor_mode == 'spec':
+            #raise ValueError('Spec mode has not been implemented')
+            if prism == 'PRISM2':
+                DPAM_H = 62496
+                DPAM_V = 1261.3
+                DPAMNAME = 'PRISM2'
+                DPAMSP_H = 62496
+                DPAMSP_V = 1261.3
+            if prism == 'PRISM3':
+                DPAM_H = 26824.2
+                DPAM_V = 1261.3
+                DPAMNAME = 'PRISM3'
+                DPAMSP_H = 26824.2
+                DPAMSP_V = 1261.3
+            if prism == 'None':
+                DPAM_H = 38917.1
+                DPAM_V = 26016.9
+                DPAMNAME = 'IMAGING'
+                DPAMSP_H = 38917.1
+                DPAMSP_V = 26016.9
 
-        
-    if (cor_mode == 'excam') & (polaxis not in ['0', '10']):
-        raise ValueError('Polarimetry mode has not been implemented')
 
     return DPAM_H, DPAM_V, DPAMNAME,  DPAMSP_H,  DPAMSP_V
 
@@ -550,106 +577,116 @@ def write_headers_FPAM(cor_type, band_pass,use_fpm,nd_filter):
     return FPAM_H, FPAM_V, FPAMNAME, FPAMSP_H, FPAMSP_V
 
 
-def write_headers_FSAM(cor_type, band_pass,slit,polaxis):
-
-    ### determine the value for FSAM based on coronagraph type and bandpass
-    if 'hlc' in cor_type:
-        if '1' in band_pass:
-            FSAM_H = 29387
-            FSAM_V = 12238
-            FSAMNAME = 'R1C1'
-            FSAMSP_H = 29387
-            FSAMSP_V = 12238
-
-        if '2' in band_pass:
-            FSAM_H = 17937
-            FSAM_V = 21238
-            FSAMNAME = 'R3C3'
-            FSAMSP_H = 17937
-            FSAMSP_V = 21238
-
-        if '3' in band_pass:
-            FSAM_H = 13437
-            FSAM_V = 21238
-            FSAMNAME = 'R3C4'
-            FSAMSP_H = 13437
-            FSAMSP_V = 21238
-
-        if '4' in band_pass:
-            FSAM_H = 8937
-            FSAM_V = 21238
-            FSAMNAME = 'R3C5'
-            FSAMSP_H = 8937
-            FSAMSP_V = 21238
-
-    if 'wide' in cor_type:
-        if polaxis in ['0', '10']:
-            FSAM_H =30677.2
-            FSAM_V = 2959.5
-            FSAMNAME = 'OPEN'
-            FSAMSP_H = 30677.2
-            FSAMSP_V = 2959.5
-        else:
-            raise ValueError("Polarimetry mode has not been implemented for FSAM")
-
-    if ('spec' in cor_type) & ('rotated' not in cor_type):
-        if '2' in band_pass:
-            if slit == "R6C5":
-                FSAM_H = 11187
-                FSAM_V = 32638
-                FSAMNAME = 'R6C5'
-                FSAMSP_H = 11187
-                FSAMSP_V = 32638
-            elif slit == "R3C1":
-                FSAM_H = 26937
-                FSAM_V = 21238
-                FSAMNAME = 'R3C1'
-                FSAMSP_H = 26937
-                FSAMSP_V = 21238
-            if slit == "None":
-                FSAM_H =30677.2
-                FSAM_V = 2959.5
-                FSAMNAME = 'OPEN'
-                FSAMSP_H = 30677.2
-                FSAMSP_V = 2959.5
-                
-
-        if '3' in band_pass:
-            if slit == "R1C2":
-                FSAM_H = 24087
+def write_headers_FSAM(cor_type, band_pass,slit,polaxis,use_field_stop):
+    if not use_field_stop:
+        FSAM_H =30677.2
+        FSAM_V = 2959.5
+        FSAMNAME = 'OPEN'
+        FSAMSP_H = 30677.2
+        FSAMSP_V = 2959.5
+    if use_field_stop:
+        ### determine the value for FSAM based on coronagraph type and bandpass
+        if 'hlc' in cor_type:
+            if '1' in band_pass:
+                FSAM_H = 29387
                 FSAM_V = 12238
-                FSAMNAME = 'R1C2'
-                FSAMSP_H = 24087
+                FSAMNAME = 'R1C1'
+                FSAMSP_H = 29387
                 FSAMSP_V = 12238
-            elif slit == "R3C1":
-                FSAM_H = 26937
+
+            if '2' in band_pass:
+                FSAM_H = 17937
                 FSAM_V = 21238
-                FSAMNAME = 'R3C1'
-                FSAMSP_H = 26937
+                FSAMNAME = 'R3C3'
+                FSAMSP_H = 17937
                 FSAMSP_V = 21238
-            if slit == "None":
+
+            if '3' in band_pass:
+                FSAM_H = 13437
+                FSAM_V = 21238
+                FSAMNAME = 'R3C4'
+                FSAMSP_H = 13437
+                FSAMSP_V = 21238
+
+            if '4' in band_pass:
+                FSAM_H = 8937
+                FSAM_V = 21238
+                FSAMNAME = 'R3C5'
+                FSAMSP_H = 8937
+                FSAMSP_V = 21238
+
+        if 'wide' in cor_type:
+            if polaxis in ['0', '10']:
                 FSAM_H =30677.2
                 FSAM_V = 2959.5
                 FSAMNAME = 'OPEN'
                 FSAMSP_H = 30677.2
                 FSAMSP_V = 2959.5
+            else:
+                raise ValueError("Polarimetry mode has not been implemented for FSAM")
 
-    if 'rotated' in cor_type:
-        if '2' in band_pass:
-            FSAM_H = 20187
-            FSAM_V = 25038
-            FSAMNAME = 'R4C3'
-            FSAMSP_H = 20187
-            FSAMSP_V = 25038
+        if ('spec' in cor_type) & ('rotated' not in cor_type):
+            if '2' in band_pass:
+                if slit == "R6C5":
+                    FSAM_H = 11187
+                    FSAM_V = 32638
+                    FSAMNAME = 'R6C5'
+                    FSAMSP_H = 11187
+                    FSAMSP_V = 32638
+                elif slit == "R3C1":
+                    FSAM_H = 26937
+                    FSAM_V = 21238
+                    FSAMNAME = 'R3C1'
+                    FSAMSP_H = 26937
+                    FSAMSP_V = 21238
+                if slit == "None":
+                    FSAM_H =30677.2
+                    FSAM_V = 2959.5
+                    FSAMNAME = 'OPEN'
+                    FSAMSP_H = 30677.2
+                    FSAMSP_V = 2959.5
+                    
 
-        if '3' in band_pass:
-            FSAM_H = 24687
-            FSAM_V = 17438
-            FSAMNAME = 'R2C2'
-            FSAMSP_H = 24687
-            FSAMSP_V = 17438
+            if '3' in band_pass:
+                if slit == "R1C2":
+                    FSAM_H = 24087
+                    FSAM_V = 12238
+                    FSAMNAME = 'R1C2'
+                    FSAMSP_H = 24087
+                    FSAMSP_V = 12238
+                elif slit == "R3C1":
+                    FSAM_H = 26937
+                    FSAM_V = 21238
+                    FSAMNAME = 'R3C1'
+                    FSAMSP_H = 26937
+                    FSAMSP_V = 21238
+                if slit == "None":
+                    FSAM_H =30677.2
+                    FSAM_V = 2959.5
+                    FSAMNAME = 'OPEN'
+                    FSAMSP_H = 30677.2
+                    FSAMSP_V = 2959.5
+
+        if 'rotated' in cor_type:
+            if '2' in band_pass:
+                FSAM_H = 20187
+                FSAM_V = 25038
+                FSAMNAME = 'R4C3'
+                FSAMSP_H = 20187
+                FSAMSP_V = 25038
+
+            if '3' in band_pass:
+                FSAM_H = 24687
+                FSAM_V = 17438
+                FSAMNAME = 'R2C2'
+                FSAMSP_H = 24687
+                FSAMSP_V = 17438
 
     return FSAM_H, FSAM_V, FSAMNAME, FSAMSP_H, FSAMSP_V
+
+def str2bool(value):
+    """Convert string representations of booleans/ints to actual bools."""
+    return str(value).lower() in ("true", "1")
 
        
        

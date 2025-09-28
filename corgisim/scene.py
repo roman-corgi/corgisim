@@ -4,6 +4,7 @@ import re
 from synphot.models import BlackBodyNorm1D, Box1D, ConstFlux1D
 from synphot import units, SourceSpectrum, SpectralElement, Observation
 from synphot.units import validate_wave_unit, convert_flux, VEGAMAG
+from corgisim import pol
 import cgisim
 import os
 import copy
@@ -39,6 +40,8 @@ class Scene():
             - "position_y" (float): Offset in Declination (dDEC) from the host star, in milliarcseconds (mas), in sky coordinates.
             - "Custom_Spectrum" (optional): 
                 A custom spectrum for the source. If provided, this spectrum will override the default spectrum generated based on Vmag.
+            - "pol_state" (float array): optional, vector of length 4 consisting of the I, Q, U and V components of the stokes parameter
+                describing how the source light is polarized, default is unpolarized or [1,0,0,0]
             Notes:
                 - The coordinates should be provided in the same reference frame and orientation as the background scene (typically North-up, East-left).
                 - All magnitudes must be consistent with their respective magnitude type.
@@ -49,6 +52,7 @@ class Scene():
 
     Raises:
         ValueError: If the provided spectral type is invalid.
+        ValueError: If the provided stokes vector is not of length 4 or the polarized intensity magnitude exceeds the total intensity magnitude
     '''
     def __init__(self, host_star_properties=None, point_source_info=None, twoD_scene_hdu=None):
         self._twoD_scene = copy.deepcopy(twoD_scene_hdu)
@@ -95,6 +99,14 @@ class Scene():
             self.off_axis_source_spectrum = self.get_off_axis_source_spectrum(self._point_source_Vmag,
                                                                             spectrum=self.point_source_spectrum,
                                                                             magtype=self._point_source_magtype)
+            
+            #Set the polarization state of sources, default to [1,0,0,0] if none provided
+            self.point_source_pol_state = [source.get('pol_state', np.array([1,0,0,0])) for source in point_source_info]
+
+            #check validity of source stoke vector and normalizes it
+            for source in range(n_off_axis_source):
+                pol.check_stokes_vector_validity(self.point_source_pol_state[source])
+                self.point_source_pol_state[source] = np.divide(self.point_source_pol_state[source], self.point_source_pol_state[source][0])
 
         
         
@@ -211,14 +223,14 @@ class Scene():
         to a given magnitude.
 
         Args:
-            sptype (str): The spectral type of the star (e.g., "G2V", "M5III").
-            magnitude (float): The magnitude of the star in the specified system.
-            magtype (str, optional): The magnitude type ('vegamag' by default).
-            return_teff (bool, optional): If True, also return the effective temperature inferred from the spectral type. Default is False. 
+            - sptype (str): The spectral type of the star (e.g., "G2V", "M5III").
+            - magnitude (float): The magnitude of the star in the specified system.
+            - magtype (str, optional): The magnitude type ('vegamag' by default).
+            - return_teff (bool, optional): If True, also return the effective temperature inferred from the spectral type. Default is False. 
 
         Returns:
-            sp_scale (SourceSpectrum): The scaled stellar spectrum.
-            v0 (float, optional): Returned only if `return_teff` is True. The effective temperature of the star in Kelvin.
+            - sp_scale (SourceSpectrum): The scaled stellar spectrum.
+            - v0 (float, optional): Returned only if `return_teff` is True. The effective temperature of the star in Kelvin.
 
 
         Raises:
@@ -506,6 +518,4 @@ def is_valid_spectral_type(spectral_type):
         raise ValueError(error_message)
 
     return bool(match)
-
-
 

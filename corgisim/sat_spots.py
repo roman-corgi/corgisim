@@ -5,15 +5,15 @@ def add_cos_pattern_dm(dm_volts, num_pairs=2, sep_lamD=7, angle_deg=[0,90], cont
     Add 2D cosine phase pattern(s) to Roman CGI DM solution (in volts). Reference: JPL codes from AJ Riggs and Vanessa Bailey
 
     Parameters:
-        dm_volts: 2D numpy array (original DM in volts)
-        sep_lamD: int, float, or a list of ints/floats. Number of wave cycles across the pupil diameter. Note that the dm gain value is hardcoded assuming sep_lamD=7 and two-pair satellite spots.
-        angle_deg: int, float, or a list of ints/floats. Orientation angle (degrees, 0 = along X-axis)
-        contrast: int, float, or a list of ints/floats. Expected contrast of sattelite spots, assuming amplitude_rad = 2*sqrt(contrast), where amplitude is a phase amplitude in radians
-        wavelength_m: float. Wavelength in meters
-	gain_nm_per_V: (optional) gain to convert the DM solution from a nm unit to volts
+        - dm_volts: 2D numpy array (original DM in volts)
+        - sep_lamD: int, float, or a list of ints/floats. Number of wave cycles across the pupil diameter. Note that the dm gain value is hardcoded assuming sep_lamD=7 and two-pair satellite spots.
+        - angle_deg: int, float, or a list of ints/floats. Orientation angle (degrees, 0 = along X-axis)
+        - contrast: int, float, or a list of ints/floats. Expected contrast of sattelite spots, assuming amplitude_rad = 2*sqrt(contrast), where amplitude is a phase amplitude in radians
+        - wavelength_m: float. Wavelength in meters
+	    - gain_nm_per_V: (optional) gain to convert the DM solution from a nm unit to volts
 
     Returns:
-        dm_volts_with_pattern: 2D numpy array (in volts), updated DM map with added cosine patterns
+        - dm_volts_with_pattern: 2D numpy array (in volts), updated DM map with added cosine patterns
     """
 
     # Roman DM properties - hardcoded, provided by John Krist.
