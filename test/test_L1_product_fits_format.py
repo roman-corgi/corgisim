@@ -362,4 +362,4 @@ def test_L1_product_from_CPGS():
 if __name__ == '__main__':
     #run_sim()
     test_L1_product_fits_format()
-    #test_L1_product_from_CPGS()
+    test_L1_product_from_CPGS()
