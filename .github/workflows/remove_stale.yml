@@ -12,3 +12,4 @@ jobs:
         with:
           exempt-protected-branches: true
           ignore-unknown-authors: true
+          default-recipient: "helloWorlds0"
