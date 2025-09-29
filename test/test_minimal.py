@@ -44,7 +44,7 @@ def test_excam_mode():
                     'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1, }
                 
 
-    optics = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords, if_quiet=True)
+    optics = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords, oversampling_factor = 3, if_quiet=True)
     
     efields = optics.get_e_field()
 
@@ -70,7 +70,7 @@ def test_excam_mode():
     satspot_keywords = {'num_pairs':2, 'sep_lamD': 7, 'angle_deg': [0,90], 'contrast': contrast, 'wavelength_m': wavelength}
 
     ##define the corgi.optics class that hold all information about the instrument paramters                    
-    optics_with_spots = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords, satspot_keywords=satspot_keywords, if_quiet=True)
+    optics_with_spots = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords, satspot_keywords=satspot_keywords, oversampling_factor = 3, if_quiet=True)
 
     sim_scene_with_spots = optics_with_spots.get_host_star_psf(base_scene)
     image_star_with_spots = sim_scene_with_spots.host_star_image.data
@@ -249,7 +249,7 @@ def test_spc_mode():
     optics_keywords = {'cor_type':cor_type, 'use_errors':2, 'polaxis':10, 'output_dim':201,\
                     'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
 
-    optics = instrument.CorgiOptics(cgi_mode, bandpass_corgisim, optics_keywords=optics_keywords, if_quiet=True, integrate_pixels=True)
+    optics = instrument.CorgiOptics(cgi_mode, bandpass_corgisim, oversampling_factor=3, optics_keywords=optics_keywords, if_quiet=True, integrate_pixels=True)
     sim_scene = optics.get_host_star_psf(base_scene)
     image_star_corgi = sim_scene.host_star_image.data
 
@@ -290,7 +290,7 @@ def test_pol_mode():
                         'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
     optics_keywords_0_90 = {'cor_type':cor_type, 'use_errors':1, 'polaxis':-10, 'output_dim':output_dim, 'prism':prism,\
                     'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
-    optics_0_90 = instrument.CorgiOptics(cgi_mode, bandpass_corgisim, optics_keywords=optics_keywords_0_90, if_quiet=True, integrate_pixels=True)
+    optics_0_90 = instrument.CorgiOptics(cgi_mode, bandpass_corgisim, oversampling_factor=3, optics_keywords=optics_keywords_0_90, if_quiet=True, integrate_pixels=True)
 
     sim_scene_0_90 = optics_0_90.get_host_star_psf(base_scene)
 
