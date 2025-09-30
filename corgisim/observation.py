@@ -4,7 +4,7 @@ import corgisim
 import os
 from corgisim import scene, instrument, inputs, observation, outputs
 
-def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, full_frame= False, loc_x=None, loc_y=None):
+def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, save_as_fits= False, output_dir=None, full_frame= False, loc_x=None, loc_y=None):
     """Generates a sequence of simulated observations and places them on a detector.
 
     This function orchestrates the simulation of a given astrophysical scene through
@@ -48,9 +48,21 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, f
             sim_image = detector.generate_detector_image(sim_scene,exp_time)
             simulatedImage_list.append(sim_image)
     else:
+        if save_as_fits:
+            # Save the images as fits in output_dir if specified, in corgisim/test/testdata if not
+            # Simulation needs to be full frame to be written as L1
+            if output_dir == None:
+                local_path = corgisim.lib_dir
+                outdir = os.path.join(local_path.split('corgisim')[0], 'corgisim/test/testdata')
+            else:
+                outdir = output_dir
+
         for i in range(0, n_frames):
             sim_image = detector.generate_detector_image(sim_scene,exp_time,full_frame=True,loc_x=loc_x, loc_y=loc_y)
             simulatedImage_list.append(sim_image)
+
+            if save_as_fits:
+                outputs.save_hdu_to_fits(sim_image.image_on_detector,outdir=outdir, write_as_L1=True)
 
     return simulatedImage_list
 
@@ -86,22 +98,11 @@ def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, outpu
     for visit in visit_list:
         #optics.roll_angle = visit['roll_angle'] Commented out for now
         if visit['isReference']:
-            simulatedImage_visit = generate_observation_sequence(scene_reference, optics, detector_reference, visit['exp_time'], visit['number_of_frames'], full_frame= full_frame,loc_x=loc_x, loc_y=loc_y )
+            simulatedImage_visit = generate_observation_sequence(scene_reference, optics, detector_reference, visit['exp_time'], visit['number_of_frames'],save_as_fits= save_as_fits, output_dir=output_dir, full_frame= full_frame,loc_x=loc_x, loc_y=loc_y )
         else:
-            simulatedImage_visit = generate_observation_sequence(scene_target, optics, detector_target, visit['exp_time'], visit['number_of_frames'], full_frame= full_frame,loc_x=loc_x, loc_y=loc_y  )
+            simulatedImage_visit = generate_observation_sequence(scene_target, optics, detector_target, visit['exp_time'], visit['number_of_frames'],save_as_fits= save_as_fits, output_dir=output_dir, full_frame= full_frame,loc_x=loc_x, loc_y=loc_y  )
 
         simulatedImage_list.extend(simulatedImage_visit)
-
-    if save_as_fits:
-        # Save the images as fits in output_dir if specified, in corgisim/test/testdata if not
-        # Simulation needs to be full frame to be written as L1
-        if output_dir == None:
-            local_path = corgisim.lib_dir
-            outdir = os.path.join(local_path.split('corgisim')[0], 'corgisim/test/testdata')
-        else:
-            outdir = output_dir
-        for simulatedImage in simulatedImage_list:
-            outputs.save_hdu_to_fits(simulatedImage.image_on_detector,outdir=outdir, write_as_L1=True)
 
     return simulatedImage_list
 

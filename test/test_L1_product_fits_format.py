@@ -357,6 +357,26 @@ def test_L1_product_from_CPGS():
     
     # Delete the files 
     shutil.rmtree(outdir)
+
+    # test at the observation sequence level
+    # n_frames and exp_time values are not critical
+    n_frames = 100
+    exp_time = 30
+
+    simulatedImage_list_sequence = observation.generate_observation_sequence( scene_target, optics, detector_target, exp_time, n_frames, save_as_fits=True, output_dir=outdir, full_frame=True, loc_x=300, loc_y=300)
+
+    for simulatedImage in simulatedImage_list_sequence:
+        prihdr = simulatedImage.image_on_detector[0].header
+        exthdr = simulatedImage.image_on_detector[1].header
+        time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
+        filename = f"CGI_{prihdr['VISITID']}_{time_in_name}_L1_.fits"
+
+        f = os.path.join( outdir , filename)
+        assert os.path.isfile(f)
+    
+    # Delete the files 
+    shutil.rmtree(outdir)
+
 if __name__ == '__main__':
     #run_sim()
     test_L1_product_fits_format()
