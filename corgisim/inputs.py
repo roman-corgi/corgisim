@@ -345,25 +345,6 @@ def load_cpgs_data(filepath, return_input=False):
     cpgs_input = root.find('cpgs_input')
 
     # # Create a host star and scene for each target
-    # target_list = root.find('target_list')
-    # reference_star_present = False
-    # for target in target_list.iter('target'):
-    #     Vmag = float(target.find('v_mag').text)
-    #     # Luminosity currently not an attribute of the target in cpgs file
-    #     sptype = target.find('spec_type').text + target.find('sub_type').text[:1] 
-    #     # MAG Type not currently not an attribute of the target in cpgs file, using vegamag by default
-    #     magtype = "vegamag"
-    #     if (target.find('target_id').text == '1'):
-    #         host_star_properties_target = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype':magtype, 'ref_flag': False}
-    #         scene_target = scene.Scene(host_star_properties_target)
-    #     elif (target.find('target_id').text == '2'):
-    #         host_star_properties_reference = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype':magtype, 'ref_flag': True}
-    #         scene_reference = scene.Scene(host_star_properties_reference)
-    #         reference_star_present = True
-    #     else:
-    #         raise Exception('Target ID not supported')
-
-
     target_v_mag = float(cpgs_input.find('target_v_mag').text)
     target_sptype =  cpgs_input.find('target_spec_type').text + cpgs_input.find('target_sub_type').text[:1] 
     host_star_properties_target = {'Vmag': target_v_mag, 'spectral_type': target_sptype, 'magtype':"vegamag", 'ref_flag': False}
