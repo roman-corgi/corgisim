@@ -216,10 +216,21 @@ class CorgiOptics():
         #self.area = (self.diam/2)**2 * np.pi - (self.diam/2*0.303)**2 * np.pi
         self.area =  35895.212    # primary effective area from cgisim cm^2 
         self.grid_dim_out = optics_keywords_internal['output_dim'] # number of grid in output image in one dimension
-        self.optics_keywords = optics_keywords_internal  # Store the keywords for PROPER package
-        self.optics_keywords['lam0']=self.lam0_um
-        if 'use_fpm' not in self.optics_keywords:
-            self.optics_keywords['use_fpm'] = 1  # use fpm by default
+        
+        optics_keywords_internal['lam0']=self.lam0_um
+        if 'use_fpm' not in optics_keywords_internal:
+            optics_keywords_internal['use_fpm'] = 1  # use fpm by default
+        if 'use_lyot_stop' not in optics_keywords_internal:
+            optics_keywords_internal['use_lyot_stop'] = 1  # use lyot stop by default
+        if 'use_field_stop' not in optics_keywords_internal:
+            optics_keywords_internal['use_field_stop'] = 1  # use field stop by default
+        if 'use_pupil_lens' not in optics_keywords_internal:
+            optics_keywords_internal['use_pupil_lens'] = 0  # not use pupil lens by default
+
+        if optics_keywords_internal['use_pupil_lens']==1 :
+            if (optics_keywords_internal['use_fpm']==1) or (optics_keywords_internal['use_lyot_stop']==1) or (optics_keywords_internal['use_field_stop']==1):
+                raise ValueError("When simulating a pupil image (use_pupil_lens=1), disable use_fpm, use_lyot_stop, and use_field_stop.")
+
 
         # polarization
         
@@ -255,6 +266,7 @@ class CorgiOptics():
         # bp: wavelegth is in unit of angstrom
         # bp: throughput is unitless, including transmission, reflectivity and EMCCD quantum efficiency 
         self.bp = self.setup_bandpass(self.cgi_mode, self.bandpass, self.nd)
+        self.optics_keywords = optics_keywords_internal  # Store the keywords for PROPER package
 
 
 
@@ -549,7 +561,7 @@ class CorgiOptics():
         # Define specific keys from self.optics_keywords to include in the header            
         keys_to_include_in_header = ['use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
                             'use_lyot_stop','use_field_stop','fsm_x_offset_mas','fsm_y_offset_mas','slit','prism',
-                            'slit_x_offset_mas','slit_y_offset_mas']  # Specify keys to include
+                            'slit_x_offset_mas','slit_y_offset_mas','use_pupil_lens', 'use_lyot_stop', 'use_field_stop']  # Specify keys to include
         subset = {key: self.optics_keywords[key] for key in keys_to_include_in_header if key in self.optics_keywords}
         sim_info.update(subset)
         ## add sattelite spots info 
@@ -890,7 +902,7 @@ class CorgiOptics():
                 # Define specific keys from self.optics_keywords to include in the header            
         keys_to_include_in_header = [ 'use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
                             'use_lyot_stop','use_field_stop','fsm_x_offset_mas','fsm_y_offset_mas','slit','prism',
-                            'slit_x_offset_mas','slit_y_offset_mas']  # Specify keys to include
+                            'slit_x_offset_mas','slit_y_offset_mas','use_pupil_lens', 'use_lyot_stop', 'use_field_stop']  # Specify keys to include
         subset = {key: self.optics_keywords[key] for key in keys_to_include_in_header if key in self.optics_keywords}
         sim_info.update(subset)
 
@@ -1079,30 +1091,24 @@ class CorgiDetector():
             sim_info['position_on_detector_x'] = loc_x
             sim_info['position_on_detector_y'] = loc_y
             
-            if (sim_info['ref_flag'] == 'False') or (sim_info['ref_flag'] == '0'):
-                ref_flag = False
-            if (sim_info['ref_flag'] == 'True') or (sim_info['ref_flag'] == '1'):
-                ref_flag = True
-            if (sim_info['use_fpm'] == 'False') or (sim_info['use_fpm'] == '0'):
-                use_fpm = False
-            if (sim_info['use_fpm'] == 'True') or (sim_info['use_fpm'] == '1'):
-                use_fpm = True
+           
+            ref_flag = outputs.str2bool(sim_info['ref_flag'])
+            use_fpm = outputs.str2bool(sim_info['use_fpm'])
+            use_pupil_lens = outputs.str2bool(sim_info['use_pupil_lens'])
+            use_lyot_stop = outputs.str2bool(sim_info['use_lyot_stop'])
+            use_field_stop = outputs.str2bool(sim_info['use_field_stop'])   
             
             header_info = {'EXPTIME': exptime,'EMGAIN_C':self.emccd_keywords_default['em_gain'],'PSFREF':ref_flag,
                            'PHTCNT':self.photon_counting,'KGAINPAR':self.emccd_keywords_default['e_per_dn'],'cor_type':sim_info['cor_type'], 'bandpass':sim_info['bandpass'],
-                           'cgi_mode': sim_info['cgi_mode'], 'polaxis':sim_info['polaxis'],'use_fpm':use_fpm,'nd_filter':sim_info['nd_filter'], 'polarization_basis': sim_info['polarization_basis'],'SATSPOTS':sim_info['SATSPOTS']}
+                           'cgi_mode': sim_info['cgi_mode'], 'polaxis':sim_info['polaxis'],'use_fpm':use_fpm,'nd_filter':sim_info['nd_filter'], 'polarization_basis': sim_info['polarization_basis'],'SATSPOTS':sim_info['SATSPOTS'],
+                           'use_pupil_lens':use_pupil_lens,'use_lyot_stop':use_lyot_stop, 'use_field_stop':use_field_stop}
             if 'fsm_x_offset_mas' in sim_info:
                 header_info['FSMX'] = float(sim_info['fsm_x_offset_mas'])
             if 'fsm_y_offset_mas' in sim_info:
                 header_info['FSMY'] = float(sim_info['fsm_y_offset_mas'])
-            if 'slit' in sim_info:
-                header_info['slit'] = sim_info['slit']
-            else:
-                header_info['slit'] = 'None'
-            if 'prism' in sim_info:
-                header_info['prism'] = sim_info['prism']
-            else:
-                header_info['prism'] = 'None'
+
+            header_info['slit'] = sim_info.get('slit', 'None')
+            header_info['prism'] = sim_info.get('prism', 'None')
             simulated_scene.image_on_detector = outputs.create_hdu_list(Im_noisy, sim_info=sim_info, header_info = header_info)
         else:
             simulated_scene.image_on_detector = outputs.create_hdu(Im_noisy, sim_info=sim_info)
