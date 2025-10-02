@@ -17,13 +17,13 @@ def test_excam_mode():
     bandpass = '1F'
     cor_type = 'hlc_band1'
 
-    mag_companion = [25]
+    mag_companion = [25,25]
     ###the position of companions in unit of mas
     ####550nm/2.3m = 29.4 mas
     ###we used sep = 3 lambda/D here 
-    dx= [3*49.3]
-    dy= [3*49.3]
-    
+    dx= [3*49.3,-3*49.3]
+    dy= [3*49.3,-3*49.3]
+
     info_dir = cgisim.lib_dir + '/cgisim_info_dir/'
 
     #Define the host star properties
