@@ -17,12 +17,12 @@ def test_excam_mode():
     bandpass = '1F'
     cor_type = 'hlc_band1'
 
-    mag_companion = [25,25]
+    mag_companion = [25]
     ###the position of companions in unit of mas
     ####550nm/2.3m = 29.4 mas
     ###we used sep = 3 lambda/D here 
-    dx= [3*49.3,-3*49.3]
-    dy= [3*49.3,-3*49.3]
+    dx= [3*49.3]
+    dy= [3*49.3]
     
     info_dir = cgisim.lib_dir + '/cgisim_info_dir/'
 
@@ -166,8 +166,8 @@ def test_cpgs_obs():
         else:
             assert simulatedImage.input_scene._point_source_Vmag == mag_companion
             assert simulatedImage.input_scene._point_source_magtype == ['vegamag']
-            assert simulatedImage.input_scene.point_source_x == dx
-            assert simulatedImage.input_scene.point_source_y == dy
+            assert simulatedImage.input_scene.point_source_dra == dx
+            assert simulatedImage.input_scene.point_source_ddec == dy
             assert isinstance(simulatedImage.point_source_image, fits.hdu.image.PrimaryHDU)  
 
 def test_spec_mode():
