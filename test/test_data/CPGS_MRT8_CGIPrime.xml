@@ -1,0 +1,767 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<obs_specification>
+   <!--Observation Specifications created with CPGS version 3.2.4-->
+   <observation_number>1</observation_number>
+   <observation_information>
+      <label>CPGS_MRT_8_CGIPrime</label>
+      <observer_firstname>Jim</observer_firstname>
+      <observer_lastname>Ingalls</observer_lastname>
+   </observation_information>
+   <target_list>
+      <target>
+         <target_id>1</target_id>
+         <target_name>Zeta Pup</target_name>
+         <ra>08:03:35.04</ra>
+         <!--Right Ascension in degrees:-->
+         <ra_computed>120.89600000</ra_computed>
+         <dec>-40:00:11.3</dec>
+         <!--Declination in degrees:-->
+         <dec_computed>-40.00313889</dec_computed>
+         <!--Proper motion in arcseconds/yr:-->
+         <ra_proper_motion>-0.029710</ra_proper_motion>
+         <dec_proper_motion>0.016680</dec_proper_motion>
+         <!--Parallax in milliarcseconds:-->
+         <parallax>3.010</parallax>
+         <epoch>2000-01-01T12:00:00</epoch>
+      </target>
+      <target>
+         <target_id>2</target_id>
+         <target_name>Beta Pictoris</target_name>
+         <ra>05:47:17.08</ra>
+         <!--Right Ascension in degrees:-->
+         <ra_computed>86.82116667</ra_computed>
+         <dec>-51:03:59.4</dec>
+         <!--Declination in degrees:-->
+         <dec_computed>-51.06650000</dec_computed>
+         <!--Proper motion in arcseconds/yr:-->
+         <ra_proper_motion>0.005160</ra_proper_motion>
+         <dec_proper_motion>0.084041</dec_proper_motion>
+         <!--Parallax in milliarcseconds:-->
+         <parallax>50.931</parallax>
+         <epoch>2000-01-01T12:00:00</epoch>
+      </target>
+      <target>
+         <target_id>3</target_id>
+         <target_name>Beta Pictoris</target_name>
+         <ra>05:47:17.08</ra>
+         <!--Right Ascension in degrees:-->
+         <ra_computed>86.82116667</ra_computed>
+         <dec>-51:03:59.4</dec>
+         <!--Declination in degrees:-->
+         <dec_computed>-51.06650000</dec_computed>
+         <!--Proper motion in arcseconds/yr:-->
+         <ra_proper_motion>0.005160</ra_proper_motion>
+         <dec_proper_motion>0.084041</dec_proper_motion>
+         <!--Parallax in milliarcseconds:-->
+         <parallax>50.931</parallax>
+         <epoch>2000-01-01T12:00:00</epoch>
+      </target>
+      <target>
+         <target_id>4</target_id>
+         <target_name>Zeta Pup</target_name>
+         <ra>08:03:35.04</ra>
+         <!--Right Ascension in degrees:-->
+         <ra_computed>120.89600000</ra_computed>
+         <dec>-40:00:11.3</dec>
+         <!--Declination in degrees:-->
+         <dec_computed>-40.00313889</dec_computed>
+         <!--Proper motion in arcseconds/yr:-->
+         <ra_proper_motion>-0.029710</ra_proper_motion>
+         <dec_proper_motion>0.016680</dec_proper_motion>
+         <!--Parallax in milliarcseconds:-->
+         <parallax>3.010</parallax>
+         <epoch>2000-01-01T12:00:00</epoch>
+      </target>
+      <target>
+         <target_id>5</target_id>
+         <target_name>Beta Pictoris</target_name>
+         <ra>05:47:17.08</ra>
+         <!--Right Ascension in degrees:-->
+         <ra_computed>86.82116667</ra_computed>
+         <dec>-51:03:59.4</dec>
+         <!--Declination in degrees:-->
+         <dec_computed>-51.06650000</dec_computed>
+         <!--Proper motion in arcseconds/yr:-->
+         <ra_proper_motion>0.005160</ra_proper_motion>
+         <dec_proper_motion>0.084041</dec_proper_motion>
+         <!--Parallax in milliarcseconds:-->
+         <parallax>50.931</parallax>
+         <epoch>2000-01-01T12:00:00</epoch>
+      </target>
+      <target>
+         <target_id>6</target_id>
+         <target_name>Beta Pictoris</target_name>
+         <ra>05:47:17.08</ra>
+         <!--Right Ascension in degrees:-->
+         <ra_computed>86.82116667</ra_computed>
+         <dec>-51:03:59.4</dec>
+         <!--Declination in degrees:-->
+         <dec_computed>-51.06650000</dec_computed>
+         <!--Proper motion in arcseconds/yr:-->
+         <ra_proper_motion>0.005160</ra_proper_motion>
+         <dec_proper_motion>0.084041</dec_proper_motion>
+         <!--Parallax in milliarcseconds:-->
+         <parallax>50.931</parallax>
+         <epoch>2000-01-01T12:00:00</epoch>
+      </target>
+      <target>
+         <target_id>7</target_id>
+         <target_name>Zeta Pup</target_name>
+         <ra>08:03:35.04</ra>
+         <!--Right Ascension in degrees:-->
+         <ra_computed>120.89600000</ra_computed>
+         <dec>-40:00:11.3</dec>
+         <!--Declination in degrees:-->
+         <dec_computed>-40.00313889</dec_computed>
+         <!--Proper motion in arcseconds/yr:-->
+         <ra_proper_motion>-0.029710</ra_proper_motion>
+         <dec_proper_motion>0.016680</dec_proper_motion>
+         <!--Parallax in milliarcseconds:-->
+         <parallax>3.010</parallax>
+         <epoch>2000-01-01T12:00:00</epoch>
+      </target>
+   </target_list>
+   <visit_list>
+      <cgi_visit number="1">
+         <!--Visit is of type "Technology Demonstration Setup + HOWFSC + 1st Reference".-->
+         <cgi_visit_type>CGIVST_TDD_SETUP_HOWFSC</cgi_visit_type>
+         <observation_type>CGI_HOWFSC</observation_type>
+         <!--If visit starts at 2027-09-17T12:00:00 it will end on 2027-09-17T17:04:21.-->
+         <!--Est. visit duration: 5.0727 hr-->
+         <!--Initial visit overhead duration (includes slew, settle, and WFI element wheel moves) (s)-->
+         <initial_overhead_duration>936.9900</initial_overhead_duration>
+         <!--Science instrument time: estimated CGI data collection time, plus acquisition and internal overheads (s).-->
+         <science_duration>17324.7329</science_duration>
+         <!--CGI maximum possible target acquisition + data collection time + command overheads (s) (mainly relevant to HOWFSC/GITL)-->
+         <science_maximum_duration>16898.4329</science_maximum_duration>
+         <!--Approximate data volume (Bytes) (2749.33 MB)-->
+         <data_volume>2882880000</data_volume>
+         <realtime>Y</realtime>
+         <required>Y</required>
+         <parallels_allowed>Y</parallels_allowed>
+         <ground_in_the_loop>Y</ground_in_the_loop>
+         <!--Roll Angle: -2.00 degrees-->
+         <!--Absolute position angle (deg):-->
+         <position_angle>61.41</position_angle>
+         <!--Is this the first in a series of visits to the same target?-->
+         <first_visit>N</first_visit>
+         <cgi_howfsc>
+            <is_howfsc_visit>Y</is_howfsc_visit>
+            <expected_iteration_duration>3450.74</expected_iteration_duration>
+            <contrast_threshold>5.00E-07</contrast_threshold>
+            <contrast_target>7.00E-08</contrast_target>
+            <contrast_abort>1.00E-03</contrast_abort>
+            <!--HOWFSC maximum duration (hr):-->
+            <time_out>5.00</time_out>
+            <ctrl_strategy>1</ctrl_strategy>
+            <max_iterations>3</max_iterations>
+            <howfsc_band>BAND1</howfsc_band>
+         </cgi_howfsc>
+         <fixed_target>
+            <!--Zeta Pup-->
+            <target_id>1</target_id>
+            <reference_target>Y</reference_target>
+         </fixed_target>
+         <cgi_excam>
+            <!--Use parameters/telemetry to set the gain/frame_time/photon_counting?-->
+            <auto_gain>N</auto_gain>
+            <gain>1.000</gain>
+            <!--Per-frame exposure time (s)-->
+            <frame_time>0.500</frame_time>
+            <!--Process using photon-counting mode?-->
+            <photon_counting>Y</photon_counting>
+            <!--Number of frames per exposure (approximate)-->
+            <number_of_frames>352</number_of_frames>
+            <!--Total excam "tech demo" exposure duration for the visit (s)-->
+            <exposure_duration>1058.03</exposure_duration>
+            <observe_satellite_spots>N</observe_satellite_spots>
+            <!--Time to wait prior to kicking off the exposure (s)-->
+            <kickoff_time>16.0</kickoff_time>
+         </cgi_excam>
+         <cgi_locam>
+            <gain>1.000</gain>
+            <!--Number of frames to take per LOCAM exposure set-->
+            <number_of_frames>1</number_of_frames>
+            <close_focus>N</close_focus>
+            <close_zernike>N</close_zernike>
+            <gain_targ>1.0</gain_targ>
+            <chop_ncycles>5</chop_ncycles>
+            <chop_nframes>5</chop_nframes>
+            <chop_discard_extra>0</chop_discard_extra>
+         </cgi_locam>
+         <cgi_mechanisms>
+            <reset_fsm>Y</reset_fsm>
+            <reset_fine_fcm>Y</reset_fine_fcm>
+            <fsam_do_fine_alignment>Y</fsam_do_fine_alignment>
+            <set_dms>N</set_dms>
+            <spampos>OPEN</spampos>
+            <fpampos>HLC12_C2R5</fpampos>
+            <fpampos_acq>OPEN_12</fpampos_acq>
+            <fsampos>R1C1</fsampos>
+            <fsampos_coarse>R1C1</fsampos_coarse>
+            <lsampos>NFOV</lsampos>
+            <cfampos>1F</cfampos>
+            <cfampos_acq>1B</cfampos_acq>
+            <dpampos>IMAGING</dpampos>
+            <fcmpos>OPEN</fcmpos>
+            <fpam_mask_type>SPOT</fpam_mask_type>
+            <fsm_raster>NFOV</fsm_raster>
+            <dm1_absolute>DM_DM1_CURRENT</dm1_absolute>
+            <dm2_absolute>DM_DM2_CURRENT</dm2_absolute>
+         </cgi_mechanisms>
+         <cgi_acquisition>
+            <gain>1.00</gain>
+            <!--Exposure time in seconds-->
+            <frame_time>0.500</frame_time>
+            <number_of_frames>5</number_of_frames>
+         </cgi_acquisition>
+         <cgi_align_fpam>
+            <gain>1.00</gain>
+            <!--Exposure time in seconds-->
+            <frame_time>0.100</frame_time>
+            <number_of_frames>1</number_of_frames>
+         </cgi_align_fpam>
+         <cgi_align_fsam>
+            <gain>1.00</gain>
+            <!--Exposure time in seconds-->
+            <frame_time>0.100</frame_time>
+            <number_of_frames>1</number_of_frames>
+         </cgi_align_fsam>
+      </cgi_visit>
+      <cgi_visit number="2">
+         <!--Visit is of type "Technology Demonstration Observation Block".-->
+         <cgi_visit_type>CGIVST_TDD_OBS</cgi_visit_type>
+         <observation_type>CGI_OBSERVE</observation_type>
+         <!--If visit starts at 2027-09-17T17:04:21 it will end on 2027-09-17T17:26:35.-->
+         <!--Est. visit duration: 0.3708 hr-->
+         <!--Initial visit overhead duration (includes slew, settle, and WFI element wheel moves) (s)-->
+         <initial_overhead_duration>557.3955</initial_overhead_duration>
+         <!--Science instrument time: estimated CGI data collection time, plus acquisition and internal overheads (s).-->
+         <science_duration>777.3234</science_duration>
+         <!--Approximate data volume (Bytes) (780.49 MB)-->
+         <data_volume>818400000</data_volume>
+         <realtime>N</realtime>
+         <required>Y</required>
+         <parallels_allowed>Y</parallels_allowed>
+         <ground_in_the_loop>N</ground_in_the_loop>
+         <!--Roll Angle: -2.00 degrees-->
+         <!--Absolute position angle (deg):-->
+         <position_angle>85.50</position_angle>
+         <!--Is this the first in a series of visits to the same target?-->
+         <first_visit>Y</first_visit>
+         <coronagraph_configuration>NFOV</coronagraph_configuration>
+         <cgi_howfsc>
+            <is_howfsc_visit>N</is_howfsc_visit>
+         </cgi_howfsc>
+         <fixed_target>
+            <!--Beta Pictoris-->
+            <target_id>2</target_id>
+            <reference_target>N</reference_target>
+         </fixed_target>
+         <cgi_excam>
+            <!--Use parameters/telemetry to set the gain/frame_time/photon_counting?-->
+            <auto_gain>N</auto_gain>
+            <gain>1.000</gain>
+            <!--Per-frame exposure time (s)-->
+            <frame_time>2.000</frame_time>
+            <!--Process using photon-counting mode?-->
+            <photon_counting>Y</photon_counting>
+            <!--Number of frames per exposure (approximate)-->
+            <number_of_frames>155</number_of_frames>
+            <!--Total excam "tech demo" exposure duration for the visit (s)-->
+            <exposure_duration>465.67</exposure_duration>
+            <observe_satellite_spots>N</observe_satellite_spots>
+            <!--Time to wait prior to kicking off the exposure (s)-->
+            <kickoff_time>16.0</kickoff_time>
+         </cgi_excam>
+         <cgi_locam>
+            <gain>1.000</gain>
+            <!--Number of frames to take per LOCAM exposure set-->
+            <number_of_frames>1</number_of_frames>
+            <close_focus>N</close_focus>
+            <close_zernike>N</close_zernike>
+         </cgi_locam>
+      </cgi_visit>
+      <cgi_visit number="3">
+         <!--Visit is of type "Technology Demonstration Observation Block".-->
+         <cgi_visit_type>CGIVST_TDD_OBS</cgi_visit_type>
+         <observation_type>CGI_OBSERVE</observation_type>
+         <!--If visit starts at 2027-09-17T17:26:35 it will end on 2027-09-17T17:41:28.-->
+         <!--Est. visit duration: 0.2482 hr-->
+         <!--Initial visit overhead duration (includes slew, settle, and WFI element wheel moves) (s)-->
+         <initial_overhead_duration>116.2724</initial_overhead_duration>
+         <!--Science instrument time: estimated CGI data collection time, plus acquisition and internal overheads (s).-->
+         <science_duration>777.3234</science_duration>
+         <!--Approximate data volume (Bytes) (780.49 MB)-->
+         <data_volume>818400000</data_volume>
+         <realtime>N</realtime>
+         <required>Y</required>
+         <parallels_allowed>Y</parallels_allowed>
+         <ground_in_the_loop>N</ground_in_the_loop>
+         <!--Roll Angle: 2.00 degrees-->
+         <!--Absolute position angle (deg):-->
+         <position_angle>89.51</position_angle>
+         <!--Is this the first in a series of visits to the same target?-->
+         <first_visit>N</first_visit>
+         <coronagraph_configuration>NFOV</coronagraph_configuration>
+         <cgi_howfsc>
+            <is_howfsc_visit>N</is_howfsc_visit>
+         </cgi_howfsc>
+         <fixed_target>
+            <!--Beta Pictoris-->
+            <target_id>3</target_id>
+            <reference_target>N</reference_target>
+         </fixed_target>
+         <cgi_excam>
+            <!--Use parameters/telemetry to set the gain/frame_time/photon_counting?-->
+            <auto_gain>N</auto_gain>
+            <gain>1.000</gain>
+            <!--Per-frame exposure time (s)-->
+            <frame_time>2.000</frame_time>
+            <!--Process using photon-counting mode?-->
+            <photon_counting>Y</photon_counting>
+            <!--Number of frames per exposure (approximate)-->
+            <number_of_frames>155</number_of_frames>
+            <!--Total excam "tech demo" exposure duration for the visit (s)-->
+            <exposure_duration>465.67</exposure_duration>
+            <observe_satellite_spots>N</observe_satellite_spots>
+            <!--Time to wait prior to kicking off the exposure (s)-->
+            <kickoff_time>16.0</kickoff_time>
+         </cgi_excam>
+         <cgi_locam>
+            <gain>1.000</gain>
+            <!--Number of frames to take per LOCAM exposure set-->
+            <number_of_frames>1</number_of_frames>
+            <close_focus>N</close_focus>
+            <close_zernike>N</close_zernike>
+         </cgi_locam>
+      </cgi_visit>
+      <cgi_visit number="4">
+         <!--Visit is of type "Technology Demonstration Observation Block".-->
+         <cgi_visit_type>CGIVST_TDD_OBS</cgi_visit_type>
+         <observation_type>CGI_OBSERVE</observation_type>
+         <!--If visit starts at 2027-09-17T17:41:28 it will end on 2027-09-17T17:56:59.-->
+         <!--Est. visit duration: 0.2586 hr-->
+         <!--Initial visit overhead duration (includes slew, settle, and WFI element wheel moves) (s)-->
+         <initial_overhead_duration>557.3955</initial_overhead_duration>
+         <!--Science instrument time: estimated CGI data collection time, plus acquisition and internal overheads (s).-->
+         <science_duration>373.7398</science_duration>
+         <!--Approximate data volume (Bytes) (100.71 MB)-->
+         <data_volume>105600000</data_volume>
+         <realtime>N</realtime>
+         <required>Y</required>
+         <parallels_allowed>Y</parallels_allowed>
+         <ground_in_the_loop>N</ground_in_the_loop>
+         <!--Roll Angle: 2.00 degrees-->
+         <!--Absolute position angle (deg):-->
+         <position_angle>65.55</position_angle>
+         <!--Is this the first in a series of visits to the same target?-->
+         <first_visit>N</first_visit>
+         <coronagraph_configuration>NFOV</coronagraph_configuration>
+         <cgi_howfsc>
+            <is_howfsc_visit>N</is_howfsc_visit>
+         </cgi_howfsc>
+         <fixed_target>
+            <!--Zeta Pup-->
+            <target_id>4</target_id>
+            <reference_target>Y</reference_target>
+         </fixed_target>
+         <cgi_excam>
+            <!--Use parameters/telemetry to set the gain/frame_time/photon_counting?-->
+            <auto_gain>N</auto_gain>
+            <gain>1.000</gain>
+            <!--Per-frame exposure time (s)-->
+            <frame_time>0.500</frame_time>
+            <!--Process using photon-counting mode?-->
+            <photon_counting>Y</photon_counting>
+            <!--Number of frames per exposure (approximate)-->
+            <number_of_frames>20</number_of_frames>
+            <!--Total excam "tech demo" exposure duration for the visit (s)-->
+            <exposure_duration>62.09</exposure_duration>
+            <observe_satellite_spots>N</observe_satellite_spots>
+            <!--Time to wait prior to kicking off the exposure (s)-->
+            <kickoff_time>16.0</kickoff_time>
+         </cgi_excam>
+         <cgi_locam>
+            <gain>1.000</gain>
+            <!--Number of frames to take per LOCAM exposure set-->
+            <number_of_frames>1</number_of_frames>
+            <close_focus>N</close_focus>
+            <close_zernike>N</close_zernike>
+         </cgi_locam>
+      </cgi_visit>
+      <cgi_visit number="5">
+         <!--Visit is of type "Technology Demonstration Observation Block".-->
+         <cgi_visit_type>CGIVST_TDD_OBS</cgi_visit_type>
+         <observation_type>CGI_OBSERVE</observation_type>
+         <!--If visit starts at 2027-09-17T17:56:59 it will end on 2027-09-17T18:19:13.-->
+         <!--Est. visit duration: 0.3708 hr-->
+         <!--Initial visit overhead duration (includes slew, settle, and WFI element wheel moves) (s)-->
+         <initial_overhead_duration>557.3955</initial_overhead_duration>
+         <!--Science instrument time: estimated CGI data collection time, plus acquisition and internal overheads (s).-->
+         <science_duration>777.3234</science_duration>
+         <!--Approximate data volume (Bytes) (780.49 MB)-->
+         <data_volume>818400000</data_volume>
+         <realtime>N</realtime>
+         <required>Y</required>
+         <parallels_allowed>Y</parallels_allowed>
+         <ground_in_the_loop>N</ground_in_the_loop>
+         <!--Roll Angle: 2.00 degrees-->
+         <!--Absolute position angle (deg):-->
+         <position_angle>89.54</position_angle>
+         <!--Is this the first in a series of visits to the same target?-->
+         <first_visit>Y</first_visit>
+         <coronagraph_configuration>NFOV</coronagraph_configuration>
+         <cgi_howfsc>
+            <is_howfsc_visit>N</is_howfsc_visit>
+         </cgi_howfsc>
+         <fixed_target>
+            <!--Beta Pictoris-->
+            <target_id>5</target_id>
+            <reference_target>N</reference_target>
+         </fixed_target>
+         <cgi_excam>
+            <!--Use parameters/telemetry to set the gain/frame_time/photon_counting?-->
+            <auto_gain>N</auto_gain>
+            <gain>1.000</gain>
+            <!--Per-frame exposure time (s)-->
+            <frame_time>2.000</frame_time>
+            <!--Process using photon-counting mode?-->
+            <photon_counting>Y</photon_counting>
+            <!--Number of frames per exposure (approximate)-->
+            <number_of_frames>155</number_of_frames>
+            <!--Total excam "tech demo" exposure duration for the visit (s)-->
+            <exposure_duration>465.67</exposure_duration>
+            <observe_satellite_spots>N</observe_satellite_spots>
+            <!--Time to wait prior to kicking off the exposure (s)-->
+            <kickoff_time>16.0</kickoff_time>
+         </cgi_excam>
+         <cgi_locam>
+            <gain>1.000</gain>
+            <!--Number of frames to take per LOCAM exposure set-->
+            <number_of_frames>1</number_of_frames>
+            <close_focus>N</close_focus>
+            <close_zernike>N</close_zernike>
+         </cgi_locam>
+      </cgi_visit>
+      <cgi_visit number="6">
+         <!--Visit is of type "Technology Demonstration Observation Block".-->
+         <cgi_visit_type>CGIVST_TDD_OBS</cgi_visit_type>
+         <observation_type>CGI_OBSERVE</observation_type>
+         <!--If visit starts at 2027-09-17T18:19:13 it will end on 2027-09-17T18:34:06.-->
+         <!--Est. visit duration: 0.2482 hr-->
+         <!--Initial visit overhead duration (includes slew, settle, and WFI element wheel moves) (s)-->
+         <initial_overhead_duration>116.2724</initial_overhead_duration>
+         <!--Science instrument time: estimated CGI data collection time, plus acquisition and internal overheads (s).-->
+         <science_duration>777.3234</science_duration>
+         <!--Approximate data volume (Bytes) (780.49 MB)-->
+         <data_volume>818400000</data_volume>
+         <realtime>N</realtime>
+         <required>Y</required>
+         <parallels_allowed>Y</parallels_allowed>
+         <ground_in_the_loop>N</ground_in_the_loop>
+         <!--Roll Angle: -2.00 degrees-->
+         <!--Absolute position angle (deg):-->
+         <position_angle>85.55</position_angle>
+         <!--Is this the first in a series of visits to the same target?-->
+         <first_visit>N</first_visit>
+         <coronagraph_configuration>NFOV</coronagraph_configuration>
+         <cgi_howfsc>
+            <is_howfsc_visit>N</is_howfsc_visit>
+         </cgi_howfsc>
+         <fixed_target>
+            <!--Beta Pictoris-->
+            <target_id>6</target_id>
+            <reference_target>N</reference_target>
+         </fixed_target>
+         <cgi_excam>
+            <!--Use parameters/telemetry to set the gain/frame_time/photon_counting?-->
+            <auto_gain>N</auto_gain>
+            <gain>1.000</gain>
+            <!--Per-frame exposure time (s)-->
+            <frame_time>2.000</frame_time>
+            <!--Process using photon-counting mode?-->
+            <photon_counting>Y</photon_counting>
+            <!--Number of frames per exposure (approximate)-->
+            <number_of_frames>155</number_of_frames>
+            <!--Total excam "tech demo" exposure duration for the visit (s)-->
+            <exposure_duration>465.67</exposure_duration>
+            <observe_satellite_spots>N</observe_satellite_spots>
+            <!--Time to wait prior to kicking off the exposure (s)-->
+            <kickoff_time>16.0</kickoff_time>
+         </cgi_excam>
+         <cgi_locam>
+            <gain>1.000</gain>
+            <!--Number of frames to take per LOCAM exposure set-->
+            <number_of_frames>1</number_of_frames>
+            <close_focus>N</close_focus>
+            <close_zernike>N</close_zernike>
+         </cgi_locam>
+      </cgi_visit>
+      <cgi_visit number="7">
+         <!--Visit is of type "Technology Demonstration Observation Block".-->
+         <cgi_visit_type>CGIVST_TDD_OBS</cgi_visit_type>
+         <observation_type>CGI_OBSERVE</observation_type>
+         <!--If visit starts at 2027-09-17T18:34:06 it will end on 2027-09-17T18:49:37.-->
+         <!--Est. visit duration: 0.2586 hr-->
+         <!--Initial visit overhead duration (includes slew, settle, and WFI element wheel moves) (s)-->
+         <initial_overhead_duration>557.3955</initial_overhead_duration>
+         <!--Science instrument time: estimated CGI data collection time, plus acquisition and internal overheads (s).-->
+         <science_duration>373.7398</science_duration>
+         <!--Approximate data volume (Bytes) (100.71 MB)-->
+         <data_volume>105600000</data_volume>
+         <realtime>N</realtime>
+         <required>Y</required>
+         <parallels_allowed>Y</parallels_allowed>
+         <ground_in_the_loop>N</ground_in_the_loop>
+         <!--Roll Angle: -2.00 degrees-->
+         <!--Absolute position angle (deg):-->
+         <position_angle>61.59</position_angle>
+         <!--Is this the first in a series of visits to the same target?-->
+         <first_visit>N</first_visit>
+         <coronagraph_configuration>NFOV</coronagraph_configuration>
+         <cgi_howfsc>
+            <is_howfsc_visit>N</is_howfsc_visit>
+         </cgi_howfsc>
+         <fixed_target>
+            <!--Zeta Pup-->
+            <target_id>7</target_id>
+            <reference_target>Y</reference_target>
+         </fixed_target>
+         <cgi_excam>
+            <!--Use parameters/telemetry to set the gain/frame_time/photon_counting?-->
+            <auto_gain>N</auto_gain>
+            <gain>1.000</gain>
+            <!--Per-frame exposure time (s)-->
+            <frame_time>0.500</frame_time>
+            <!--Process using photon-counting mode?-->
+            <photon_counting>Y</photon_counting>
+            <!--Number of frames per exposure (approximate)-->
+            <number_of_frames>20</number_of_frames>
+            <!--Total excam "tech demo" exposure duration for the visit (s)-->
+            <exposure_duration>62.09</exposure_duration>
+            <observe_satellite_spots>N</observe_satellite_spots>
+            <!--Time to wait prior to kicking off the exposure (s)-->
+            <kickoff_time>16.0</kickoff_time>
+         </cgi_excam>
+         <cgi_locam>
+            <gain>1.000</gain>
+            <!--Number of frames to take per LOCAM exposure set-->
+            <number_of_frames>1</number_of_frames>
+            <close_focus>N</close_focus>
+            <close_zernike>N</close_zernike>
+         </cgi_locam>
+      </cgi_visit>
+      <cgi_visit number="8">
+         <!--Visit is of type "Tech Demo Cleanup".-->
+         <cgi_visit_type>CGIVST_TDD_CLEANUP</cgi_visit_type>
+         <observation_type>CGI_UTIL</observation_type>
+         <!--If visit starts at 2027-09-17T18:49:37 it will end on 2027-09-17T19:12:48.-->
+         <!--Est. visit duration: 0.3866 hr-->
+         <!--Initial visit overhead duration (includes slew, settle, and WFI element wheel moves) (s)-->
+         <initial_overhead_duration>0.0000</initial_overhead_duration>
+         <!--Science instrument time: estimated CGI data collection time, plus acquisition and internal overheads (s).-->
+         <science_duration>1391.9200</science_duration>
+         <!--Approximate data volume (Bytes) (0.00 MB)-->
+         <data_volume>0</data_volume>
+         <realtime>N</realtime>
+         <required>Y</required>
+         <parallels_allowed>N</parallels_allowed>
+         <ground_in_the_loop>N</ground_in_the_loop>
+         <!--Is this the first in a series of visits to the same target?-->
+         <first_visit>N</first_visit>
+         <cgi_howfsc>
+            <is_howfsc_visit>N</is_howfsc_visit>
+         </cgi_howfsc>
+      </cgi_visit>
+   </visit_list>
+   <cpgs_input>
+      <filename>artifacts/CPGS_MRT8_CGIPrime.json</filename>
+      <observation_label>CPGS_MRT_8_CGIPrime</observation_label>
+      <observation_number>1</observation_number>
+      <observer_firstname>Jim</observer_firstname>
+      <observer_lastname>Ingalls</observer_lastname>
+      <target_name>Beta Pictoris</target_name>
+      <target_RA>05:47:17.08</target_RA>
+      <target_Dec>-51:03:59.4</target_Dec>
+      <target_pmRA>5.16</target_pmRA>
+      <target_pmDec>84.041</target_pmDec>
+      <target_parallax>50.931</target_parallax>
+      <target_epoch>2000-01-01T12:00:00</target_epoch>
+      <target_v_mag>3.86</target_v_mag>
+      <target_spec_type>A</target_spec_type>
+      <target_sub_type>6.0</target_sub_type>
+      <observe_target_only>0</observe_target_only>
+      <reference_name>Zeta Pup</reference_name>
+      <reference_RA>08:03:35.04</reference_RA>
+      <reference_Dec>-40:00:11.3</reference_Dec>
+      <reference_pmRA>-29.71</reference_pmRA>
+      <reference_pmDec>16.68</reference_pmDec>
+      <reference_parallax>3.01</reference_parallax>
+      <reference_epoch>2000-01-01T12:00:00</reference_epoch>
+      <reference_v_mag>2.25</reference_v_mag>
+      <reference_spec_type>O</reference_spec_type>
+      <reference_sub_type>4.0</reference_sub_type>
+      <coronagraph_mask>1</coronagraph_mask>
+      <filter>1</filter>
+      <with_polarization>1</with_polarization>
+      <wollaston>1</wollaston>
+      <dig_dark_hole>1</dig_dark_hole>
+      <initial_threshold_planet_star_flux_ratio>5e-07</initial_threshold_planet_star_flux_ratio>
+      <touchup_threshold_planet_star_flux_ratio>5e-07</touchup_threshold_planet_star_flux_ratio>
+      <initial_target_planet_star_flux_ratio>7e-08</initial_target_planet_star_flux_ratio>
+      <touchup_target_planet_star_flux_ratio>1e-08</touchup_target_planet_star_flux_ratio>
+      <initial_contrast_abort>0.001</initial_contrast_abort>
+      <touchup_contrast_abort>0.001</touchup_contrast_abort>
+      <initial_timeout>5.0</initial_timeout>
+      <touchup_timeout>4.0</touchup_timeout>
+      <control_strategy>1</control_strategy>
+      <orientation_a>-2.0</orientation_a>
+      <orientation_b>2.0</orientation_b>
+      <orientation_constraint>constant_roll</orientation_constraint>
+      <Dseq>1.9</Dseq>
+      <Nseq>1</Nseq>
+      <number_target_visits>2</number_target_visits>
+      <ratio_of_ref_to_tgt_duration>0.1</ratio_of_ref_to_tgt_duration>
+      <obtain_satspot_image_every_visit>0</obtain_satspot_image_every_visit>
+      <number_of_pairs>0</number_of_pairs>
+      <target_autogain>0</target_autogain>
+      <target_gain>1.0</target_gain>
+      <target_exptime>2.0</target_exptime>
+      <target_pcounting>1</target_pcounting>
+      <reference_autogain>0</reference_autogain>
+      <reference_gain>1.0</reference_gain>
+      <reference_exptime>0.5</reference_exptime>
+      <reference_pcounting>1</reference_pcounting>
+      <requested_start>2027-09-17T12:00:00</requested_start>
+      <howfsc_fsm_raster>NFOV</howfsc_fsm_raster>
+      <howfsc_fsam_do_fine_alignment>1</howfsc_fsam_do_fine_alignment>
+      <howfsc_spam_pos>OPEN</howfsc_spam_pos>
+      <howfsc_fpam_pos_acq>OPEN_12</howfsc_fpam_pos_acq>
+      <howfsc_fpam_pos>HLC12_C2R5</howfsc_fpam_pos>
+      <howfsc_fpam_mask_type>SPOT</howfsc_fpam_mask_type>
+      <howfsc_lsam_pos>NFOV</howfsc_lsam_pos>
+      <howfsc_fsam_pos_coarse>R1C1</howfsc_fsam_pos_coarse>
+      <howfsc_fsam_pos>R1C1</howfsc_fsam_pos>
+      <howfsc_cfam_pos_acq>1B</howfsc_cfam_pos_acq>
+      <howfsc_cfam_pos>1F</howfsc_cfam_pos>
+      <howfsc_dpam_pos>IMAGING</howfsc_dpam_pos>
+      <howfsc_fcm_pos>OPEN</howfsc_fcm_pos>
+      <howfsc_locam_gain_targ>1.0</howfsc_locam_gain_targ>
+      <howfsc_chop_ncycles>5</howfsc_chop_ncycles>
+      <howfsc_chop_nframes>1</howfsc_chop_nframes>
+      <howfsc_chop_discard_extra>0</howfsc_chop_discard_extra>
+      <howfsc_acq_gain>1.0</howfsc_acq_gain>
+      <howfsc_acq_exptime>0.5</howfsc_acq_exptime>
+      <howfsc_acq_nframes>5</howfsc_acq_nframes>
+      <howfsc_align_fsam_gain>1</howfsc_align_fsam_gain>
+      <howfsc_align_fsam_exptime>0.1</howfsc_align_fsam_exptime>
+      <howfsc_align_fsam_nframes>1</howfsc_align_fsam_nframes>
+      <howfsc_align_fpam_gain>1</howfsc_align_fpam_gain>
+      <howfsc_align_fpam_exptime>0.1</howfsc_align_fpam_exptime>
+      <howfsc_align_fpam_nframes>1</howfsc_align_fpam_nframes>
+      <howfsc_max_iterations>3</howfsc_max_iterations>
+      <locam_gain>1.0</locam_gain>
+      <locam_nframes>1</locam_nframes>
+      <satellite_spots_gain>1.0</satellite_spots_gain>
+      <satellite_spots_exptime>0.1</satellite_spots_exptime>
+      <satellite_spots_nframes>1</satellite_spots_nframes>
+      <satellite_spots_pair_id>0</satellite_spots_pair_id>
+      <kickoff_time>16.0</kickoff_time>
+      <close_focus>0</close_focus>
+      <close_zernike>0</close_zernike>
+      <do_advance_setup>0</do_advance_setup>
+      <adv_set_dm1_on>0</adv_set_dm1_on>
+      <adv_set_dm2_on>0</adv_set_dm2_on>
+      <adv_set_excam_on>0</adv_set_excam_on>
+      <adv_set_fcm_on>0</adv_set_fcm_on>
+      <adv_set_fsm_on>0</adv_set_fsm_on>
+      <adv_set_locam_on>0</adv_set_locam_on>
+      <adv_set_reset_fsm>0</adv_set_reset_fsm>
+      <adv_set_reset_fine_fcm>0</adv_set_reset_fine_fcm>
+      <adv_set_set_dms>0</adv_set_set_dms>
+      <do_generic>0</do_generic>
+      <generic_parallax>0.0</generic_parallax>
+      <generic_spam_pos>NONE</generic_spam_pos>
+      <generic_lsam_pos>NONE</generic_lsam_pos>
+      <generic_acq_gain>1.0</generic_acq_gain>
+      <do_pnt_ref>0</do_pnt_ref>
+      <pnt_ref_parallax>0.0</pnt_ref_parallax>
+      <do_ota_wvf>0</do_ota_wvf>
+      <ota_wvf_parallax>0.0</ota_wvf_parallax>
+      <do_pam_recal>0</do_pam_recal>
+      <do_pfac>0</do_pfac>
+      <pfac_parallax>0.0</pfac_parallax>
+      <pfac_acq_gain>1.0</pfac_acq_gain>
+      <do_locam_gaincal>0</do_locam_gaincal>
+      <locam_gaincal_parallax>0.0</locam_gaincal_parallax>
+      <locam_gaincal_acq_gain>1.0</locam_gaincal_acq_gain>
+      <do_ec_pp>0</do_ec_pp>
+      <ec_pp_parallax>0.0</ec_pp_parallax>
+      <ec_pp_acq_gain>1.0</ec_pp_acq_gain>
+      <do_ec_ip>0</do_ec_ip>
+      <ec_ip_parallax>0.0</ec_ip_parallax>
+      <ec_ip_acq_gain>1.0</ec_ip_acq_gain>
+      <do_dark>0</do_dark>
+      <dark_num_visit>1</dark_num_visit>
+      <do_tgtref>0</do_tgtref>
+      <tgtref_parallax>0.0</tgtref_parallax>
+      <tgtref_locam_gain>1.0</tgtref_locam_gain>
+      <tgtref_gain>1.0</tgtref_gain>
+      <tgtref_time_gap>0.0</tgtref_time_gap>
+      <do_bs_cal>0</do_bs_cal>
+      <bs_cal_parallax>0.0</bs_cal_parallax>
+      <bs_cal_gain>1.0</bs_cal_gain>
+      <do_ppi>0</do_ppi>
+      <ppi_parallax>0.0</ppi_parallax>
+      <ppi_acq_gain>1.0</ppi_acq_gain>
+      <ppi_time_gap>0.0</ppi_time_gap>
+      <do_abs_bright>0</do_abs_bright>
+      <abs_bright_parallax>0.0</abs_bright_parallax>
+      <abs_bright_acq_gain>1.0</abs_bright_acq_gain>
+      <abs_bright_fcm_pos>NONE</abs_bright_fcm_pos>
+      <abs_bright_gain>1.0</abs_bright_gain>
+      <abs_bright_time_gap>0.0</abs_bright_time_gap>
+      <do_abs_faint>0</do_abs_faint>
+      <abs_faint_parallax>0.0</abs_faint_parallax>
+      <abs_faint_acq_gain>1.0</abs_faint_acq_gain>
+      <abs_faint_gain>1.0</abs_faint_gain>
+      <abs_faint_time_gap>0.0</abs_faint_time_gap>
+      <do_cthr>0</do_cthr>
+      <cthr_parallax>0.0</cthr_parallax>
+      <cthr_acq_gain>1.0</cthr_acq_gain>
+      <cthr_cthr_gain>1.0</cthr_cthr_gain>
+      <cthr_gain>1.0</cthr_gain>
+      <cthr_time_gap>0.0</cthr_time_gap>
+   </cpgs_input>
+   <cpgs_output>
+      <number_of_sequences>1</number_of_sequences>
+      <target_exposure_time>0.51741</target_exposure_time>
+      <reference_exposure_time>0.05174</reference_exposure_time>
+      <slew_duration>0.9442</slew_duration>
+      <WFC_max_duration>5.0</WFC_max_duration>
+      <satellite_spot_duration>0.0</satellite_spot_duration>
+      <total_duration>7.21333</total_duration>
+      <error>false</error>
+      <RDI_only>false</RDI_only>
+      <ADI_only>false</ADI_only>
+      <Dseq>1.9</Dseq>
+      <target_name>Beta Pictoris</target_name>
+      <reference_name>Zeta Pup</reference_name>
+      <initial_target_planet_star_flux_ratio>7e-08</initial_target_planet_star_flux_ratio>
+      <SchedMessage>SUCCESS. Your targets are visible within the following windows. Your requested start time (2027-09-17T12:00:00) puts your observation (of duration 0.30 days) within the 1st window. Approximate end of observation: 2027-09-17T19:12:48.</SchedMessage>
+      <ObsWindows>Field of regard intervals (#intervals = 1)
+        START                   END            
+---------------------------------------------------------
+*  2027-02-17T23:42:09 - 2032-02-14T23:42:09
+
+For this observation:
+
+Constant Roll Angles: (-2.00,2.00)
+ Name         PA @Start        PA @End
+-------------------------------------------
+Zeta Pup   ( 61.41, 65.41)  ( 61.60, 65.60)
+Beta Pictoris ( 85.39, 89.39)  ( 85.57, 89.57)
+</ObsWindows>
+   </cpgs_output>
+</obs_specification>
