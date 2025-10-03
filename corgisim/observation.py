@@ -54,6 +54,7 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, s
             if output_dir == None:
                 local_path = corgisim.lib_dir
                 outdir = os.path.join(local_path.split('corgisim')[0], 'corgisim/test/testdata')
+                print("No output directory specified. FITS files saved in ", outdir)
             else:
                 outdir = output_dir
 
