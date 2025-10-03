@@ -139,7 +139,9 @@ class CorgiOptics():
                 'slit_x_offset_mas': 0.0, # offset of slit position from star on EXCAM, in mas
                 'slit_y_offset_mas': 0.0, # offset of slit position from star on EXCAM, in mas
                 'prism': 'None', # named DPAM prism
-                'wav_step_um': 1E-3 # wavelength step size of the prism dispersion model, in microns 
+                'wav_step_um': 1E-3, # wavelength step size of the prism dispersion model, in microns 
+                'fsm_x_offset_mas': 0.0, # FSM x offset in mas 
+                'fsm_y_offset_mas': 0.0  # FSM y offset in mas
             }
             #### allowed slit for band2 
             if '2' in self.bandpass:     
@@ -499,11 +501,25 @@ class CorgiOptics():
 
             # If a prism was selected, apply the dispersion model and overwrite the image cube and wavelength array.
             if self.prism != 'None': 
-                images_tem, dispersed_lam_um = spec.apply_prism(self, images_tem)
+                images_tem, dispersed_lam_um, disp_shift_lam0_x, disp_shift_lam0_y = spec.apply_prism(self, images_tem)
 
                 self.nlam = len(dispersed_lam_um)
                 self.lam_um = dispersed_lam_um
                 dlam_um = dispersed_lam_um[1] - dispersed_lam_um[0]
+
+                mas_pix = 500E-9 * 360.0 * 3600.0 / (2 * np.pi * 2.363) * 1000 / 2
+                (frame_loc_x, frame_loc_y) = (512, 512)
+                image_centx = self.grid_dim_out // 2 + self.fsm_x_offset_mas / mas_pix
+                image_centy = self.grid_dim_out // 2 + self.fsm_y_offset_mas / mas_pix
+                print("source location (x, y) without prism = {:.3f}, {:.3f}".format(image_centx, image_centy))
+                self.optics_keywords['dispersed_image_centx'] = image_centx + disp_shift_lam0_x / self.oversampling_factor 
+                self.optics_keywords['dispersed_image_centy'] = image_centy + disp_shift_lam0_y / self.oversampling_factor 
+                print("source location (x, y) with prism = {:.3f}, {:.3f}".format(self.optics_keywords['dispersed_image_centx'], 
+                                                                                  self.optics_keywords['dispersed_image_centy']))
+                self.optics_keywords['dispersed_fullframe_centx'] = frame_loc_x + 1088 + (self.optics_keywords['dispersed_image_centx'] - self.grid_dim_out // 2)
+                self.optics_keywords['dispersed_fullframe_centy'] = frame_loc_y + 13 + (self.optics_keywords['dispersed_image_centy'] - self.grid_dim_out // 2)
+                print("full frame source location (x, y) with prism = {:.3f}, {:.3f}".format(self.optics_keywords['dispersed_fullframe_centx'],
+                                                                                             self.optics_keywords['dispersed_fullframe_centy']))
 
             # Initialize the image array based on whether oversampling is returned
             images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if self.return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
@@ -560,8 +576,10 @@ class CorgiOptics():
 
         # Define specific keys from self.optics_keywords to include in the header            
         keys_to_include_in_header = ['use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
-                            'use_lyot_stop','use_field_stop','fsm_x_offset_mas','fsm_y_offset_mas','slit','prism',
-                            'slit_x_offset_mas','slit_y_offset_mas','use_pupil_lens', 'use_lyot_stop', 'use_field_stop']  # Specify keys to include
+                            'slit_x_offset_mas','slit_y_offset_mas','use_pupil_lens', 'use_lyot_stop', 'use_field_stop',
+                            'fsm_x_offset_mas','fsm_y_offset_mas','slit','prism',
+                            'dispersed_image_centx','dispersed_image_centy',
+                            'dispersed_fullframe_centx','dispersed_fullframe_centy']  # Specify keys to include
         subset = {key: self.optics_keywords[key] for key in keys_to_include_in_header if key in self.optics_keywords}
         sim_info.update(subset)
         ## add sattelite spots info 
@@ -833,7 +851,7 @@ class CorgiOptics():
 
                 # If a prism was selected, apply the dispersion model and overwrite the image cube and wavelength array.
                 if self.prism != 'None': 
-                    images_tem, dispersed_lam_um = spec.apply_prism(self, images_tem)
+                    images_tem, dispersed_lam_um, disp_shift_lam0_x, disp_shift_lam0_y = spec.apply_prism(self, images_tem)
     
                     self.nlam = len(dispersed_lam_um)
                     self.lam_um = dispersed_lam_um
