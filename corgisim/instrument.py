@@ -498,18 +498,30 @@ class CorgiOptics():
         """
 
         # Convert polar to Cartesian coordinates
-        dx = radius_lamD * np.cos(azimuth_angle.to_value(u.rad))
-        dy = radius_lamD * np.sin(azimuth_angle.to_value(u.rad))
-        
-        # Configure PROPER simulation options
-        simulation_options = dict(self.optics_keywords,
-                                source_x_offset=dx,
-                                source_y_offset=dy,
-                                output_dim=self.grid_dim_out * self.oversampling_factor,
-                                final_sampling_m=self.sampling_um / self.oversampling_factor * 1e-6)
+        dx = self.res_mas * radius_lamD * np.cos(azimuth_angle.to_value(u.rad))
+        dy = self.res_mas * radius_lamD * np.sin(azimuth_angle.to_value(u.rad))
+
+        grid_dim_out_tem = self.grid_dim_out * self.oversampling_factor
+        sampling_um_tem = self.sampling_um / self.oversampling_factor
+
+        print(f"Computing off-axis PSF at r={radius_lamD:.2f} λ/D, θ={azimuth_angle:.1f} deg -> (dx, dy)=({dx:.1f}, {dy:.1f}) mas")
+
+        optics_keywords_comp = self.optics_keywords.copy()
+        optics_keywords_comp.update({'output_dim': grid_dim_out_tem,
+                                       'final_sampling_m': sampling_um_tem * 1e-6,
+                                       'source_x_offset_mas': dx,
+                                       'source_y_offset_mas': dy})
+
+        # # Configure PROPER simulation options
+        # simulation_options = dict(self.optics_keywords,
+        #                         source_x_offset=dx,
+        #                         source_y_offset=dy,
+        #                         output_dim=self.grid_dim_out * self.oversampling_factor,
+        #                         final_sampling_m=)
+        #                         # final_sampling_m=self.sampling_um / self.oversampling_factor * 1e-6)
         
         # Run PROPER simulation
-        fields, _ = proper.prop_run_multi('roman_preflight', wavelength_grid, 1024,PASSVALUE=simulation_options, QUIET=self.quiet)
+        (fields, sampling) = proper.prop_run_multi('roman_preflight', wavelength_grid, 1024,PASSVALUE= optics_keywords_comp, QUIET=self.quiet)
 
         # Apply spectral weighting and bin down
         intensity = np.abs(fields)**2
