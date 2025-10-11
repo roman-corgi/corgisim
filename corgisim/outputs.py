@@ -481,14 +481,14 @@ def write_headers_FPAM(cor_type, band_pass,use_fpm,nd_filter):
                 FPAMNAME = 'OPEN_34'
                 FPAMSP_H = 60251.2
                 FPAMSP_V = 2248.5
-        if (nd_filter == '1'):
+        if (nd_filter == '2.25'):
             ## ND filter1 
             FPAM_H = 61507.8
             FPAM_V = 25612.4
             FPAMNAME = 'ND225'
             FPAMSP_H = 61507.8
             FPAMSP_V = 25612.4
-        if (nd_filter == '2'):
+        if (nd_filter == '4.75fpam'):
             ## ND filter2
             FPAM_H = 2503.7
             FPAM_V = 6124.9
