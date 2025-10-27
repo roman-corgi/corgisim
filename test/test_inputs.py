@@ -32,7 +32,7 @@ def test_cpgs_loading():
     # TO DO Add a file without autogain with polarization to test the error handling 
     
     # Test object creation 
-    filepath = 'test/test_data/cpgs_without_polarization.xml'
+    filepath = 'test/test_data/CPGS_MRT8_CGIPrime.xml'
     abs_path =  os.path.join(script_dir, '..', filepath)
 
     scene_target, scene_reference, optics, detector_target, detector_reference, visit_list = inputs.load_cpgs_data(abs_path)
