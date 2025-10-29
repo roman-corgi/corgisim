@@ -63,7 +63,7 @@ def create_hdu_list(data, header_info, sim_info=None):
 
     exthdr['NAXIS'] = data.ndim
     exthdr['NAXIS1'] = data.shape[0]
-    exthdr['NAXIS2'] = data.shape[0]
+    exthdr['NAXIS2'] = data.shape[1]
     exthdr['EXPTIME'] = header_info['EXPTIME']
     exthdr['EMGAIN_C'] = header_info['EMGAIN_C']
     exthdr['EMGAIN_A'] = header_info['EMGAIN_C']  
