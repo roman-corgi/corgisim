@@ -23,7 +23,7 @@ def test_excam_mode():
     ###we used sep = 3 lambda/D here 
     dx= [3*49.3,-3*49.3]
     dy= [3*49.3,-3*49.3]
-    
+
     info_dir = cgisim.lib_dir + '/cgisim_info_dir/'
 
     #Define the host star properties
@@ -166,8 +166,8 @@ def test_cpgs_obs():
         else:
             assert simulatedImage.input_scene._point_source_Vmag == mag_companion
             assert simulatedImage.input_scene._point_source_magtype == ['vegamag']
-            assert simulatedImage.input_scene.point_source_x == dx
-            assert simulatedImage.input_scene.point_source_y == dy
+            assert simulatedImage.input_scene.point_source_dra == dx
+            assert simulatedImage.input_scene.point_source_ddec == dy
             assert isinstance(simulatedImage.point_source_image, fits.hdu.image.PrimaryHDU)  
 
 def test_spec_mode():
