@@ -12,5 +12,5 @@ corgisim documentation
    :caption: Contents:
 
    modules
-   tutorial1_corgisim
+   tutorial1_corgisim.ipynb
 
