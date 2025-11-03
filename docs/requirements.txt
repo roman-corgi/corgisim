@@ -4,3 +4,4 @@ nbsphinx
 pandoc
 IPython
 ipykernel
+nbsphinx_link
