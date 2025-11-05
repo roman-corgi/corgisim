@@ -179,14 +179,24 @@ def isotime_to_yyyymmddThhmmsss(timestr):
 
     Returns
     -------
-    str
-        Time formatted as 'yyyymmddThhmmsssss' (e.g., '20251028T133250340').
+        str
+            Time formatted as 'yyyymmddThhmmsss' (e.g., '20250425T2318048').
     """
     # Parse the input ISO format time
     t = datetime.fromisoformat(timestr)
 
-    # Format as yyyymmddThhmmsssss
-    out = t.strftime("%Y%m%dT%H%M%S%f")[:-3]
+    # Round to nearest 0.1 second
+    microsecond = t.microsecond
+    tenth_sec = round(microsecond / 1e5)  # how many tenths
+    t = t.replace(microsecond=0)  # reset microseconds
+
+    if tenth_sec == 10:
+        # carry over 1 second if rounding goes to 10
+        t += timedelta(seconds=1)
+        tenth_sec = 0
+
+    # Format as yyyymmddThhmmsss
+    out = t.strftime("%Y%m%dT%H%M%S") + str(tenth_sec)
     return out
 
 def write_headers_SPAM(cor_type):
