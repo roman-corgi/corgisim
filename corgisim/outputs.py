@@ -124,7 +124,7 @@ def create_hdu(data, sim_info=None):
     return hdu
 
 
-def save_hdu_to_fits( hdul, outdir=None, overwrite=True, write_as_L1=False, filename=None):
+def save_hdu_to_fits( hdul, outdir=None, overwrite=False, write_as_L1=False, filename=None):
         """
         Save an Astropy HDUList to a FITS file.
 
