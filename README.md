@@ -2,6 +2,8 @@
 A simulation suite for the Nancy Grace Roman Space Telescope Coronagraphic Instrument
 
 ## Installation Instruction
+### Python version
+This repository requires Python version 3.12 ot higher
 
 ### Install Proper
 Proper is an optical propagation library that is needed for CGISim to function
