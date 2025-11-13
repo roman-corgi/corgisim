@@ -2,9 +2,13 @@
 ## This will likely contain functions simmilar to the functionality in Jorge's corgisims_obs 
 import corgisim
 import os
-from corgisim import scene, instrument, inputs, observation, outputs
+from corgisim import scene, instrument, inputs, observation, outputs, wavefront_estimation
+from corgisim.wavefront_estimation import get_drift
 
-def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, save_as_fits= False, output_dir=None, full_frame= False, loc_x=None, loc_y=None):
+from astropy.io import fits
+
+
+def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, save_as_fits= False, output_dir=None, full_frame= False, loc_x=None, loc_y=None, zernike_index=None, zernike_value_m=None):
     """Generates a sequence of simulated observations and places them on a detector.
 
     This function orchestrates the simulation of a given astrophysical scene through
@@ -37,15 +41,18 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, s
         where each object represents a single generated observation frame with its image data
         and associated FITS header information.
     """
-    sim_scene = optics.get_host_star_psf(scene)
-    if hasattr(scene, 'point_source_x'):
-        sim_scene = optics.inject_point_sources(scene,sim_scene)
     
     simulatedImage_list = []
     
     if full_frame == False :
         for i in range(0, n_frames):
-            sim_image = detector.generate_detector_image(sim_scene,exp_time)
+            print(i, n_frames)
+            if zernike_index is not None:
+                optics.optics_keywords.update({'zindex': zernike_index, 'zval_m': zernike_value_m[i]})
+            sim_scene = optics.get_host_star_psf(scene)
+            if hasattr(scene, 'point_source_x'):
+                sim_scene = optics.inject_point_sources(scene, sim_scene)
+            sim_image = detector.generate_detector_image(sim_scene, exp_time)
             simulatedImage_list.append(sim_image)
     else:
         if save_as_fits:
@@ -59,15 +66,22 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, s
                 outdir = output_dir
 
         for i in range(0, n_frames):
+            print(i, n_frames)
+            if zernike_index is not None:
+                optics.optics_keywords.update({'zindex': zernike_index, 'zval_m': zernike_value_m[i]})
+            sim_scene = optics.get_host_star_psf(scene)
+            if hasattr(scene, 'point_source_x'):
+                sim_scene = optics.inject_point_sources(scene, sim_scene)
             sim_image = detector.generate_detector_image(sim_scene,exp_time,full_frame=True,loc_x=loc_x, loc_y=loc_y)
             simulatedImage_list.append(sim_image)
 
             if save_as_fits:
+                #sim_scene.host_star_image.writeto(os.path.join(outdir, f"psf{i}")) just for debug
                 outputs.save_hdu_to_fits(sim_image.image_on_detector,outdir=outdir, write_as_L1=True)
 
     return simulatedImage_list
 
-def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, output_dir=None, full_frame=False, loc_x=None, loc_y=None, point_source_info=None):
+def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, output_dir=None, full_frame=False, loc_x=None, loc_y=None, point_source_info=None, dm_keywords=None):
     """Generates an observation scenario by loading instrument, scene, and visit
     information from a CPGS file.
 
@@ -96,10 +110,18 @@ def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, outpu
         host_star_properties = {'Vmag': scene_target._host_star_Vmag, 'spectral_type': scene_target._host_star_sptype, 'magtype': scene_target._host_star_magtype, 'ref_flag': False}
         scene_target = scene.Scene(host_star_properties, point_source_info)
 
+    if dm_keywords is not None:
+        optics.optics_keywords.update(dm_keywords)
+
     for visit in visit_list:
+        print(optics.optics_keywords)
+        print(visit)
+
         #optics.roll_angle = visit['roll_angle'] Commented out for now
         if visit['isReference']:
-            simulatedImage_visit = generate_observation_sequence(scene_reference, optics, detector_reference, visit['exp_time'], visit['number_of_frames'],save_as_fits= save_as_fits, output_dir=output_dir, full_frame= full_frame,loc_x=loc_x, loc_y=loc_y )
+            print("reference")
+            zernike_index, zernike_value_m = get_drift(visit['exp_time'], visit['number_of_frames'], obs='ref', cycle=visit['visit_id'])
+            simulatedImage_visit = generate_observation_sequence(scene_reference, optics, detector_reference, visit['exp_time'], visit['number_of_frames'], save_as_fits=save_as_fits, output_dir=output_dir, full_frame=full_frame,loc_x=loc_x, loc_y=loc_y, zernike_index=zernike_index, zernike_value_m=zernike_value_m)
         else:
             simulatedImage_visit = generate_observation_sequence(scene_target, optics, detector_target, visit['exp_time'], visit['number_of_frames'],save_as_fits= save_as_fits, output_dir=output_dir, full_frame= full_frame,loc_x=loc_x, loc_y=loc_y  )
 
