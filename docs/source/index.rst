@@ -9,11 +9,19 @@ corgisim documentation
 
 .. toctree::
    :maxdepth: 1
-   :caption: Contents:
+   :caption: Tutorials:
 
-   modules
    tutorial1_corgisim.ipynb
    polarimetry_demo.ipynb
    spc-wide_demo.ipynb
    spec_slit_prism_demo.ipynb
+
+
+
+.. toctree::
+   :maxdepth: 4
+   :caption: API:
+
+   modules
+
 
