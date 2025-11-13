@@ -3,13 +3,13 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-corgisim documentation
+Corgisim Documentation
 ======================
 
 
 .. toctree::
    :maxdepth: 1
-   :caption: Tutorials:
+   :caption: Tutorials
 
    tutorial1_corgisim.ipynb
    polarimetry_demo.ipynb
@@ -20,7 +20,7 @@ corgisim documentation
 
 .. toctree::
    :maxdepth: 4
-   :caption: API:
+   :caption: Detailed Corgisim API
 
    modules
 
