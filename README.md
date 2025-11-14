@@ -1,6 +1,9 @@
 # corgisim
 A simulation suite for the Nancy Grace Roman Space Telescope Coronagraphic Instrument
 
+### Documentation
+The automatic documentation is available at https://corgisim.readthedocs.io/en/latest/
+
 ## Installation Instruction
 
 ### Install Proper
@@ -56,5 +59,3 @@ roman_preflight_compact.py and roman_preflight.py need to be copied in the same 
 ### Stale branches
 A branch is marked as stale after 90 days. At that point, a comment is made on the last commit and the author is notified. If nothing is done, the branch is removed after 7 more days.
 
-### Documentation
-The automatic documentation is available at https://corgisim.readthedocs.io/en/latest/
