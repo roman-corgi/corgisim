@@ -33,7 +33,7 @@ def test_bandpass():
 
     optics_keywords ={'cor_type': cor_type, 'use_errors':2, 'polaxis':10, 'output_dim':101,\
                        'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
-    optics = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords, if_quiet=True, integrate_pixels=True)
+    optics = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords, if_quiet=True)
     
     #print(optics.lam_um[1])
     #bp = optics.setup_bandpass(cgi_mode, bandpass, 0)

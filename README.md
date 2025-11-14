@@ -2,6 +2,8 @@
 A simulation suite for the Nancy Grace Roman Space Telescope Coronagraphic Instrument
 
 ## Installation Instruction
+### Python version
+This repository requires Python version 3.12 or higher
 
 ### Install Proper
 Proper is an optical propagation library that is needed for CGISim to function
@@ -52,6 +54,9 @@ ImportError: Unable to run roman_preflight prescription. Stopping.
 ```
 it means that the program cannot locate roman_preflight_compact.py and/or roman_preflight.py. The error is described in page two of roman_preflight_proper_public_v2.0.pdf.
 roman_preflight_compact.py and roman_preflight.py need to be copied in the same directory as the script you are trying to run (i.e. /corgisim/test/ if you are trying to run a test, corgisim/examples/if you are trying to run an example)
+
+### Stale branches
+A branch is marked as stale after 90 days. At that point, a comment is made on the last commit and the author is notified. If nothing is done, the branch is removed after 7 more days.
 
 ### Documentation
 The automatic documentation is available at https://corgisim.readthedocs.io/en/latest/

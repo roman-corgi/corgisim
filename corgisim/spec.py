@@ -122,6 +122,10 @@ def apply_prism(optics, image_cube):
             - ndarray: Image cube after applying prism dispersion, with finer wavelength sampling,
                        shape (n_wavelengths_interp, n_y, n_x)
             - ndarray: Interpolated wavelength array (in microns) for the dispersed_cube
+            - float: Horizontal displacement of source at filter center wavelength, 
+                     in units of oversampled model pixels
+            - float: Vertical displacement of source at filter center wavelength, 
+                     in units of oversampled model pixels
 
     Notes:
         The function performs the following operations:
@@ -147,6 +151,8 @@ def apply_prism(optics, image_cube):
     dispersion_polyfunc = np.poly1d(prism_params['pos_vs_wavlen_polycoeff'])
     interp_wavs_bandpass = np.linspace(optics.lam_um[0], optics.lam_um[-1], N_wav_interp)
     delta_wavelen = interp_wavs_bandpass - optics.lamref_um
+    # Approximate center of selected CFAM filter - need to improve this in future.
+    delta_wavelen_lam0 = np.mean(interp_wavs_bandpass) - optics.lamref_um
 
     model_sampling_mm = optics.sampling_um / optics.oversampling_factor * 1E-3
     dispers_shift_mm = dispersion_polyfunc(delta_wavelen / optics.lamref_um)
@@ -180,7 +186,13 @@ def apply_prism(optics, image_cube):
     for i in range(image_cube_interp.shape[0]):
         dispersed_cube[i] = scipy.ndimage.map_coordinates(image_cube_interp[i], coords[:, i], order=1, mode='constant')
 
-    return dispersed_cube, interp_wavs_bandpass
+    # Dispersion shift of filter center wavelength
+    lam0_shift_mm = dispersion_polyfunc(delta_wavelen_lam0 / optics.lamref_um)
+    lam0_shift_modelpix = lam0_shift_mm / model_sampling_mm 
+    lam0_shift_y = lam0_shift_modelpix * np.sin(np.deg2rad(theta))
+    lam0_shift_x = lam0_shift_modelpix * np.cos(np.deg2rad(theta))
+
+    return dispersed_cube, interp_wavs_bandpass, lam0_shift_x, lam0_shift_y
 
 def read_slit_params(slit_param_filename):
     """Load slit aperture reference parameters from a JSON file.
