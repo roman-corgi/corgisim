@@ -63,7 +63,7 @@ def create_hdu_list(data, header_info, sim_info=None):
 
     exthdr['NAXIS'] = data.ndim
     exthdr['NAXIS1'] = data.shape[0]
-    exthdr['NAXIS2'] = data.shape[0]
+    exthdr['NAXIS2'] = data.shape[1]
     exthdr['EXPTIME'] = header_info['EXPTIME']
     exthdr['EMGAIN_C'] = header_info['EMGAIN_C']
     exthdr['EMGAIN_A'] = header_info['EMGAIN_C']  
@@ -124,7 +124,7 @@ def create_hdu(data, sim_info=None):
     return hdu
 
 
-def save_hdu_to_fits( hdul, outdir=None, overwrite=True, write_as_L1=False, filename=None):
+def save_hdu_to_fits( hdul, outdir=None, overwrite=False, write_as_L1=False, filename=None):
         """
         Save an Astropy HDUList to a FITS file.
 
@@ -179,8 +179,8 @@ def isotime_to_yyyymmddThhmmsss(timestr):
 
     Returns
     -------
-    str
-        Time formatted as 'yyyymmddThhmmsss' (e.g., '20250425T2318048').
+        str
+            Time formatted as 'yyyymmddThhmmsss' (e.g., '20250425T2318048').
     """
     # Parse the input ISO format time
     t = datetime.fromisoformat(timestr)
