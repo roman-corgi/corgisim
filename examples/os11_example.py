@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import proper
 import roman_preflight_proper
-import cgisim
 from scipy.interpolate import interp1d
 from corgisim import outputs
 
