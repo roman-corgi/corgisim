@@ -47,7 +47,7 @@ class CorgiOptics():
             - diam (float) in meter: diameter of the primaru mirror, the default value is 2.363114 meter
             - optics_keywords: A dictionary with the keywords that are used to set up the proper model
 	        - satspot_keywords: A dictionary with the keywords that are used to add satellite spots. See add_satspot for the keywords.
-            - oversample: An integer that defines the oversampling factor of the detector when generating the image
+            - oversampling_factor: An integer that defines the oversampling factor of the detector when generating the image
             - return_oversample: A boolean that defines whether the function should return the oversampled image or not.
     
 

@@ -346,6 +346,10 @@ def test_L1_product_from_CPGS():
     scene_target, scene_reference, optics, detector_target, detector_reference, visit_list = inputs.load_cpgs_data(abs_path)
     simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, full_frame=True, loc_x=300, loc_y=300, save_as_fits=True, output_dir=outdir)
 
+    #Check that there are as many simulated images as files
+    assert len(simulatedImage_list) == len([name for name in os.listdir(outdir) if os.path.isfile(outdir+'/'+name)])
+
+    #Check that the names are correct
     for simulatedImage in simulatedImage_list:
         prihdr = simulatedImage.image_on_detector[0].header
         exthdr = simulatedImage.image_on_detector[1].header
@@ -357,6 +361,30 @@ def test_L1_product_from_CPGS():
     
     # Delete the files 
     shutil.rmtree(outdir)
+
+    # test at the observation sequence level
+    # n_frames and exp_time values are not critical
+    n_frames = 100
+    exp_time = 30
+
+    simulatedImage_list_sequence = observation.generate_observation_sequence( scene_target, optics, detector_target, exp_time, n_frames, save_as_fits=True, output_dir=outdir, full_frame=True, loc_x=300, loc_y=300)
+    
+    #Check that there are as many simulated images as files
+    assert len(simulatedImage_list_sequence) == len([name for name in os.listdir(outdir) if os.path.isfile(outdir+'/'+name)]) == n_frames
+
+    #Check that the names are correc
+    for simulatedImage in simulatedImage_list_sequence:
+        prihdr = simulatedImage.image_on_detector[0].header
+        exthdr = simulatedImage.image_on_detector[1].header
+        time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
+        filename = f"CGI_{prihdr['VISITID']}_{time_in_name}_L1_.fits"
+
+        f = os.path.join( outdir , filename)
+        assert os.path.isfile(f)
+    
+    # Delete the files 
+    shutil.rmtree(outdir)
+
 if __name__ == '__main__':
     #run_sim()
     test_L1_product_fits_format()
