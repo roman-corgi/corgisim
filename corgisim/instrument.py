@@ -223,16 +223,21 @@ class CorgiOptics():
         if 'use_fpm' not in optics_keywords_internal:
             optics_keywords_internal['use_fpm'] = 1  # use fpm by default
         if 'use_lyot_stop' not in optics_keywords_internal:
-            optics_keywords_internal['use_lyot_stop'] = 1  # use lyot stop by default
+            if self.cor_type != 'zwfs':
+                optics_keywords_internal['use_lyot_stop'] = 1  # use lyot stop by default
+            else:
+                optics_keywords_internal['use_lyot_stop'] = 0  # don't use Lyot stop for zwfs
         if 'use_field_stop' not in optics_keywords_internal:
             optics_keywords_internal['use_field_stop'] = 1  # use field stop by default
         if 'use_pupil_lens' not in optics_keywords_internal:
             optics_keywords_internal['use_pupil_lens'] = 0  # not use pupil lens by default
 
-        if optics_keywords_internal['use_pupil_lens']==1 :
-            if (optics_keywords_internal['use_fpm']==1) or (optics_keywords_internal['use_lyot_stop']==1) or (optics_keywords_internal['use_field_stop']==1):
-                raise ValueError("When simulating a pupil image (use_pupil_lens=1), disable use_fpm, use_lyot_stop, and use_field_stop.")
-
+        if optics_keywords_internal['use_pupil_lens'] == 1 and self.cor_type != 'zwfs':
+            if (optics_keywords_internal['use_fpm'] == 1) or (optics_keywords_internal['use_lyot_stop'] == 1) or (
+                    optics_keywords_internal['use_field_stop'] == 1):
+                print(self.cor_type)
+                raise ValueError(
+                    "When simulating a pupil image (use_pupil_lens=1), disable use_fpm, use_lyot_stop, and use_field_stop.")
 
         # polarization
         
