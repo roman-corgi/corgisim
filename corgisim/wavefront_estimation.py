@@ -103,6 +103,35 @@ def get_drift(exp_time, n_frames, obs='science', cycle=1, roll=1, lowfs_use=True
 
     return noll_index, zval_m
 
+def get_jitter(exp_time, n_frames, obs='science', cycle=1, roll=1):
+    print("n_frames", n_frames)
+    if type(cycle) == str:
+        cycle = int(cycle)
+    exp_time /= 3600  # exp_time in hour
+    if obs == 'science':
+        t0, t1 = get_science_acquisition(cycle, roll)
+    elif obs == 'ref':
+        t0, t1 = get_reference_aberration(cycle)
+    else:
+        raise ValueError("obs must be either 'science' or 'ref'")
+
+    tiptilt_index = np.arange(2, 4, 1)
+    script_dir = os.path.dirname(__file__)
+
+    a = fits.getdata(os.path.join(script_dir, 'data/hlc_os11_inputs.fits')).transpose()
+    zval_m = np.zeros((n_frames, tiptilt_index.shape[0]))
+    t_interp = np.arange(t0, t1, exp_time)
+
+    for i, idx in enumerate(tiptilt_index):
+        f_interp = interp1d(a[0], a[78 + i])
+        a_interp = f_interp(t_interp)
+
+        for k in range(n_frames):
+            zval_m[k, i] = a_interp[k]
+
+    return tiptilt_index, zval_m
+
+
 def estimate_companion_position_roll(x_off_mas, y_off_mas, roll_0='positive', theta=-13):
     """
     
