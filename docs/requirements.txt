@@ -1,2 +1,7 @@
 sphinx
 sphinx_rtd_theme
+nbsphinx
+pandoc
+IPython
+ipykernel
+nbsphinx_link
