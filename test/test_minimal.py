@@ -226,7 +226,7 @@ def test_spec_mode():
                   'slit':'R1C2', 'prism':'PRISM3', 'wav_step_um':2E-3}
 
     optics_slit_prism = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords_slit_prism, if_quiet=True,
-                                small_spc_grid = 1, oversample = overfac, return_oversample = False)
+                                small_spc_grid = 1, oversampling_factor = overfac, return_oversample = False)
 
     sim_scene_slit_prism = optics_slit_prism.get_host_star_psf(base_scene)
 
