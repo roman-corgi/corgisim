@@ -11,6 +11,10 @@ import cgisim
 
 
 def test_roll_imaging():
+    #### this testing function test if the roll angle function have the results we expect
+    #### Spcifically, I generate two simulation, one with 0 deg roll angle and one with 15 deg roll angle
+    #### The function test of the PA for the companion out of two siulation offset by 15 deg and in the direction we want
+
     Vmag = 8
     sptype = 'G0V'
     cgi_mode = 'excam'

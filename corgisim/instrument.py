@@ -1255,7 +1255,7 @@ class CorgiDetector():
 
 
 def skycoord_to_excamcoord(dra, ddec, roll_angle):
-    """Convert sky coordinates to EXCAM coordinates.
+    """Convert sky coordinates to EXCAM coordinates. These are both relative astrometry of a companion relative to host star (or central of the frame)
 
     Args:
         dra (float): The right ascension offset in mas.
