@@ -13,6 +13,32 @@ import sys
 ARCSEC_PER_RAD = 206265
 PIXEL_SCALE_ARCSEC = 0.0218   # arcsec/pixel
 
+def _generate_prf_header():
+    """
+    Create and store information associated to the prf cube, so the user has the information on:
+    - Sampling of the PRFs in lam/D 
+    - Bandwidth of the PRF cube
+    - Optics keywords used to generate the PRFs
+
+    Returns: 
+        prf_header: astropy.io.fits.Header
+    """
+
+    # radii_lamD_1 = build_radial_grid(
+    #     inner_step      = 5,     # step inside IWA (λ/D)
+    #     mid_step        = 5,     # step between IWA and OWA
+    #     outer_step      = 5,     # step beyond OWA (λ/D)
+    #     iwa             = 0,     # inner working angle (λ/D)
+    #     owa             = 10,    # outer working angle (λ/D)
+    # )
+
+    # azimuths_deg_1 = build_azimuth_grid(
+    #     step_deg        = 90  # azimuthal step in degrees
+    # )
+
+
+    pass
+
 def binning(img: np.ndarray, binning_factor: int) -> np.ndarray:
     """
     Bin a 2D image by an integer factor, conserving total flux (sum over bins).
@@ -115,6 +141,8 @@ def build_radial_grid(iwa, owa, inner_step, mid_step, outer_step, max_radius=Non
     max_radius : float, optional
         Maximum radius to extend the outer grid, in λ/D.
         Defaults to `max(15, 1.5 * owa)`.
+    output_param : bool, optional
+        If True, returns the input parameters as well (for logging). Default is False.
 
     Returns
     -------
@@ -132,11 +160,21 @@ def build_radial_grid(iwa, owa, inner_step, mid_step, outer_step, max_radius=Non
     if max_radius is None:
         max_radius = max(15, owa*1.5)
 
+    # Capture parameters
+    param = {
+        'iwa': iwa,
+        'owa': owa,
+        'inner_step': inner_step,
+        'mid_step': mid_step,
+        'outer_step': outer_step,
+        'max_radius': max_radius
+    }
+    
     inner = np.arange(0, iwa + inner_step, inner_step)
     mid   = np.arange(iwa + inner_step, owa, mid_step)
     outer = np.arange(owa, max_radius + outer_step, outer_step)
-
-    return np.hstack([inner, mid, outer])
+    
+    return np.hstack([inner, mid, outer]), param
 
 def build_azimuth_grid(step_deg):
     """
@@ -156,9 +194,13 @@ def build_azimuth_grid(step_deg):
         raise ValueError("step_deg must be positive")
     elif 360 % step_deg != 0:
         raise ValueError("step_deg must divide 360 evenly")
-    else:
-        # Generate angles from 0 to 360° with the specified step
-        return np.arange(0, 360, step_deg) * u.deg
+
+    param = {
+        'step_deg': step_deg
+    }
+    
+    # Generate angles from 0 to 360° with the specified step
+    return np.arange(0, 360, step_deg) * u.deg, param
 
 def create_wavelength_grid_and_weights(wvl_um, source_sed):
     """
