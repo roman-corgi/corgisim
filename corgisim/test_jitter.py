@@ -705,8 +705,8 @@ def check_offset_weights():
     else:
         N_offsetgrid = stellar_diam_and_jitter_keywords['N_offsetgrid']
             
-    x = np.linspace(-outer_radius_of_offset_circle,outer_radius_of_offset_circle,N_offsetgrid)
-    y = np.linspace(-outer_radius_of_offset_circle,outer_radius_of_offset_circle,N_offsetgrid)
+    x = np.linspace(-outer_radius_of_offset_circle,outer_radius_of_offset_circle,N_offsetgrid*10)
+    y = np.linspace(-outer_radius_of_offset_circle,outer_radius_of_offset_circle,N_offsetgrid*10)
     X,Y = np.meshgrid(x,y)
 
     # Define the top-hat function
@@ -717,7 +717,21 @@ def check_offset_weights():
     y_predetermined = y_offsets_list
     
     interp = RegularGridInterpolator([x,y], disc_indices)    
-    W = interp(np.array([x_offsets_list,y_offsets_list]),'quintic')
+    W = interp(np.array([x_offsets_list,y_offsets_list]).T,'quintic')
+    
+    ax = plt.axes(projection='3d')
+    ax.plot3D(x_offsets_list,y_offsets_list,W,'ro')
+    plt.show()
+    
+    Xr = X.ravel()
+    Yr = Y.ravel()
+    Zr = disc_indices.ravel()
+    fig = plt.figure()
+    ax = fig.add_subplot(projection='3d')
+    for iplt in range(len(Xr)):
+        ax.scatter(Xr[iplt],Yr[iplt],Zr[iplt],marker='.',color='b')
+        
+        
 
 ###############################################################################
 def test_obs_with_finite_stellar_diam():
