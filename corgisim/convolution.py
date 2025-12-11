@@ -15,67 +15,32 @@ PIXEL_SCALE_ARCSEC = 0.0218   # arcsec/pixel
 
 from astropy.io import fits
 
-def _generate_prf_header(radial_param, azimuthal_param, optics_keywords, dm_solution) -> fits.Header:
+def _generate_prf_dictionary(radial_param, azimuthal_param, dm_solution) -> dict:
     """
-    Create and store information associated to the prf cube, so the user has the information on:
+    Collect metadata associated with the PRF cube, including:
     - Sampling of the PRFs in lam/D 
-    - Bandwidth of the PRF cube
     - Optics keywords used to generate the PRFs
-
+    - DM solution information
+    
     Args:
         radial_param (dict): Dictionary of radial grid parameters.
         azimuthal_param (dict): Dictionary of azimuthal grid parameters.
-        optics_keywords (dict): Dictionary of optics keywords.
         dm_solution (any): Initial DM solution information.
-
-    Returns: 
-        prf_header: astropy.io.fits.Header
-    """
-
-    header = fits.Header()
-
-    # unit - TODO - check again which unit the cube is in when storing
-    header['UNIT'] = '???' 
-    
-    # Radial grid parameters - input for the build_radial_grid function
-    # header['COMMENT'] = '--- Radial Grid Parameters (lambda/D) ---' ; either put COMMENT or not
-    header['RAD_IWA'] = (radial_param['iwa'], 'Inner working angle (lambda/D)')
-    header['RAD_OWA'] = (radial_param['owa'], 'Outer working angle (lambda/D)')
-    header['RAD_INSP'] = (radial_param['inner_step'], 'Inner step size (lambda/D)')
-    header['RAD_MIDSP'] = (radial_param['mid_step'], 'Mid step size (lambda/D)')
-    header['RAD_OUTSP'] = (radial_param['outer_step'], 'Outer step size (lambda/D)')
-    header['RAD_MAX'] = (radial_param['max_radius'], 'Maximum radius (lambda/D)')
-    
-    # Azimuthal grid parameters - input for the build_azimuth_grid function
-    # header['COMMENT'] = '--- Azimuthal Grid Parameters ---'
-    header['AZ_STEP'] = (azimuthal_param['step_deg'], 'Azimuthal step size (degrees)')
-
-    # Optics keywords (based on the input dictionary)
-    # header['COMMENT'] = '--- Optical System Parameters ---' ; either put COMMENT or not
-    exclude_keys = {'dm1_v', 'dm2_v'} # Exclude large arrays from header
-
-    for key, value in optics_keywords.items():
-        # Skip DM voltage keys
-        if key in exclude_keys:
-            continue
-        # Create valid FITS keyword (max 8 chars, uppercase, alphanumeric + underscore)
-        fits_key = key.replace('-', '_').replace(' ', '_')[:8].upper()
         
-        # Handle different value types
-        if isinstance(value, (int, float, str, bool)):
-            header[fits_key] = (value, key)
-        elif isinstance(value, (list, tuple, np.ndarray)):
-            # For arrays/lists, store as string representation
-            header[fits_key] = (str(value), key)
-        else:
-            # For other types, convert to string
-            header[fits_key] = (str(value), key)
+    Returns: 
+        dict: Combined dictionary of all parameters, excluding large arrays
+    """
+    exclude_keys = {'dm1_v', 'dm2_v'}  # Exclude large arrays from optics keywords
     
-    # DM solution - store as a single entry to indicate which DM solution was used
-    # header['COMMENT'] = '--- DM Solution Information ---' ; either put COMMENT or not
-    header['DM_SOLTN'] = (str(dm_solution), 'Initial DM solution')
-
-    return header 
+    # Combine all dictionaries
+    combined_params = {
+        **radial_param,
+        **azimuthal_param,
+        'dm_solution': dm_solution
+    }
+    combined_params['unit'] = '???' # Placeholder for unit information
+    
+    return combined_params
 
 def binning(img: np.ndarray, binning_factor: int) -> np.ndarray:
     """
