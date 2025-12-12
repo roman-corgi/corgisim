@@ -141,7 +141,7 @@ def test_apply_prism():
     image_cube[:, yc-hwbox:yc+hwbox, xc-hwbox:xc+hwbox] = 1  # Mock image cube is a box of bright pixels at center for all wavelengths
 
     for config in [prism3_config, prism2_config]:
-        dispersed_cube, interp_wavs = spec.apply_prism(config, image_cube)
+        dispersed_cube, interp_wavs, disp_shift_lam0_x, disp_shift_lam0_y = spec.apply_prism(config, image_cube)
     
         print("Input image cube shape:", image_cube.shape)
         print("Output dispersed cube shape:", dispersed_cube.shape)

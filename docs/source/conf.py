@@ -22,6 +22,8 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.autodoc',
     'sphinx_rtd_theme',
+    'nbsphinx',
+    'nbsphinx_link',
 ]
 
 napoleon_google_docstring = False

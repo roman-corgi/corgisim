@@ -32,7 +32,7 @@ def test_cpgs_loading():
     # TO DO Add a file without autogain with polarization to test the error handling 
     
     # Test object creation 
-    filepath = 'test/test_data/cpgs_without_polarization.xml'
+    filepath = 'test/test_data/CPGS_MRT8_CGIPrime.xml'
     abs_path =  os.path.join(script_dir, '..', filepath)
 
     scene_target, scene_reference, optics, detector_target, detector_reference, visit_list = inputs.load_cpgs_data(abs_path)
@@ -179,7 +179,7 @@ def test_input_from_cpgs():
     scene_target, scene_reference, optics, detector_target, detector_reference, visit_list = inputs.load_cpgs_data(abs_path)
 
     scene_input = scene.Scene(input.host_star_properties)
-    optics_input =  instrument.CorgiOptics(input.cgi_mode, input.bandpass, optics_keywords=input.optics_keywords, if_quiet=True, integrate_pixels=True)
+    optics_input =  instrument.CorgiOptics(input.cgi_mode, input.bandpass, optics_keywords=input.optics_keywords, if_quiet=True)
     detector_input = instrument.CorgiDetector( input.emccd_keywords)
 
     # Check that the two methods return the same objects       

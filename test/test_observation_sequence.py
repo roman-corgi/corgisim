@@ -26,7 +26,7 @@ def test_generate_observation_sequence():
     emccd_keywords ={'em_gain':gain}
 
     base_scene = scene.Scene(host_star_properties)
-    optics =  instrument.CorgiOptics(cgi_mode, bandpass_corgisim, optics_keywords=optics_keywords, if_quiet=True, integrate_pixels=True)
+    optics =  instrument.CorgiOptics(cgi_mode, bandpass_corgisim, optics_keywords=optics_keywords, if_quiet=True)
     detector = instrument.CorgiDetector( emccd_keywords)
     
     exp_time = 2000
