@@ -140,6 +140,8 @@ class CorgiOptics():
                 'slit': 'None', # named FSAM slit
                 'slit_ra_offset_mas': 0.0, # offset of slit position from star on sky coordinate, in mas
                 'slit_dec_offset_mas': 0.0, # offset of slit position from star on sky coordinate, in mas
+                'slit_x_offset_mas': None, # offset of slit position from star on excam coordinate, in mas
+                'slit_y_offset_mas': None, # offset of slit position from star on excam coordinate, in mas
                 'prism': 'None', # named DPAM prism
                 'wav_step_um': 1E-3, # wavelength step size of the prism dispersion model, in microns 
                 'fsm_x_offset_mas': 0.0, # FSM x offset in mas 
@@ -169,9 +171,22 @@ class CorgiOptics():
                     setattr(self, attr_name, value)
                 else:
                     setattr(self, attr_name, default_value)
-            ## convert slit location from sky coord to excam coord in mas, using roll angle
-            self.slit_x_offset_mas, self.slit_y_offset_mas = skycoord_to_excamcoord(self.slit_ra_offset_mas, self.slit_dec_offset_mas, self.roll_angle)
+            
+            # If excam coordinates are not provided, compute them from sky coordinates
+            if (self.slit_x_offset_mas is None) and (self.slit_y_offset_mas is None):
+                # Convert slit location from sky coordinates to EXCAM coordinates (mas)
+                self.slit_x_offset_mas, self.slit_y_offset_mas = skycoord_to_excamcoord(self.slit_ra_offset_mas, self.slit_dec_offset_mas, self.roll_angle)
 
+            # If excam coordinates are provided, they take precedence over sky coordinates
+            elif (self.slit_x_offset_mas is not None) and (self.slit_y_offset_mas is not None):
+                warnings.warn(
+                    "Slit location provided in EXCAM coordinates (x, y). "
+                    "These values will override the sky-coordinate inputs (dRA, dDec). "
+                    "Please ensure the EXCAM coordinates correspond to the intended slit position on the sky.",
+                    UserWarning,
+                )
+
+                
             if self.prism != 'None':
                 prism_param_fname = os.path.join(ref_data_dir, 'TVAC_{:s}_dispersion_profile.npz'.format(self.prism))
                 if not os.path.exists(prism_param_fname):
