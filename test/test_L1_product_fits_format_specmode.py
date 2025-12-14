@@ -90,7 +90,7 @@ def test_L1_product_fits_format_specmode():
     prihdr = sim_scene_slit_prism.image_on_detector[0].header
     exthdr = sim_scene_slit_prism.image_on_detector[1].header
     time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
-    filename = f"CGI_{prihdr['VISITID']}_{time_in_name}_L1_.fits"
+    filename = f"cgi_{prihdr['VISITID']}_{time_in_name}_l1_.fits"
 
 
     f = os.path.join( outdir , filename)
@@ -169,7 +169,7 @@ def test_L1_product_fits_format_specmode():
     prihdr = sim_unocc_noslit_prism_cfam3F.image_on_detector[0].header
     exthdr = sim_unocc_noslit_prism_cfam3F.image_on_detector[1].header
     time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
-    filename = f"CGI_{prihdr['VISITID']}_{time_in_name}_L1_.fits"
+    filename = f"cgi_{prihdr['VISITID']}_{time_in_name}_l1_.fits"
 
     f = os.path.join( outdir , filename)
 
