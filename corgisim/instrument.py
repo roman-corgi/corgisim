@@ -698,30 +698,30 @@ class CorgiOptics():
         Returns: 
             - A 2D numpy array that contains the scene with the injected point sources. 
         '''
+
+        # Extract point source spectra, positions, and polarization
+        point_source_spectra = input_scene.off_axis_source_spectrum
+        point_source_dra = input_scene.point_source_dra
+        point_source_ddec = input_scene.point_source_ddec
+        point_source_pol = input_scene.point_source_pol_state
+
+        # Ensure all inputs are lists for uniform processing
+        if not isinstance(point_source_spectra, list):
+            point_source_spectra = [point_source_spectra]
+        if not isinstance(point_source_dra, list):
+            point_source_dra = [point_source_dra]
+        if not isinstance(point_source_ddec, list):
+            point_source_ddec = [point_source_ddec]
+
+        # Ensure all lists have the same length
+        if not (len(point_source_spectra) == len(point_source_dra) == len(point_source_ddec)):
+            raise ValueError(
+                f"Mismatch in input lengths: {len(point_source_spectra)} spectra, "
+                f"{len(point_source_dra)} dRA positions, {len(point_source_ddec)} dDEC positions. "
+                "Each point source must have a corresponding (dRA, dDEC) position.")
+
         if self.cgi_mode == 'excam':
-
-
-            # Extract point source spectra, positions, and polarization
-            point_source_spectra = input_scene.off_axis_source_spectrum
-            point_source_dra = input_scene.point_source_dra
-            point_source_ddec = input_scene.point_source_ddec
-            point_source_pol = input_scene.point_source_pol_state
-
-            # Ensure all inputs are lists for uniform processing
-            if not isinstance(point_source_spectra, list):
-                point_source_spectra = [point_source_spectra]
-            if not isinstance(point_source_dra, list):
-                point_source_dra = [point_source_dra]
-            if not isinstance(point_source_ddec, list):
-                point_source_ddec = [point_source_ddec]
-
-            # Ensure all lists have the same length
-            if not (len(point_source_spectra) == len(point_source_dra) == len(point_source_ddec)):
-                raise ValueError(
-                    f"Mismatch in input lengths: {len(point_source_spectra)} spectra, "
-                    f"{len(point_source_dra)} dRA positions, {len(point_source_ddec)} dDEC positions. "
-                    "Each point source must have a corresponding (dRA, dDEC) position.")
-
+            
             ##checks to see if point source is within FOV of coronagraph
             #FOV_range is indexed as follows - 0: hlc, 1: spc-spec, 2: spc-wide.
             #FOV_range Values correspond to the inner and outer radius of region of highest contrast and are in units of lambda/d
@@ -819,25 +819,7 @@ class CorgiOptics():
                     # singular unpolarized image if no wollaston
                     point_source_image.append(image) 
         elif self.cgi_mode == 'spec':
-            # Extract point source spectra and positions
-            point_source_spectra = input_scene.off_axis_source_spectrum
-            point_source_dra = input_scene.point_source_dra
-            point_source_ddec = input_scene.point_source_ddec
-
-            # Ensure all inputs are lists for uniform processing
-            if not isinstance(point_source_spectra, list):
-                point_source_spectra = [point_source_spectra]
-            if not isinstance(point_source_dra, list):
-                point_source_dra = [point_source_dra]
-            if not isinstance(point_source_ddec, list):
-                point_source_ddec = [point_source_ddec]
-
-            # Ensure all lists have the same length
-            if not (len(point_source_spectra) == len(point_source_dra) == len(point_source_ddec)):
-                raise ValueError(
-                    f"Mismatch in input lengths: {len(point_source_spectra)} spectra, "
-                    f"{len(point_source_dra)} dRA positions, {len(point_source_ddec)} dDEC positions. "
-                    "Each point source must have a corresponding (dRA, dDEC) position.")
+            
 
             if self.slit != 'None':
                 field_stop_array, field_stop_sampling_m = spec.get_slit_mask(self)
