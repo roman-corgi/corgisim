@@ -10,7 +10,7 @@ This repository requires Python version 3.12 or higher
 
 ### Install Proper
 Proper is an optical propagation library that is needed for CGISim to function
-Go to the [Proper website](https://sourceforge.net/projects/proper-library/) and download proper_v3.3.3_python.zip
+Go to the [Proper website](https://sourceforge.net/projects/proper-library/) and download proper_v3.3.4_python.zip
 Unzip it in your working directory
 Enter the directory that contains setup.py and run the following: 
 ```
