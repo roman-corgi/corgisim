@@ -5,7 +5,7 @@ import csv
 import pandas as pd
 from astropy.io import fits
 from scipy.signal import convolve2d
-from scipy.interpolate import LinearNDInterpolator
+from scipy.interpolate import LinearNDInterpolator, RectBivariateSpline
 import timeit
 import proper
 import roman_preflight_proper
@@ -681,7 +681,7 @@ def build_delta_e_field_library(stellar_diam_and_jitter_keywords,optics):
                                       stellar_diam_and_jitter_keywords['starting_offset_ang_by_ring'], \
                                       stellar_diam_and_jitter_keywords['r_ring0'], \
                                       stellar_diam_and_jitter_keywords['dr_rings'])
-    print('Offsets calculated!')
+    #print('Offsets calculated!')
     
     # For easier iterating, reshape the offsets and areas into lists
     x_offsets_list = [];
@@ -708,6 +708,17 @@ def build_delta_e_field_library(stellar_diam_and_jitter_keywords,optics):
                 y_offsets_list = np.append(y_offsets_list,y_offsets_iring[ireg])
                 A_offsets_list = np.append(A_offsets_list,A_offsets_iring)
                 
+    # Store the offsets and areas in an offset_field_data dictionary
+    offset_field_data = {'x_offsets_mas':x_offsets_list,\
+                         'y_offsets_mas':y_offsets_list,\
+                         'A_offsets':A_offsets_list}
+    # and add to stellar_diam_and_jitter_keywords
+    stellar_diam_and_jitter_keywords['offset_field_data'] = offset_field_data
+    
+    # Determine the total number of offsets
+    N_offsets = np.sum(stellar_diam_and_jitter_keywords['N_offsets_per_ring'])+1
+    stellar_diam_and_jitter_keywords['N_offsets_counting_origin'] = N_offsets
+    
     # Step 2: Calculate the weight for each offset
     stellar_diam_and_jitter_keywords = calculate_weights_for_jitter_and_finite_stellar_diameter(stellar_diam_and_jitter_keywords)
             
@@ -757,12 +768,9 @@ def build_delta_e_field_library(stellar_diam_and_jitter_keywords,optics):
         (E0, sampling) = proper.prop_run_multi('roman_preflight',  optics.lam_um, 1024,PASSVALUE=optics.optics_keywords,QUIET=optics.quiet)
         E0_components.append(E0)
         
+    print('Onaxis field calculated')
+        
     # Step 4: Build the library of delta electric fields
-    
-    # Determine the total number of offsets
-    N_offsets = np.sum(stellar_diam_and_jitter_keywords['N_offsets_per_ring'])+1
-    stellar_diam_and_jitter_keywords['N_offsets_counting_origin'] = N_offsets
-
     # The specific library calculations will vary depending on the polarization
     # case.
     if optics.prism == 'POL0':
@@ -889,15 +897,8 @@ def build_delta_e_field_library(stellar_diam_and_jitter_keywords,optics):
         delta_e_fields['delta_E'][i_offset,:,:,:] = Eoff - E0_components[0]
             
             
-    # Compile the offsets, the areas represented by the offsets, and the
-    # electric field deltas into stellar_diam_and_jitter_keywords
-    
-    offset_field_data = {'x_offsets_mas':x_offsets_list,\
-                         'y_offsets_mas':y_offsets_list,\
-                         'A_offsets':A_offsets_list,\
-                         'delta_e_fields':delta_e_fields}
-        
-    stellar_diam_and_jitter_keywords['offset_field_data'] = offset_field_data
+    # Add the delta_e_fields to the offset_field_data dictionary
+    stellar_diam_and_jitter_keywords['offset_field_data']['delta_e_fields'] = delta_e_fields    
     
     # To prevent recalculating the library when it already exists, update
     # stellar_diam_and_jitter_keywords['use_saved_deltaE_and_weights'] to 2
@@ -993,11 +994,10 @@ def calculate_weights_for_jitter_and_finite_stellar_diameter(stellar_diam_and_ji
     x_predetermined = stellar_diam_and_jitter_keywords['offset_field_data']['x_offsets_mas']
     y_predetermined = stellar_diam_and_jitter_keywords['offset_field_data']['y_offsets_mas']
     # Step 3: Obtain the result.
-    #W = np.zeros(stellar_diam_and_jitter_keywords['N_offsets_counting_origin'])
-    #for i_offset in range(stellar_diam_and_jitter_keywords['N_offsets_counting_origin']):
-    #    W[i_offset] = f_interp(x_predetermined[i_offset],y_predetermined[i_offset])
-    W = lambda x_predetermined, y_predetermined : f_interp(x_predetermined,y_predetermined).T
-    
+    W = np.zeros(stellar_diam_and_jitter_keywords['N_offsets_counting_origin'])
+    for i_offset in range(stellar_diam_and_jitter_keywords['N_offsets_counting_origin']):
+        W[i_offset] = f_interp(x_predetermined[i_offset],y_predetermined[i_offset])
+        
     # Since the interpolation is no longer symmetric about the x axis and about the y axis,
     # add that symmetry back by averaging the weights for points in the same ring that 
     # share the same x or y coordinate, and assigning those points the average weight.
@@ -1010,9 +1010,9 @@ def calculate_weights_for_jitter_and_finite_stellar_diameter(stellar_diam_and_ji
     for i in range(stellar_diam_and_jitter_keywords['N_rings_of_offsets']): # Iterate over each ring
         # Extract the number of regions in that ring
         nreg_ringi = stellar_diam_and_jitter_keywords['N_offsets_per_ring'][i]
-        print('Starting to apply y axis symmetry for Ring %d.' % i)
+        #print('Starting to apply y axis symmetry for Ring %d.' % i)
         ring_end_index = 1+np.sum(stellar_diam_and_jitter_keywords['N_offsets_per_ring'][0:i+1])
-        print('Ring ends at index %d' % ring_end_index)
+        #print('Ring ends at index %d' % ring_end_index)
         for j in range(nreg_ringi): # Iterate over each region within the ring
             offset_index = 1+np.sum(stellar_diam_and_jitter_keywords['N_offsets_per_ring'][0:i])+j # Which element in the coordinate array to use
             # Extract the x coordinate for the jth region of ring i
@@ -1046,9 +1046,9 @@ def calculate_weights_for_jitter_and_finite_stellar_diameter(stellar_diam_and_ji
     for i in range(stellar_diam_and_jitter_keywords['N_rings_of_offsets']): # Iterate over each ring
         # Extract the number of regions in that ring
         nreg_ringi = stellar_diam_and_jitter_keywords['N_offsets_per_ring'][i]
-        print('Starting to apply x axis symmetry for Ring %d.' % i)
+        #print('Starting to apply x axis symmetry for Ring %d.' % i)
         ring_end_index = 1+np.sum(stellar_diam_and_jitter_keywords['N_offsets_per_ring'][0:i+1])
-        print('Ring ends at index %d' % ring_end_index)
+        #print('Ring ends at index %d' % ring_end_index)
         for j in range(nreg_ringi): # Iterate over each region within the ring
             offset_index = 1+np.sum(stellar_diam_and_jitter_keywords['N_offsets_per_ring'][0:i])+j # Which element in the coordinate array to use
             # Extract the x coordinate for the jth region of ring i
@@ -1082,9 +1082,8 @@ def calculate_weights_for_jitter_and_finite_stellar_diameter(stellar_diam_and_ji
     Wtot = np.sum(W)
     #print(Wtot)
     Wnorm = W/Wtot
-    
     # Finally, multiply Wnorm by the normalized area for each predetermined offset
-    Anorm = stellar_diam_and_jitter_keywords['A_offsets'] # The normalized areas
+    Anorm = stellar_diam_and_jitter_keywords['offset_field_data']['A_offsets'] # The normalized areas
     offset_weights = np.zeros(stellar_diam_and_jitter_keywords['N_offsets_counting_origin']) # Array to store the final weights
     for i in range(stellar_diam_and_jitter_keywords['N_offsets_counting_origin']):
         offset_weights[i] = Wnorm[i]*Anorm[i]
