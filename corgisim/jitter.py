@@ -768,7 +768,7 @@ def build_delta_e_field_library(stellar_diam_and_jitter_keywords,optics):
         (E0, sampling) = proper.prop_run_multi('roman_preflight',  optics.lam_um, 1024,PASSVALUE=optics.optics_keywords,QUIET=optics.quiet)
         E0_components.append(E0)
         
-    print('Onaxis field calculated')
+    #print('Onaxis field calculated')
         
     # Step 4: Build the library of delta electric fields
     # The specific library calculations will vary depending on the polarization

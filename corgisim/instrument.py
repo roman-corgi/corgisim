@@ -17,7 +17,7 @@ from corgisim import outputs, spec, pol, jitter
 import copy
 import os
 from scipy import interpolate
-import warnings
+
 
 class CorgiOptics():
     '''
@@ -483,22 +483,22 @@ class CorgiOptics():
                 
             return image
         
-    def construct_jittered_image_from_fields(self,stellar_diam_and_jitter_keywords,fields,grid_dim_out_tem,obs):
+    def construct_jittered_image_from_fields(self,fields):
         '''
         This function uses the onaxis electric field and the library of offset
         electric fields and their weights to determine the intensity that
         incorporates the effects of jitter and/or finite stellar diameter.
         Inputs:
-               stellar_diam_and_jitter_keywords: A dictionary containing all the
-                                                 required information
                fields: onaxis electric fields as returned by proper
-               grid_dim_out: dimension of temporary output intensity array
-               obs: observed stellar spectrum within the defined bandpass
         Outputs:
                images_temp: Temporary images
 
         '''
         # Step 0: Setup
+        # Extract the temporary grid diameter
+        grid_dim_out_tem = self.optics_keywords['output_dim']
+        # Extract the stellar diameter and jitter keywords
+        stellar_diam_and_jitter_keywords = self.stellar_diam_and_jitter_keywords
         # Extract number of offsets, including the origin
         N_offsets_counting_origin = stellar_diam_and_jitter_keywords['N_offsets_counting_origin']
         # Extract the weights
@@ -522,17 +522,17 @@ class CorgiOptics():
             
             # Step 1: Create an array to store the weighted intensity for each offset,
             #         including (0,0)
-            I_x_all_offsets = np.zeros(N_offsets_counting_origin,grid_dim_out_tem,grid_dim_out_tem)
-            I_y_all_offsets = np.zeros(N_offsets_counting_origin,grid_dim_out_tem,grid_dim_out_tem)
+            I_x_all_offsets = np.zeros(N_offsets_counting_origin,delta_e_library['delta_E_m45in_xout'].shape[1],grid_dim_out_tem,grid_dim_out_tem)
+            I_y_all_offsets = np.zeros(N_offsets_counting_origin,delta_e_library['delta_E_m45in_xout'].shape[1],grid_dim_out_tem,grid_dim_out_tem)
             
             for i_offset in np.arange(N_offsets_counting_origin):
                 
                 # Step 2: Calculate the electric field for each polarization component
                 #         at the current offset
-                E_offset_m45in_xout = delta_e_library['delta_e_fields']['delta_E_m45in_xout'][i_offset,:,:,:] + fields[0]
-                E_offset_45in_xout =  delta_e_library['delta_e_fields']['delta_E_45in_xout'][i_offset,:,:,:] + fields[1]
-                E_offset_m45in_yout = delta_e_library['delta_e_fields']['delta_E_m45in_yout'][i_offset,:,:,:] + fields[2]
-                E_offset_45in_yout =  delta_e_library['delta_e_fields']['delta_E_45in_yout'][i_offset,:,:,:] + fields[3]
+                E_offset_m45in_xout = delta_e_library['delta_E_m45in_xout'][i_offset,:,:,:] + fields[0]
+                E_offset_45in_xout =  delta_e_library['delta_E_45in_xout'][i_offset,:,:,:] + fields[1]
+                E_offset_m45in_yout = delta_e_library['delta_E_m45in_yout'][i_offset,:,:,:] + fields[2]
+                E_offset_45in_yout =  delta_e_library['delta_E_45in_yout'][i_offset,:,:,:] + fields[3]
                 
                 # Step 3: Obtain the 0/90 degree polarization intensities
                 intensity_x_temp = ((np.abs(E_offset_m45in_xout) ** 2) + (np.abs(E_offset_45in_xout) ** 2)) / 2
@@ -568,17 +568,17 @@ class CorgiOptics():
             
             # Step 1: Create an array to store the weighted intensity for each offset,
             #         including (0,0)
-            I_45_all_offsets = np.zeros(N_offsets_counting_origin,grid_dim_out_tem,grid_dim_out_tem)
-            I_135_all_offsets = np.zeros(N_offsets_counting_origin,grid_dim_out_tem,grid_dim_out_tem)
+            I_45_all_offsets = np.zeros(N_offsets_counting_origin,delta_e_library['delta_E_m45in_45out'].shape[1],grid_dim_out_tem,grid_dim_out_tem)
+            I_135_all_offsets = np.zeros(N_offsets_counting_origin,delta_e_library['delta_E_m45in_45out'].shape[1],grid_dim_out_tem,grid_dim_out_tem)
             
             for i_offset in np.arange(N_offsets_counting_origin):
                 
                 # Step 2: Calculate the electric field for each polarization component
                 #         at the current offset
-                E_offset_m45in_45out = delta_e_library['delta_e_fields']['delta_E_m45in_45out'][i_offset,:,:,:] + fields[0]
-                E_offset_45in_45out =  delta_e_library['delta_e_fields']['delta_E_45in_45out'][i_offset,:,:,:] + fields[1]
-                E_offset_m45in_135out = delta_e_library['delta_e_fields']['delta_E_m45in_135out'][i_offset,:,:,:] + fields[2]
-                E_offset_45in_135out =  delta_e_library['delta_e_fields']['delta_E_45in_135out'][i_offset,:,:,:] + fields[3]
+                E_offset_m45in_45out = delta_e_library['delta_E_m45in_45out'][i_offset,:,:,:] + fields[0]
+                E_offset_45in_45out =  delta_e_library['delta_E_45in_45out'][i_offset,:,:,:] + fields[1]
+                E_offset_m45in_135out = delta_e_library['delta_E_m45in_135out'][i_offset,:,:,:] + fields[2]
+                E_offset_45in_135out =  delta_e_library['delta_E_45in_135out'][i_offset,:,:,:] + fields[3]
                 
                 # Step 3: Obtain the 45/135 degree polarization intensities
                 intensity_45_temp = ((np.abs(E_offset_m45in_45out) ** 2) + (np.abs(E_offset_45in_45out) ** 2)) / 2
@@ -614,19 +614,19 @@ class CorgiOptics():
             
             # Step 1: Create an array to store the weighted intensity for each offset,
             #         including (0,0)
-            I_m45in_yout_all_offsets = np.zeros(N_offsets_counting_origin,grid_dim_out_tem,grid_dim_out_tem)
-            I_m45in_xout_all_offsets = np.zeros(N_offsets_counting_origin,grid_dim_out_tem,grid_dim_out_tem)
-            I_45in_xout_all_offsets = np.zeros(N_offsets_counting_origin,grid_dim_out_tem,grid_dim_out_tem)
-            I_45in_yout_all_offsets = np.zeros(N_offsets_counting_origin,grid_dim_out_tem,grid_dim_out_tem)
+            I_m45in_yout_all_offsets = np.zeros(N_offsets_counting_origin,delta_e_library['delta_E_m45in_yout'].shape[1],grid_dim_out_tem,grid_dim_out_tem)
+            I_m45in_xout_all_offsets = np.zeros(N_offsets_counting_origin,delta_e_library['delta_E_m45in_yout'].shape[1],grid_dim_out_tem,grid_dim_out_tem)
+            I_45in_xout_all_offsets = np.zeros(N_offsets_counting_origin,delta_e_library['delta_E_m45in_yout'].shape[1],grid_dim_out_tem,grid_dim_out_tem)
+            I_45in_yout_all_offsets = np.zeros(N_offsets_counting_origin,delta_e_library['delta_E_m45in_yout'].shape[1],grid_dim_out_tem,grid_dim_out_tem)
 
             for i_offset in np.arange(N_offsets_counting_origin):
                 
                 # Step 2: Calculate the electric field for each polarization component
                 #         at the current offset
-                E_offset_m45in_yout = delta_e_library['delta_e_fields']['delta_E_m45in_yout'][i_offset,:,:,:] + fields[0]
-                E_offset_m45in_xout = delta_e_library['delta_e_fields']['delta_E_m45in_xout'][i_offset,:,:,:] + fields[1]
-                E_offset_45in_xout = delta_e_library['delta_e_fields']['delta_E_45in_xout'][i_offset,:,:,:] + fields[2]
-                E_offset_45in_yout = delta_e_library['delta_e_fields']['delta_E_45in_yout'][i_offset,:,:,:] + fields[3]
+                E_offset_m45in_yout = delta_e_library['delta_E_m45in_yout'][i_offset,:,:,:] + fields[0]
+                E_offset_m45in_xout = delta_e_library['delta_E_m45in_xout'][i_offset,:,:,:] + fields[1]
+                E_offset_45in_xout = delta_e_library['delta_E_45in_xout'][i_offset,:,:,:] + fields[2]
+                E_offset_45in_yout = delta_e_library['delta_E_45in_yout'][i_offset,:,:,:] + fields[3]
                 
                 # Step 3: Obtain the intensities
                 I_m45in_yout_temp = np.abs(E_offset_m45in_yout) ** 2
@@ -662,12 +662,12 @@ class CorgiOptics():
             
             # Step 1: Create an array to store the weighted intensity for each offset,
             #         including (0,0)
-            I_x_y_p_all = np.zeros((N_offsets_counting_origin,grid_dim_out_tem,grid_dim_out_tem))
+            I_x_y_p_all = np.zeros((N_offsets_counting_origin,delta_e_library['delta_E'].shape[1],grid_dim_out_tem,grid_dim_out_tem))
         
             for i_offset in range(N_offsets_counting_origin):
         
                 # Step 2: Calculate the electric field at the current offset
-                E_x_y_p = fields + delta_e_library['delta_e_fields']['delta_E'][i_offset,:,:,:]
+                E_x_y_p = fields + delta_e_library['delta_E'][i_offset,:,:,:]
                 
                 # Step 3: Obtain the intensity
                 I_x_y_p = np.abs(E_x_y_p) ** 2
@@ -743,10 +743,9 @@ class CorgiOptics():
                     # Calculating from scratch
                     if self.stellar_diam_and_jitter_keywords['use_saved_deltaE_and_weights'] == 0:
                         self.stellar_diam_and_jitter_keywords = jitter.build_delta_e_field_library(self.stellar_diam_and_jitter_keywords,self)
-                        # TODO: Think carefully about where the library calculations should be called
-                        # I think here. If the library already exists, don't calculate it. use_saved_deltaE_and_weights should take care of that.
                     elif self.stellar_diam_and_jitter_keywords['use_saved_deltaE_and_weights'] == 1:
                         raise KeyError("ERROR: Use of a saved library has not been implemented yet for finite stellar diameter and jitter calculations.")
+                        #TODO: Add option to use saved library
 
             #if polarimetry mode is enabled
             if self.prism == 'POL0':
@@ -772,7 +771,7 @@ class CorgiOptics():
                     images_tem = [intensity_x, intensity_y]
                 elif  ((self.stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] == 1) or (self.stellar_diam_and_jitter_keywords['add_jitter'] == 1)):
                     # Incorporating jitter or finite stellar diameter:
-                    images_tem = self.construct_jittered_image_from_fields(self,self.stellar_diam_and_jitter_keywords,fields,grid_dim_out_tem,obs)                    
+                    images_tem = self.construct_jittered_image_from_fields(fields)                    
                 image = self.construct_image_array(grid_dim_out_tem,images_tem,obs)
             elif self.prism == 'POL45':
                 #45/135 case
@@ -796,7 +795,7 @@ class CorgiOptics():
                     images_tem = [intensity_45, intensity_135]
                 elif  ((self.stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] == 1) or (self.stellar_diam_and_jitter_keywords['add_jitter'] == 1)):
                     # Incorporating jitter or finite stellar diameter:
-                    images_tem = self.construct_jittered_image_from_fields(self,self.stellar_diam_and_jitter_keywords,fields,grid_dim_out_tem,obs)                    
+                    images_tem = self.construct_jittered_image_from_fields(fields)                    
                 image = self.construct_image_array(grid_dim_out_tem,images_tem,obs)
             elif self.optics_keywords['polaxis'] == -10:
                 # if polaxis is set to -10, obtain full aberration model by individually summing intensities obtained from polaxis=-2, -1, 1, 2
@@ -814,19 +813,19 @@ class CorgiOptics():
                         images_tem = np.array(sum(images_pol)) / 4
                 elif  ((self.stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] == 1) or (self.stellar_diam_and_jitter_keywords['add_jitter'] == 1)):
                     # Incorporating jitter or finite stellar diameter:
-                    images_tem = self.construct_jittered_image_from_fields(self,self.stellar_diam_and_jitter_keywords,fields,grid_dim_out_tem,obs)        
+                    images_tem = self.construct_jittered_image_from_fields(fields)        
                 image = self.construct_image_array(grid_dim_out_tem,images_tem,obs)
             else: 
                 # use built in polaxis settings to obtain specific/averaged aberration 
+                (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=self.optics_keywords,QUIET=self.quiet)
                 # If not incorporating jitter or finite stellar diameter:
                 if ((hasattr(self,'stellar_diam_and_jitter_keywords') == False) or
                    ((self.stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] == 0) and (self.stellar_diam_and_jitter_keywords['add_jitter'] == 0))):
-                       (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=self.optics_keywords,QUIET=self.quiet)
                        images_tem = np.abs(fields)**2
                        image = self.construct_image_array(grid_dim_out_tem,images_tem,obs)
                 elif  ((self.stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] == 1) or (self.stellar_diam_and_jitter_keywords['add_jitter'] == 1)):
                     # Incorporating jitter or finite stellar diameter:
-                    images_tem = self.construct_jittered_image_from_fields(self,self.stellar_diam_and_jitter_keywords,fields,grid_dim_out_tem,obs)
+                    images_tem = self.construct_jittered_image_from_fields(fields)
                 image = self.construct_image_array(grid_dim_out_tem,images_tem,obs)
                     
 

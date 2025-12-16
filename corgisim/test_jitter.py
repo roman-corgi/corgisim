@@ -13,18 +13,24 @@ from scipy.interpolate import RectBivariateSpline
 Jitter and Finite Stellar Diameter Tests:
     
     test_offsets_and_areas_against_example: tests use of jitter.py against an example
-    test_obs_with_finite_stellar_diam: tests an observation sequence with finite stellar diameter
+    check_offset_weights: compares the calculated weights for the example offset list
+                          against a pre-calculated list for the same offsets (TODO)
+    test_obs_with_finite_stellar_diam: tests an observation sequence with finite stellar diameter included
+    test_weight_calculation: shorter version of test_obs_with_finite_stellar_diam used to test the
+                             addition of the lines that calculate the weights for the offset regions
+    basic_weight_calculation_test: tests the interpolation method that replaces interp2d when calculating
+                                   the weights
 
 """
 
 def test_offsets_and_areas_against_example():
-    
-    # This function tests the functions in jitter.py that calculate the x and
-    # y coordinates of the offsets and the normalized area of the region 
-    # represented by each offset against an example that approximately 
-    # reproduces the jitter offsets and regions shown in a figure in John
-    # Krist's paper.
-    
+    '''
+     This function tests the functions in jitter.py that calculate the x and
+     y coordinates of the offsets and the normalized area of the region 
+     represented by each offset against an example that approximately 
+     reproduces the jitter offsets and regions shown in a figure in John
+     Krist's paper.
+    '''
     ###############################################################################
     # Set up logging
     
@@ -716,27 +722,27 @@ def check_offset_weights():
     x_predetermined = x_offsets_list
     y_predetermined = y_offsets_list
     
-    interp = RegularGridInterpolator([x,y], disc_indices)    
-    W = interp(np.array([x_offsets_list,y_offsets_list]).T,'quintic')
+    #interp = RegularGridInterpolator([x,y], disc_indices)    
+    #W = interp(np.array([x_offsets_list,y_offsets_list]).T,'quintic')
     
-    ax = plt.axes(projection='3d')
-    ax.plot3D(x_offsets_list,y_offsets_list,W,'ro')
-    plt.show()
+    #ax = plt.axes(projection='3d')
+    #ax.plot3D(x_offsets_list,y_offsets_list,W,'ro')
+    #plt.show()
     
-    Xr = X.ravel()
-    Yr = Y.ravel()
-    Zr = disc_indices.ravel()
-    fig = plt.figure()
-    ax = fig.add_subplot(projection='3d')
-    for iplt in range(len(Xr)):
-        ax.scatter(Xr[iplt],Yr[iplt],Zr[iplt],marker='.',color='b')
+    #Xr = X.ravel()
+    #Yr = Y.ravel()
+    #Zr = disc_indices.ravel()
+    #fig = plt.figure()
+    #ax = fig.add_subplot(projection='3d')
+    #for iplt in range(len(Xr)):
+    #    ax.scatter(Xr[iplt],Yr[iplt],Zr[iplt],marker='.',color='b')
         
-    # TODO: Verify that the interpolation is correct
-
+    # TODO: Fill in this test function once jitter is implemented too.
 ###############################################################################
 def test_obs_with_finite_stellar_diam():
-    
-    # This function tests running an observation sequence with finite stellar diameter included.
+    '''
+     This function tests running an observation sequence with finite stellar diameter included.
+    '''
     
     # Set up keywords
     # optics keywords
@@ -852,7 +858,10 @@ def test_weight_calculation():
     
 ###############################################################################
 def basic_weight_calculation_test():
-    
+    '''
+    Testing replacing interp2d as the interpolation method when calculating the weights
+    '''
+
     # jitter and finite stellar diameter keywords
     stellar_diam_and_jitter_keywords = jitter.load_predefined_jitter_and_stellar_diam_params(starID=None)
     
@@ -952,8 +961,57 @@ def basic_weight_calculation_test():
         ax.scatter(x_predetermined[iplt],y_predetermined[iplt],W[iplt],marker='.',color='b')
     plt.show()
 ###############################################################################
+def test_all_pol_obs_with_finite_stellar_diam():
+    '''
+    Test that the calculations run for no polarization, optics.prism = 'POL0',
+    optics.prism = 'POL45', and polaxis = -10
+    '''
+    # TODO: Add pol0 and pol45 options
+    
+    # Set up keywords
+    # optics keywords
+    Vmag = 8
+    sptype = 'G0V'
+    cgi_mode = 'excam'
+    bandpass_corgisim = '1F'
+    cor_type = 'hlc_band1'
+    cases = ['3e-8']       
+    rootname = 'hlc_ni_' + cases[0]
+    host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype': 'vegamag'}
+    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm1_v.fits' )
+    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm2_v.fits' )
+    
+    optics_keywords ={'cor_type':cor_type, 'use_errors':2, 'polaxis':-10, 'output_dim':201,\
+                    'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
+    
+    # emccd keywords
+    gain =1000
+    emccd_keywords ={'em_gain':gain}
+    
+    # jitter and finite stellar diameter keywords
+    stellar_diam_keywords = jitter.load_predefined_jitter_and_stellar_diam_params(starID=None)
+    
+    # Define the scene
+    base_scene = scene.Scene(host_star_properties)
+    
+    # Set up the optics
+    optics =  instrument.CorgiOptics(cgi_mode, bandpass_corgisim, optics_keywords=optics_keywords, stellar_diam_and_jitter_keywords=stellar_diam_keywords, if_quiet=True)
+    
+    # Set up the detectior
+    detector = instrument.CorgiDetector( emccd_keywords)
+    
+    # Define the exposure time
+    exp_time = 2000
+    
+    # Start with polaxis = 10
+    # Test a single frame 
+    n_frames = 1
+    simulatedImage_list_polaxism10 = observation.generate_observation_sequence(base_scene, optics, detector, exp_time, n_frames)
+      
+    
+###############################################################################
 if __name__ == '__main__':
     #test_offsets_and_areas_against_example()
-    #test_obs_with_finite_stellar_diam()
-    test_weight_calculation()
+    test_obs_with_finite_stellar_diam()
+    #test_weight_calculation()
     #basic_weight_calculation_test()
