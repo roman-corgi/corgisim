@@ -719,7 +719,7 @@ def check_offset_weights():
         ax.set_ylabel('weight')
         ax.legend(['example weights','calculated weights'])
         plt.show()
-    # TODO: Fill in this test function once jitter is implemented too.
+        
 ###############################################################################
 def test_obs_with_finite_stellar_diam():
     '''
