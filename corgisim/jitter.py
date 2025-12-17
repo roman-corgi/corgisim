@@ -637,6 +637,7 @@ def load_predefined_jitter_and_stellar_diam_params(starID=None):
         stellar_diam_and_jitter_keywords['outer_radius_of_offset_circle'] = 6.475
         stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] = 1
         stellar_diam_and_jitter_keywords['add_jitter'] = 0
+        stellar_diam_and_jitter_keywords['calculating_timeseries'] = 0
         #stellar_diam_and_jitter_keywords['use_saved_deltaE_and_weights'] = 0
         
     # Return the dictionary
@@ -1122,13 +1123,14 @@ def calculate_weights_for_jitter_and_finite_stellar_diameter(stellar_diam_and_ji
         offset_weights[i] = Wnorm[i]*Anorm[i]
         
     # Add the offset weights to the offset field data dictionary
-    if 'offset_weights' not in stellar_diam_and_jitter_keywords['offset_field_data'].keys():
-        # Adding the first set of weights
-        stellar_diam_and_jitter_keywords['offset_field_data']['offset_weights'] = offset_weights
-    else:
-        # Append the most recently calculated set of weights
-        # (This is useful for a time series, for example.)
-        stellar_diam_and_jitter_keywords['offset_field_data']['offset_weights'] = np.append(stellar_diam_and_jitter_keywords['offset_field_data']['offset_weights'],offset_weights,1)
+    stellar_diam_and_jitter_keywords['offset_field_data']['offset_weights'] = offset_weights
+    
+    # If the calculations are for a time series, also append the offset weights
+    # to offset_weights_all. If offset_weights contains the weights for more than
+    # one time step, instrument.construct_jittered_image_from_fields will break.
+    if stellar_diam_and_jitter_keywords['calculating_timeseries'] == 1:
+        stellar_diam_and_jitter_keywords['offset_field_data']['offset_weights_all'] = np.append(stellar_diam_and_jitter_keywords['offset_field_data']['offset_weights_all'],offset_weights,1)
+    
     # Return the updated dictionary
     return stellar_diam_and_jitter_keywords
 
