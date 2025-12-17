@@ -390,7 +390,7 @@ def load_cpgs_data(filepath, return_input=False):
             else:
                 isReference = False
             excam = visit.find('cgi_excam')
-            roll_angle = visit.find('position_angle').text
+            roll_angle = float(visit.find('position_angle').text)
             visit_id = visit.attrib['number']
             visit_type = visit.find('cgi_visit_type').text
             if (excam.find('auto_gain').text == 'Y'):
