@@ -934,8 +934,8 @@ def calculate_weights_for_jitter_and_finite_stellar_diameter(stellar_diam_and_ji
     else:
         jitter_flag = 0
     
-    # Case 1: Finite stellar diameter only
-    if (stellar_diam_flag == 1) and (jitter_flag == 0):
+    # Requirements for finite stellar diameter
+    if (stellar_diam_flag == 1):
         # The weighting function is a top-hat function whose radius matches the
         # radius of the stellar disc.
         
@@ -956,6 +956,30 @@ def calculate_weights_for_jitter_and_finite_stellar_diameter(stellar_diam_and_ji
         # it to the radius of the stellar disc.
         if 'outer_radius_of_offset_circle' not in stellar_diam_and_jitter_keywords.keys():
             stellar_diam_and_jitter_keywords['outer_radius_of_offset_circle'] = r_stellar_disc_mas
+            
+    # Requirements for jitter
+    if (jitter_flag == 1):
+        # The weighting function is an elliptical Gaussian using the predicted
+        # RMS jitter values sigmax and sigmay.
+        
+        # The two RMS jitter values and the outer radius of the offset circle
+        # representing the jitter distribution must be provided. Note that the
+        # outer radius of the offset circle might be provided above if the finite
+        # stellar diameter is also being considered.
+        
+        required_jitter_keys = {'jitter_sigmax', 'jitter_sigmay', 'outer_radius_of_offset_circle'}
+        missing_jitter_keys = required_jitter_keys - stellar_diam_and_jitter_keywords.keys()
+        if missing_jitter_keys:
+            raise KeyError(f"ERROR: Missing required stellar_diam_and_jitter_keywords: {missing_jitter_keys}")
+        
+        # Extract the RMS jitter values
+        sigmax = stellar_diam_and_jitter_keywords['jitter_sigmax']
+        sigmay = stellar_diam_and_jitter_keywords['jitter_sigmay']
+        
+        # The RMS jitter values must be scalars. If they are provided as arrays,
+        # return an error.
+        if (np.isscalar(sigmax) == 0) or (np.isscalar(sigmay)) == 0:
+            raise KeyError("ERROR: The RMS jitter values jitter_sigmax and jitter_sigmay must be scalars.")
         
     # Set up a uniform grid of offsets (X,Y).
     
@@ -976,14 +1000,23 @@ def calculate_weights_for_jitter_and_finite_stellar_diameter(stellar_diam_and_ji
     if stellar_diam_flag == 1:
         disc_indices = (X**2 + Y**2 <= r_stellar_disc_mas**2)
         
-    # Define the Gaussia if appropriate
-    # TODO: Add the Gaussian for jitter
+    # Define the elliptical Gaussian distribution to represent jitter if appropriate
+    if jitter_flag == 1:
+        Wjit = np.exp(-0.5*( np.square(X)/sigmax**2 + np.square(Y)/sigmay**2 ) )
     
     # Specify the weights, Wjitdisc
     if (stellar_diam_flag == 1) and (jitter_flag == 0):
         # Stellar diameter only
         # Weights are set by the top-hat function
         Wjitdisc = disc_indices
+    elif (stellar_diam_flag == 0) and (jitter_flag == 1):
+        # Jitter only
+        # Weights are set by the Gaussian distribution
+        Wjitdisc = Wjit
+    elif (stellar_diam_flag == 1) and (jitter_flag == 1):
+        # Stellar diameter and jitter
+        # Weights are set by convolving Wjit and disc_indices
+        Wjitdisc = convolve2d(Wjit,disc_indices,mode='same')
         
     # Resample Wjitdisc to match the predetermined offsets
     # Step 1: Interpolate
@@ -1084,13 +1117,18 @@ def calculate_weights_for_jitter_and_finite_stellar_diameter(stellar_diam_and_ji
     Wnorm = W/Wtot
     # Finally, multiply Wnorm by the normalized area for each predetermined offset
     Anorm = stellar_diam_and_jitter_keywords['offset_field_data']['A_offsets'] # The normalized areas
-    offset_weights = np.zeros(stellar_diam_and_jitter_keywords['N_offsets_counting_origin']) # Array to store the final weights
+    offset_weights = np.zeros([stellar_diam_and_jitter_keywords['N_offsets_counting_origin'],1]) # Array to store the final weights
     for i in range(stellar_diam_and_jitter_keywords['N_offsets_counting_origin']):
         offset_weights[i] = Wnorm[i]*Anorm[i]
         
     # Add the offset weights to the offset field data dictionary
-    stellar_diam_and_jitter_keywords['offset_field_data']['offset_weights'] = offset_weights
-    
+    if 'offset_weights' not in stellar_diam_and_jitter_keywords['offset_field_data'].keys():
+        # Adding the first set of weights
+        stellar_diam_and_jitter_keywords['offset_field_data']['offset_weights'] = offset_weights
+    else:
+        # Append the most recently calculated set of weights
+        # (This is useful for a time series, for example.)
+        stellar_diam_and_jitter_keywords['offset_field_data']['offset_weights'] = np.append(stellar_diam_and_jitter_keywords['offset_field_data']['offset_weights'],offset_weights,1)
     # Return the updated dictionary
     return stellar_diam_and_jitter_keywords
 
