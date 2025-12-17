@@ -720,6 +720,22 @@ def check_offset_weights():
         ax.legend(['example weights','calculated weights'])
         plt.show()
         
+    # Now try adding a second calculation (as if for the next time step)
+    stellar_diam_and_jitter_keywords['jitter_sigmax'] = 0.3194215494818570
+    stellar_diam_and_jitter_keywords['jitter_sigmay'] = 0.3079659021144620  
+    stellar_diam_and_jitter_keywords = jitter.calculate_weights_for_jitter_and_finite_stellar_diameter(stellar_diam_and_jitter_keywords)
+    weights_t1 = stellar_diam_and_jitter_keywords['offset_field_data']['offset_weights'][:,1]
+    weights_t1 = np.squeeze(weights_t1)
+    original_weights_t1 = original_weights[1,:]
+    
+    if plot_weights==1:
+        fig,ax = plt.subplots()
+        ax.plot(np.arange(N_offsets),original_weights_t1,marker='o',color='b')
+        ax.plot(np.arange(N_offsets),weights_t1,marker='.',color='k')
+        ax.set_xlabel('offset index')
+        ax.set_ylabel('weight')
+        ax.legend(['example weights, t1','calculated weights, t1'])
+        plt.show()
 ###############################################################################
 def test_obs_with_finite_stellar_diam():
     '''
