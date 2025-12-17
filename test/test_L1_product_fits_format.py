@@ -71,7 +71,7 @@ def test_L1_product_fits_format():
     prihdr = sim_scene.image_on_detector[0].header
     exthdr = sim_scene.image_on_detector[1].header
     time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
-    filename = f"CGI_{prihdr['VISITID']}_{time_in_name}_L1_.fits"
+    filename = f"cgi_{prihdr['VISITID']}_{time_in_name}_l1_.fits"
 
 
     f = os.path.join( outdir , filename)
@@ -200,7 +200,7 @@ def test_L1_product_fits_format():
     prihdr = sim_scene.image_on_detector[0].header
     exthdr = sim_scene.image_on_detector[1].header
     time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
-    filename = f"CGI_{prihdr['VISITID']}_{time_in_name}_L1_.fits"
+    filename = f"cgi_{prihdr['VISITID']}_{time_in_name}_l1_.fits"
 
 
     f = os.path.join( outdir , filename)
@@ -281,7 +281,7 @@ def test_L1_product_fits_format():
     prihdr = sim_scene.image_on_detector[0].header
     exthdr = sim_scene.image_on_detector[1].header
     time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
-    filename = f"CGI_{prihdr['VISITID']}_{time_in_name}_L1_.fits"
+    filename = f"cgi_{prihdr['VISITID']}_{time_in_name}_l1_.fits"
 
 
     f = os.path.join( outdir , filename)
@@ -356,7 +356,7 @@ def test_L1_product_from_CPGS():
         prihdr = simulatedImage.image_on_detector[0].header
         exthdr = simulatedImage.image_on_detector[1].header
         time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
-        filename = f"CGI_{prihdr['VISITID']}_{time_in_name}_L1_.fits"
+        filename = f"cgi_{prihdr['VISITID']}_{time_in_name}_l1_.fits"
 
         f = os.path.join( outdir , filename)
         assert os.path.isfile(f)
@@ -379,7 +379,7 @@ def test_L1_product_from_CPGS():
         prihdr = simulatedImage.image_on_detector[0].header
         exthdr = simulatedImage.image_on_detector[1].header
         time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
-        filename = f"CGI_{prihdr['VISITID']}_{time_in_name}_L1_.fits"
+        filename = f"cgi_{prihdr['VISITID']}_{time_in_name}_l1_.fits"
 
         f = os.path.join( outdir , filename)
         assert os.path.isfile(f)
