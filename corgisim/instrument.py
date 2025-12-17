@@ -386,7 +386,6 @@ class CorgiOptics():
             elif (stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] != 0) and (stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] != 1):
                 # use_finite_stellar_diam must be either 1 or 0 if specified
                 raise KeyError("ERROR: If specified, use_finite_stellar_diam in stellar_diam_and_jitter_keywords must be 0 or 1.")
-            self.stellar_diam_and_jitter_keywords = stellar_diam_and_jitter_keywords
             
             # Things specific to jitter:
             if stellar_diam_and_jitter_keywords['add_jitter'] == 1:
@@ -402,7 +401,8 @@ class CorgiOptics():
             elif (stellar_diam_and_jitter_keywords['add_jitter'] != 0 ) and (stellar_diam_and_jitter_keywords['add_jitter'] != 1):
                 # add_jitter must be either 1 or 0 if specified
                 raise KeyError("ERROR: If specified, add_jitter in stellar_diam_and_jitter_keywords must be 0 or 1.")
-        
+                
+            self.stellar_diam_and_jitter_keywords = stellar_diam_and_jitter_keywords
         
         print("CorgiOptics initialized with proper keywords.")
      
