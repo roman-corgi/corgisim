@@ -384,14 +384,22 @@ class CorgiOptics():
             
             # Things specific to jitter:
             if stellar_diam_and_jitter_keywords['add_jitter'] == 1:
+                
+                # Check that calculating_timeseries has been set. If not, set
+                # the default to 0 (not a timeseries). This is important for
+                # jitter because the weights can change at each time step as
+                # the RMS jitter varies, and it can save time to precalculate
+                # and save these weights.
+                if 'calculating_timeseries' not in stellar_diam_and_jitter_keywords.keys():
+                    stellar_diam_and_jitter_keywords['calculating_timeseries'] = 0
                
-               # If the delta electric fields and weights will be calculated:
-               if stellar_diam_and_jitter_keywords['use_saved_deltaE_and_weights'] == 0:
-                   # Check that required keys that will not be defined elsewhere have been provided
-                   required_keys_jitter = {'jitter_sigmax','jitter_sigmay'}
-                   missing_keys_jitter = required_keys_jitter - stellar_diam_and_jitter_keywords.keys()
-                   if missing_keys_jitter:
-                       raise KeyError(f"ERROR: Missing required stellar_diam_and_jitter_keywords: {missing_keys_jitter}")
+                # If the delta electric fields and weights will be calculated:
+                if stellar_diam_and_jitter_keywords['use_saved_deltaE_and_weights'] == 0:
+                    # Check that required keys that will not be defined elsewhere have been provided
+                    required_keys_jitter = {'jitter_sigmax','jitter_sigmay'}
+                    missing_keys_jitter = required_keys_jitter - stellar_diam_and_jitter_keywords.keys()
+                    if missing_keys_jitter:
+                        raise KeyError(f"ERROR: Missing required stellar_diam_and_jitter_keywords: {missing_keys_jitter}")
                 
             elif (stellar_diam_and_jitter_keywords['add_jitter'] != 0 ) and (stellar_diam_and_jitter_keywords['add_jitter'] != 1):
                 # add_jitter must be either 1 or 0 if specified
