@@ -320,11 +320,6 @@ class CorgiOptics():
                 if 'use_saved_deltaE_and_weights' not in stellar_diam_and_jitter_keywords.keys():
                     # Default to calculating the delta electric fields and weights
                     stellar_diam_and_jitter_keywords['use_saved_deltaE_and_weights'] = 0
-                else:
-                    # Must be either 0 or 1
-                    if (stellar_diam_and_jitter_keywords['use_saved_deltaE_and_weights'] != 0) \
-                        and (stellar_diam_and_jitter_keywords['use_saved_deltaE_and_weights'] != 1):
-                            raise KeyError("ERROR: If specified, use_saved_deltaE_and_weights in stellar_diam_and_jitter_keywords must be 0 or 1.")
                 
                 # If the delta electric fields and weights will be calculated:
                 if stellar_diam_and_jitter_keywords['use_saved_deltaE_and_weights'] == 0:
