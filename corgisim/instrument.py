@@ -392,7 +392,20 @@ class CorgiOptics():
                 # and save these weights.
                 if 'calculating_timeseries' not in stellar_diam_and_jitter_keywords.keys():
                     stellar_diam_and_jitter_keywords['calculating_timeseries'] = 0
-               
+                    
+                # If the calculations are part of a time series, verify that
+                # the number time steps and the current time step are defined
+                if stellar_diam_and_jitter_keywords['calculating_timeseries'] == 1:
+                    if 'N_timesteps' not in stellar_diam_and_jitter_keywords.keys():
+                        raise KeyError("ERROR: N_timesteps is missing in stellar_diam_and_jitter_keywords.")
+                        
+                    if 'i_timestep' not in stellar_diam_and_jitter_keywords.keys():
+                        raise KeyError("ERROR: i_timestep is missing in stellar_diam_and_jitter_keywords.")
+                        # Raising a keyerror is preferable to setting a default
+                        # because raising an error makes it more difficult to 
+                        # accidentally run the entire time series with the 
+                        # parameters for the first time step.
+                        
                 # If the delta electric fields and weights will be calculated:
                 if stellar_diam_and_jitter_keywords['use_saved_deltaE_and_weights'] == 0:
                     # Check that required keys that will not be defined elsewhere have been provided

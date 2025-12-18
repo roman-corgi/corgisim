@@ -1118,18 +1118,23 @@ def calculate_weights_for_jitter_and_finite_stellar_diameter(stellar_diam_and_ji
     Wnorm = W/Wtot
     # Finally, multiply Wnorm by the normalized area for each predetermined offset
     Anorm = stellar_diam_and_jitter_keywords['offset_field_data']['A_offsets'] # The normalized areas
-    offset_weights = np.zeros([stellar_diam_and_jitter_keywords['N_offsets_counting_origin'],1]) # Array to store the final weights
+    offset_weights = np.zeros([stellar_diam_and_jitter_keywords['N_offsets_counting_origin'],]) # Array to store the final weights
     for i in range(stellar_diam_and_jitter_keywords['N_offsets_counting_origin']):
         offset_weights[i] = Wnorm[i]*Anorm[i]
         
     # Add the offset weights to the offset field data dictionary
     stellar_diam_and_jitter_keywords['offset_field_data']['offset_weights'] = offset_weights
     
-    # If the calculations are for a time series, also append the offset weights
+    # If the calculations are for a time series, also add the offset weights
     # to offset_weights_all. If offset_weights contains the weights for more than
-    # one time step, instrument.construct_jittered_image_from_fields will break.
+    # one timestep, instrument.construct_jittered_image_from_fields will break.
     if stellar_diam_and_jitter_keywords['calculating_timeseries'] == 1:
-        stellar_diam_and_jitter_keywords['offset_field_data']['offset_weights_all'] = np.append(stellar_diam_and_jitter_keywords['offset_field_data']['offset_weights_all'],offset_weights,1)
+        i_timestep = stellar_diam_and_jitter_keywords['i_timestep']
+        # If offset_weights_all hasn't been set up yet, do so now
+        if 'offset_weights_all' not in stellar_diam_and_jitter_keywords['offset_field_data'].keys():
+            stellar_diam_and_jitter_keywords['offset_field_data']['offset_weights_all'] = np.zeros([stellar_diam_and_jitter_keywords['N_offsets_counting_origin'],stellar_diam_and_jitter_keywords['N_timesteps']])
+        # Fill in the weights for the current timestep
+        stellar_diam_and_jitter_keywords['offset_field_data']['offset_weights_all'][:,i_timestep] = offset_weights
     
     # Return the updated dictionary
     return stellar_diam_and_jitter_keywords

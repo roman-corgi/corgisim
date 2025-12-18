@@ -703,7 +703,6 @@ def check_offset_weights():
     # Calculate the weights
     stellar_diam_and_jitter_keywords = jitter.calculate_weights_for_jitter_and_finite_stellar_diameter(stellar_diam_and_jitter_keywords)
     weights_t0 = stellar_diam_and_jitter_keywords['offset_field_data']['offset_weights']
-    weights_t0 = np.squeeze(weights_t0)
     
     # Compare the weights against previously calculated weights for the first
     # time step of an OS 11 time series.
@@ -721,11 +720,24 @@ def check_offset_weights():
         plt.show()
         
     # Now try adding a second calculation (as if for the next time step)
+    # Use calculating_timeseries to mark that there is more than one set of weights to remember
+    # (Normally, this will be done at the start of the calculations, not in the middle.)
+    stellar_diam_and_jitter_keywords['calculating_timeseries'] = 1
+    stellar_diam_and_jitter_keywords['N_timesteps'] = 2 # two time steps total
+    stellar_diam_and_jitter_keywords['i_timestep'] = 1 # starting at 0, which time step we are on
+    N_timesteps = stellar_diam_and_jitter_keywords['N_timesteps']
+    i_timestep = stellar_diam_and_jitter_keywords['i_timestep']
+    # Because it hasn't been done already, initialize offset_weights_all.
+    stellar_diam_and_jitter_keywords['offset_field_data']['offset_weights_all'] = np.zeros([N_offsets,N_timesteps])
+    # And fill in the weights that have already been calculated.
+    stellar_diam_and_jitter_keywords['offset_field_data']['offset_weights_all'][:,i_timestep] = stellar_diam_and_jitter_keywords['offset_field_data']['offset_weights']
+    # Change the RMS jitter for the next time step
     stellar_diam_and_jitter_keywords['jitter_sigmax'] = 0.3194215494818570
     stellar_diam_and_jitter_keywords['jitter_sigmay'] = 0.3079659021144620  
+    # Calculate the second set of weights
     stellar_diam_and_jitter_keywords = jitter.calculate_weights_for_jitter_and_finite_stellar_diameter(stellar_diam_and_jitter_keywords)
-    weights_t1 = stellar_diam_and_jitter_keywords['offset_field_data']['offset_weights'][:,1]
-    weights_t1 = np.squeeze(weights_t1)
+    # Compare the weights to the example
+    weights_t1 = stellar_diam_and_jitter_keywords['offset_field_data']['offset_weights_all'][:,i_timestep]
     original_weights_t1 = original_weights[1,:]
     
     if plot_weights==1:
