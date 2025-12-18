@@ -1021,7 +1021,7 @@ def test_all_pol_obs_with_finite_stellar_diam():
 ###############################################################################
 if __name__ == '__main__':
     #test_offsets_and_areas_against_example()
-    #test_obs_with_finite_stellar_diam()
+    test_obs_with_finite_stellar_diam()
     #test_weight_calculation()
     #basic_weight_calculation_test()
     check_offset_weights()
