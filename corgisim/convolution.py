@@ -9,9 +9,7 @@ import astropy.units as u
 import time
 import proper
 import sys
-
-ARCSEC_PER_RAD = 206265
-PIXEL_SCALE_ARCSEC = 0.0218   # arcsec/pixel
+import constant
 
 from astropy.io import fits
 
@@ -512,6 +510,7 @@ def convolve_with_prfs(obj, prfs_array, radii_lamD, azimuths_deg,
     Perform a field‐dependent PSF convolution. 
 
     Applies either nearest‐neighbour or bilinear interpolation of off‐axis PRFs. 
+    All PRFs are assumed to be centred in their arrays.
 
     Parameters
     ----------
@@ -575,3 +574,5 @@ def convolve_with_prfs(obj, prfs_array, radii_lamD, azimuths_deg,
                 conv += fftconvolve(weighted_scene, prfs_resized[prf_idx], mode="same")
     
     return conv
+
+#TODO - add the fourier shift in here!

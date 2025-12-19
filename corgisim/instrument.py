@@ -20,15 +20,14 @@ from scipy import interpolate
 import time
 import sys
 import astropy.units as u
+import corgisim.constants as constants
 
 from corgisim.convolution import (
     create_wavelength_grid_and_weights,
     build_radial_grid,
     build_azimuth_grid,
     convolve_with_prfs, 
-    get_valid_polar_positions,
-    ARCSEC_PER_RAD,
-    PIXEL_SCALE_ARCSEC
+    get_valid_polar_positions
 )
 
 from corgisim.scene import Scene, SimulatedImage
@@ -713,13 +712,14 @@ class CorgiOptics():
 
         # TODO - Currently we skipped counts when calculating off-axis PSF for convolution
         # input_scene.twoD_scene_spectrum
- 
 
-        # Bin down to detector resolution
-        binned = weighted_img.reshape(
-            (self.grid_dim_out, self.oversampling_factor,
-             self.grid_dim_out, self.oversampling_factor)
-        ).mean(3).mean(1) * self.oversampling_factor**2
+        binned = weighted_img
+ 
+        # # Bin down to detector resolution
+        # binned = weighted_img.reshape(
+        #     (self.grid_dim_out, self.oversampling_factor,
+        #      self.grid_dim_out, self.oversampling_factor)
+        # ).mean(3).mean(1) * self.oversampling_factor**2
 
         return binned
 
@@ -862,7 +862,7 @@ class CorgiOptics():
 
         if has_prf_cube:
             # Mode 1: Pre-computed PRF cube: Apply convolution 
-            conv2d = convolve_with_prfs(obj=disk_model_norm, prfs_array=fits.getdata(prf_cube_path), radii_lamD=radii_lamD , azimuths_deg=azimuths_deg, pix_scale_mas=PIXEL_SCALE_ARCSEC * 1e3, res_mas=self.res_mas, use_bilinear_interpolation=use_bilinear_interpolation)
+            conv2d = convolve_with_prfs(obj=disk_model_norm, prfs_array=fits.getdata(prf_cube_path), radii_lamD=radii_lamD , azimuths_deg=azimuths_deg, pix_scale_mas=constants.PIXEL_SCALE_ARCSEC * 1e3, res_mas=self.res_mas, use_bilinear_interpolation=use_bilinear_interpolation)
         else:
             # Mode 2: Generate cube
             required = ['owa', 'inner_step', 'mid_step', 'outer_step', 'step_deg']
