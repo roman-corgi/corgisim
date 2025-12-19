@@ -32,8 +32,8 @@ jobs:
         if [ -f requirements.txt ]; then pip install -r requirements.txt .; fi
     - name: Download and install Proper
       run: |
-        wget https://sourceforge.net/projects/proper-library/files/proper_v3.3.3_python.zip && unzip proper_v3.3.3_python.zip
-        cd proper_v3.3.3_python/
+        wget https://sourceforge.net/projects/proper-library/files/proper_v3.3.4_python.zip && unzip proper_v3.3.4_python.zip
+        cd proper_v3.3.4_python/
         python -m pip install .
         cd ..        
     - name: Download and install Roman preflight
