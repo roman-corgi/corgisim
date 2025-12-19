@@ -46,7 +46,7 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, s
     if full_frame == False :
         for i in range(0, n_frames):
             sim_image = detector.generate_detector_image(sim_scene,exp_time)
-            simulatedImage_list.append(sim_image)
+            simulatedImage_list.append(sim_image.image_on_detector)
     else:
         if save_as_fits:
             # Save the images as fits in output_dir if specified, in corgisim/test/testdata if not
@@ -60,7 +60,7 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, s
 
         for i in range(0, n_frames):
             sim_image = detector.generate_detector_image(sim_scene,exp_time,full_frame=True,loc_x=loc_x, loc_y=loc_y)
-            simulatedImage_list.append(sim_image)
+            simulatedImage_list.append(sim_image.image_on_detector)
 
             if save_as_fits:
                 outputs.save_hdu_to_fits(sim_image.image_on_detector,outdir=outdir, write_as_L1=True)
@@ -97,7 +97,7 @@ def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, outpu
         scene_target = scene.Scene(host_star_properties, point_source_info)
 
     for visit in visit_list:
-        visit_optics = instrument.CorgiOptics(optics.cgi_mode, optics.bandpass_header, optics_keywords=optics.optics_keywords, roll_angle = visit['roll_angle'] , if_quiet=True, oversampling_factor = optics.oversampling_factor)
+        visit_optics = instrument.CorgiOptics(optics.cgi_mode, optics.bandpass_header, optics_keywords={'cor_type':optics.optics_keywords['cor_type'],'polaxis':optics.optics_keywords['polaxis'],'output_dim':optics.optics_keywords['output_dim']}, roll_angle = visit['roll_angle'] , if_quiet=True, oversampling_factor = optics.oversampling_factor)
         if visit['isReference']:
             simulatedImage_visit = generate_observation_sequence(scene_reference, visit_optics, detector_reference, visit['exp_time'], visit['number_of_frames'],save_as_fits= save_as_fits, output_dir=output_dir, full_frame= full_frame,loc_x=loc_x, loc_y=loc_y )
         else:
