@@ -51,12 +51,13 @@ def create_hdu_list(data, header_info, sim_info=None):
     ### it needs to be updated later
     prihdr['FRAMET'] = header_info['EXPTIME']
     prihdr['SATSPOTS'] = int(header_info['SATSPOTS'])
+    prihdr['ROLL'] = header_info['ROLL']
 
     ### wait this for tachi to add sattlite spots function
     #prihdr['SATSPOTS'] = header_info['SATSPOTS'] 
     
     time_in_name = isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
-    filename = f"CGI_{prihdr['VISITID']}_{time_in_name}_L1_"
+    filename = f"cgi_{prihdr['VISITID']}_{time_in_name}_l1_"
     prihdr['FILENAME'] =  f"{filename}.fits"
 
     

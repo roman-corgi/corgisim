@@ -18,8 +18,11 @@ def get_slit_mask(optics, dx_fsam_um=10.0, hires_dim_um=800, binfac=50):
             - lamref_um (float): Reference wavelength of mode in micrometers
             - ref_data_dir (str): Directory path containing reference data files
             - slit (str): Name of the slit to use
-            - slit_x_offset_mas (float or None): Slit offset in x-direction in milliarcseconds
-            - slit_y_offset_mas (float or None): Slit offset in y-direction in milliarcseconds
+            - slit_x_offset_mas (float or None): Slit offset in x-direction in excam coordinates in milliarcseconds
+            - slit_y_offset_mas (float or None): Slit offset in y-direction in excam coordinates in milliarcseconds
+            - slit_ra_offset_mas (float or None): Slit offset in right ascension in sky coordinates in milliarcseconds
+            - slit_dec_offset_mas (float or None): Slit offset in declination in sky coordinates in milliarcseconds
+
         dx_fsam_um (float, optional): FSAM slit array spatial sampling in micrometers. Defaults to 10.0.
         hires_dim_um (float, optional): High-resolution array dimension in micrometers. Defaults to 800.
         binfac (int, optional): Binning factor for downsampling. Defaults to 50.

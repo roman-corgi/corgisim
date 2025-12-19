@@ -106,7 +106,7 @@ def test_excam_mode():
     prihdr = sim_scene.image_on_detector[0].header
     exthdr = sim_scene.image_on_detector[1].header
     time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
-    filename = f"CGI_{prihdr['VISITID']}_{time_in_name}_L1_.fits"
+    filename = f"cgi_{prihdr['VISITID']}_{time_in_name}_l1_.fits"
 
 
     f = os.path.join( outdir , filename)
@@ -201,8 +201,8 @@ def test_cpgs_obs():
         else:
             assert simulatedImage.input_scene._point_source_Vmag == mag_companion
             assert simulatedImage.input_scene._point_source_magtype == ['vegamag']
-            assert simulatedImage.input_scene.point_source_x == dx
-            assert simulatedImage.input_scene.point_source_y == dy
+            assert simulatedImage.input_scene.point_source_dra == dx
+            assert simulatedImage.input_scene.point_source_ddec == dy
             assert isinstance(simulatedImage.point_source_image, fits.hdu.image.PrimaryHDU)  
 
 def test_spec_mode():
@@ -226,7 +226,7 @@ def test_spec_mode():
                   'slit':'R1C2', 'prism':'PRISM3', 'wav_step_um':2E-3}
 
     optics_slit_prism = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords_slit_prism, if_quiet=True,
-                                small_spc_grid = 1, oversample = overfac, return_oversample = False)
+                                small_spc_grid = 1, oversampling_factor = overfac, return_oversample = False)
 
     sim_scene_slit_prism = optics_slit_prism.get_host_star_psf(base_scene)
 
