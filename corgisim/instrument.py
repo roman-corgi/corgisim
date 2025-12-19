@@ -659,7 +659,7 @@ class CorgiOptics():
         return bp
 
     def _compute_single_off_axis_psf(self, radius_lamD, azimuth_angle, 
-                                    wavelength_grid, wavelength_weights):
+                                    wavelength_grid, wavelength_weights, verbose=False):
         """
         Compute a weighted off-axis PSF at a given polar position (r, θ).
 
@@ -687,7 +687,10 @@ class CorgiOptics():
         grid_dim_out_tem = self.grid_dim_out * self.oversampling_factor
         sampling_um_tem = self.sampling_um / self.oversampling_factor
 
-        print(f"Computing off-axis PSF at r={radius_lamD:.2f} λ/D, θ={azimuth_angle:.1f} deg -> (dx, dy)=({dx:.1f}, {dy:.1f}) mas")
+        # verbose for printing debug information
+        if verbose:
+            print(f"Computing off-axis PSF at r={radius_lamD:.2f} λ/D, θ={azimuth_angle:.1f} deg "
+                  f"-> dx={dx:.2f} mas, dy={dy:.2f} mas")
 
         optics_keywords_comp = self.optics_keywords.copy()
         optics_keywords_comp.update({'output_dim': grid_dim_out_tem,
