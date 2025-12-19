@@ -3,6 +3,7 @@
 import corgisim
 import os
 from corgisim import scene, instrument, inputs, observation, outputs
+import copy 
 
 def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, save_as_fits= False, output_dir=None, full_frame= False, loc_x=None, loc_y=None):
     """Generates a sequence of simulated observations and places them on a detector.
@@ -46,7 +47,7 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, s
     if full_frame == False :
         for i in range(0, n_frames):
             sim_image = detector.generate_detector_image(sim_scene,exp_time)
-            simulatedImage_list.append(sim_image.image_on_detector)
+            simulatedImage_list.append(copy.deepcopy(sim_image))
     else:
         if save_as_fits:
             # Save the images as fits in output_dir if specified, in corgisim/test/testdata if not
@@ -60,7 +61,7 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, s
 
         for i in range(0, n_frames):
             sim_image = detector.generate_detector_image(sim_scene,exp_time,full_frame=True,loc_x=loc_x, loc_y=loc_y)
-            simulatedImage_list.append(sim_image.image_on_detector)
+            simulatedImage_list.append(copy.deepcopy(sim_image))
 
             if save_as_fits:
                 outputs.save_hdu_to_fits(sim_image.image_on_detector,outdir=outdir, write_as_L1=True)
