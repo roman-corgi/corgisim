@@ -198,7 +198,7 @@ def test_cpgs_obs():
         for _ in range(visit['number_of_frames']):        
         #Check that the target has a point source and the target doesn't  
             if simulatedImage_list[i].input_scene.ref_flag :
-                assert '_point_source_Vmag' not in simulatedImage.input_scene.__dict__
+                assert '_point_source_Vmag' not in simulatedImage_list[i].input_scene.__dict__
                 assert simulatedImage_list[i].point_source_image == None
                 assert simulatedImage_list[i].image_on_detector[1].header['ROLL'] == visit["roll_angle"]
 
