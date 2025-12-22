@@ -193,17 +193,23 @@ def test_cpgs_obs():
     point_source_info = [{'Vmag': mag_companion[0], 'magtype': 'vegamag','position_x':dx[0] , 'position_y':dy[0]}]
     simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, point_source_info=point_source_info)
 
-    for simulatedImage in simulatedImage_list:
+    i=0
+    for visit in visit_list:
+        for _ in range(visit['number_of_frames']):        
         #Check that the target has a point source and the target doesn't  
-        if simulatedImage.input_scene.ref_flag :
-            assert '_point_source_Vmag' not in simulatedImage.input_scene.__dict__
-            assert simulatedImage.point_source_image == None  
-        else:
-            assert simulatedImage.input_scene._point_source_Vmag == mag_companion
-            assert simulatedImage.input_scene._point_source_magtype == ['vegamag']
-            assert simulatedImage.input_scene.point_source_dra == dx
-            assert simulatedImage.input_scene.point_source_ddec == dy
-            assert isinstance(simulatedImage.point_source_image, fits.hdu.image.PrimaryHDU)  
+            if simulatedImage_list[i].input_scene.ref_flag :
+                assert '_point_source_Vmag' not in simulatedImage.input_scene.__dict__
+                assert simulatedImage_list[i].point_source_image == None
+                assert simulatedImage_list[i].image_on_detector[1].header['ROLL'] == visit["roll_angle"]
+
+            else:
+                assert simulatedImage_list[i].input_scene._point_source_Vmag == mag_companion
+                assert simulatedImage_list[i].input_scene._point_source_magtype == ['vegamag']
+                assert simulatedImage_list[i].input_scene.point_source_dra == dx
+                assert simulatedImage_list[i].input_scene.point_source_ddec == dy
+                assert isinstance(simulatedImage_list[i].point_source_image, fits.hdu.image.PrimaryHDU)
+                assert simulatedImage_list[i].image_on_detector[1].header['ROLL'] == visit["roll_angle"]
+        i += 1      
 
 def test_spec_mode():
     input1 = inputs.Input()
