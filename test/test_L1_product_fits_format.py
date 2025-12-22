@@ -340,7 +340,7 @@ def test_L1_product_from_CPGS():
 
     script_dir = os.getcwd()
 
-    filepath = 'test/test_data/cpgs_short_sequence.xml'
+    filepath = 'test/test_data/CPGS_MRT8_CGIPrime.xml'
     abs_path =  os.path.join(script_dir, filepath)
     local_path = corgisim.lib_dir
     outdir = os.path.join(local_path.split('corgisim')[0], 'corgisim/test/testdata/cpgs')
