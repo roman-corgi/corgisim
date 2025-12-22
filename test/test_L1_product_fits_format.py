@@ -364,7 +364,7 @@ def test_L1_product_from_CPGS():
 
             f = os.path.join( outdir , filename)
             assert os.path.isfile(f)
-            assert prihdr['ROLL'] == visit_list[i]["roll_angle"]
+            assert prihdr['ROLL'] == visit["roll_angle"]
             i += 1
     # Delete the files 
     shutil.rmtree(outdir)
