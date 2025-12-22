@@ -388,10 +388,6 @@ def test_L1_product_from_CPGS():
         f = os.path.join( outdir , filename)
         assert os.path.isfile(f)
      
-        with fits.open(f) as hdul:
-            data_file = hdul[1].data
-            prihr_file = hdul[0].header
-            exthr_file = hdul[1].header
     # Delete the files 
     shutil.rmtree(outdir)
 
