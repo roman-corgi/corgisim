@@ -200,7 +200,6 @@ def test_cpgs_obs():
             if simulatedImage_list[i].input_scene.ref_flag :
                 assert '_point_source_Vmag' not in simulatedImage_list[i].input_scene.__dict__
                 assert simulatedImage_list[i].point_source_image == None
-                assert simulatedImage_list[i].image_on_detector[1].header['ROLL'] == visit["roll_angle"]
 
             else:
                 assert simulatedImage_list[i].input_scene._point_source_Vmag == mag_companion
@@ -208,8 +207,12 @@ def test_cpgs_obs():
                 assert simulatedImage_list[i].input_scene.point_source_dra == dx
                 assert simulatedImage_list[i].input_scene.point_source_ddec == dy
                 assert isinstance(simulatedImage_list[i].point_source_image, fits.hdu.image.PrimaryHDU)
-                assert simulatedImage_list[i].image_on_detector[1].header['ROLL'] == visit["roll_angle"]
-        i += 1      
+
+            line_roll = [line for line in simulatedImage_list[i].image_on_detector.header['COMMENT'] if 'roll_angle' in line]
+            _, roll = line_roll[0].split(':', 1)
+            assert float(roll) == visit["roll_angle"]
+                
+            i += 1      
 
 def test_spec_mode():
     input1 = inputs.Input()
