@@ -352,7 +352,6 @@ def test_L1_product_from_CPGS():
     assert len(simulatedImage_list) == len([name for name in os.listdir(outdir) if os.path.isfile(outdir+'/'+name)])
 
     #Check that the names are correct
-    #for simulatedImage in simulatedImage_list:
     i = 0
     for visit in visit_list:
         for _ in range(visit['number_of_frames']):
