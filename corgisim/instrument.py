@@ -569,9 +569,9 @@ class CorgiOptics():
             # Step 1: Create an array to store the weighted intensity for each offset,
             #         including (0,0)
             I_m45in_yout_all_offsets = np.zeros(N_offsets_counting_origin,delta_e_library['delta_E_m45in_yout'].shape[1],grid_dim_out_tem,grid_dim_out_tem)
-            I_m45in_xout_all_offsets = np.zeros(N_offsets_counting_origin,delta_e_library['delta_E_m45in_yout'].shape[1],grid_dim_out_tem,grid_dim_out_tem)
-            I_45in_xout_all_offsets = np.zeros(N_offsets_counting_origin,delta_e_library['delta_E_m45in_yout'].shape[1],grid_dim_out_tem,grid_dim_out_tem)
-            I_45in_yout_all_offsets = np.zeros(N_offsets_counting_origin,delta_e_library['delta_E_m45in_yout'].shape[1],grid_dim_out_tem,grid_dim_out_tem)
+            I_m45in_xout_all_offsets = np.zeros(N_offsets_counting_origin,delta_e_library['delta_E_m45in_xout'].shape[1],grid_dim_out_tem,grid_dim_out_tem)
+            I_45in_xout_all_offsets = np.zeros(N_offsets_counting_origin,delta_e_library['delta_E_45in_xout'].shape[1],grid_dim_out_tem,grid_dim_out_tem)
+            I_45in_yout_all_offsets = np.zeros(N_offsets_counting_origin,delta_e_library['delta_E_45in_yout'].shape[1],grid_dim_out_tem,grid_dim_out_tem)
 
             for i_offset in np.arange(N_offsets_counting_origin):
                 
