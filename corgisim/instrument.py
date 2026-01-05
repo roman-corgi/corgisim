@@ -715,10 +715,6 @@ class CorgiOptics():
         weighted_img = np.tensordot(wavelength_weights, intensity, axes=(0, 0))
 
         # TODO - Currently we skipped counts when calculating off-axis PSF for convolution
-        # input_scene.twoD_scene_spectrum
-
-        binned = weighted_img
- 
         # Bin down to detector resolution
         binned = weighted_img.reshape(
             (self.grid_dim_out, self.oversampling_factor,
@@ -727,7 +723,7 @@ class CorgiOptics():
 
         return binned
 
-    def make_prf_cube(self, radii_lamD, azimuths_deg, source_sed=None):
+    def make_prf_cube(self, radii_lamD, azimuths_deg, prf_dict, source_sed=None, output_dir=None):
         """
         Build a psf cube by evaluating the off-axis PSF at specified polar positions.
 
@@ -766,15 +762,14 @@ class CorgiOptics():
         if show_progress:
             print()  # New line after progress bar
 
-        prf_dict = _generate_prf_dictionary(radii_lamD, azimuths_deg)
         prf_fname = 'prf_cube' + '_'+ self.cgi_mode + '_'+ self.cor_type + '_band_' + self.bandpass + '.fits'
         prf_cube_hdu = outputs.create_hdu(prf_cube, sim_info=prf_dict)
         
         if output_dir is None:
             output_dir = './'
-        else:
-            prf_cube_hdu.writeto(os.path.join(output_dir, prf_fname), overwrite=False)
-            print(f"PRF cube saved to {output_dir}")
+
+        prf_cube_hdu.writeto(os.path.join(output_dir, prf_fname), overwrite=False)
+        print(f"PRF cube is saved to {os.path.join(output_dir, prf_fname)}")
         
         return prf_cube_hdu
 
@@ -792,7 +787,6 @@ class CorgiOptics():
 
         Two modes of operation:
         1. **Pre-computed PRF mode**: Provide `prf_cube`, `prf_grid_radii`, `prf_grid_azimuths`
-        2. **Generate-on-fly mode**: Provide grid parameters (iwa, owa, steps, etc.)
 
         Parameters
         ----------
@@ -813,22 +807,6 @@ class CorgiOptics():
             disk_model_path : str
                 Path to disk model file.
 
-            Mode 2 parameters (from kwargs):
-            iwa : float, optional
-                Inner working angle in λ/D. Default is 0.
-            owa : float, required
-                Outer working angle in λ/D.
-            inner_step : float, required
-                Radial step size in λ/D for inner region (r ≤ iwa).
-            mid_step : float, required
-                Radial step size in λ/D for middle region (iwa < r < owa).
-            outer_step : float, required
-                Radial step size in λ/D for outer region (r ≥ owa).
-            step_deg : float, required
-                Azimuthal step size in degrees.
-            max_radius : float, optional
-                Maximum radius in λ/D for PRF generation. Default is max(15, 1.5 * owa).
-
         Returns
         -------
         Scene or SimulatedImage
@@ -844,12 +822,7 @@ class CorgiOptics():
         Mode 1 - Using pre-computed PRF cube from scene:
         >>> # Scene must have twoD_scene_info with prf_cube_path, radii_lamD, etc.
         >>> result = optics.convolve_2d_scene(scene_with_prf_info)
-        
-        Mode 2 - Auto-generate PRF cube:
-        >>> result = optics.convolve_2d_scene(scene,
-        ...                                   iwa=3.0, owa=9.0,
-        ...                                   inner_step=1.0, mid_step=1.5, 
-        ...                                   outer_step=2.0, step_deg=90.0)
+    
         """
         # Determine which mode to use based on provided kwargs
         if input_scene.twoD_scene_info['prf_cube_path'] is not None:
