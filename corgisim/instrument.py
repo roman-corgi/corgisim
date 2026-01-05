@@ -461,14 +461,9 @@ class CorgiOptics():
         delta_e_library = stellar_diam_and_jitter_keywords['offset_field_data']['delta_e_fields']
 
         # The specific calculations vary depending on the polarization case.
-        if self.prism == 'POL0':
-            # 0/90 deg polarization case
-            # The four electric field components are:
-            # delta_E_m45in_xout
-            # delta_E_45in_xout
-            # delta_E_m45in_yout
-            # delta_E_45in_yout
-            
+        # Because the syntax is essentially identical for POL0 and POL45, we can
+        # define a function that works for both cases at the expense of a little clarity.
+        def calculate_images_tem_for_pol0_or_pol45(N_offsets_counting_origin,delta_e_library,delta_e_keys,grid_dim_out_tem,fields):
             # For each offset, calculate E_offset = E_onaxis + deltaE.
             # Repeat for each electric field component.
             # Convert the electric field to an intensity.
@@ -476,36 +471,51 @@ class CorgiOptics():
             
             # Step 1: Create an array to store the weighted intensity for each offset,
             #         including (0,0)
-            I_x_all_offsets = np.zeros(N_offsets_counting_origin,delta_e_library['delta_E_m45in_xout'].shape[1],grid_dim_out_tem,grid_dim_out_tem)
-            I_y_all_offsets = np.zeros(N_offsets_counting_origin,delta_e_library['delta_E_m45in_xout'].shape[1],grid_dim_out_tem,grid_dim_out_tem)
+            I1_all_offsets = np.zeros(N_offsets_counting_origin,delta_e_library[delta_e_keys['1']].shape[1],grid_dim_out_tem,grid_dim_out_tem)
+            I2_all_offsets = np.zeros(N_offsets_counting_origin,delta_e_library[delta_e_keys['3']].shape[1],grid_dim_out_tem,grid_dim_out_tem)
             
             for i_offset in np.arange(N_offsets_counting_origin):
                 
                 # Step 2: Calculate the electric field for each polarization component
                 #         at the current offset
-                E_offset_m45in_xout = delta_e_library['delta_E_m45in_xout'][i_offset,:,:,:] + fields[0]
-                E_offset_45in_xout =  delta_e_library['delta_E_45in_xout'][i_offset,:,:,:] + fields[1]
-                E_offset_m45in_yout = delta_e_library['delta_E_m45in_yout'][i_offset,:,:,:] + fields[2]
-                E_offset_45in_yout =  delta_e_library['delta_E_45in_yout'][i_offset,:,:,:] + fields[3]
+                E_offset_1 = delta_e_library[delta_e_keys['1']][i_offset,:,:,:] + fields[0]
+                E_offset_2 = delta_e_library[delta_e_keys['2']][i_offset,:,:,:] + fields[1]
+                E_offset_3 = delta_e_library[delta_e_keys['3']][i_offset,:,:,:] + fields[2]
+                E_offset_4 = delta_e_library[delta_e_keys['4']][i_offset,:,:,:] + fields[3]
                 
-                # Step 3: Obtain the 0/90 degree polarization intensities
-                intensity_x_temp = ((np.abs(E_offset_m45in_xout) ** 2) + (np.abs(E_offset_45in_xout) ** 2)) / 2
-                intensity_y_temp = ((np.abs(E_offset_m45in_yout) ** 2) + (np.abs(E_offset_45in_yout) ** 2)) / 2
+                # Step 3: Obtain the two polarization intensities
+                intensity_1_temp = ((np.abs(E_offset_1) ** 2) + (np.abs(E_offset_2) ** 2)) / 2
+                intensity_2_temp = ((np.abs(E_offset_3) ** 2) + (np.abs(E_offset_4) ** 2)) / 2
                 
                 # Step 4: Weight the intensitites
-                intensity_x_temp = intensity_x_temp * weights[i_offset]
-                intensity_y_temp = intensity_y_temp * weights[i_offset]
+                intensity_1_temp = intensity_1_temp * weights[i_offset]
+                intensity_2_temp = intensity_2_temp * weights[i_offset]
                 
                 # Step 5: Store the intensities for the offset
-                I_x_all_offsets[i_offset,:,:] = intensity_x_temp
-                I_y_all_offsets[i_offset,:,:] = intensity_y_temp
+                I1_all_offsets[i_offset,:,:] = intensity_1_temp
+                I2_all_offsets[i_offset,:,:] = intensity_2_temp
                 
             # Step 6: Combine the weighted intensities
-            intensity_x = np.sum(I_x_all_offsets,0)
-            intensity_y = np.sum(I_y_all_offsets,0)
+            intensity_1 = np.sum(I1_all_offsets,0)
+            intensity_2 = np.sum(I2_all_offsets,0)
 
-            # Step 7: Construct the temporary images array                
-            images_tem = [intensity_x, intensity_y]
+            # Step 7: Construct and return the temporary images array                
+            images_tem = [intensity_1, intensity_2]
+            return images_tem
+            
+        if self.prism == 'POL0':
+            # 0/90 deg polarization case
+            # The four electric field components are:
+            # delta_E_m45in_xout
+            # delta_E_45in_xout
+            # delta_E_m45in_yout
+            # delta_E_45in_yout
+            # Set up a library of keys to identify these components:
+            delta_e_keys = {'1':'delta_E_m45in_xout','2':'delta_E_45in_xout','3':'delta_E_m45in_yout','4':'delta_E_45in_yout'}
+            
+            # Construct the temporary images array
+            images_tem = calculate_images_tem_for_pol0_or_pol45(N_offsets_counting_origin, delta_e_library, delta_e_keys, grid_dim_out_tem, fields)
+            
             
         elif self.prism == 'POL45':
             #45/135 case
@@ -514,44 +524,11 @@ class CorgiOptics():
             # delta_E_45in_45out
             # delta_E_m45in_135out
             # delta_E_45in_135out
-            
-            # For each offset, calculate E_offset = E_onaxis + deltaE.
-            # Repeat for each electric field component.
-            # Convert the electric field to an intensity.
-            # Multiply the intensity by the appropriate weight for the offset.
-            
-            # Step 1: Create an array to store the weighted intensity for each offset,
-            #         including (0,0)
-            I_45_all_offsets = np.zeros(N_offsets_counting_origin,delta_e_library['delta_E_m45in_45out'].shape[1],grid_dim_out_tem,grid_dim_out_tem)
-            I_135_all_offsets = np.zeros(N_offsets_counting_origin,delta_e_library['delta_E_m45in_45out'].shape[1],grid_dim_out_tem,grid_dim_out_tem)
-            
-            for i_offset in np.arange(N_offsets_counting_origin):
-                
-                # Step 2: Calculate the electric field for each polarization component
-                #         at the current offset
-                E_offset_m45in_45out = delta_e_library['delta_E_m45in_45out'][i_offset,:,:,:] + fields[0]
-                E_offset_45in_45out =  delta_e_library['delta_E_45in_45out'][i_offset,:,:,:] + fields[1]
-                E_offset_m45in_135out = delta_e_library['delta_E_m45in_135out'][i_offset,:,:,:] + fields[2]
-                E_offset_45in_135out =  delta_e_library['delta_E_45in_135out'][i_offset,:,:,:] + fields[3]
-                
-                # Step 3: Obtain the 45/135 degree polarization intensities
-                intensity_45_temp = ((np.abs(E_offset_m45in_45out) ** 2) + (np.abs(E_offset_45in_45out) ** 2)) / 2
-                intensity_135_temp = ((np.abs(E_offset_m45in_135out) ** 2) + (np.abs(E_offset_45in_135out) ** 2)) / 2
-                
-                # Step 4: Weight the intensitites
-                intensity_45_temp = intensity_45_temp * weights[i_offset]
-                intensity_45_temp = intensity_45_temp * weights[i_offset]
-                
-                # Step 5: Store the intensities for the offset
-                I_45_all_offsets[i_offset,:,:] = intensity_45_temp
-                I_135_all_offsets[i_offset,:,:] = intensity_135_temp
-                
-            # Step 6: Combine the weighted intensities
-            intensity_45 = np.sum(I_45_all_offsets,0)
-            intensity_135 = np.sum(I_135_all_offsets,0)
+            # Set up a library of keys to identify these components:
+            delta_e_keys = {'1':'delta_E_m45in_45out','2':'delta_E_45in_45out','3':'delta_E_m45in_135out','4':'delta_E_45in_135out'}
 
-            # Step 7: Construct the temporary images array                
-            images_tem = [intensity_45, intensity_135]
+            # Construct the temporary images array                
+            images_tem = calculate_images_tem_for_pol0_or_pol45(N_offsets_counting_origin, delta_e_library, delta_e_keys, grid_dim_out_tem, fields)
                     
         elif self.optics_keywords['polaxis'] == -10:
             # if polaxis is set to -10, obtain full aberration model by individually summing intensities obtained from polaxis=-2, -1, 1, 2
