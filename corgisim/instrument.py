@@ -324,10 +324,10 @@ class CorgiOptics():
         
         print("CorgiOptics initialized with proper keywords.")
      
-    def get_e_field(self,resizing=None):
+    def get_e_field(self,resizing=True):
         '''
         Function that only returns the e fields
-        Set resizing = 0 to return the electric fields as they are output by
+        Set resizing = False to return the electric fields as they are output by
         proper.prop_run_multi.
         
         Returns: 
@@ -343,7 +343,7 @@ class CorgiOptics():
         
         (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=self.optics_keywords,QUIET=self.quiet)
         # Stop here to return the fields as they are output from proper.
-        if resizing == 0:
+        if resizing != True:
             return fields
         else:
 
