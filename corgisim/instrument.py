@@ -27,7 +27,8 @@ from corgisim.convolution import (
     build_radial_grid,
     build_azimuth_grid,
     convolve_with_prfs, 
-    get_valid_polar_positions
+    get_valid_polar_positions,
+    _generate_prf_dictionary
 )
 
 from corgisim.scene import Scene, SimulatedImage
@@ -718,11 +719,11 @@ class CorgiOptics():
 
         binned = weighted_img
  
-        # # Bin down to detector resolution
-        # binned = weighted_img.reshape(
-        #     (self.grid_dim_out, self.oversampling_factor,
-        #      self.grid_dim_out, self.oversampling_factor)
-        # ).mean(3).mean(1) * self.oversampling_factor**2
+        # Bin down to detector resolution
+        binned = weighted_img.reshape(
+            (self.grid_dim_out, self.oversampling_factor,
+             self.grid_dim_out, self.oversampling_factor)
+        ).mean(3).mean(1) * self.oversampling_factor**2
 
         return binned
 
@@ -744,14 +745,13 @@ class CorgiOptics():
         prf_cube : ndarray, shape (N_positions, Ny, Nx)
             Cube of PSFs at all requested (r, θ) positions.
         """
-        # TODO - source_sed is currently not used, just assumed to be flat. For scene with extended source, here should be disk spectrum?
         wavelength_grid, wavelength_weights = create_wavelength_grid_and_weights(self.lam_um, source_sed)
         valid_positions = get_valid_polar_positions(radii_lamD, azimuths_deg)   
 
         num_positions = len(valid_positions)
         prf_cube = np.empty((num_positions, self.grid_dim_out, self.grid_dim_out), dtype=np.float32)
 
-        show_progress = num_positions > 10  # Show progress bar for larger jobs
+        show_progress = num_positions > 50  # Show progress bar for larger jobs
 
         for i, (radius_lamD, azimuth_angle) in enumerate(valid_positions):
             prf_cube[i] = self._compute_single_off_axis_psf(radius_lamD, azimuth_angle, wavelength_grid, wavelength_weights)
@@ -765,10 +765,20 @@ class CorgiOptics():
 
         if show_progress:
             print()  # New line after progress bar
-        
-        return prf_cube
 
-    def convolve_2d_scene(self, input_scene, sim_scene=None, **kwargs):
+        prf_dict = _generate_prf_dictionary(radii_lamD, azimuths_deg)
+        prf_fname = 'prf_cube' + '_'+ self.cgi_mode + '_'+ self.cor_type + '_band_' + self.bandpass + '.fits'
+        prf_cube_hdu = outputs.create_hdu(prf_cube, sim_info=prf_dict)
+        
+        if output_dir is None:
+            output_dir = './'
+        else:
+            prf_cube_hdu.writeto(os.path.join(output_dir, prf_fname), overwrite=False)
+            print(f"PRF cube saved to {output_dir}")
+        
+        return prf_cube_hdu
+
+    def convolve_2d_scene(self, input_scene, use_bilinear_interpolation=False):
         """
         Simulate a two-dimensional scene through the current CGI configuration.
 
