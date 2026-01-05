@@ -32,36 +32,7 @@ def test_offsets_and_areas_against_example():
      Krist's paper.
     '''
     ###############################################################################
-    # Set up logging
-    
-    #global logger
-    #log_file = ('./','test_jitter.log')
-    
-    # Create a new logger specifically for this test
-    #logger = logging.getLogger('test_jitter')
-    #logger.setLevel(logging.INFO)
-    
-    # Create file handler
-    #file_handler = logging.StreamHandler
-    #file_handler.setLevel(logging.INFO)
-    
-    # Create console handler
-    #console_handler = logging.StreamHandler()
-    #console_handler.setLevel(logging.INFO)
-    
-    # Create formatter
-    #formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-    #file_handler.setFormatter(formatter)
-    #console_handler.setFormatter(formatter)
-    
-    # Add handlers to logger
-    #logger.addHandler(file_handler)
-    #logger.addHandler(console_handler)
-    ###############################################################################
     # Specify the parameters for each ring of offsets
-    #logger.info('='*80)
-    #logger.info('Pre-test: Defining the parameters for each ring of offsets')
-    #logger.info('='*80)
     
     # Ring 0 (Centered at the origin)
     # Define the radius of the ring
@@ -228,9 +199,6 @@ def test_offsets_and_areas_against_example():
      yl_ring11_outer, boundary_coords11 = jitter.Determine_ring_params(r_ring10_outer,dr_ring11,regnum_ring11,theta_ring11_centers_start)
     ###############################################################################
     # Plot the rings of offsets and their regions
-    #logger.info('='*80)
-    #logger.info('Test: Plotting the offsets and corresponding regions')
-    #logger.info('='*80)
     
     # Set up the figure window
     fig,ax = plt.subplots()
