@@ -781,7 +781,7 @@ def test_obs_with_finite_stellar_diam():
     n_frames = 1
     simulatedImage_list = observation.generate_observation_sequence(base_scene, optics, detector, exp_time, n_frames)
     
-    return simulatedImage_list
+    #return simulatedImage_list
    
     # TODO: Test the following assertions or add appropriately modified ones.
     # Try getting out just the onaxis electric field
