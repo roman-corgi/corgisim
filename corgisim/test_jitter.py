@@ -821,7 +821,9 @@ def test_obs_with_finite_stellar_diam():
 def test_weight_calculation():
     
     # This function tests the lines that calculate the weights for each offset
-    # region.
+    # region. For now, the purpose is to check that the additions to the code
+    # do not somehow interfere with setting up the optics or calculating the
+    # host star psf. The test is successful if it runs.
     
     # Set up keywords
     # optics keywords
