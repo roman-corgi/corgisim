@@ -635,7 +635,7 @@ def test_offsets_and_areas_against_example(show_plots=False,print_details=False)
         # Test the automated plotting script
         jitter.Plot_ALL_Offsets_And_Region_Outlines(x_offsets, y_offsets, x_outer_dict, yu_outer_dict, yl_outer_dict, boundary_coords_dict, N_rings_of_offsets, N_offsets_per_ring)
 ###############################################################################
-def check_offset_weights():
+def check_offset_weights(show_plots=False,print_details=False):
     
     '''
     This function compares the calculated weights for the example offset list
@@ -653,7 +653,8 @@ def check_offset_weights():
                                       stellar_diam_and_jitter_keywords['starting_offset_ang_by_ring'], \
                                       stellar_diam_and_jitter_keywords['r_ring0'], \
                                       stellar_diam_and_jitter_keywords['dr_rings'])
-    print('Offsets calculated!')
+    if print_details == True:
+        print('Offsets calculated!')
     
     # For easier iterating, reshape the offsets and areas into lists
     x_offsets_list = [];
