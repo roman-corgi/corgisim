@@ -215,7 +215,6 @@ def compute_single_off_axis_psf(optics, radius_lamD, azimuth_angle,
     weighted_psf : ndarray
         2D PSF image, weighted across the spectral band.
     """
-
     # Convert polar to Cartesian coordinates
     dx = optics.res_mas * radius_lamD * np.cos(azimuth_angle.to_value(u.rad))
     dy = optics.res_mas * radius_lamD * np.sin(azimuth_angle.to_value(u.rad))
@@ -250,7 +249,7 @@ def compute_single_off_axis_psf(optics, radius_lamD, azimuth_angle,
 
     return binned
 
-def make_prf_cube(optics, radii_lamD, azimuths_deg, prf_dict, source_sed=None, output_dir=None):
+def make_prf_cube(optics, radii_lamD, azimuths_deg, prf_dict, source_sed=None, output_dir=None, overwrite=False):
     """
     Build a psf cube by evaluating the off-axis PSF at specified polar positions.
 
@@ -278,7 +277,7 @@ def make_prf_cube(optics, radii_lamD, azimuths_deg, prf_dict, source_sed=None, o
     show_progress = num_positions > 50  # Show progress bar for larger jobs
 
     for i, (radius_lamD, azimuth_angle) in enumerate(valid_positions):
-        prf_cube[i] = compute_single_off_axis_psf(radius_lamD, azimuth_angle, wavelength_grid, wavelength_weights)
+        prf_cube[i] = compute_single_off_axis_psf(optics, radius_lamD, azimuth_angle, wavelength_grid, wavelength_weights)
 
         if show_progress:  # Only show progress for larger jobs
             progress = (i + 1) / num_positions
@@ -296,7 +295,9 @@ def make_prf_cube(optics, radii_lamD, azimuths_deg, prf_dict, source_sed=None, o
     if output_dir is None:
         output_dir = './'
 
-    prf_cube_hdu.writeto(os.path.join(output_dir, prf_fname), overwrite=False)
+    prf_cube_hdu.writeto(os.path.join(output_dir, prf_fname), overwrite=overwrite)
+
+    # TODO - maybe add a warning if overwriting existing file?
     print(f"PRF cube is saved to {os.path.join(output_dir, prf_fname)}")
     
     return prf_cube_hdu
