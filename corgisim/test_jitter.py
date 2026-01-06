@@ -858,7 +858,7 @@ def test_weight_calculation():
     sim_scene = optics.get_host_star_psf(base_scene)
     
 ###############################################################################
-def basic_weight_calculation_test():
+def basic_weight_calculation_test(show_plots=False,print_details=False):
     '''
     Testing replacing interp2d as the interpolation method when calculating the weights
     '''
@@ -874,7 +874,9 @@ def basic_weight_calculation_test():
                                       stellar_diam_and_jitter_keywords['starting_offset_ang_by_ring'], \
                                       stellar_diam_and_jitter_keywords['r_ring0'], \
                                       stellar_diam_and_jitter_keywords['dr_rings'])
-    print('Offsets calculated!')
+            
+    if print_details == True:
+        print('Offsets calculated!')
     
     # For easier iterating, reshape the offsets and areas into lists
     x_offsets_list = [];
@@ -955,12 +957,13 @@ def basic_weight_calculation_test():
     for i_offset in range(stellar_diam_and_jitter_keywords['N_offsets_counting_origin']):
         W[i_offset] = f_interp(x_predetermined[i_offset],y_predetermined[i_offset])
     
-    # Test plot
-    fig = plt.figure()
-    ax = fig.add_subplot(projection='3d')
-    for iplt in range(stellar_diam_and_jitter_keywords['N_offsets_counting_origin']):
-        ax.scatter(x_predetermined[iplt],y_predetermined[iplt],W[iplt],marker='.',color='b')
-    plt.show()
+    if show_plots == True:
+        # Test plot
+        fig = plt.figure()
+        ax = fig.add_subplot(projection='3d')
+        for iplt in range(stellar_diam_and_jitter_keywords['N_offsets_counting_origin']):
+            ax.scatter(x_predetermined[iplt],y_predetermined[iplt],W[iplt],marker='.',color='b')
+        plt.show()
 ###############################################################################
 def test_all_pol_obs_with_finite_stellar_diam():
     '''
