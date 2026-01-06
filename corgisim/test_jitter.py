@@ -23,7 +23,7 @@ Jitter and Finite Stellar Diameter Tests:
 
 """
 
-def test_offsets_and_areas_against_example():
+def test_offsets_and_areas_against_example(show_plots=False,print_details=False):
     '''
      This function tests the functions in jitter.py that calculate the x and
      y coordinates of the offsets and the normalized area of the region 
@@ -198,102 +198,104 @@ def test_offsets_and_areas_against_example():
      x_ring11_outer, yu_ring11_outer,\
      yl_ring11_outer, boundary_coords11 = jitter.Determine_ring_params(r_ring10_outer,dr_ring11,regnum_ring11,theta_ring11_centers_start)
     ###############################################################################
-    # Plot the rings of offsets and their regions
+    # Plot the rings of offsets and their regions if desired
+    if show_plots == True:
     
-    # Set up the figure window
-    fig,ax = plt.subplots()
-    
-    # Plot the Ring 0 region and jitter offset
-    # Define the circle plot for Ring 0
-    line_r0u, = ax.plot(x_ring0,yu_ring0, color='black')
-    line_r0l, = ax.plot(x_ring0,yl_ring0, color='black')
-    # Also add a dot for the offset for Ring 0
-    line_50c, = ax.plot(0,0,'o', color = 'k')
-    
-    # Plot the Ring 1 regions and jitter offsets
-    jitter.Plot_Offsets_And_Region_Outlines(x_ring1_centers,y_ring1_centers,\
-                                          x_ring1_outer,yu_ring1_outer,yl_ring1_outer,\
-                                          boundary_coords1,regnum_ring1,fig,ax)
-    
-    # Plot the Ring 2 regions and jitter offsets
-    jitter.Plot_Offsets_And_Region_Outlines(x_ring2_centers,y_ring2_centers,\
-                                          x_ring2_outer,yu_ring2_outer,yl_ring2_outer,\
-                                          boundary_coords2,regnum_ring2,fig,ax)
-                                          
-    # Plot the Ring 3 regions and jitter offsets
-    jitter.Plot_Offsets_And_Region_Outlines(x_ring3_centers,y_ring3_centers,\
-                                          x_ring3_outer,yu_ring3_outer,yl_ring3_outer,\
-                                          boundary_coords3,regnum_ring3,fig,ax)
-                                          
-    # Plot the Ring 4 regions and jitter offsets
-    jitter.Plot_Offsets_And_Region_Outlines(x_ring4_centers,y_ring4_centers,\
-                                          x_ring4_outer,yu_ring4_outer,yl_ring4_outer,\
-                                          boundary_coords4,regnum_ring4,fig,ax)
-                                          
-    # Plot the Ring 5 regions and jitter offsets
-    jitter.Plot_Offsets_And_Region_Outlines(x_ring5_centers,y_ring5_centers,\
-                                          x_ring5_outer,yu_ring5_outer,yl_ring5_outer,\
-                                          boundary_coords5,regnum_ring5,fig,ax)
-    
-    # Plot the Ring 6 regions and jitter offsets
-    jitter.Plot_Offsets_And_Region_Outlines(x_ring6_centers,y_ring6_centers,\
-                                          x_ring6_outer,yu_ring6_outer,yl_ring6_outer,\
-                                          boundary_coords6,regnum_ring6,fig,ax)
-    
-    # Plot the Ring 7 regions and jitter offsets
-    jitter.Plot_Offsets_And_Region_Outlines(x_ring7_centers,y_ring7_centers,\
-                                          x_ring7_outer,yu_ring7_outer,yl_ring7_outer,\
-                                          boundary_coords7,regnum_ring7,fig,ax)
-    
-    # Plot the Ring 8 regions and jitter offsets
-    jitter.Plot_Offsets_And_Region_Outlines(x_ring8_centers,y_ring8_centers,\
-                                          x_ring8_outer,yu_ring8_outer,yl_ring8_outer,\
-                                          boundary_coords8,regnum_ring8,fig,ax)
-    
-    # Plot the Ring 9 regions and jitter offsets
-    jitter.Plot_Offsets_And_Region_Outlines(x_ring9_centers,y_ring9_centers,\
-                                          x_ring9_outer,yu_ring9_outer,yl_ring9_outer,\
-                                          boundary_coords9,regnum_ring9,fig,ax)
-    
-    # Plot the Ring 10 regions and jitter offsets
-    jitter.Plot_Offsets_And_Region_Outlines(x_ring10_centers,y_ring10_centers,\
-                                          x_ring10_outer,yu_ring10_outer,yl_ring10_outer,\
-                                          boundary_coords10,regnum_ring10,fig,ax)
-    
-    # Plot the Ring 11 regions and jitter offsets
-    jitter.Plot_Offsets_And_Region_Outlines(x_ring11_centers,y_ring11_centers,\
-                                          x_ring11_outer,yu_ring11_outer,yl_ring11_outer,\
-                                          boundary_coords11,regnum_ring11,fig,ax)
-    
-    
-    # Make the plot window appear
-    plt.axis('equal')
-    plt.xlim([-6.5,6.5])
-    plt.ylim([-6.5,6.5])
-    plt.show()
+        # Set up the figure window
+        fig,ax = plt.subplots()
+        
+        # Plot the Ring 0 region and jitter offset
+        # Define the circle plot for Ring 0
+        line_r0u, = ax.plot(x_ring0,yu_ring0, color='black')
+        line_r0l, = ax.plot(x_ring0,yl_ring0, color='black')
+        # Also add a dot for the offset for Ring 0
+        line_50c, = ax.plot(0,0,'o', color = 'k')
+        
+        # Plot the Ring 1 regions and jitter offsets
+        jitter.Plot_Offsets_And_Region_Outlines(x_ring1_centers,y_ring1_centers,\
+                                              x_ring1_outer,yu_ring1_outer,yl_ring1_outer,\
+                                              boundary_coords1,regnum_ring1,fig,ax)
+        
+        # Plot the Ring 2 regions and jitter offsets
+        jitter.Plot_Offsets_And_Region_Outlines(x_ring2_centers,y_ring2_centers,\
+                                              x_ring2_outer,yu_ring2_outer,yl_ring2_outer,\
+                                              boundary_coords2,regnum_ring2,fig,ax)
+                                              
+        # Plot the Ring 3 regions and jitter offsets
+        jitter.Plot_Offsets_And_Region_Outlines(x_ring3_centers,y_ring3_centers,\
+                                              x_ring3_outer,yu_ring3_outer,yl_ring3_outer,\
+                                              boundary_coords3,regnum_ring3,fig,ax)
+                                              
+        # Plot the Ring 4 regions and jitter offsets
+        jitter.Plot_Offsets_And_Region_Outlines(x_ring4_centers,y_ring4_centers,\
+                                              x_ring4_outer,yu_ring4_outer,yl_ring4_outer,\
+                                              boundary_coords4,regnum_ring4,fig,ax)
+                                              
+        # Plot the Ring 5 regions and jitter offsets
+        jitter.Plot_Offsets_And_Region_Outlines(x_ring5_centers,y_ring5_centers,\
+                                              x_ring5_outer,yu_ring5_outer,yl_ring5_outer,\
+                                              boundary_coords5,regnum_ring5,fig,ax)
+        
+        # Plot the Ring 6 regions and jitter offsets
+        jitter.Plot_Offsets_And_Region_Outlines(x_ring6_centers,y_ring6_centers,\
+                                              x_ring6_outer,yu_ring6_outer,yl_ring6_outer,\
+                                              boundary_coords6,regnum_ring6,fig,ax)
+        
+        # Plot the Ring 7 regions and jitter offsets
+        jitter.Plot_Offsets_And_Region_Outlines(x_ring7_centers,y_ring7_centers,\
+                                              x_ring7_outer,yu_ring7_outer,yl_ring7_outer,\
+                                              boundary_coords7,regnum_ring7,fig,ax)
+        
+        # Plot the Ring 8 regions and jitter offsets
+        jitter.Plot_Offsets_And_Region_Outlines(x_ring8_centers,y_ring8_centers,\
+                                              x_ring8_outer,yu_ring8_outer,yl_ring8_outer,\
+                                              boundary_coords8,regnum_ring8,fig,ax)
+        
+        # Plot the Ring 9 regions and jitter offsets
+        jitter.Plot_Offsets_And_Region_Outlines(x_ring9_centers,y_ring9_centers,\
+                                              x_ring9_outer,yu_ring9_outer,yl_ring9_outer,\
+                                              boundary_coords9,regnum_ring9,fig,ax)
+        
+        # Plot the Ring 10 regions and jitter offsets
+        jitter.Plot_Offsets_And_Region_Outlines(x_ring10_centers,y_ring10_centers,\
+                                              x_ring10_outer,yu_ring10_outer,yl_ring10_outer,\
+                                              boundary_coords10,regnum_ring10,fig,ax)
+        
+        # Plot the Ring 11 regions and jitter offsets
+        jitter.Plot_Offsets_And_Region_Outlines(x_ring11_centers,y_ring11_centers,\
+                                              x_ring11_outer,yu_ring11_outer,yl_ring11_outer,\
+                                              boundary_coords11,regnum_ring11,fig,ax)
+        
+        
+        # Make the plot window appear
+        plt.axis('equal')
+        plt.xlim([-6.5,6.5])
+        plt.ylim([-6.5,6.5])
+        plt.show()
     ###############################################################################
     # Calculate the total number of regions (offsets)
     
     regnum_total = regnum_ring1 + regnum_ring2 + regnum_ring3 + regnum_ring4 + regnum_ring5\
                   +regnum_ring6 + regnum_ring7 + regnum_ring8 + regnum_ring9 + regnum_ring10\
                   +regnum_ring11+ 1 # The final 1 accounts for the central region
-                  
-    # Display the result on the screen
-    print( 'Total Number of Offsets: ' + str(regnum_total) )
-    ###############################################################################
-    # Print the ring centers to the screen
-    print('Ring 0 Center: ' + str(0))
-    print('Ring 1 Center: ' + str(r_ring1_centers))
-    print('Ring 2 Center: ' + str(r_ring2_centers))
-    print('Ring 3 Center: ' + str(r_ring3_centers))
-    print('Ring 4 Center: ' + str(r_ring4_centers))
-    print('Ring 5 Center: ' + str(r_ring5_centers))
-    print('Ring 6 Center: ' + str(r_ring6_centers))
-    print('Ring 7 Center: ' + str(r_ring7_centers))
-    print('Ring 8 Center: ' + str(r_ring8_centers))
-    print('Ring 9 Center: ' + str(r_ring9_centers))
-    print('Ring 10 Center: ' + str(r_ring10_centers))
-    print('Ring 11 Center: ' + str(r_ring11_centers))
+    
+    if print_details == True:
+        # Display the result on the screen
+        print( 'Total Number of Offsets: ' + str(regnum_total) )
+        ###############################################################################
+        # Print the ring centers to the screen
+        print('Ring 0 Center: ' + str(0))
+        print('Ring 1 Center: ' + str(r_ring1_centers))
+        print('Ring 2 Center: ' + str(r_ring2_centers))
+        print('Ring 3 Center: ' + str(r_ring3_centers))
+        print('Ring 4 Center: ' + str(r_ring4_centers))
+        print('Ring 5 Center: ' + str(r_ring5_centers))
+        print('Ring 6 Center: ' + str(r_ring6_centers))
+        print('Ring 7 Center: ' + str(r_ring7_centers))
+        print('Ring 8 Center: ' + str(r_ring8_centers))
+        print('Ring 9 Center: ' + str(r_ring9_centers))
+        print('Ring 10 Center: ' + str(r_ring10_centers))
+        print('Ring 11 Center: ' + str(r_ring11_centers))
     ###############################################################################
     # Calculate the area associated with each offset (the region area)
     reg_area_ring0 = np.pi*(r_ring0**2)/4
@@ -309,19 +311,20 @@ def test_offsets_and_areas_against_example():
     reg_area_ring10 = jitter.Region_Area(r_ring9_outer,r_ring10_outer,360/regnum_ring10)
     reg_area_ring11 = jitter.Region_Area(r_ring10_outer,r_ring11_outer,360/regnum_ring11)
     
-    # Display the areas to the screen
-    print('Region Areas in Ring 0: ' + str(reg_area_ring0))
-    print('Region Areas in Ring 1: ' + str(reg_area_ring1))
-    print('Region Areas in Ring 2: ' + str(reg_area_ring2))
-    print('Region Areas in Ring 3: ' + str(reg_area_ring3))
-    print('Region Areas in Ring 4: ' + str(reg_area_ring4))
-    print('Region Areas in Ring 5: ' + str(reg_area_ring5))
-    print('Region Areas in Ring 6: ' + str(reg_area_ring6))
-    print('Region Areas in Ring 7: ' + str(reg_area_ring7))
-    print('Region Areas in Ring 8: ' + str(reg_area_ring8))
-    print('Region Areas in Ring 9: ' + str(reg_area_ring9))
-    print('Region Areas in Ring 10: ' + str(reg_area_ring10))
-    print('Region Areas in Ring 11: ' + str(reg_area_ring11))
+    if print_details == True:
+        # Display the areas to the screen
+        print('Region Areas in Ring 0: ' + str(reg_area_ring0))
+        print('Region Areas in Ring 1: ' + str(reg_area_ring1))
+        print('Region Areas in Ring 2: ' + str(reg_area_ring2))
+        print('Region Areas in Ring 3: ' + str(reg_area_ring3))
+        print('Region Areas in Ring 4: ' + str(reg_area_ring4))
+        print('Region Areas in Ring 5: ' + str(reg_area_ring5))
+        print('Region Areas in Ring 6: ' + str(reg_area_ring6))
+        print('Region Areas in Ring 7: ' + str(reg_area_ring7))
+        print('Region Areas in Ring 8: ' + str(reg_area_ring8))
+        print('Region Areas in Ring 9: ' + str(reg_area_ring9))
+        print('Region Areas in Ring 10: ' + str(reg_area_ring10))
+        print('Region Areas in Ring 11: ' + str(reg_area_ring11))
     
     # Calculate the total area for normalization
     # The total area of the circle is:
@@ -335,9 +338,14 @@ def test_offsets_and_areas_against_example():
                          + reg_area_ring6*regnum_ring6 + reg_area_ring7*regnum_ring7\
                          + reg_area_ring8*regnum_ring8 + reg_area_ring9*regnum_ring9\
                          + reg_area_ring10*regnum_ring10 + reg_area_ring11*regnum_ring11
-    # Print the comparison to the screen:
-    print('The total area is ' +str(total_area) +'.')
-    print('The sum of the ring areas is ' +str(total_area_of_rings) +'.')
+    
+    if print_details == True:
+        # Print the comparison to the screen:
+        print('The total area is ' +str(total_area) +'.')
+        print('The sum of the ring areas is ' +str(total_area_of_rings) +'.')
+    
+    # The two totals should be nearly identical, allowing for some rounding error
+    assert np.allclose(total_area,total_area_of_rings,atol=0.1) == True
     
     # Calculate the normalized areas
     reg_area_ring0_norm = reg_area_ring0 / total_area
@@ -353,19 +361,20 @@ def test_offsets_and_areas_against_example():
     reg_area_ring10_norm = reg_area_ring10 / total_area
     reg_area_ring11_norm = reg_area_ring11 / total_area
     
-    # Display the areas to the screen
-    print('Normalized Region Areas in Ring 0: ' + str(reg_area_ring0_norm))
-    print('Normalized Region Areas in Ring 1: ' + str(reg_area_ring1_norm))
-    print('Normalized Region Areas in Ring 2: ' + str(reg_area_ring2_norm))
-    print('Normalized Region Areas in Ring 3: ' + str(reg_area_ring3_norm))
-    print('Normalized Region Areas in Ring 4: ' + str(reg_area_ring4_norm))
-    print('Normalized Region Areas in Ring 5: ' + str(reg_area_ring5_norm))
-    print('Normalized Region Areas in Ring 6: ' + str(reg_area_ring6_norm))
-    print('Normalized Region Areas in Ring 7: ' + str(reg_area_ring7_norm))
-    print('Normalized Region Areas in Ring 8: ' + str(reg_area_ring8_norm))
-    print('Normalized Region Areas in Ring 9: ' + str(reg_area_ring9_norm))
-    print('Normalized Region Areas in Ring 10: ' + str(reg_area_ring10_norm))
-    print('Normalized Region Areas in Ring 11: ' + str(reg_area_ring11_norm))
+    if print_details == True:
+        # Display the areas to the screen
+        print('Normalized Region Areas in Ring 0: ' + str(reg_area_ring0_norm))
+        print('Normalized Region Areas in Ring 1: ' + str(reg_area_ring1_norm))
+        print('Normalized Region Areas in Ring 2: ' + str(reg_area_ring2_norm))
+        print('Normalized Region Areas in Ring 3: ' + str(reg_area_ring3_norm))
+        print('Normalized Region Areas in Ring 4: ' + str(reg_area_ring4_norm))
+        print('Normalized Region Areas in Ring 5: ' + str(reg_area_ring5_norm))
+        print('Normalized Region Areas in Ring 6: ' + str(reg_area_ring6_norm))
+        print('Normalized Region Areas in Ring 7: ' + str(reg_area_ring7_norm))
+        print('Normalized Region Areas in Ring 8: ' + str(reg_area_ring8_norm))
+        print('Normalized Region Areas in Ring 9: ' + str(reg_area_ring9_norm))
+        print('Normalized Region Areas in Ring 10: ' + str(reg_area_ring10_norm))
+        print('Normalized Region Areas in Ring 11: ' + str(reg_area_ring11_norm))
     
     # Verify that the areas are correct.
     # The normalized total area of all the rings is:
@@ -375,8 +384,13 @@ def test_offsets_and_areas_against_example():
                          + reg_area_ring6_norm*regnum_ring6 + reg_area_ring7_norm*regnum_ring7\
                          + reg_area_ring8_norm*regnum_ring8 + reg_area_ring9_norm*regnum_ring9\
                          + reg_area_ring10_norm*regnum_ring10 + reg_area_ring11_norm*regnum_ring11
-    # Print the comparison to the screen:
-    print('The sum of the normalized ring areas is ' +str(total_area_of_rings_norm) +'.')
+                             
+    if print_details == True:
+        # Print the comparison to the screen:
+        print('The sum of the normalized ring areas is ' +str(total_area_of_rings_norm) +'.')
+        
+    # The normalized area should be nearly equal to 1, allowing for some rounding error
+    assert np.allclose(total_area_of_rings_norm,1.0,rtol=0.001)
     ###############################################################################
     # Save the offsets and the normalized areas to a text file.
     jitter_data_file = 'Jitter_Data_File.txt'
@@ -562,50 +576,64 @@ def test_offsets_and_areas_against_example():
          jitter.Determine_offsets_and_areas(outer_radius_of_offset_circle, N_rings_of_offsets, N_offsets_per_ring, starting_offset_ang_by_ring,r_ring0,dr_rings)
          
     # Check that the offsets and areas match those calculated above
+    if print_details == True:
+        print('Checking that normalized areas match')
+        print('Ring 0 Difference:' +str(reg_area_ring0_norm - A_offsets[0]))
+        print('Ring 1 Difference:' +str(reg_area_ring1_norm - A_offsets[1]))
+        print('Ring 2 Difference:' +str(reg_area_ring2_norm - A_offsets[2]))
+        print('Ring 3 Difference:' +str(reg_area_ring3_norm - A_offsets[3]))
+        print('Ring 4 Difference:' +str(reg_area_ring4_norm - A_offsets[4]))
+        print('Ring 5 Difference:' +str(reg_area_ring5_norm - A_offsets[5]))
+        print('Ring 6 Difference:' +str(reg_area_ring6_norm - A_offsets[6]))
+        print('Ring 7 Difference:' +str(reg_area_ring7_norm - A_offsets[7]))
+        print('Ring 8 Difference:' +str(reg_area_ring8_norm - A_offsets[8]))
+        print('Ring 9 Difference:' +str(reg_area_ring9_norm - A_offsets[9]))
+        print('Ring 10 Difference:' +str(reg_area_ring10_norm - A_offsets[10]))
+        print('Ring 11 Difference:' +str(reg_area_ring11_norm - A_offsets[11]))
+        
+        print('Checking the offset coordinates')
+        print('Max Ring 0 Difference:' +str(np.max(np.abs(x_offsets[0]-0))) +','\
+                                       +str(np.max(np.abs(y_offsets[0]-0))))
+        print('Max Ring 1 Difference:' +str(np.max(np.abs(x_offsets[1]-x_ring1_centers))) +','\
+                                       +str(np.max(np.abs(y_offsets[1]-y_ring1_centers))))
+        print('Max Ring 2 Difference:' +str(np.max(np.abs(x_offsets[2]-x_ring2_centers))) +','\
+                                       +str(np.max(np.abs(y_offsets[2]-y_ring2_centers))))
+        print('Max Ring 3 Difference:' +str(np.max(np.abs(x_offsets[3]-x_ring3_centers))) +','\
+                                       +str(np.max(np.abs(y_offsets[3]-y_ring3_centers))))
+        print('Max Ring 4 Difference:' +str(np.max(np.abs(x_offsets[4]-x_ring4_centers))) +','\
+                                       +str(np.max(np.abs(y_offsets[4]-y_ring4_centers))))
+        print('Max Ring 5 Difference:' +str(np.max(np.abs(x_offsets[5]-x_ring5_centers))) +','\
+                                       +str(np.max(np.abs(y_offsets[5]-y_ring5_centers))))
+        print('Max Ring 6 Difference:' +str(np.max(np.abs(x_offsets[6]-x_ring6_centers))) +','\
+                                       +str(np.max(np.abs(y_offsets[6]-y_ring6_centers))))
+        print('Max Ring 7 Difference:' +str(np.max(np.abs(x_offsets[7]-x_ring7_centers))) +','\
+                                       +str(np.max(np.abs(y_offsets[7]-y_ring7_centers))))
+        print('Max Ring 8 Difference:' +str(np.max(np.abs(x_offsets[8]-x_ring8_centers))) +','\
+                                       +str(np.max(np.abs(y_offsets[8]-y_ring8_centers))))
+        print('Max Ring 9 Difference:' +str(np.max(np.abs(x_offsets[9]-x_ring9_centers))) +','\
+                                       +str(np.max(np.abs(y_offsets[9]-y_ring9_centers))))
+        print('Max Ring 10 Difference:' +str(np.max(np.abs(x_offsets[10]-x_ring10_centers))) +','\
+                                       +str(np.max(np.abs(y_offsets[10]-y_ring10_centers))))
+        print('Max Ring 11 Difference:' +str(np.max(np.abs(x_offsets[11]-x_ring11_centers))) +','\
+                                       +str(np.max(np.abs(y_offsets[11]-y_ring11_centers))))
     
-    print('Checking that normalized areas match')
-    print('Ring 0 Difference:' +str(reg_area_ring0_norm - A_offsets[0]))
-    print('Ring 1 Difference:' +str(reg_area_ring1_norm - A_offsets[1]))
-    print('Ring 2 Difference:' +str(reg_area_ring2_norm - A_offsets[2]))
-    print('Ring 3 Difference:' +str(reg_area_ring3_norm - A_offsets[3]))
-    print('Ring 4 Difference:' +str(reg_area_ring4_norm - A_offsets[4]))
-    print('Ring 5 Difference:' +str(reg_area_ring5_norm - A_offsets[5]))
-    print('Ring 6 Difference:' +str(reg_area_ring6_norm - A_offsets[6]))
-    print('Ring 7 Difference:' +str(reg_area_ring7_norm - A_offsets[7]))
-    print('Ring 8 Difference:' +str(reg_area_ring8_norm - A_offsets[8]))
-    print('Ring 9 Difference:' +str(reg_area_ring9_norm - A_offsets[9]))
-    print('Ring 10 Difference:' +str(reg_area_ring10_norm - A_offsets[10]))
-    print('Ring 11 Difference:' +str(reg_area_ring11_norm - A_offsets[11]))
+    # The normalized ring areas should match for the two calculation methods.
+    for iring in range(12):
+        s1temp = 'reg_area_ring' + str(iring) +'_norm - A_offsets[' +str(iring) +']'
+        assert np.allclose(eval(s1temp),0)
     
-    print('Checking the offset coordinates')
-    print('Max Ring 0 Difference:' +str(np.max(np.abs(x_offsets[0]-0))) +','\
-                                   +str(np.max(np.abs(y_offsets[0]-0))))
-    print('Max Ring 1 Difference:' +str(np.max(np.abs(x_offsets[1]-x_ring1_centers))) +','\
-                                   +str(np.max(np.abs(y_offsets[1]-y_ring1_centers))))
-    print('Max Ring 2 Difference:' +str(np.max(np.abs(x_offsets[2]-x_ring2_centers))) +','\
-                                   +str(np.max(np.abs(y_offsets[2]-y_ring2_centers))))
-    print('Max Ring 3 Difference:' +str(np.max(np.abs(x_offsets[3]-x_ring3_centers))) +','\
-                                   +str(np.max(np.abs(y_offsets[3]-y_ring3_centers))))
-    print('Max Ring 4 Difference:' +str(np.max(np.abs(x_offsets[4]-x_ring4_centers))) +','\
-                                   +str(np.max(np.abs(y_offsets[4]-y_ring4_centers))))
-    print('Max Ring 5 Difference:' +str(np.max(np.abs(x_offsets[5]-x_ring5_centers))) +','\
-                                   +str(np.max(np.abs(y_offsets[5]-y_ring5_centers))))
-    print('Max Ring 6 Difference:' +str(np.max(np.abs(x_offsets[6]-x_ring6_centers))) +','\
-                                   +str(np.max(np.abs(y_offsets[6]-y_ring6_centers))))
-    print('Max Ring 7 Difference:' +str(np.max(np.abs(x_offsets[7]-x_ring7_centers))) +','\
-                                   +str(np.max(np.abs(y_offsets[7]-y_ring7_centers))))
-    print('Max Ring 8 Difference:' +str(np.max(np.abs(x_offsets[8]-x_ring8_centers))) +','\
-                                   +str(np.max(np.abs(y_offsets[8]-y_ring8_centers))))
-    print('Max Ring 9 Difference:' +str(np.max(np.abs(x_offsets[9]-x_ring9_centers))) +','\
-                                   +str(np.max(np.abs(y_offsets[9]-y_ring9_centers))))
-    print('Max Ring 10 Difference:' +str(np.max(np.abs(x_offsets[10]-x_ring10_centers))) +','\
-                                   +str(np.max(np.abs(y_offsets[10]-y_ring10_centers))))
-    print('Max Ring 11 Difference:' +str(np.max(np.abs(x_offsets[11]-x_ring11_centers))) +','\
-                                   +str(np.max(np.abs(y_offsets[11]-y_ring11_centers))))
+    # The offset coordinates should match for the two methods.
+    assert np.allclose(np.max(np.abs(x_offsets[0])),0)
+    assert np.allclose(np.max(np.abs(y_offsets[0])),0)
+    for iring in range(1,12):
+        sxtemp = 'np.max(np.abs(x_offsets[' + str(iring) + '] - x_ring' +str(iring) + '_centers))'
+        sytemp = 'np.max(np.abs(y_offsets[' + str(iring) + '] - y_ring' +str(iring) + '_centers))'
+        assert np.allclose(eval(sxtemp),0)
+        assert np.allclose(eval(sytemp),0)
     ###############################################################################
-    # Test the automated plotting script
-    
-    jitter.Plot_ALL_Offsets_And_Region_Outlines(x_offsets, y_offsets, x_outer_dict, yu_outer_dict, yl_outer_dict, boundary_coords_dict, N_rings_of_offsets, N_offsets_per_ring)
+    if show_plots == True:
+        # Test the automated plotting script
+        jitter.Plot_ALL_Offsets_And_Region_Outlines(x_offsets, y_offsets, x_outer_dict, yu_outer_dict, yl_outer_dict, boundary_coords_dict, N_rings_of_offsets, N_offsets_per_ring)
 ###############################################################################
 def check_offset_weights():
     
