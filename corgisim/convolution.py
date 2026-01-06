@@ -6,39 +6,14 @@ import numpy as np
 from scipy.signal import fftconvolve
 import astropy.io.fits as fits
 import astropy.units as u
-import time
-import proper
-import sys
-import constant
-
 from astropy.io import fits
-
-def _generate_prf_dictionary(radial_param, azimuthal_param, dm_solution) -> dict:
-    """
-    Collect metadata associated with the PRF cube, including:
-    - Sampling of the PRFs in lam/D 
-    - Optics keywords used to generate the PRFs
-    - DM solution information
-    
-    Args:
-        radial_param (dict): Dictionary of radial grid parameters.
-        azimuthal_param (dict): Dictionary of azimuthal grid parameters.
-        dm_solution (any): Initial DM solution information.
-        
-    Returns: 
-        dict: Combined dictionary of all parameters, excluding large arrays
-    """
-    exclude_keys = {'dm1_v', 'dm2_v'}  # Exclude large arrays from optics keywords
-    
-    # Combine all dictionaries
-    combined_params = {
-        **radial_param,
-        **azimuthal_param,
-        'dm_solution': dm_solution
-    }
-    combined_params['unit'] = '???' # Placeholder for unit information
-    
-    return combined_params
+from corgisim.scene import SimulatedImage
+import corgisim
+from synphot import units, SourceSpectrum, SpectralElement, Observation
+from corgisim import outputs, spec
+from scipy import interpolate
+import astropy.units as u
+import corgisim.constants as constants
 
 def binning(img: np.ndarray, binning_factor: int) -> np.ndarray:
     """
@@ -202,60 +177,6 @@ def build_azimuth_grid(step_deg):
     
     # Generate angles from 0 to 360° with the specified step
     return np.arange(0, 360, step_deg) * u.deg, param
-
-def create_wavelength_grid_and_weights(wvl_um, source_sed):
-    """
-    Build a wavelength grid in microns and normalised spectral weights.
-
-    If `source_sed` is None, a flat spectrum (equal weights) is assumed.
-
-    Parameters
-    ----------
-    wvl_um : float or array‐like
-        Single wavelength or list of wavelengths in microns.
-    source_sed : array‐like or None
-        Spectral energy distribution weights for each wavelength.
-        If None, uses a flat spectrum (equal weight per wavelength).
-
-    Returns
-    -------
-    lam_grid : numpy.ndarray
-        Array of wavelengths (float) in microns.
-    lam_wts : numpy.ndarray
-        Normalised weights (sum to 1) corresponding to each entry in `lam_grid`.
-
-    Raises
-    ------
-    ValueError
-        If `source_sed` is provided but its length does not match `lam_grid`.
-    """
-    # Convert to array (handles both single values and lists)
-    lam_grid = np.atleast_1d(u.Quantity(wvl_um, u.micron).value)
-    n_lambda = len(lam_grid)
-    
-    # Handle spectral weights
-    # TODO - not fully implemented. For now it is just checking the basic: non zero and total not zero    
-    if source_sed is None:
-        lam_wts = np.ones(n_lambda) / n_lambda
-
-    else:
-        source_sed = np.asarray(source_sed, float)
-        if (source_sed < 0).any():
-            raise ValueError("source_sed must not contain negative values")
-
-        total = source_sed.sum()
-        if total <= 0:
-            raise ValueError("source_sed weights must sum to a positive value")
-
-        if source_sed.size != n_lambda:
-            raise ValueError(
-                f"source_sed length ({source_sed.size}) must equal "
-                f"wavelength grid length ({n_lambda})"
-            )
-
-        lam_wts = source_sed / total
-
-    return lam_grid, lam_wts
 
 def get_valid_polar_positions(radii_lamD, azimuths_deg):
     """
@@ -425,84 +346,6 @@ def pixel_to_polar(img_shape, pix_scale_mas, res_mas):
     azimuth_deg  = np.degrees(np.arctan2(yy - cy, xx - cx)) % 360
 
     return radii_lamD, azimuth_deg
-
-def resize_prf_cube(prf_cube, target_scene_shape):
-    """
-    Centre‐crop or pad a PRF cube to match scene dimensions.
-
-    Ensures the PSF centre remains aligned by handling both even and odd
-    dimension differences, padding with zeros or trimming as required.
-
-    Parameters
-    ----------
-    prf_cube : ndarray, shape (n_prfs, prf_height, prf_width)
-        Input cube of PRF images.
-    target_scene_shape : tuple of int
-        Desired output shape `(target_height, target_width)`.
-
-    Returns
-    -------
-    ndarray, shape (n_prfs, target_height, target_width)
-        PRF cube resized to `target_scene_shape`, centred via padding
-        or cropping.
-    """
-    target_height, target_width = target_scene_shape
-    n_prfs, prf_height, prf_width = prf_cube.shape
-    
-    # Calculate true centers
-    prf_center_y = (prf_height - 1) / 2.0
-    prf_center_x = (prf_width - 1) / 2.0
-    target_center_y = (target_height - 1) / 2.0
-    target_center_x = (target_width - 1) / 2.0
-    
-    # Calculate shifts needed to align centers
-    shift_y = int(round(target_center_y - prf_center_y))
-    shift_x = int(round(target_center_x - prf_center_x))
-    
-    # Determine crop/pad regions for height
-    if shift_y >= 0:
-        pad_top = shift_y
-        pad_bottom = target_height - prf_height - pad_top
-        crop_start_y, crop_end_y = 0, prf_height
-    else:
-        pad_top = 0
-        pad_bottom = max(0, target_height - prf_height + abs(shift_y))
-        crop_start_y = abs(shift_y)
-        crop_end_y = min(prf_height, crop_start_y + target_height)
-    
-    # Determine crop/pad regions for width
-    if shift_x >= 0:
-        pad_left = shift_x
-        pad_right = target_width - prf_width - pad_left
-        crop_start_x, crop_end_x = 0, prf_width
-    else:
-        pad_left = 0
-        pad_right = max(0, target_width - prf_width + abs(shift_x))
-        crop_start_x = abs(shift_x)
-        crop_end_x = min(prf_width, crop_start_x + target_width)
-    
-    # Apply cropping
-    cropped_cube = prf_cube[:, crop_start_y:crop_end_y, crop_start_x:crop_end_x]
-    
-    # Apply padding
-    if pad_top > 0 or pad_bottom > 0 or pad_left > 0 or pad_right > 0:
-        padded_cube = np.pad(cropped_cube, 
-                           [(0, 0), (max(0, pad_top), max(0, pad_bottom)), 
-                            (max(0, pad_left), max(0, pad_right))], 
-                           mode="constant", constant_values=0)
-    else:
-        padded_cube = cropped_cube
-    
-    # Final size check and correction
-    current_height, current_width = padded_cube.shape[1], padded_cube.shape[2]
-    if current_height != target_height or current_width != target_width:
-        final_cube = np.zeros((n_prfs, target_height, target_width), dtype=prf_cube.dtype)
-        copy_h = min(current_height, target_height)
-        copy_w = min(current_width, target_width)
-        final_cube[:, :copy_h, :copy_w] = padded_cube[:, :copy_h, :copy_w]
-        return final_cube
-    
-    return padded_cube
 
 def convolve_with_prfs(obj, prfs_array, radii_lamD, azimuths_deg,
                        pix_scale_mas, res_mas, use_bilinear_interpolation=False):
