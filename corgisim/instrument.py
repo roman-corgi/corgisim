@@ -882,8 +882,8 @@ class CorgiOptics():
             raise ValueError(f"Unsupported scene type: {type(input_scene)}")
 
         if self.cgi_mode in ['spec', 'lowfs', 'excam_efield']:
-            raise ValueError(f"The mode '{self.cgi_mode}' has not been implemented yet!")
-        
+            warnings.warn(f"This mode '{self.cgi_mode}' has not implmented yet!") # still allow the usage but warn the user about this
+            
         # Initialize SimulatedImage class to restore the output psf
         if sim_scene == None:
             sim_scene = scene.SimulatedImage(input_scene)
