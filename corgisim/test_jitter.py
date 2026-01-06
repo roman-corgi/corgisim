@@ -739,6 +739,7 @@ def check_offset_weights(show_plots=False,print_details=False):
 def test_obs_with_finite_stellar_diam():
     '''
      This function tests running an observation sequence with finite stellar diameter included.
+     For now, the main purpose is to check that the test runs without anything crashing.
     '''
     
     # Set up keywords
@@ -782,6 +783,7 @@ def test_obs_with_finite_stellar_diam():
     
     return simulatedImage_list
    
+    # TODO: Test the following assertions or add appropriately modified ones.
     # Try getting out just the onaxis electric field
     #assert isinstance(simulatedImage_list, list)
     #assert len(simulatedImage_list) == n_frames
