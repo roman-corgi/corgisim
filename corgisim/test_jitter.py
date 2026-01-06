@@ -858,7 +858,7 @@ def test_weight_calculation():
     sim_scene = optics.get_host_star_psf(base_scene)
     
 ###############################################################################
-def basic_weight_calculation_test(show_plots=False,print_details=False):
+def test_basic_weight_calculation(show_plots=False,print_details=False):
     '''
     Testing replacing interp2d as the interpolation method when calculating the weights
     '''
@@ -1018,4 +1018,4 @@ if __name__ == '__main__':
     #test_offsets_and_areas_against_example()
     test_obs_with_finite_stellar_diam()
     #test_weight_calculation()
-    #basic_weight_calculation_test()
+    #test_basic_weight_calculation()
