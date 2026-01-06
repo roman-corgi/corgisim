@@ -21,15 +21,7 @@ import time
 import sys
 import astropy.units as u
 import corgisim.constants as constants
-
-from corgisim.convolution import (
-    create_wavelength_grid_and_weights,
-    build_radial_grid,
-    build_azimuth_grid,
-    convolve_with_prfs, 
-    get_valid_polar_positions,
-    _generate_prf_dictionary
-)
+import corgisim.convolution as conv
 
 from corgisim.scene import Scene, SimulatedImage
 
@@ -698,7 +690,7 @@ class CorgiOptics():
                                        'final_sampling_m': sampling_um_tem * 1e-6,
                                        'source_x_offset_mas': dx,
                                        'source_y_offset_mas': dy})
-
+        
         # # Configure PROPER simulation options
         # simulation_options = dict(self.optics_keywords,
         #                         source_x_offset=dx,
