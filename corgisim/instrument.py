@@ -691,14 +691,6 @@ class CorgiOptics():
                                        'source_x_offset_mas': dx,
                                        'source_y_offset_mas': dy})
         
-        # # Configure PROPER simulation options
-        # simulation_options = dict(self.optics_keywords,
-        #                         source_x_offset=dx,
-        #                         source_y_offset=dy,
-        #                         output_dim=self.grid_dim_out * self.oversampling_factor,
-        #                         final_sampling_m=)
-        #                         # final_sampling_m=self.sampling_um / self.oversampling_factor * 1e-6)
-        
         # Run PROPER simulation
         (fields, sampling) = proper.prop_run_multi('roman_preflight', wavelength_grid, 1024,PASSVALUE= optics_keywords_comp, QUIET=self.quiet)
 
