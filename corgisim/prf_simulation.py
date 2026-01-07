@@ -277,6 +277,7 @@ def make_prf_cube(optics, radii_lamD, azimuths_deg, prf_dict, source_sed=None, o
     show_progress = num_positions > 50  # Show progress bar for larger jobs
 
     for i, (radius_lamD, azimuth_angle) in enumerate(valid_positions):
+        # for r_lamD -> compute off-axis PSF(for all azimuths)
         prf_cube[i] = compute_single_off_axis_psf(optics, radius_lamD, azimuth_angle, wavelength_grid, wavelength_weights)
 
         if show_progress:  # Only show progress for larger jobs
