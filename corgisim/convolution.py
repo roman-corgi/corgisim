@@ -244,11 +244,23 @@ def bilinear_indices_weights(r_lamD, theta_deg, radii_lamD, azimuths_deg):
     """
     Compute bilinear‐interpolation indices and weights for PRF sampling.
 
-    Determines, for each pixel, the four surrounding PRF indices and their
-    interpolation weights (α, β).
+    For each pixel, this function identifies the four surrounding PRF grid points on a
+    polar grid (r, θ) and computes the corresponding weights. These indices and weight are used 
+    to smoothly interpolate between neighbouring PRFs for field-dependent convolution.
+
+    The interpolation is separable in radius and azimuth, and follow this form:
+        α = (r - r_low) / (r_high - r_low)
+        β = (θ - θ_low) / (θ_high - θ_low)
+
+    where (r_low, θ_low) and (r_high, θ_high) are the two neighbouring grid points. 
+
+    The four interpolation weights are then given by: 
+        w00 = (1 - α) * (1 - β)
+        w10 = α * (1 - β)
+        w01 = (1 - α) * β
+        w11 = α * β
     
-    α: radial weight (fraction between radial_id_low and radial_id_high)
-    β: azimuthal weight (fraction between theta_id_low and theta_id_high)
+    with (w00, w10, w01, w11) summing to unity for each pixel. 
 
     Parameters
     ----------
@@ -264,40 +276,60 @@ def bilinear_indices_weights(r_lamD, theta_deg, radii_lamD, azimuths_deg):
     Returns
     -------
     indices : tuple of ndarray
-        Four integer arrays `(k00, k10, k01, k11)` giving PRF‐cube slice
-        indices for the four surrounding grid points.
+        Four integer arrays `(id00, id10, id01, id11)`. These give the flat PRF-cube indices 
+        corresponding to the four surrounding (r, θ) grid points for each pixel.
+
     weights : tuple of ndarray
-        Four float arrays `(w00, w10, w01, w11)` giving the bilinear weights 
-        for each corresponding index.
+        Four float arrays `(w00, w10, w01, w11)` giving the weights associated with each index. 
+        For each pixel, the weights sum to 1.
+
+    Notes
+    -----
+    - This function only computes the geometry-dependent PRF indices and weights. 
+    - The PRF cube is assumed to contain only off axis PRFs. 
+    - When interpolation collapses to a single radial node (r_low == r_high),
+       α is set to zero, corresponding to full weight on the lower PRF.
     """
 
+    # Number of azimuthal sampling points and corresponding angular step
     n_azimuth = len(azimuths_deg)
     step   = 360 / n_azimuth
 
-    # Find the nearest azimuthal points and weights
+    # --- Azimuthal indices and weights ---
+    # Identify the lower azimuth index for each pixel (wrapped at 360 deg)
     theta_id_low  = (theta_deg // step).astype(int) % n_azimuth
     theta_id_high  = (theta_id_low + 1) % n_azimuth
-    beta   = (theta_deg - theta_id_low * step) / step
 
-    # Find radial points and weights
+    # Fractional azimuthal offset between the two azimuth grid points
+    beta = (theta_deg - theta_id_low * step) / step
+
+    # --- Radial indices and weights ---
+    # Identify the two neighbouring radial grid points by binning. 
+    # Indices are clipped to avoid the excluded on-axis PRF. 
     radial_id_high = np.digitize(r_lamD, radii_lamD).clip(1, len(radii_lamD) - 1)
-    radial_id_low  = radial_id_high - 1
+    radial_id_low  = (radial_id_high - 1).clip(1, len(radii_lamD) - 1)
 
-    # Find radial weights (handle identical radii)
+    # Radial spacing between the two neighbouring grid points 
     dr     = radii_lamD[radial_id_high] - radii_lamD[radial_id_low]
+
+    # Fractional radial interpolation weight (alpha); zero when dr=0 but only perform division where dr != 0
     alpha  = np.divide(r_lamD - radii_lamD[radial_id_low], dr,
                        out=np.zeros_like(r_lamD), where=dr != 0)
 
-    # Convert to flat PRF indices (same logic as nearest_id_map)
+    # --- Mapping from (r, θ) grid indices to flat PRF cube indices --
+    # on-axis PRF is excluded. 
     def grid_to_flat_index(r_idx, theta_idx):
-        return np.where(r_idx == 0, 0, 1 + (r_idx - 1) * n_azimuth + theta_idx)
+        return (r_idx - 1) * n_azimuth + theta_idx
 
-    # Four corners of the bilinear interpolation
-    id_00 = grid_to_flat_index(radial_id_low, theta_id_low) # radial_id_low, theta_id_low
-    id_10 = grid_to_flat_index(radial_id_high, theta_id_low) # radial_id_high, theta_id_low
-    id_01 = grid_to_flat_index(radial_id_low, theta_id_high) # radial_id_low, theta_id_high
-    id_11 = grid_to_flat_index(radial_id_high, theta_id_high) # radial_id_high, theta_id_high
+    # --- Four interpolation corners ---- 
+    # (radial_id_low/high, theta_id_low/high)
+    id_00 = grid_to_flat_index(radial_id_low, theta_id_low)
+    id_10 = grid_to_flat_index(radial_id_high, theta_id_low)
+    id_01 = grid_to_flat_index(radial_id_low, theta_id_high) 
+    id_11 = grid_to_flat_index(radial_id_high, theta_id_high) 
 
+    # --- Weights --- 
+    # For each pixel, the four weights sum to 1. 
     w00 = (1 - alpha) * (1 - beta)
     w10 = alpha * (1 - beta)
     w01 = (1 - alpha) * beta
