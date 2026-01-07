@@ -604,7 +604,21 @@ def simulate_2d_scene(optics, input_scene, output_scene=None, interpolate_prfs=F
     prf_cube_path = input_scene.twoD_scene_info['prf_path'] 
 
     prf_sim_info = prf_simulation._get_prf_sim_info(prf_cube_path) # Get the simulation information 
-    
+
+    print(prf_sim_info)
+    # Check if PRF cube needs centering
+
+    prf_info_is_centred = prf_sim_info.get('centred') # 'True' or 'False'
+    # Convert string to boolean
+    is_centred = (prf_info_is_centred == 'True') 
+
+    if not is_centred:
+        print("PRF cube is not centred. centring now...")
+        from corgisim.prf_simulation import centre_prf_cube
+        prf_cube = centre_prf_cube(fits.getdata(prf_cube_path), method='centroid')
+    else: 
+        prf_cube = fits.getdata(prf_cube_path)
+
     # 1. Get the radii grids for convolution 
     radii_lamD, _ = build_radial_grid(
         prf_sim_info['iwa'], 
@@ -621,7 +635,7 @@ def simulate_2d_scene(optics, input_scene, output_scene=None, interpolate_prfs=F
     # 3. Perform convolution
     conv2d = _convolve_with_prfs(
         obj=disk_model_norm, 
-        prfs_array=fits.getdata(prf_cube_path), 
+        prfs_array=prf_cube, 
         radii_lamD=radii_lamD , 
         azimuths_deg=azimuths_deg, 
         pix_scale_mas=constants.PIXEL_SCALE_ARCSEC * 1e3, 
