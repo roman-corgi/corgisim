@@ -605,9 +605,7 @@ def simulate_2d_scene(optics, input_scene, output_scene=None, interpolate_prfs=F
 
     prf_sim_info = prf_simulation._get_prf_sim_info(prf_cube_path) # Get the simulation information 
 
-    print(prf_sim_info)
     # Check if PRF cube needs centering
-
     prf_info_is_centred = prf_sim_info.get('centred') # 'True' or 'False'
     # Convert string to boolean
     is_centred = (prf_info_is_centred == 'True') 
