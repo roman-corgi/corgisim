@@ -7,13 +7,12 @@ from scipy.signal import fftconvolve
 import astropy.io.fits as fits
 import astropy.units as u
 from astropy.io import fits
-from corgisim.scene import SimulatedImage
 import corgisim
 from synphot import units, SourceSpectrum, SpectralElement, Observation
-from corgisim import outputs, spec
+from corgisim import outputs, spec, prf_simulation, constants
+from corgisim.scene import SimulatedImage
 from scipy import interpolate
 import astropy.units as u
-import corgisim.constants as constants
 
 def binning(img: np.ndarray, binning_factor: int) -> np.ndarray:
     """
