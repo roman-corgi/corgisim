@@ -375,20 +375,68 @@ def pixel_to_polar(img_shape, pix_scale_mas, res_mas):
 
     return radii_lamD, azimuth_deg
 
-def convolve_with_prfs(obj, prfs_array, radii_lamD, azimuths_deg,
-                       pix_scale_mas, res_mas, use_bilinear_interpolation=False):
-    """
-    Perform a field‐dependent PSF convolution. 
+def _set_2D_image_sim_info(optics, input_scene): 
+    # Prepare additional information to be added as COMMENT headers in the primary HDU.
+    # These are different from the default L1 headers, but extra comments that are used to track simulation-specific details.
+    # TODO - standardize this across different simulation functions?
 
-    Applies either nearest‐neighbour or bilinear interpolation of off‐axis PRFs. 
-    All PRFs are assumed to be centred in their arrays.
+    sim_info = {'host_star_sptype':input_scene.host_star_sptype,
+                'host_star_Vmag':input_scene.host_star_Vmag,
+                'host_star_magtype':input_scene.host_star_magtype,
+                'ref_flag':input_scene.ref_flag,
+                'cgi_mode':optics.cgi_mode,
+                'cor_type': optics.optics_keywords['cor_type'],
+                'bandpass':optics.bandpass_header,
+                'over_sampling_factor':optics.oversampling_factor,
+                'return_oversample': optics.return_oversample,
+                'output_dim': optics.optics_keywords['output_dim'],
+                'nd_filter': optics.nd, 
+                'SATSPOTS': optics.SATSPOTS,
+                'includ_dectector_noise': 'False'
+                }
+
+    # Define specific keys from optics.optics_keywords to include in the header            
+    keys_to_include_in_header = ['use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
+                        'use_lyot_stop','use_field_stop','fsm_x_offset_mas','fsm_y_offset_mas','slit','prism',
+                        'slit_x_offset_mas','slit_y_offset_mas']  # Specify keys to include
+
+    subset = {key: optics.optics_keywords[key] for key in keys_to_include_in_header if key in optics.optics_keywords}
+    sim_info.update(subset)
+
+    return sim_info
+
+def _convolve_with_prfs(obj, prfs_array, radii_lamD, azimuths_deg,
+                       pix_scale_mas, res_mas, interpolate_prfs=False):
+    """
+    Apply a field-dependent convolution using a library of off-axis PRFs.
+
+    This function performs a spatially varying convolution in which the
+    convolution kernel depends on the pixel location in the focal plane.
+    Each pixel is mapped to polar coordinates (r, theta) expressed in
+    lambda over D and degrees, and is assigned an off-axis point response
+    function (PRF) from a precomputed PRF cube.
+
+    The result is constructed by grouping pixels that share the same PRF
+    index (or weighted PRF combination), convolving each weighted sub-scene
+    with the corresponding PRF, and summing all contributions.
+
+    Two PRF selection modes are supported:
+
+    - Nearest-neighbour selection (`interpolate_prfs=False`):
+      Each pixel uses the single PRF whose (r, theta) sampling node is closest
+      to the pixel location. 
+
+    - Bilinear interpolation (`interpolate_prfs=True`):
+      Each pixel uses a weighted combination of up to four neighbouring PRFs
+      on the (r, theta) sampling grid. Weights vary smoothly with position,
+      reducing discontinuities.
 
     Parameters
     ----------
     obj : ndarray
-        Input 2D image array to be convolved (e.g. scene background).
-    prfs_array : ndarray
-        PRF cube of shape (N_prf, prf_height, prf_width).
+        Input 2D image array to be convolved.
+    prfs_array : ndarray, (N_prf, prf_height, prf_width)
+        PRF cube. Each slice contains one off-axis PRF. All PRFs are assumed to be centred in their arrays.
     radii_lamD : array‐like
         Radial sampling nodes in λ/D (must include 0).
     azimuths_deg : astropy.units.Quantity
@@ -397,48 +445,79 @@ def convolve_with_prfs(obj, prfs_array, radii_lamD, azimuths_deg,
         Detector pixel scale in milliarcseconds per pixel.
     res_mas : float
         Conversion factor: 1 λ/D → milliarcseconds.
-    use_bilinear_interpolation : bool, optional
-        If True, use bilinear (4‐PRF) interpolation; otherwise use nearest‐neighbour.
-        Default is False.
+    interpolate_prfs : bool, optional
+        If True, interpolate between neightbouring PRFs in (r, θ) space 
+        using bilinear weights (mixing up to 4 PRFs per pixel). 
+        If False, use the nearest-neighbour PRF per pixel. 
 
+        The default is False.
+    
     Returns
     -------
-    conv : ndarray
-        Convolved (blurred) 2D image, same shape as `obj`.
+    conv : ndarray, shape (H, W)
+        Convolved image, same shape as `obj`.
+
+    Notes
+    -----
+    - The PRF cube is resized internally to match the shape of `obj`
+      prior to convolution.
+    - The PRFs are assumed to represent the instrument intensity response to a
+      unit-flux off-axis point source. Absolute flux scaling must be applied
+      separately.
+    - Convolution is computed via FFTs and accumulated over the set of PRF
+      indices present in the field.
     """
 
+    # Map pixels to polar coordinates (r, theta) in lambda/D and degrees
     r_lamD, theta_deg = pixel_to_polar(obj.shape, pix_scale_mas, res_mas)
-    prfs_resized = resize_prf_cube(prfs_array, obj.shape)
+
+    # Resize PRFs to match the shape of the object
+    prfs_resized = prf_simulation.resize_prf_cube(prfs_array, obj.shape)
+
+    # Accumulator for the field-dependent convolution result.
     conv = np.zeros_like(obj, dtype=float)
     
-    if not use_bilinear_interpolation:
-        # Nearest-neighbor convolution
+    if not interpolate_prfs:
+        # Nearest-neighbor 
+        # Each pixel is assigned directly to its nearest PRF index 
         prf_ids = nearest_id_map(r_lamD, theta_deg, radii_lamD, azimuths_deg)
         
+        # Select PRF indices that are assigned to at least one pixel; each PRF is convolved once
         for prf_idx in np.unique(prf_ids):
-            mask = (prf_ids == prf_idx)
+            # True for pixels whose field position maps to this PRF index
+            mask = (prf_ids == prf_idx) 
             if np.any(mask):
                 weighted_scene = obj * mask
                 conv += fftconvolve(weighted_scene, prfs_resized[prf_idx], mode="same")
     
     else:
         # Bilinear interpolation convolution
+        # each pixel contributes to up to four neighbouring PRFs with position-dependent weights
+        # Here the inputs will contain r=0
         indices, weights = bilinear_indices_weights(r_lamD, theta_deg, radii_lamD, azimuths_deg)
+        
+        # PRF indices for the four surrounding (r, θ) grid points at each pixel
         idx_00, idx_10, idx_01, idx_11 = indices
+        
+        # Corresponding bilinear interpolation weights per pixel (sum to 1 per pixel)
         w_00, w_10, w_01, w_11 = weights
         
+        # Collect all PRF indices that appear in any of the four index maps
+        # to ensure each contributing PRF is processed only once
         all_indices = np.concatenate([
             idx_00.ravel(), idx_10.ravel(), idx_01.ravel(), idx_11.ravel()
         ])
         unique_prfs = np.unique(all_indices)
         
         for prf_idx in unique_prfs:
+            # Build the spatial weight map for this PRF by summing contributions
+            # Pixels that do not reference this PRF receive zero weight.
             weight_map = (
                 np.where(idx_00 == prf_idx, w_00, 0.0) +
                 np.where(idx_10 == prf_idx, w_10, 0.0) +
                 np.where(idx_01 == prf_idx, w_01, 0.0) +
                 np.where(idx_11 == prf_idx, w_11, 0.0)
-            )
+            ) 
             
             if np.any(weight_map > 0):
                 weighted_scene = obj * weight_map
@@ -446,4 +525,124 @@ def convolve_with_prfs(obj, prfs_array, radii_lamD, azimuths_deg,
     
     return conv
 
-#TODO - add the fourier shift in here!
+def flux_calibration_2D_scene(optics, input_scene, conv2d):
+    # NOTE: An attempt to convert flux units to physical units after convolution
+    # normalize to the given contrast
+    # obs: flux is in unit of photons/s/cm^2/angstrom
+    obs = Observation(input_scene.twoD_scene_spectrum, optics.bp)
+    counts = np.zeros((optics.lam_um.shape[0]))
+    for i in range(optics.lam_um.shape[0]):
+        dlam_um = optics.lam_um[1]-optics.lam_um[0]
+        lam_um_l = (optics.lam_um[i]- 0.5*dlam_um) * 1e4 ## unit of anstrom
+        lam_um_u = (optics.lam_um[i]+ 0.5*dlam_um) * 1e4 ## unit of anstrom
+        counts[i] = (optics.polarizer_transmission * obs.countrate(area=optics.area, waverange=[lam_um_l, lam_um_u])).value
+
+    psf_area = np.pi*(optics.res_mas/(constants.PIXEL_SCALE_ARCSEC*1e3)/2)**2 # area of the PSF FWHM in the unit of pixel
+    disk_region = (conv2d > 0.5*np.max(conv2d)).sum()  # number of pixs in the disk region (>=50% maximum disk flux) 
+    conv2d *= np.sum(counts, axis=0) * disk_region/psf_area   # per resolution element
+
+    return conv2d 
+
+def simulate_2d_scene(optics, input_scene, output_scene=None, interpolate_prfs=False):
+    """
+    Convolve 2D scene with a pre-computed off-axis PRF cube.
+
+    This function reads a disk model from `input_scene.twoD_scene_info['disk_model_path']`,
+    normalizes it, and performs a field-dependent 2D convolution using a precomputed PRF cube
+    stored at `input_scene.twoD_scene_info['prf_path']`. The PRF sampling (radii in lambda/D and azimuthal angles)
+    is reconstructed from the PRF cube metadata. The convolution can be done using either nearest-neighbor
+    or interpolation between PRFs, controlled by the `interpolate_prfs` flag. 
+
+    After convolution, the result is scaled to a count rate integrated over the bandpass defined by 
+    `optics.bp` and `intput_scene.twoD_scene_spectrum`. The scaled convolved object is stored in 
+    `output_scene.twoD_images` as an HDU with simulation metadata written as FITS COMMENT. 
+
+    Parameters
+    ----------
+    optics: (corgisim.instrument.CorgiOptics): The optics object defining the
+            instrument configuration, including the telescope and coronagraph.
+    input_scene : Scene 
+        Scene object containing 2D image data to be convolved.
+    output_scene: SimulatedImage, optional
+        If provided, the convolved image will be stored in this object.
+    interpolate_prfs: bool, optional
+        Whether to use interpolation between PRFs for convolution.
+
+    Returns
+    -------
+    output_scene : SimulatedImage
+        Output scene with `twoD_image` replaced by the convolved and scaled result.
+
+    Raises
+    ------
+    ValueError
+        If `input_scene.twoD_scene_info['prf_path']` is missing or None.
+
+    Notes
+    -----
+    - The PRF cube is assumed to be already centred in its arrays. #TODO - add shifting? 
+    - The PRF cube is assumed to be normalised to unit input flux. Absolute flux
+        scaling is applied in this function using the input scene spectrum and the
+        optics bandpass.
+    - The disk model is normalised by its total flux prior to convolution.
+    - After convolution, the image is scaled using the integrated bandpass count
+        rate and converted to a per resolution element normalisation using an
+        estimate of the PSF FWHM area (pixels) and a thresholded disk region mask.
+    - The output is intended to represent a count rate (photoelectrons per second),
+        consistent with `Observation.countrate`.
+    """
+    # Determine which mode to use based on provided kwargs
+    if input_scene.twoD_scene_info['prf_path'] is not None:
+        has_prf_cube = True 
+    else:
+        raise ValueError("No PRF cube path provided in scene.twoD_scene_info")
+    
+    # input disk model
+    disk_model_data = fits.getdata(input_scene.twoD_scene_info['disk_model_path'])
+    disk_model_norm = disk_model_data/np.nansum(disk_model_data, axis=(0,1)) # normalisation of the disk
+
+    prf_cube_path = input_scene.twoD_scene_info['prf_path'] 
+
+    prf_sim_info = prf_simulation._get_prf_sim_info(prf_cube_path) # Get the simulation information 
+    
+    # 1. Get the radii grids for convolution 
+    radii_lamD, _ = build_radial_grid(
+        prf_sim_info['iwa'], 
+        prf_sim_info['owa'], 
+        prf_sim_info['inner_step'], 
+        prf_sim_info['mid_step'], 
+        prf_sim_info['outer_step'],
+        prf_sim_info['max_radius']
+    )
+
+    # 2. Get the azimuth grid for convolution
+    azimuths_deg, _ = build_azimuth_grid(prf_sim_info['step_deg'])
+
+    # 3. Perform convolution
+    conv2d = _convolve_with_prfs(
+        obj=disk_model_norm, 
+        prfs_array=fits.getdata(prf_cube_path), 
+        radii_lamD=radii_lamD , 
+        azimuths_deg=azimuths_deg, 
+        pix_scale_mas=constants.PIXEL_SCALE_ARCSEC * 1e3, 
+        res_mas=optics.res_mas, 
+        interpolate_prfs=interpolate_prfs
+        )
+
+    # NOTE: An attempt to convert flux units to physical units after convolution
+    # 4. Flux calibration
+    flux_calibrated_conv2D = flux_calibration_2D_scene(optics, input_scene, conv2d)
+
+    if optics.cgi_mode in ['spec', 'lowfs', 'excam_efield']:
+        warnings.warn(f"This mode '{optics.cgi_mode}' has not implmented yet!") # still allow the usage but warn the user about this
+
+    if output_scene is None:
+        # No output format was specified - create a new SimulatedImage object
+        output_scene = SimulatedImage(input_scene)
+
+    sim_info = _set_2D_image_sim_info(optics, input_scene)
+
+    # Create the HDU object with the generated header information
+    output_scene.twoD_image = outputs.create_hdu(flux_calibrated_conv2D, sim_info=sim_info)
+
+    return output_scene
