@@ -199,8 +199,8 @@ def get_valid_polar_positions(radii_lamD, azimuths_deg):
     azimuths_deg = u.Quantity(azimuths_deg, u.deg)
     radius_grid, azimuth_grid = np.meshgrid(radii_lamD, azimuths_deg, indexing="ij")
     
-    # Filter out invalid positions: radius=0 with non-zero angle
-    valid_mask = ~((radius_grid == 0) & (azimuth_grid != 0 * u.deg))
+    # Filter out invalid positions: radius=0 with non-zero angle and (0,0)
+    valid_mask = radius_grid > 0.0
     valid_radii = radius_grid.ravel()[valid_mask.ravel()]
     valid_azimuths = azimuth_grid.ravel()[valid_mask.ravel()]
     
