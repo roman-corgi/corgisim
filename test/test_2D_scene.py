@@ -68,11 +68,12 @@ def test_build_radial_grid():
     """Test radial grid construction."""
     from corgisim.convolution import build_radial_grid
     
-    radii = build_radial_grid(iwa=2.0, owa=8.0, inner_step=0.5, mid_step=1.0, outer_step=2.0)
+    radii, param = build_radial_grid(iwa=2.0, owa=8.0, inner_step=0.5, mid_step=1.0, outer_step=2.0)
     
     assert isinstance(radii, np.ndarray)
     assert radii[0] == 0.0
     assert len(radii) > 0
+    assert isinstance(param, dict)
     
     # Test error cases
     with pytest.raises(ValueError):
@@ -84,6 +85,8 @@ def test_build_radial_grid():
 def test_build_azimuth_grid():
     """Test azimuth grid creation."""
     from corgisim.convolution import build_azimuth_grid
+
+    azimuths, param = build_azimuth_grid(90.0)
         
     # Test error cases
     with pytest.raises(ValueError):
@@ -94,7 +97,7 @@ def test_build_azimuth_grid():
 
 def test_create_wavelength_grid_and_weights():
     """Test wavelength grid creation."""
-    from corgisim.convolution import create_wavelength_grid_and_weights
+    from corgisim.prf_simulation import create_wavelength_grid_and_weights
     
     # Test error cases
     with pytest.raises(ValueError):
@@ -111,10 +114,20 @@ def test_get_valid_positions():
     azimuths = [0.0, 90.0] * u.deg
     positions = get_valid_polar_positions(radii, azimuths)
     
-    # Should exclude (0, 90°) but include (0, 0°)
-    assert (0.0, 0.0 * u.deg) in positions
-    assert (0.0, 90.0 * u.deg) not in positions
-    assert len(positions) == 5  # 1 + 2*2
+    # Should exclude ALL positions at r=0 (including (0, 0°))
+    # because at the exact center, angle is meaningless
+    # Only off-axis positions should be included: (1,0°), (1,90°), (2,0°), (2,90°)
+    assert len(positions) == 4  # 2 radii * 2 azimuths
+    
+    # Verify no r=0 positions are included
+    for r, theta in positions:
+        assert r > 0.0, f"Found invalid r=0 position: ({r}, {theta})"
+    
+    # Verify expected positions are present
+    assert (1.0, 0.0 * u.deg) in positions
+    assert (1.0, 90.0 * u.deg) in positions
+    assert (2.0, 0.0 * u.deg) in positions
+    assert (2.0, 90.0 * u.deg) in positions
 
 def test_pixel_to_polar():
     """Test pixel coordinate conversion."""
@@ -131,7 +144,7 @@ def test_pixel_to_polar():
 
 def test_resize_prf_cube():
     """Test PRF cube resizing."""
-    from corgisim.convolution import resize_prf_cube
+    from corgisim.prf_simulation import resize_prf_cube
     
     # Create PRF with a point at center to test centering logic
     prf_cube = np.zeros((1, 10, 10))
@@ -154,10 +167,7 @@ def test_nearest_id_map():
     azimuths_deg = [0, 90]
     
     prf_ids = nearest_id_map(r_lamD, theta_deg, radii_lamD, azimuths_deg)
-    
-    # Test the key business logic: center always maps to on-axis PRF (index 0)
-    assert prf_ids[0, 0] == 0  # r=0 → on-axis PRF regardless of angle
-    
+        
     # Test that all IDs are valid indices
     assert np.all(prf_ids >= 0)
     assert np.all(prf_ids < len(radii_lamD) * len(azimuths_deg))
@@ -183,7 +193,7 @@ def test_bilinear_indices_weights():
 
 def test_convolve_with_prfs_basic():
     """Test basic convolution functionality."""
-    from corgisim.convolution import convolve_with_prfs
+    from corgisim.convolution import _convolve_with_prfs
     
     # Simple scene
     obj = np.zeros((21, 21))
@@ -197,7 +207,7 @@ def test_convolve_with_prfs_basic():
     prfs[1, 10, 10] = 1.0
     prfs[2, 10, 10] = 1.0
     
-    result = convolve_with_prfs(obj, prfs, radii_lamD, azimuths_deg, 
+    result = _convolve_with_prfs(obj, prfs, radii_lamD, azimuths_deg, 
                                pix_scale_mas=21.8, res_mas=100.0)
     
     assert result.shape == obj.shape
@@ -206,55 +216,57 @@ def test_convolve_with_prfs_basic():
 
 def test_make_prf_cube(basic_optics):
     """Test PRF cube generation."""
-    with patch('corgisim.convolution.create_wavelength_grid_and_weights') as mock_create_wavelength_grid_and_weights, \
-         patch('corgisim.convolution.get_valid_polar_positions') as get_valid_polar_positions, \
-         patch.object(basic_optics, '_compute_single_off_axis_psf') as mock_compute:
+    with patch('corgisim.prf_simulation.create_wavelength_grid_and_weights') as mock_wl_grid, \
+         patch('corgisim.convolution.get_valid_polar_positions') as mock_valid_pos, \
+         patch('corgisim.outputs.create_hdu') as mock_hdu, \
+         patch('corgisim.prf_simulation.compute_single_off_axis_psf') as mock_compute:
 
-        mock_create_wavelength_grid_and_weights.return_value = (np.array([0.575]), np.array([1.0]))
+        mock_wl_grid.return_value = (np.array([0.575]), np.array([1.0]))
+
         # Return the correct 5 positions that get_valid_polar_positions actually returns
         # For radii=[0,1,2] and azimuths=[0,90], valid positions are:
         # (0,0°), (1,0°), (1,90°), (2,0°), (2,90°) = 5 total
-        get_valid_polar_positions.return_value = [(0.0, 0 * u.deg), (1.0, 0 * u.deg), (1.0, 90 * u.deg), 
+
+        mock_valid_pos.return_value = [(0.0, 0 * u.deg), (1.0, 0 * u.deg), (1.0, 90 * u.deg), 
                                                  (2.0, 0 * u.deg), (2.0, 90 * u.deg)]
+
+        # Mock PSF computation
         mock_compute.return_value = np.ones((48, 48))
+
+        # Mock HDU creation
+        mock_hdu_obj = Mock()
+        mock_hdu_obj.writeto = Mock()
+        mock_hdu.return_value = mock_hdu_obj
 
         radii = [0, 1.0, 2.0]
         azimuths = [0, 90] * u.deg
-        
-        prf_cube = basic_optics.make_prf_cube(radii, azimuths)
-        
-        assert prf_cube.shape[0] == 5  # 5 valid positions
-        assert prf_cube.shape[1:] == (48, 48)
-        assert prf_cube.dtype == np.float32
 
-def test_convolve_2d_scene_parameter_validation(basic_optics):
-    """Test parameter validation for convolve_2d_scene."""
-    
-    # Create scene that triggers the validation error we want to test
-    scene = Mock()
-    scene.twoD_scene_info = {
-        'prf_cube_path': None,  # No PRF cube 
-        'disk_model_path': '/fake/path/to/disk_model.fits',
-        'radii_lamD': None,  # Will not be used in Mode 2
-        'azimuths_deg': None  # Will not be used in Mode 2
-    }
-    scene.twoD_scene_spectrum = Mock()
-    
-    with patch('astropy.io.fits.getdata') as mock_fits:
-        mock_fits.return_value = np.ones((48, 48))
+        from corgisim.prf_simulation import make_prf_cube
+        prf_dict = {'test': 'data'}
         
-        # Test error when Mode 2 is missing required parameters
-        with pytest.raises(ValueError, match="Missing parameters"):
-            basic_optics.convolve_2d_scene(scene, owa=9.0)  # Missing other required params
+        result = make_prf_cube(basic_optics, radii, azimuths, prf_dict, source_sed=None, output_dir='/tmp', overwrite=True)
+
+        # Verify the workflow
+        assert mock_wl_grid.called
+        assert mock_valid_pos.called
+        assert mock_compute.call_count == 5
+        assert mock_hdu.called
+        assert mock_hdu_obj.writeto.called
+        assert result == mock_hdu_obj
+        
+        # Verify the PRF cube has correct shape
+        call_args = mock_hdu.call_args
+        prf_cube_arg = call_args[0][0]
+        assert prf_cube_arg.shape == (5, 48, 48)
 
 def test_full_pipeline():
     """Test complete pipeline from grid to convolution."""
     from corgisim.convolution import (build_radial_grid, build_azimuth_grid, 
-                                     get_valid_polar_positions, convolve_with_prfs)
+                                     get_valid_polar_positions, _convolve_with_prfs)
     
     # Build grids
-    radii = build_radial_grid(2.0, 6.0, 0.5, 1.0, 2.0)
-    azimuths = build_azimuth_grid(90.0)
+    radii, _ = build_radial_grid(2.0, 6.0, 0.5, 1.0, 2.0)
+    azimuths, _ = build_azimuth_grid(90.0)
     positions = get_valid_polar_positions(radii, azimuths)
     
     # Create test scene and PRFs
@@ -267,14 +279,14 @@ def test_full_pipeline():
         prfs[i, 12, 12] = 1.0
     
     # Convolve
-    result = convolve_with_prfs(scene, prfs, radii, azimuths, 21.8, 100.0)
+    result = _convolve_with_prfs(scene, prfs, radii, azimuths, 21.8, 100.0)
     
     assert result.shape == scene.shape
     assert np.sum(result) > 0
 
 def test_single_prf_edge_case():
     """Test convolution with single on-axis PRF."""
-    from corgisim.convolution import convolve_with_prfs
+    from corgisim.convolution import _convolve_with_prfs
     
     # Simple point source
     scene = np.zeros((15, 15))
@@ -284,14 +296,14 @@ def test_single_prf_edge_case():
     prf_cube = np.zeros((1, 15, 15))
     prf_cube[0, 7, 7] = 1.0
     
-    result = convolve_with_prfs(scene, prf_cube, [0], [0] * u.deg,
+    result = _convolve_with_prfs(scene, prf_cube, [0], [0] * u.deg,
                                pix_scale_mas=21.8, res_mas=100.0)
     
     # Should preserve scene exactly (within floating point precision)
     assert np.allclose(result, scene, rtol=1e-12)
 
 def test_zero_radius_position_filtering():
-    """Test that (r=0, θ≠0) positions are properly excluded."""
+    """Test that ALL positions at r=0 are properly excluded."""
     from corgisim.convolution import get_valid_polar_positions
     
     radii = [0.0, 1.0]
@@ -299,11 +311,32 @@ def test_zero_radius_position_filtering():
     
     positions = get_valid_polar_positions(radii, azimuths)
     
-    # Should have: (0,0°), (1,0°), (1,90°), (1,180°) = 4 positions
-    # Should exclude: (0,90°), (0,180°)
-    assert len(positions) == 4
+    # Should have: (1,0°), (1,90°), (1,180°) = 3 positions
+    # Should exclude: (0,0°), (0,90°), (0,180°) - all r=0 positions
+    # This is correct because at r=0, the angle is physically meaningless
+    assert len(positions) == 3
     
-    # Check that (0,0°) is included but (0,90°) is not
+    # Verify NO positions at r=0 are included
     zero_radius_positions = [(r, theta) for r, theta in positions if r == 0.0]
-    assert len(zero_radius_positions) == 1
-    assert zero_radius_positions[0] == (0.0, 0.0 * u.deg)
+    assert len(zero_radius_positions) == 0, "No r=0 positions should be included"
+    
+    # Verify only r>0 positions are present
+    assert (1.0, 0.0 * u.deg) in positions
+    assert (1.0, 90.0 * u.deg) in positions
+    assert (1.0, 180.0 * u.deg) in positions
+
+def test_simulate_2d_scene_missing_prf_path():
+    """Test error handling when PRF path is missing."""
+    from corgisim.convolution import simulate_2d_scene
+    
+    # Create mock scene with missing PRF path
+    mock_scene = Mock()
+    mock_scene.twoD_scene_info = {
+        'prf_path': None,
+        'disk_model_path': '/fake/path/to/disk_model.fits'
+    }
+    
+    mock_optics = Mock()
+    
+    with pytest.raises(ValueError, match="No PRF cube path provided"):
+        simulate_2d_scene(mock_optics, mock_scene)
