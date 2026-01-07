@@ -8,6 +8,10 @@ import os
 import astropy.units as u
 import corgisim.convolution as conv
 from astropy.io import fits
+from scipy.ndimage import fourier_shift
+from numpy.fft import fft2, ifft2, fftfreq
+from scipy.signal import fftconvolve
+
 
 def _get_prf_sim_info(prf_path): 
     """
@@ -249,7 +253,7 @@ def compute_single_off_axis_psf(optics, radius_lamD, azimuth_angle,
 
     return binned
 
-def make_prf_cube(optics, radii_lamD, azimuths_deg, prf_dict, source_sed=None, output_dir=None, overwrite=False):
+def make_prf_cube(optics, radii_lamD, azimuths_deg, prf_dict, source_sed=None, centre_prf=False, output_dir=None, overwrite=False):
     """
     Build a psf cube by evaluating the off-axis PSF at specified polar positions.
 
@@ -261,6 +265,9 @@ def make_prf_cube(optics, radii_lamD, azimuths_deg, prf_dict, source_sed=None, o
         Azimuthal angles in degrees.
     source_sed : array-like or None
         Spectral energy distribution weights, optional.
+    centre_prfs : bool, optional
+        If True, center all PRFs via Fourier shift before saving.
+        Recommended for ensuring consistent alignment. Default: False
 
     Returns
     -------
@@ -290,6 +297,14 @@ def make_prf_cube(optics, radii_lamD, azimuths_deg, prf_dict, source_sed=None, o
     if show_progress:
         print()  # New line after progress bar
 
+    # Optional Centre PRFs before saving
+    if centre_prf:
+        prf_cube = centre_prf_cube(prf_cube, method='centroid')
+        prf_dict['centred'] = True
+        prf_dict['centring_method'] = 'centroid'
+    else:
+        prf_dict['centred'] = False
+
     prf_fname = 'prf_cube' + '_'+ optics.cgi_mode + '_'+ optics.cor_type + '_band_' + optics.bandpass + '.fits'
     prf_cube_hdu = outputs.create_hdu(prf_cube, sim_info=prf_dict)
     
@@ -302,3 +317,73 @@ def make_prf_cube(optics, radii_lamD, azimuths_deg, prf_dict, source_sed=None, o
     print(f"PRF cube is saved to {os.path.join(output_dir, prf_fname)}")
     
     return prf_cube_hdu
+
+def fourier_shift(img, shift):
+    """Subpixel shift via Fourier shift theorem."""
+    dy, dx = shift
+    Ny, Nx = img.shape
+    ky = fftfreq(Ny).reshape(-1, 1)
+    kx = fftfreq(Nx).reshape(1, -1)
+    phase = np.exp(-1j * 2*np.pi * (kx*dx + ky*dy))
+    return np.real(ifft2(fft2(img) * phase))
+
+def centre_prf_cube(prf_cube, method='centroid'):
+    """
+    Centre each PRF in a cube via Fourier shift.
+    
+    Parameters
+    ----------
+    prf_cube : ndarray, shape (N_prfs, height, width)
+        Input PRF cube with off-axis PRFs
+    method : {'centroid', 'peak'}
+        Method to determine PRF centre:
+        - 'centroid': Intensity-weighted centroid (default)
+        - 'peak': Location of maximum value
+    
+    Returns
+    -------
+    ndarray, shape (N_prfs, height, width)
+        Centred PRF cube with each PRF centred at array midpoint
+    """
+    N_prfs, ph, pw = prf_cube.shape
+    prf_centred = []
+    
+    print("Centring PRFs via Fourier shift...")
+    
+    # Calculate array center (handles both even and odd dimensions)
+    cent_y = (ph - 1) / 2.0
+    cent_x = (pw - 1) / 2.0
+    
+    for i in range(N_prfs):
+        # Determine reference point based on method
+        if method == 'centroid':
+            # Intensity-weighted centroid
+            y, x = np.mgrid[:ph, :pw]
+            total = prf_cube[i].sum()
+            
+            if total > 0:
+                ref_y = (y * prf_cube[i]).sum() / total
+                ref_x = (x * prf_cube[i]).sum() / total
+            else:
+                # Fallback: use array center
+                ref_y, ref_x = cent_y, cent_x
+                
+        elif method == 'peak':
+            # Peak location
+            peak_idx = np.unravel_index(np.argmax(prf_cube[i]), prf_cube[i].shape)
+            ref_y, ref_x = peak_idx
+            
+        else:
+            raise ValueError(f"Unknown centering method: {method}. Use 'centroid' or 'peak'.")
+        
+        # Calculate shift needed to move reference point to array center
+        shift_y = cent_y - ref_y
+        shift_x = cent_x - ref_x
+        
+        # Apply shift in Fourier space
+        centred = fourier_shift(prf_cube[i], (shift_y, shift_x))
+        prf_centred.append(centred)
+    
+    prf_centred = np.array(prf_centred)
+    
+    return prf_centred
