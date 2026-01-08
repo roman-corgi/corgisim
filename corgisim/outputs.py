@@ -51,23 +51,27 @@ def create_hdu_list(data, header_info, sim_info=None):
     ### it needs to be updated later
     prihdr['FRAMET'] = header_info['EXPTIME']
     prihdr['SATSPOTS'] = int(header_info['SATSPOTS'])
+    prihdr['ROLL'] = header_info['ROLL']
 
     ### wait this for tachi to add sattlite spots function
     #prihdr['SATSPOTS'] = header_info['SATSPOTS'] 
     
     time_in_name = isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
-    filename = f"CGI_{prihdr['VISITID']}_{time_in_name}_L1_"
+    filename = f"cgi_{prihdr['VISITID']}_{time_in_name}_l1_"
     prihdr['FILENAME'] =  f"{filename}.fits"
 
     
 
     exthdr['NAXIS'] = data.ndim
     exthdr['NAXIS1'] = data.shape[0]
-    exthdr['NAXIS2'] = data.shape[0]
+    exthdr['NAXIS2'] = data.shape[1]
     exthdr['EXPTIME'] = header_info['EXPTIME']
     exthdr['EMGAIN_C'] = header_info['EMGAIN_C']
     exthdr['EMGAIN_A'] = header_info['EMGAIN_C']  
     exthdr['KGAINPAR'] =  header_info['KGAINPAR']
+    exthdr['EACQ_ROW'] =  header_info['EACQ_ROW']
+    exthdr['EACQ_COL'] =  header_info['EACQ_COL']
+
     if header_info['PHTCNT'] == True:
         exthdr['ISPC']= int(1)
     else:
@@ -124,7 +128,7 @@ def create_hdu(data, sim_info=None):
     return hdu
 
 
-def save_hdu_to_fits( hdul, outdir=None, overwrite=True, write_as_L1=False, filename=None):
+def save_hdu_to_fits( hdul, outdir=None, overwrite=False, write_as_L1=False, filename=None):
         """
         Save an Astropy HDUList to a FITS file.
 
@@ -179,8 +183,8 @@ def isotime_to_yyyymmddThhmmsss(timestr):
 
     Returns
     -------
-    str
-        Time formatted as 'yyyymmddThhmmsss' (e.g., '20250425T2318048').
+        str
+            Time formatted as 'yyyymmddThhmmsss' (e.g., '20250425T2318048').
     """
     # Parse the input ISO format time
     t = datetime.fromisoformat(timestr)
@@ -481,14 +485,14 @@ def write_headers_FPAM(cor_type, band_pass,use_fpm,nd_filter):
                 FPAMNAME = 'OPEN_34'
                 FPAMSP_H = 60251.2
                 FPAMSP_V = 2248.5
-        if (nd_filter == '1'):
+        if (nd_filter == '2.25'):
             ## ND filter1 
             FPAM_H = 61507.8
             FPAM_V = 25612.4
             FPAMNAME = 'ND225'
             FPAMSP_H = 61507.8
             FPAMSP_V = 25612.4
-        if (nd_filter == '2'):
+        if (nd_filter == '4.75fpam'):
             ## ND filter2
             FPAM_H = 2503.7
             FPAM_V = 6124.9

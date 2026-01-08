@@ -36,10 +36,8 @@ class Scene():
             - "magtype" (str): The photometric system used for the magnitude. Must be one of:
                 - "vegamag": Vega magnitude system
                 - "ABmag": AB magnitude system
-            - "position_x" (float): 
-                X-coordinate of the source position in mas, relative to the host star.
-            - "position_y" (float): 
-                Y-coordinate of the source position in mas, relative to the host star.
+            - "position_dra" (float): Offset in Right Ascension (dRA) from the host star, in milliarcseconds (mas), in sky coordinates.
+            - "position_ddec" (float): Offset in Declination (dDEC) from the host star, in milliarcseconds (mas), in sky coordinates.
             - "Custom_Spectrum" (optional): 
                 A custom spectrum for the source. If provided, this spectrum will override the default spectrum generated based on Vmag.
             - "pol_state" (float array): optional, vector of length 4 consisting of the I, Q, U and V components of the stokes parameter
@@ -92,8 +90,8 @@ class Scene():
             # Extract V-band magnitudes from point source info
             self._point_source_Vmag = [source['Vmag'] for source in point_source_info_internal]
             self._point_source_magtype =[source['magtype'] for source in point_source_info_internal]# Type of magnitude ('vegamag' or 'ABmag')
-            self.point_source_x = [source['position_x'] for source in point_source_info_internal]
-            self.point_source_y = [source['position_y'] for source in point_source_info_internal]
+            self.point_source_dra = [source['position_x'] for source in point_source_info_internal]
+            self.point_source_ddec = [source['position_y'] for source in point_source_info_internal]
             # Extract optional custom spectrum, if provided
             self.point_source_spectrum = [source.get('Custom_Spectrum', None) for source in point_source_info_internal]  
 
@@ -165,13 +163,13 @@ class Scene():
 
                 
     @host_star_magtype.setter
-    def host_star_Vmag(self, value):
+    def host_star_magtype(self, value):
         """
         Setter method to validate and set the type of magnitude.
         Args:
             value (str): The type of magnitude
         """
-        self._host_star_magtype = float(value)
+        self._host_star_magtype = value
 
     @property
     def point_source_Vmag(self):

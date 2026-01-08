@@ -4,12 +4,10 @@
 name: Python application
 
 on:
-  schedule:
-      - cron: "0 8 * * *"
   push:
-    branches: [ "main"]
-  pull_request:
-    branches: [ "main"]
+    branches: ["main"]
+  schedule:
+    - cron: "0 0 * * 6"
   workflow_dispatch:
 permissions:
   contents: read
@@ -34,8 +32,8 @@ jobs:
         if [ -f requirements.txt ]; then pip install -r requirements.txt .; fi
     - name: Download and install Proper
       run: |
-        wget https://sourceforge.net/projects/proper-library/files/proper_v3.3.3_python.zip && unzip proper_v3.3.3_python.zip
-        cd proper_v3.3.3_python/
+        wget https://sourceforge.net/projects/proper-library/files/proper_v3.3.4_python.zip && unzip proper_v3.3.4_python.zip
+        cd proper_v3.3.4_python/
         python -m pip install .
         cd ..        
     - name: Download and install Roman preflight

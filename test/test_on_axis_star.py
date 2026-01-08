@@ -37,7 +37,7 @@ def test_on_axis_star():
     optics_keywords ={'cor_type':cor_type, 'use_errors':2, 'polaxis':10, 'output_dim':201,\
                        'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
     optics_keywords_copy = copy.deepcopy(optics_keywords)
-    optics = instrument.CorgiOptics(cgi_mode, bandpass_corgisim, optics_keywords=optics_keywords, if_quiet=True, integrate_pixels=True)
+    optics = instrument.CorgiOptics(cgi_mode, bandpass_corgisim, optics_keywords=optics_keywords, if_quiet=True)
 
     efields = optics.get_e_field()
 
@@ -45,6 +45,8 @@ def test_on_axis_star():
     assert efields.shape == (7, optics_keywords['output_dim'],  optics_keywords['output_dim'])
      
     sim_scene = optics.get_host_star_psf(base_scene)
+    
+    assert(sim_scene.input_scene.host_star_Vmag == 8)
     
     for key, value in optics_keywords.items():
         if key not in optics_keywords_copy.keys():

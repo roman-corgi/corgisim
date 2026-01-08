@@ -71,7 +71,7 @@ def test_L1_product_fits_format():
     prihdr = sim_scene.image_on_detector[0].header
     exthdr = sim_scene.image_on_detector[1].header
     time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
-    filename = f"CGI_{prihdr['VISITID']}_{time_in_name}_L1_.fits"
+    filename = f"cgi_{prihdr['VISITID']}_{time_in_name}_l1_.fits"
 
 
     f = os.path.join( outdir , filename)
@@ -91,6 +91,7 @@ def test_L1_product_fits_format():
     assert prihr['PSFREF'] == False, f"Expected data PSFREF=False, but got {prihr['PSFREF']}"
     assert prihr['PHTCNT'] == True, f"Expected data PSFREF=True, but got {prihr['PHTCNT']}"
     assert prihr['SATSPOTS'] == 0, f"Expected data PSFREF=True, but got {prihr['PHTCNT']}"
+    assert prihr['ROLL'] == 0.0, f"Expected data ROLL=0, but got {prihr['ROLL']}"
 
     assert exthdr['KGAINPAR'] == 8.7, f"Expected data KGAINPAR=8.7, but got {exthdr['KGAINPAR']}"
     assert exthdr['EMGAIN_C'] == 1000, f"Expected data EMGAIN_C=1000, but got {exthdr['EMGAIN_C']}"
@@ -176,8 +177,8 @@ def test_L1_product_fits_format():
                     'fsm_x_offset_mas':10.0,'fsm_y_offset_mas':20.0 }
                 ##pass fsm_x_offset_mas and fsm_y_offset_mas for no zero value as test
 
-
-    optics = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords, if_quiet=True)
+    roll_angle=10.0 ##degree
+    optics = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords, if_quiet=True, roll_angle=roll_angle)
     sim_scene = optics.get_host_star_psf(base_scene)
 
     sim_scene = optics.inject_point_sources(base_scene,sim_scene)
@@ -199,7 +200,7 @@ def test_L1_product_fits_format():
     prihdr = sim_scene.image_on_detector[0].header
     exthdr = sim_scene.image_on_detector[1].header
     time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
-    filename = f"CGI_{prihdr['VISITID']}_{time_in_name}_L1_.fits"
+    filename = f"cgi_{prihdr['VISITID']}_{time_in_name}_l1_.fits"
 
 
     f = os.path.join( outdir , filename)
@@ -219,11 +220,14 @@ def test_L1_product_fits_format():
     assert prihr['PSFREF'] == True, f"Expected header PSFREF=False, but got {prihr['PSFREF']}"
     assert prihr['PHTCNT'] == False, f"Expected header PSFREF=False, but got {prihr['PHTCNT']}"
     assert prihdr['FRAMET'] == exptime, f"Expected header FRAMET = {exptime}, but got {prihdr['FRAMET']}"
+    assert prihr['ROLL'] == 10.0, f"Expected data ROLL=10, but got {prihr['ROLL']}"
 
     assert exthdr['KGAINPAR'] == e_per_dn, f"Expected data KGAINPAR={e_per_dn}, but got {exthdr['KGAINPAR']}"
     assert exthdr['EMGAIN_C'] == gain, f"Expected data EMGAIN_C={gain}, but got {exthdr['EMGAIN_C']}"
     assert exthdr['EMGAIN_A'] == gain, f"Expected data EMGAIN_A={gain}, but got {exthdr['EMGAIN_A']}"
     assert exthdr['ISPC'] == 0, f"Expected header ISPC=0, but got {exthdr['ISPC']}"
+    assert exthdr['EACQ_ROW'] == 300, f"Expected header EACQ_ROW=300, but got {exthdr['EACQ_ROW']}"
+    assert exthdr['EACQ_COL'] == 300, f"Expected header EACQ_COL=300, but got {exthdr['EACQ_COL']}"
 
     ### delete file after testing
     print('Deleted the FITS file after testing headers populated with non-dafult values(inputs)')
@@ -279,7 +283,7 @@ def test_L1_product_fits_format():
     prihdr = sim_scene.image_on_detector[0].header
     exthdr = sim_scene.image_on_detector[1].header
     time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
-    filename = f"CGI_{prihdr['VISITID']}_{time_in_name}_L1_.fits"
+    filename = f"cgi_{prihdr['VISITID']}_{time_in_name}_l1_.fits"
 
 
     f = os.path.join( outdir , filename)
@@ -346,11 +350,15 @@ def test_L1_product_from_CPGS():
     scene_target, scene_reference, optics, detector_target, detector_reference, visit_list = inputs.load_cpgs_data(abs_path)
     simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, full_frame=True, loc_x=300, loc_y=300, save_as_fits=True, output_dir=outdir)
 
+    #Check that there are as many simulated images as files
+    assert len(simulatedImage_list) == len([name for name in os.listdir(outdir) if os.path.isfile(outdir+'/'+name)])
+
+    #Check that the names are correct
     for simulatedImage in simulatedImage_list:
         prihdr = simulatedImage.image_on_detector[0].header
         exthdr = simulatedImage.image_on_detector[1].header
         time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
-        filename = f"CGI_{prihdr['VISITID']}_{time_in_name}_L1_.fits"
+        filename = f"cgi_{prihdr['VISITID']}_{time_in_name}_l1_.fits"
 
         f = os.path.join( outdir , filename)
         assert os.path.isfile(f)
@@ -364,12 +372,16 @@ def test_L1_product_from_CPGS():
     exp_time = 30
 
     simulatedImage_list_sequence = observation.generate_observation_sequence( scene_target, optics, detector_target, exp_time, n_frames, save_as_fits=True, output_dir=outdir, full_frame=True, loc_x=300, loc_y=300)
+    
+    #Check that there are as many simulated images as files
+    assert len(simulatedImage_list_sequence) == len([name for name in os.listdir(outdir) if os.path.isfile(outdir+'/'+name)]) == n_frames
 
+    #Check that the names are correc
     for simulatedImage in simulatedImage_list_sequence:
         prihdr = simulatedImage.image_on_detector[0].header
         exthdr = simulatedImage.image_on_detector[1].header
         time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
-        filename = f"CGI_{prihdr['VISITID']}_{time_in_name}_L1_.fits"
+        filename = f"cgi_{prihdr['VISITID']}_{time_in_name}_l1_.fits"
 
         f = os.path.join( outdir , filename)
         assert os.path.isfile(f)

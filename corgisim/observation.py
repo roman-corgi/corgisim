@@ -41,16 +41,19 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, s
         where each object represents a single generated observation frame with its image data
         and associated FITS header information.
     """
-    
+    sim_scene = optics.get_host_star_psf(scene)
+    if hasattr(scene, 'point_source_dra') or hasattr(scene, 'point_source_ddec'):
+        sim_scene = optics.inject_point_sources(scene,sim_scene)
+
     simulatedImage_list = []
-    
+
     if full_frame == False :
         for i in range(0, n_frames):
             print(i, n_frames)
             if zernike_index is not None:
                 optics.optics_keywords.update({'zindex': zernike_index, 'zval_m': zernike_value_m[i]})
             sim_scene = optics.get_host_star_psf(scene)
-            if hasattr(scene, 'point_source_x'):
+            if hasattr(scene, 'point_source_dra'):
                 sim_scene = optics.inject_point_sources(scene, sim_scene)
             sim_image = detector.generate_detector_image(sim_scene, exp_time)
             simulatedImage_list.append(sim_image)
@@ -70,13 +73,12 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, s
             if zernike_index is not None:
                 optics.optics_keywords.update({'zindex': zernike_index, 'zval_m': zernike_value_m[i]})
             sim_scene = optics.get_host_star_psf(scene)
-            if hasattr(scene, 'point_source_x'):
+            if hasattr(scene, 'point_source_dra'):
                 sim_scene = optics.inject_point_sources(scene, sim_scene)
             sim_image = detector.generate_detector_image(sim_scene,exp_time,full_frame=True,loc_x=loc_x, loc_y=loc_y)
             simulatedImage_list.append(sim_image)
 
             if save_as_fits:
-                #sim_scene.host_star_image.writeto(os.path.join(outdir, f"psf{i}")) just for debug
                 outputs.save_hdu_to_fits(sim_image.image_on_detector,outdir=outdir, write_as_L1=True)
 
     return simulatedImage_list

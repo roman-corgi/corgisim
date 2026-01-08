@@ -32,7 +32,7 @@ class CorgiOptics():
 
     '''
 
-    def __init__(self, cgi_mode = None, bandpass= None,  diam = 236.3114, optics_keywords=None, satspot_keywords=None, oversampling_factor = 7, return_oversample = False, **kwargs):
+    def __init__(self, cgi_mode = None, bandpass= None,  diam = 236.3114, optics_keywords=None, roll_angle= 0,satspot_keywords=None, oversampling_factor = 7, return_oversample = False, **kwargs):
         '''
 
         Initialize the class a keyword dictionary that defines the setup of cgisim/PROPER 
@@ -47,10 +47,11 @@ class CorgiOptics():
             - diam (float) in meter: diameter of the primaru mirror, the default value is 2.363114 meter
             - optics_keywords: A dictionary with the keywords that are used to set up the proper model
 	        - satspot_keywords: A dictionary with the keywords that are used to add satellite spots. See add_satspot for the keywords.
-            - oversample: An integer that defines the oversampling factor of the detector when generating the image
+            - oversampling_factor: An integer that defines the oversampling factor of the detector when generating the image
             - return_oversample: A boolean that defines whether the function should return the oversampled image or not.
-    
-
+            - roll_angle : float, optional, Telescope roll angle in degrees (0 to 360). 
+                           Defined as the rotation angle of the excam coordinates (X, Y) relative to the sky coordinates(RA,DEC), positive is counter-clockwise.
+                           Default is 0 degrees, corresponding to North up, East left in the sky coordinates.
         Raises:
             - ValueError: If `cgi_mode` or `cor_type` is invalid.
             - KeyError: If required `optics_keywords` are missing.
@@ -99,6 +100,7 @@ class CorgiOptics():
 
         self.cgi_mode = cgi_mode
         self.cor_type = optics_keywords_internal['cor_type']
+        self.roll_angle = roll_angle % 360  # Ensure roll angle is within 0-360 degrees
 
         if bandpass  in ['1F','2F','3F','4F']:
             self.bandpass = bandpass.split('F')[0]
@@ -136,8 +138,10 @@ class CorgiOptics():
         if self.cgi_mode == 'spec':
             spec_kw_defaults = {
                 'slit': 'None', # named FSAM slit
-                'slit_x_offset_mas': 0.0, # offset of slit position from star on EXCAM, in mas
-                'slit_y_offset_mas': 0.0, # offset of slit position from star on EXCAM, in mas
+                'slit_ra_offset_mas': 0.0, # offset of slit position from star on sky coordinate, in mas
+                'slit_dec_offset_mas': 0.0, # offset of slit position from star on sky coordinate, in mas
+                'slit_x_offset_mas': None, # offset of slit position from star on excam coordinate, in mas
+                'slit_y_offset_mas': None, # offset of slit position from star on excam coordinate, in mas
                 'prism': 'None', # named DPAM prism
                 'wav_step_um': 1E-3, # wavelength step size of the prism dispersion model, in microns 
                 'fsm_x_offset_mas': 0.0, # FSM x offset in mas 
@@ -167,6 +171,22 @@ class CorgiOptics():
                     setattr(self, attr_name, value)
                 else:
                     setattr(self, attr_name, default_value)
+            
+            # If excam coordinates are not provided, compute them from sky coordinates
+            if (self.slit_x_offset_mas is None) and (self.slit_y_offset_mas is None):
+                # Convert slit location from sky coordinates to EXCAM coordinates (mas)
+                self.slit_x_offset_mas, self.slit_y_offset_mas = skycoord_to_excamcoord(self.slit_ra_offset_mas, self.slit_dec_offset_mas, self.roll_angle)
+
+            # If excam coordinates are provided, they take precedence over sky coordinates
+            elif (self.slit_x_offset_mas is not None) and (self.slit_y_offset_mas is not None):
+                warnings.warn(
+                    "Slit location provided in EXCAM coordinates (x, y). "
+                    "These values will override the sky-coordinate inputs (dRA, dDec). "
+                    "Please ensure the EXCAM coordinates correspond to the intended slit position on the sky.",
+                    UserWarning,
+                )
+
+                
             if self.prism != 'None':
                 prism_param_fname = os.path.join(ref_data_dir, 'TVAC_{:s}_dispersion_profile.npz'.format(self.prism))
                 if not os.path.exists(prism_param_fname):
@@ -590,6 +610,7 @@ class CorgiOptics():
         ## add sattelite spots info 
         sim_info['SATSPOTS'] = self.SATSPOTS
         sim_info['includ_dectector_noise'] = 'False'
+        sim_info['roll_angle'] = self.roll_angle
         # Create the HDU object with the generated header information
 
         sim_scene.host_star_image = outputs.create_hdu(image,sim_info =sim_info)
@@ -682,29 +703,29 @@ class CorgiOptics():
         Returns: 
             - A 2D numpy array that contains the scene with the injected point sources. 
         '''
+
+        # Extract point source spectra, positions, and polarization
+        point_source_spectra = input_scene.off_axis_source_spectrum
+        point_source_dra = input_scene.point_source_dra
+        point_source_ddec = input_scene.point_source_ddec
+        point_source_pol = input_scene.point_source_pol_state
+
+        # Ensure all inputs are lists for uniform processing
+        if not isinstance(point_source_spectra, list):
+            point_source_spectra = [point_source_spectra]
+        if not isinstance(point_source_dra, list):
+            point_source_dra = [point_source_dra]
+        if not isinstance(point_source_ddec, list):
+            point_source_ddec = [point_source_ddec]
+
+        # Ensure all lists have the same length
+        if not (len(point_source_spectra) == len(point_source_dra) == len(point_source_ddec)):
+            raise ValueError(
+                f"Mismatch in input lengths: {len(point_source_spectra)} spectra, "
+                f"{len(point_source_dra)} dRA positions, {len(point_source_ddec)} dDEC positions. "
+                "Each point source must have a corresponding (dRA, dDEC) position.")
+
         if self.cgi_mode == 'excam':
-
-
-            # Extract point source spectra, positions, and polarization
-            point_source_spectra = input_scene.off_axis_source_spectrum
-            point_source_x = input_scene.point_source_x
-            point_source_y = input_scene.point_source_y
-            point_source_pol = input_scene.point_source_pol_state
-
-            # Ensure all inputs are lists for uniform processing
-            if not isinstance(point_source_spectra, list):
-                point_source_spectra = [point_source_spectra]
-            if not isinstance(point_source_x, list):
-                point_source_x = [point_source_x]
-            if not isinstance(point_source_y, list):
-                point_source_y = [point_source_y]
-
-            # Ensure all lists have the same length
-            if not (len(point_source_spectra) == len(point_source_x) == len(point_source_y)):
-                raise ValueError(
-                    f"Mismatch in input lengths: {len(point_source_spectra)} spectra, "
-                    f"{len(point_source_x)} x-positions, {len(point_source_y)} y-positions. "
-                    "Each point source must have a corresponding (x, y) position.")
             
             ##checks to see if point source is within FOV of coronagraph
             #FOV_range is indexed as follows - 0: hlc, 1: spc-spec, 2: spc-wide.
@@ -718,7 +739,7 @@ class CorgiOptics():
             else:
                 FOV_index = 2
             #Calculate point source separation from origin in units of lambda/D
-            point_source_radius = np.sqrt(np.power(point_source_x, 2) + np.power(point_source_y, 2)) * ((self.diam * 1e-2)/(self.lam0_um * 1e-6 * 206265000))
+            point_source_radius = np.sqrt(np.power(point_source_dra, 2) + np.power(point_source_ddec, 2)) * ((self.diam * 1e-2)/(self.lam0_um * 1e-6 * 206265000))
             for j in range(len(point_source_spectra)):
                 if (not FOV_range[FOV_index][0] <= point_source_radius[j] <= FOV_range[FOV_index][1]):
                     warnings.warn(f"Point source #{j} is at separation {point_source_radius[j]} λ/D, "
@@ -739,17 +760,20 @@ class CorgiOptics():
             point_source_image = []
             for j in range(len(point_source_spectra )):
             
-                optics_keywords_comp = self.optics_keywords.copy()
-                optics_keywords_comp.update({'output_dim': grid_dim_out_tem,
+                self.optics_keywords_comp = self.optics_keywords.copy()
+                ## convert companion sky coord to exacam coord, using roll angle
+                point_source_dx, point_source_dy = skycoord_to_excamcoord(point_source_dra[j], point_source_ddec[j], self.roll_angle)
+
+                self.optics_keywords_comp.update({'output_dim': grid_dim_out_tem,
                                             'final_sampling_m': sampling_um_tem * 1e-6,
-                                            'source_x_offset_mas': point_source_x[j],
-                                            'source_y_offset_mas': point_source_y[j]})
+                                            'source_x_offset_mas': point_source_dx,
+                                            'source_y_offset_mas': point_source_dy})
                 
                 if self.optics_keywords['polaxis'] == -10:
-                    optics_keywords_comp_m10 = optics_keywords_comp.copy()
+                    optics_keywords_comp_m10 = self.optics_keywords_comp.copy()
                     images_tem = self.generate_full_aberration_psf(optics_keywords_comp_m10)
                 else: 
-                    (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE= optics_keywords_comp ,QUIET=True)
+                    (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE= self.optics_keywords_comp ,QUIET=True)
                     images_tem = np.abs(fields)**2
 
                 # Initialize the image array based on whether oversampling is returned
@@ -800,25 +824,7 @@ class CorgiOptics():
                     # singular unpolarized image if no wollaston
                     point_source_image.append(image) 
         elif self.cgi_mode == 'spec':
-            # Extract point source spectra and positions
-            point_source_spectra = input_scene.off_axis_source_spectrum
-            point_source_x = input_scene.point_source_x
-            point_source_y = input_scene.point_source_y
-
-            # Ensure all inputs are lists for uniform processing
-            if not isinstance(point_source_spectra, list):
-                point_source_spectra = [point_source_spectra]
-            if not isinstance(point_source_x, list):
-                point_source_x = [point_source_x]
-            if not isinstance(point_source_y, list):
-                point_source_y = [point_source_y]
-
-            # Ensure all lists have the same length
-            if not (len(point_source_spectra) == len(point_source_x) == len(point_source_y)):
-                raise ValueError(
-                    f"Mismatch in input lengths: {len(point_source_spectra)} spectra, "
-                    f"{len(point_source_x)} x-positions, {len(point_source_y)} y-positions. "
-                    "Each point source must have a corresponding (x, y) position.")
+            
 
             if self.slit != 'None':
                 field_stop_array, field_stop_sampling_m = spec.get_slit_mask(self)
@@ -836,13 +842,16 @@ class CorgiOptics():
             
             point_source_image = []
             for j in range(len(point_source_spectra )):
-                optics_keywords_comp = self.optics_keywords.copy()
-                optics_keywords_comp.update({'output_dim': grid_dim_out_tem,
+                self.optics_keywords_comp = self.optics_keywords.copy()
+                ## convert companion sky coord to exacam coord, using roll angle
+                point_source_dx, point_source_dy = skycoord_to_excamcoord(point_source_dra[j], point_source_ddec[j], self.roll_angle)
+               
+                self.optics_keywords_comp.update({'output_dim': grid_dim_out_tem,
                                             'final_sampling_m': sampling_um_tem * 1e-6,
-                                            'source_x_offset_mas': point_source_x[j],
-                                            'source_y_offset_mas': point_source_y[j]})
+                                            'source_x_offset_mas': point_source_dx,
+                                            'source_y_offset_mas': point_source_dy})
                 if self.optics_keywords['polaxis'] == -10:
-                    optics_keywords_comp_m10 = optics_keywords_comp.copy()
+                    optics_keywords_comp_m10 = self.optics_keywords_comp.copy()
                     polaxis_params = [-2, -1, 1, 2]
                     images_pol = []
                     for polaxis in polaxis_params:
@@ -851,7 +860,7 @@ class CorgiOptics():
                         images_pol.append(np.abs(fields) ** 2)
                     images_tem = np.array(sum(images_pol)) / 4
                 else: 
-                    (fields, sampling) = proper.prop_run_multi('roman_preflight', self.lam_um, 1024, PASSVALUE=optics_keywords_comp ,QUIET=True)
+                    (fields, sampling) = proper.prop_run_multi('roman_preflight', self.lam_um, 1024, PASSVALUE=self.optics_keywords_comp ,QUIET=True)
                     images_tem = np.abs(fields)**2
 
                 # If a prism was selected, apply the dispersion model and overwrite the image cube and wavelength array.
@@ -903,8 +912,8 @@ class CorgiOptics():
         for i in range(npl):
             sim_info[f'pl_Vmag_{i}'] = input_scene.point_source_Vmag[i]
             sim_info[f'pl_magtype_{i}']= input_scene.point_source_magtype[i]
-            sim_info[f'position_x_mas_{i}'] = input_scene.point_source_x[i]
-            sim_info[f'position_y_mas_{i}'] = input_scene.point_source_y[i]
+            sim_info[f'position_dra_mas_{i}'] = input_scene.point_source_dra[i]
+            sim_info[f'position_ddec_mas_{i}'] = input_scene.point_source_ddec[i]
 
         # Third: global simulation settings
         if self.prism == 'POL0':
@@ -921,6 +930,7 @@ class CorgiOptics():
         sim_info['return_oversample'] = self.return_oversample
         sim_info['output_dim'] = self.optics_keywords['output_dim'] 
         sim_info['nd_filter'] = self.nd
+        sim_info['roll_angle'] = self.roll_angle
                             
                 # Define specific keys from self.optics_keywords to include in the header            
         keys_to_include_in_header = [ 'use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
@@ -1124,7 +1134,8 @@ class CorgiDetector():
             header_info = {'EXPTIME': exptime,'EMGAIN_C':self.emccd_keywords_default['em_gain'],'PSFREF':ref_flag,
                            'PHTCNT':self.photon_counting,'KGAINPAR':self.emccd_keywords_default['e_per_dn'],'cor_type':sim_info['cor_type'], 'bandpass':sim_info['bandpass'],
                            'cgi_mode': sim_info['cgi_mode'], 'polaxis':sim_info['polaxis'],'use_fpm':use_fpm,'nd_filter':sim_info['nd_filter'], 'polarization_basis': sim_info['polarization_basis'],'SATSPOTS':sim_info['SATSPOTS'],
-                           'use_pupil_lens':use_pupil_lens,'use_lyot_stop':use_lyot_stop, 'use_field_stop':use_field_stop}
+                           'use_pupil_lens':use_pupil_lens,'use_lyot_stop':use_lyot_stop, 'use_field_stop':use_field_stop, 'ROLL': float(sim_info['roll_angle']),
+                           'EACQ_ROW': loc_x, 'EACQ_COL': loc_y}
             if 'fsm_x_offset_mas' in sim_info:
                 header_info['FSMX'] = float(sim_info['fsm_x_offset_mas'])
             if 'fsm_y_offset_mas' in sim_info:
@@ -1264,3 +1275,22 @@ class CorgiDetector():
         return emccd
 
 
+def skycoord_to_excamcoord(dra, ddec, roll_angle):
+    """Convert sky coordinates to EXCAM coordinates. These are both relative astrometry of a companion relative to host star (or central of the frame)
+
+    Args:
+        dra (float): The right ascension offset in mas.
+        ddec (float): The declination offset in mas.
+        roll_angle (float): The roll angle in degrees.
+
+    Returns:
+        dx (float): The converted EXCAM x-coordinate offset in mas.
+        dy (float): The converted EXCAM y-coordinate offset in mas.
+    """
+    # Apply roll angle rotation
+    # Because we rotate the *companion coords*, use the opposite sense: θ_comp = -roll_angle.
+    theta_comp = np.deg2rad(-1 * roll_angle)
+
+    dx = dra * np.cos(theta_comp) - ddec * np.sin(theta_comp)
+    dy = dra * np.sin(theta_comp) + ddec * np.cos(theta_comp)
+    return dx, dy

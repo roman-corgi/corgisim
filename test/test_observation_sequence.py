@@ -26,7 +26,7 @@ def test_generate_observation_sequence():
     emccd_keywords ={'em_gain':gain}
 
     base_scene = scene.Scene(host_star_properties)
-    optics =  instrument.CorgiOptics(cgi_mode, bandpass_corgisim, optics_keywords=optics_keywords, if_quiet=True, integrate_pixels=True)
+    optics =  instrument.CorgiOptics(cgi_mode, bandpass_corgisim, optics_keywords=optics_keywords, if_quiet=True)
     detector = instrument.CorgiDetector( emccd_keywords)
     
     exp_time = 2000
@@ -98,8 +98,8 @@ def test_generate_observation_scenario_from_cpgs():
         else:
             assert simulatedImage.input_scene._point_source_Vmag == mag_companion
             assert simulatedImage.input_scene._point_source_magtype == ['vegamag']
-            assert simulatedImage.input_scene.point_source_x == dx
-            assert simulatedImage.input_scene.point_source_y == dy
+            assert simulatedImage.input_scene.point_source_dra == dx
+            assert simulatedImage.input_scene.point_source_ddec == dy
             assert isinstance(simulatedImage.point_source_image, fits.hdu.image.PrimaryHDU)  
 
 

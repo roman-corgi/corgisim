@@ -66,9 +66,9 @@ def test_L1_product_fits_format_specmode():
 
     optics_keywords_slit_prism ={'cor_type':cor_type, 'use_errors':2, 'polaxis':polaxis, 'output_dim':output_dim, 
                     'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,'nd':1,
-                    'slit':'R1C2', 'slit_y_offset_mas':base_scene.point_source_y[0], 'prism':'PRISM3', 'wav_step_um':2E-3}
+                    'slit':'R1C2', 'slit_dec_offset_mas':base_scene.point_source_ddec[0], 'prism':'PRISM3', 'wav_step_um':2E-3}
     optics_slit_prism = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords_slit_prism, if_quiet=True,
-                                    small_spc_grid = 1, oversample = overfac, return_oversample = False)
+                                    small_spc_grid = 1, oversampling_factor = overfac, return_oversample = False)
 
 
     sim_scene_slit_prism = optics_slit_prism.get_host_star_psf(base_scene)
@@ -90,7 +90,7 @@ def test_L1_product_fits_format_specmode():
     prihdr = sim_scene_slit_prism.image_on_detector[0].header
     exthdr = sim_scene_slit_prism.image_on_detector[1].header
     time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
-    filename = f"CGI_{prihdr['VISITID']}_{time_in_name}_L1_.fits"
+    filename = f"cgi_{prihdr['VISITID']}_{time_in_name}_l1_.fits"
 
 
     f = os.path.join( outdir , filename)
@@ -150,7 +150,7 @@ def test_L1_product_fits_format_specmode():
         'prism':'PRISM3', 'wav_step_um':2E-3}
 
     optics_noslit_prism_cfam3F = instrument.CorgiOptics(cgi_mode, bandpass='3F', optics_keywords=noslit_optics_keywords, 
-                                                        if_quiet=True, oversample = overfac, return_oversample = False)
+                                                        if_quiet=True, oversampling_factor = overfac, return_oversample = False)
     sim_unocc_noslit_prism_cfam3F = optics_noslit_prism_cfam3F.get_host_star_psf(base_scene)
 
     short_exptime = 0.5
@@ -169,7 +169,7 @@ def test_L1_product_fits_format_specmode():
     prihdr = sim_unocc_noslit_prism_cfam3F.image_on_detector[0].header
     exthdr = sim_unocc_noslit_prism_cfam3F.image_on_detector[1].header
     time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
-    filename = f"CGI_{prihdr['VISITID']}_{time_in_name}_L1_.fits"
+    filename = f"cgi_{prihdr['VISITID']}_{time_in_name}_l1_.fits"
 
     f = os.path.join( outdir , filename)
 
