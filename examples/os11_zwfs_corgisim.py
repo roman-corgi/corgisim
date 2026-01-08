@@ -29,7 +29,7 @@ def get_optimal_emgain(noiseless_image_hdu):
     return emgain
 
 
-def get_clear_pupil(star_properties, frame_exp, bandpass = '1F', dm_case='flat', add_drift=False, outdir=None):
+def get_clear_pupil(star_properties, frame_exp, bandpass = '1F', dm_case='flat', add_drift=False, outdir=None, offsets=None):
     """
 
     Args:
@@ -77,6 +77,18 @@ def get_clear_pupil(star_properties, frame_exp, bandpass = '1F', dm_case='flat',
     if add_drift:
         zernike_poly_index, zernike_value_m = get_drift(1, 1, obs='ref', cycle=1)
 
+    if offsets is not None:
+        x_off, y_off = add_decentering(offsets[0], offsets[1])
+        z_idx = np.array([1, 2])
+        z_v_m = np.array([x_off, y_off])
+        if add_drift:
+            zernike_poly_index = np.concatenate(z_idx, zernike_poly_index)
+            zernike_value_m = np.concatenate([z_v_m, zernike_value_m])
+        else:
+            zernike_poly_index = z_idx
+            zernike_value_m = z_v_m
+
+    if add_drift or offsets is not None:
         optics_keywords.update({'zindex': zernike_poly_index, 'zval_m': zernike_value_m})
 
     optics = instrument.CorgiOptics('excam', bandpass, optics_keywords=optics_keywords, if_quiet=True,
@@ -169,6 +181,16 @@ def get_zwfs_pupil(star_properties, frame_exp, total_exp_time, bandpass = '1F', 
                                      write_as_L1=False)
     return 1
 
+def add_decentering(x_offset_mas, y_offset_mas):
+    lambda0_m = 0.575e-6
+    mas_per_lamD = lambda0_m * 360.0 * 3600.0 / (2 * np.pi * 2.363) * 1000
+    x_offset = x_offset_mas/ mas_per_lamD
+    y_offset = y_offset_mas/ mas_per_lamD
+
+    #xtilt_lam = y_offset * lambda0_m / lambda_m
+    #ytilt_lam = x_offset * lambda0_m / lambda_m
+    return x_offset, y_offset
+
 
 if __name__ == '__main__':
     vmag_ref = 2
@@ -179,7 +201,7 @@ if __name__ == '__main__':
     y_off_mas = 0
 
     x_off_star_mas = 0 #not supported yet, set to 0
-    y_off_star_mas = 0 #not supported yet, set to 0
+    y_off_star_mas = 300 #not supported yet, set to 0
     dmag = 25
 
     frame_exp = 1  # sec
@@ -189,7 +211,7 @@ if __name__ == '__main__':
                                 'position_x': x_off_star_mas, 'position_y': y_off_star_mas}
 
 
-    #get_clear_pupil(ref_star_properties, frame_exp)
-    get_zwfs_pupil(ref_star_properties, frame_exp, total_exp_time)
+    get_clear_pupil(ref_star_properties, frame_exp, offsets=[0, 5])
+    #get_zwfs_pupil(ref_star_properties, frame_exp, total_exp_time)
 
     #TODO add Z1 and Z2 jitter + also generate offseted PSF ~ 5 mas
