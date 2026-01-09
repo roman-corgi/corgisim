@@ -673,7 +673,7 @@ class CorgiOptics():
                    (self.stellar_diam_and_jitter_keywords['add_jitter'] == 1):
                     # Calculating from scratch
                     if self.stellar_diam_and_jitter_keywords['use_saved_deltaE_and_weights'] == 0:
-                        self.stellar_diam_and_jitter_keywords = jitter.build_delta_e_field_library(self.stellar_diam_and_jitter_keywords,self)
+                        self.stellar_diam_and_jitter_keywords = jitter.build_delta_e_field_library(self.stellar_diam_and_jitter_keywords,self,input_scene)
                     elif self.stellar_diam_and_jitter_keywords['use_saved_deltaE_and_weights'] == 1:
                         raise KeyError("ERROR: Use of a saved library has not been implemented yet for finite stellar diameter and jitter calculations.")
                         #TODO: Add option to use saved library

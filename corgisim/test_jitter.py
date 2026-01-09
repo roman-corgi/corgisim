@@ -746,12 +746,13 @@ def test_obs_with_finite_stellar_diam():
     # optics keywords
     Vmag = 8
     sptype = 'G0V'
+    stellar_diam_mas = 0.9 # arbitrary for this test
     cgi_mode = 'excam'
     bandpass_corgisim = '1F'
     cor_type = 'hlc_band1'
     cases = ['3e-8']       
     rootname = 'hlc_ni_' + cases[0]
-    host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype': 'vegamag'}
+    host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype': 'vegamag','stellar_diam_mas':stellar_diam_mas}
     dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm1_v.fits' )
     dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm2_v.fits' )
 
@@ -763,7 +764,7 @@ def test_obs_with_finite_stellar_diam():
     emccd_keywords ={'em_gain':gain}
 
     # jitter and finite stellar diameter keywords
-    stellar_diam_keywords = jitter.load_predefined_jitter_and_stellar_diam_params(starID=None)
+    stellar_diam_keywords = jitter.load_predefined_jitter_and_stellar_diam_params()
     
     # Define the scene
     base_scene = scene.Scene(host_star_properties)
@@ -976,12 +977,13 @@ def test_all_pol_obs_with_finite_stellar_diam():
     # optics keywords
     Vmag = 8
     sptype = 'G0V'
+    stellar_diam_mas = 0.9 # Arbitrary for the purposes of this test
     cgi_mode = 'excam'
     bandpass_corgisim = '1F'
     cor_type = 'hlc_band1'
     cases = ['3e-8']       
     rootname = 'hlc_ni_' + cases[0]
-    host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype': 'vegamag'}
+    host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype': 'vegamag','stellar_diam_mas':stellar_diam_mas}
     dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm1_v.fits' )
     dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm2_v.fits' )
     
@@ -993,7 +995,7 @@ def test_all_pol_obs_with_finite_stellar_diam():
     emccd_keywords ={'em_gain':gain}
     
     # jitter and finite stellar diameter keywords
-    stellar_diam_keywords = jitter.load_predefined_jitter_and_stellar_diam_params(starID=None)
+    stellar_diam_keywords = jitter.load_predefined_jitter_and_stellar_diam_params()
     
     # Define the scene
     base_scene = scene.Scene(host_star_properties)
