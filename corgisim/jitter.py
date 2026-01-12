@@ -532,7 +532,7 @@ def Plot_ALL_Offsets_And_Region_Outlines(x_offsets,y_offsets,x_outer_dict,\
 ###############################################################################
 # Functions for saving the offsets and the areas of their corresponding
 # regions to a fits file
-
+# TODO: Transition away from text file to fits file
 def save_offsets_and_areas(x_offsets,y_offsets,A_offsets,N_rings_of_offsets):
     '''
      This function saves the coordinates of the offset sources and the areas
@@ -598,14 +598,16 @@ def save_offsets_and_areas(x_offsets,y_offsets,A_offsets,N_rings_of_offsets):
 # Function for loading a predefined set of parameters for the jitter and finite
 # stellar diameter calculations
 
-def load_predefined_jitter_and_stellar_diam_params():
+def load_predefined_jitter_and_stellar_diam_params(quicktest=False):
     '''
      This function loads a predefined set of parameters for running 
      Determine_offsets_and_areas. Otherwise, the example will match the one
      given in John Krist's paper.
     
      Inputs:
-            none
+            quicktest: A Boolean that specifies whether to use the full example
+                       offset distribution (quicktest=False) or a smaller subset
+                       that runs more quickly (quicktest=True)
     
      Outputs:
             stellar_diam_and_jitter_keywords: A dictionary containing all of the
@@ -617,18 +619,34 @@ def load_predefined_jitter_and_stellar_diam_params():
     stellar_diam_and_jitter_keywords = {}
     
     # Load the example
-    # Use parameters that approximately reproduce John Krist's example
+    if quicktest == False:
+        # Use parameters that approximately reproduce John Krist's example
+            
+        # Offset array parameters
+        stellar_diam_and_jitter_keywords['N_rings_of_offsets'] = 11
+        stellar_diam_and_jitter_keywords['N_offsets_per_ring'] = np.array([6,8,12,14,12,10,14,10,14,10,14])
+        stellar_diam_and_jitter_keywords['starting_offset_ang_by_ring'] = np.array([90,0,45,0,45,0,90,0,90,0,90])
+        stellar_diam_and_jitter_keywords['r_ring0'] = 0.075
+        stellar_diam_and_jitter_keywords['dr_rings'] = np.array([0.15,0.15,0.15,0.15,0.2,0.4,0.4,0.8,0.8,1.6,1.6])
+        stellar_diam_and_jitter_keywords['outer_radius_of_offset_circle'] = 6.475
+        stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] = 1
+        stellar_diam_and_jitter_keywords['add_jitter'] = 0
+        #stellar_diam_and_jitter_keywords['use_saved_deltaE_and_weights'] = 0
         
-    # Offset array parameters
-    stellar_diam_and_jitter_keywords['N_rings_of_offsets'] = 11
-    stellar_diam_and_jitter_keywords['N_offsets_per_ring'] = np.array([6,8,12,14,12,10,14,10,14,10,14])
-    stellar_diam_and_jitter_keywords['starting_offset_ang_by_ring'] = np.array([90,0,45,0,45,0,90,0,90,0,90])
-    stellar_diam_and_jitter_keywords['r_ring0'] = 0.075
-    stellar_diam_and_jitter_keywords['dr_rings'] = np.array([0.15,0.15,0.15,0.15,0.2,0.4,0.4,0.8,0.8,1.6,1.6])
-    stellar_diam_and_jitter_keywords['outer_radius_of_offset_circle'] = 6.475
-    stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] = 1
-    stellar_diam_and_jitter_keywords['add_jitter'] = 0
-    #stellar_diam_and_jitter_keywords['use_saved_deltaE_and_weights'] = 0
+    elif quicktest == True:
+        
+        # Use a subset of the example array 
+        # Offset array parameters
+        stellar_diam_and_jitter_keywords['N_rings_of_offsets'] = 6
+        stellar_diam_and_jitter_keywords['N_offsets_per_ring'] = np.array([6,8,12,14,12,10])
+        stellar_diam_and_jitter_keywords['starting_offset_ang_by_ring'] = np.array([90,0,45,0,45,0])
+        stellar_diam_and_jitter_keywords['r_ring0'] = 0.075
+        stellar_diam_and_jitter_keywords['dr_rings'] = np.array([0.15,0.15,0.15,0.15,0.2,0.4])
+        stellar_diam_and_jitter_keywords['outer_radius_of_offset_circle'] = stellar_diam_and_jitter_keywords['r_ring0'] + np.sum(stellar_diam_and_jitter_keywords['dr_rings'])
+        stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] = 1
+        stellar_diam_and_jitter_keywords['add_jitter'] = 0
+        #stellar_diam_and_jitter_keywords['use_saved_deltaE_and_weights'] = 0
+        
         
     # Return the dictionary
     return stellar_diam_and_jitter_keywords
