@@ -14,8 +14,6 @@ import pandas as pd
 Jitter and Finite Stellar Diameter Tests:
     
     test_offsets_and_areas_against_example: tests use of jitter.py against an example
-    check_offset_weights: compares the calculated weights for the example offset list
-                          against a pre-calculated list for the same offsets (TODO)
     test_obs_with_finite_stellar_diam: tests an observation sequence with finite stellar diameter included
     test_weight_calculation: shorter version of test_obs_with_finite_stellar_diam used to test the
                              addition of the lines that calculate the weights for the offset regions
@@ -252,107 +250,6 @@ def test_offsets_and_areas_against_example():
     total_area_norm = np.sum(A_offsets_list)
     assert np.allclose(total_area_norm,1.0,atol=0.1) == True
     
-###############################################################################
-def check_offset_weights(show_plots=False,print_details=False):
-    
-    '''
-    This function compares the calculated weights for the example offset list
-    against a pre-calculated list for the same offsets.
-    '''
-    
-    # jitter and finite stellar diameter keywords
-    stellar_diam_and_jitter_keywords = jitter.load_predefined_jitter_and_stellar_diam_params(starID=None)
-    
-    # build the list of offsets
-    x_offsets, y_offsets, A_offsets, x_outer_dict, yu_outer_dict, yl_outer_dict, boundary_coords_dict \
-        = jitter.Determine_offsets_and_areas(stellar_diam_and_jitter_keywords['outer_radius_of_offset_circle'], \
-                                      stellar_diam_and_jitter_keywords['N_rings_of_offsets'], \
-                                      stellar_diam_and_jitter_keywords['N_offsets_per_ring'], \
-                                      stellar_diam_and_jitter_keywords['starting_offset_ang_by_ring'], \
-                                      stellar_diam_and_jitter_keywords['r_ring0'], \
-                                      stellar_diam_and_jitter_keywords['dr_rings'])
-    if print_details == True:
-        print('Offsets calculated!')
-    
-    # For easier iterating, reshape the offsets and areas into lists
-    x_offsets_list = [];
-    y_offsets_list = [];
-    A_offsets_list = [];
-    for iring in np.arange(stellar_diam_and_jitter_keywords['N_rings_of_offsets']+1):
-        # Extract the data for the ring
-        x_offsets_iring = x_offsets[iring]
-        y_offsets_iring = y_offsets[iring]
-        A_offsets_iring = A_offsets[iring]
-        # The zeroth ring has only one data point (the onaxis source)
-        if iring==0:
-            # Append the data for the zeroth ring
-            x_offsets_list = np.append(x_offsets_list,x_offsets_iring)
-            y_offsets_list = np.append(y_offsets_list,y_offsets_iring)
-            A_offsets_list = np.append(A_offsets_list,A_offsets_iring)
-        else:
-            # The remaining rings have multiple data points
-            # Iterate over each region
-            Nregions_iring = x_offsets_iring.shape[0]
-            for ireg in range(Nregions_iring):
-                # Append the data for region ireg in ring iring
-                x_offsets_list = np.append(x_offsets_list,x_offsets_iring[ireg])
-                y_offsets_list = np.append(y_offsets_list,y_offsets_iring[ireg])
-                A_offsets_list = np.append(A_offsets_list,A_offsets_iring)
-    
-    # look at the weight calculation
-    if 'r_stellar_disc_mas' in stellar_diam_and_jitter_keywords:
-        if stellar_diam_and_jitter_keywords['stellar_diam_mas'] != 2*stellar_diam_and_jitter_keywords['r_stellar_disc_mas']:
-            raise KeyError("ERROR: The provided stellar radius and stellar diameter are inconsistent.")
-        r_stellar_disc_mas = stellar_diam_and_jitter_keywords['r_stellar_disc_mas']
-    else:
-        # Calculate the radius
-        r_stellar_disc_mas = 0.5*stellar_diam_and_jitter_keywords['stellar_diam_mas']
-        # Add to the dictionary
-        stellar_diam_and_jitter_keywords['r_stellar_disc_mas'] = r_stellar_disc_mas
-        
-    # If an outer radius of the offset circle has not been specified, set
-    # it to the radius of the stellar disc.
-    if 'outer_radius_of_offset_circle' not in stellar_diam_and_jitter_keywords.keys():
-        stellar_diam_and_jitter_keywords['outer_radius_of_offset_circle'] = r_stellar_disc_mas
-    
-    # Set up a uniform grid of offsets (X,Y).
-    
-    outer_radius_of_offset_circle = stellar_diam_and_jitter_keywords['outer_radius_of_offset_circle']
-        
-    # If the resolution of the offset grid has not been specified, default to 260.
-    if 'N_offsetgrid' not in stellar_diam_and_jitter_keywords.keys():
-        N_offsetgrid = 260
-        stellar_diam_and_jitter_keywords['N_offsetgrid'] = N_offsetgrid
-    else:
-        N_offsetgrid = stellar_diam_and_jitter_keywords['N_offsetgrid']
-            
-    x = np.linspace(-outer_radius_of_offset_circle,outer_radius_of_offset_circle,N_offsetgrid*10)
-    y = np.linspace(-outer_radius_of_offset_circle,outer_radius_of_offset_circle,N_offsetgrid*10)
-    X,Y = np.meshgrid(x,y)
-
-    # Define the top-hat function
-    disc_indices = (X**2 + Y**2 <= r_stellar_disc_mas**2)
-    
-    # Work on the interpolation
-    x_predetermined = x_offsets_list
-    y_predetermined = y_offsets_list
-    
-    #interp = RegularGridInterpolator([x,y], disc_indices)    
-    #W = interp(np.array([x_offsets_list,y_offsets_list]).T,'quintic')
-    
-    #ax = plt.axes(projection='3d')
-    #ax.plot3D(x_offsets_list,y_offsets_list,W,'ro')
-    #plt.show()
-    
-    #Xr = X.ravel()
-    #Yr = Y.ravel()
-    #Zr = disc_indices.ravel()
-    #fig = plt.figure()
-    #ax = fig.add_subplot(projection='3d')
-    #for iplt in range(len(Xr)):
-    #    ax.scatter(Xr[iplt],Yr[iplt],Zr[iplt],marker='.',color='b')
-        
-    # TODO: Fill in this test function once jitter is implemented too.
 ###############################################################################
 def test_obs_with_finite_stellar_diam():
     '''
