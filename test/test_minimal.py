@@ -177,6 +177,9 @@ def test_cpgs_obs():
     abs_path =  os.path.join(script_dir, filepath)
 
     scene_target, scene_reference, optics, detector_target, detector_reference, visit_list = inputs.load_cpgs_data(abs_path)
+
+    assert detector_target.photon_counting == True
+    
     len_list = 0 
     for visit in visit_list:
         len_list += visit['number_of_frames']
