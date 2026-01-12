@@ -15,8 +15,6 @@ Jitter and Finite Stellar Diameter Tests:
     
     test_offsets_and_areas_against_example: tests use of jitter.py against an example
     test_obs_with_finite_stellar_diam: tests an observation sequence with finite stellar diameter included
-    test_weight_calculation: shorter version of test_obs_with_finite_stellar_diam used to test the
-                             addition of the lines that calculate the weights for the offset regions
 
 """
 
@@ -277,7 +275,7 @@ def test_obs_with_finite_stellar_diam():
     emccd_keywords ={'em_gain':gain}
 
     # jitter and finite stellar diameter keywords
-    stellar_diam_keywords = jitter.load_predefined_jitter_and_stellar_diam_params()
+    stellar_diam_keywords = jitter.load_predefined_jitter_and_stellar_diam_params(quicktest=True)
     
     # Define the scene
     base_scene = scene.Scene(host_star_properties)
@@ -331,47 +329,6 @@ def test_obs_with_finite_stellar_diam():
     #assert isinstance(simulatedImage_list[n_frames-1], SimulatedImage)
     #assert isinstance(simulatedImage_list[n_frames-1].image_on_detector, fits.hdu.image.PrimaryHDU)
 
-###############################################################################
-def test_weight_calculation():
-    
-    # This function tests the lines that calculate the weights for each offset
-    # region. For now, the purpose is to check that the additions to the code
-    # do not somehow interfere with setting up the optics or calculating the
-    # host star psf. The test is successful if it runs.
-    
-    # Set up keywords
-    # optics keywords
-    Vmag = 8
-    sptype = 'G0V'
-    stellar_diam_mas = 0.9 # Arbitrary for the purposes of this test
-    cgi_mode = 'excam'
-    bandpass_corgisim = '1F'
-    cor_type = 'hlc_band1'
-    cases = ['3e-8']       
-    rootname = 'hlc_ni_' + cases[0]
-    host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype': 'vegamag','stellar_diam_mas':stellar_diam_mas}
-    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm1_v.fits' )
-    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm2_v.fits' )
-
-    optics_keywords ={'cor_type':cor_type, 'use_errors':2, 'polaxis':10, 'output_dim':201,\
-                    'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
-    
-    # emccd keywords
-    gain =1000
-    emccd_keywords ={'em_gain':gain}
-
-    # jitter and finite stellar diameter keywords
-    stellar_diam_keywords = jitter.load_predefined_jitter_and_stellar_diam_params()
-    
-    # Define the scene
-    base_scene = scene.Scene(host_star_properties)
-    
-    # Set up the optics
-    optics =  instrument.CorgiOptics(cgi_mode, bandpass_corgisim, optics_keywords=optics_keywords, stellar_diam_and_jitter_keywords=stellar_diam_keywords, if_quiet=True)
-    
-    # Test
-    sim_scene = optics.get_host_star_psf(base_scene)
-    
 ###############################################################################
 def test_all_pol_obs_with_finite_stellar_diam():
     '''
