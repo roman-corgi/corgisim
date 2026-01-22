@@ -137,7 +137,8 @@ def test_L1_product_fits_format_specmode():
         assert exthdr['FSAMSP_H'] ==  24087, f"Expected data FSAMSP_H=24087, but got {exthdr['FSAMSP_H']}"
         assert exthdr['FSAMSP_V'] == 12238, f"Expected data FSAMSP_V=12238, but got {exthdr['FSAMSP_V']}"
     
-        assert exthdr['FSMPRFL'] == 'SPEC730' f"Expected data FSMPRFL=SPEC730, but got {exthdr['FSMPRFL']}"
+        assert exthdr['FSMPRFL'] == 'SPEC730', f"Expected data FSMPRFL=SPEC730, but got {exthdr['FSMPRFL']}"
+        assert exthdr['FSMLOS'] == 1, f"Expected data FSMLOS=1, but got {exthdr['FSMLOS']}"
 
         ### delete file after testing
         print('Deleted the FITS file after testing headers populated with default values')
@@ -217,7 +218,7 @@ def test_L1_product_fits_format_specmode():
         assert exthdr['FSAMSP_H'] ==  30677.2, f"Expected data FSAMSP_H=30677.2, but got {exthdr['FSAMSP_H']}"
         assert exthdr['FSAMSP_V'] == 2959.5, f"Expected data FSAMSP_V=2959.5, but got {exthdr['FSAMSP_V']}"
 
-        assert exthdr['FSMPRFL'] == 'SPEC730' f"Expected data FSMPRFL=SPEC730, but got {exthdr['FSMPRFL']}"
+        assert exthdr['FSMPRFL'] == 'SPEC730', f"Expected data FSMPRFL=SPEC730, but got {exthdr['FSMPRFL']}"
 
         ### delete file after testing
         print('Deleted the FITS file after testing headers populated with default values')
