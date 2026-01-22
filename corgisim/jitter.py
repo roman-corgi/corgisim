@@ -244,7 +244,8 @@ def Determine_ring_params(r_ring_inner,dr_ring,regnum_ring,theta_ring_centers_st
     r_ring_outer = r_ring_centers + dr_ring/2
     
     # Step 2: Define the sets of coordinates that describe the outer circle
-    x_ring_outer = np.linspace(-r_ring_outer, r_ring_outer)
+    rtol=1e-6
+    x_ring_outer = np.linspace(-r_ring_outer+rtol, r_ring_outer-rtol)
     yu_ring_outer = Find_ycircle(r_ring_outer,x_ring_outer,0,0,'u')
     yl_ring_outer = Find_ycircle(r_ring_outer,x_ring_outer,0,0,'l')
     
@@ -336,7 +337,7 @@ def Determine_offsets_and_areas(outer_radius_of_offset_circle, N_rings_of_offset
     
     # If dr_rings is unspecified, define it as 
     # (outer_radius_of_offset_circle - r_ring0) / N_rings_of_offsets
-    if dr_rings.all == 0:
+    if (np.isscalar(dr_rings) == True and dr_rings == 0) or (np.isscalar(dr_rings)==False and dr_rings.all==0):
         dr_rings = (outer_radius_of_offset_circle - r_ring0) / N_rings_of_offsets
         
     # If dr_rings is a scalar, construct an array of values for each ring
@@ -384,17 +385,17 @@ def Determine_offsets_and_areas(outer_radius_of_offset_circle, N_rings_of_offset
             # Define the coordinates for the offset at the origin
             x_ring_centers = 0
             y_ring_centers = 0
-            # Also specify that thte radius of the outer circle is r_ring0
+            # Also specify that the radius of the outer circle is r_ring0
             r_ring_outer = r_ring0
             # Define the set of x coordinates for the ring outline
-            x_ring_outer = np.linspace(-r_ring0,r_ring0)
+            x_ring_outer = np.linspace(-r_ring0,r_ring0,num=50)
             # Define the sets of y coordinates for the ring outline
             yu_ring_outer = Find_ycircle(r_ring0,x_ring_outer,0,0,'u')
             yl_ring_outer = Find_ycircle(r_ring0,x_ring_outer,0,0,'l')
             # Specify that there are no boundaries because only one region
             boundary_coords = []
             # Calculate the area of the region around the origin
-            reg_area_ringi = np.pi*(r_ring0**2)/4
+            reg_area_ringi = np.pi*(r_ring0**2)
             # Normalize the area
             reg_area_ringi = reg_area_ringi / total_area
         else: # use Determine_ring_params and Region_Area for the other rings 
@@ -406,7 +407,7 @@ def Determine_offsets_and_areas(outer_radius_of_offset_circle, N_rings_of_offset
             # Width of current ring
             dr_iring = dr_rings[iring-1]
             # Number of regions in the current ring
-            regnum_iring = N_offsets_per_ring[iring-1]
+            regnum_iring = int(N_offsets_per_ring[iring-1])
             # Angle of the first offset in the current ring
             theta_iring_centers_start = starting_offset_ang_by_ring[iring-1]
             # Determine the ring parameters
@@ -598,7 +599,7 @@ def save_offsets_and_areas(x_offsets,y_offsets,A_offsets,N_rings_of_offsets):
 # Function for loading a predefined set of parameters for the jitter and finite
 # stellar diameter calculations
 
-def load_predefined_jitter_and_stellar_diam_params(quicktest=False):
+def load_predefined_jitter_and_stellar_diam_params(quicktest=False,mintest=False,stellar_diam_mas=0):
     '''
      This function loads a predefined set of parameters for running 
      Determine_offsets_and_areas. Otherwise, the example will match the one
@@ -608,6 +609,8 @@ def load_predefined_jitter_and_stellar_diam_params(quicktest=False):
             quicktest: A Boolean that specifies whether to use the full example
                        offset distribution (quicktest=False) or a smaller subset
                        that runs more quickly (quicktest=True)
+            mintest: A Boolean that specifies whether to use a very minimal
+                     subset of the offset distribution. Used instead of quicktest.
     
      Outputs:
             stellar_diam_and_jitter_keywords: A dictionary containing all of the
@@ -619,7 +622,7 @@ def load_predefined_jitter_and_stellar_diam_params(quicktest=False):
     stellar_diam_and_jitter_keywords = {}
     
     # Load the example
-    if quicktest == False:
+    if (quicktest == False) and (mintest==False):
         # Use parameters that approximately reproduce John Krist's example
             
         # Offset array parameters
@@ -633,15 +636,35 @@ def load_predefined_jitter_and_stellar_diam_params(quicktest=False):
         stellar_diam_and_jitter_keywords['add_jitter'] = 0
         #stellar_diam_and_jitter_keywords['use_saved_deltaE_and_weights'] = 0
         
+    elif mintest == True:
+        
+        # Use a minimal subset of the example array (one ring) 
+        # Offset array parameters
+        stellar_diam_and_jitter_keywords['N_rings_of_offsets'] = 1
+        stellar_diam_and_jitter_keywords['N_offsets_per_ring'] = np.array([6])
+        stellar_diam_and_jitter_keywords['starting_offset_ang_by_ring'] = np.array([90])
+        if stellar_diam_mas > 0:
+            stellar_diam_and_jitter_keywords['r_ring0'] = (stellar_diam_mas/2)/(stellar_diam_and_jitter_keywords['N_rings_of_offsets']+1)
+        else:
+            stellar_diam_and_jitter_keywords['r_ring0'] = 0.075
+        stellar_diam_and_jitter_keywords['dr_rings'] = stellar_diam_and_jitter_keywords['r_ring0']*np.ones(stellar_diam_and_jitter_keywords['N_rings_of_offsets'])
+        stellar_diam_and_jitter_keywords['outer_radius_of_offset_circle'] = stellar_diam_and_jitter_keywords['r_ring0'] + np.sum(stellar_diam_and_jitter_keywords['dr_rings'])
+        stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] = 1
+        stellar_diam_and_jitter_keywords['add_jitter'] = 0
+        #stellar_diam_and_jitter_keywords['use_saved_deltaE_and_weights'] = 0
+        
     elif quicktest == True:
         
-        # Use a subset of the example array 
+        # Use a smaller example array of evenly spaced rings with the same area
         # Offset array parameters
-        stellar_diam_and_jitter_keywords['N_rings_of_offsets'] = 6
-        stellar_diam_and_jitter_keywords['N_offsets_per_ring'] = np.array([6,8,12,14,12,10])
-        stellar_diam_and_jitter_keywords['starting_offset_ang_by_ring'] = np.array([90,0,45,0,45,0])
-        stellar_diam_and_jitter_keywords['r_ring0'] = 0.075
-        stellar_diam_and_jitter_keywords['dr_rings'] = np.array([0.15,0.15,0.15,0.15,0.2,0.4])
+        stellar_diam_and_jitter_keywords['N_rings_of_offsets'] = 5
+        if stellar_diam_mas > 0:
+            stellar_diam_and_jitter_keywords['r_ring0'] = (stellar_diam_mas/2)/(stellar_diam_and_jitter_keywords['N_rings_of_offsets']+1)
+        else:
+            stellar_diam_and_jitter_keywords['r_ring0'] = 0.075
+        stellar_diam_and_jitter_keywords['dr_rings'] = stellar_diam_and_jitter_keywords['r_ring0']*np.ones(stellar_diam_and_jitter_keywords['N_rings_of_offsets'])
+        stellar_diam_and_jitter_keywords['N_offsets_per_ring'] = np.array([3,5,7,9,11])
+        stellar_diam_and_jitter_keywords['starting_offset_ang_by_ring'] = np.array([90,0,45,0,45])
         stellar_diam_and_jitter_keywords['outer_radius_of_offset_circle'] = stellar_diam_and_jitter_keywords['r_ring0'] + np.sum(stellar_diam_and_jitter_keywords['dr_rings'])
         stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] = 1
         stellar_diam_and_jitter_keywords['add_jitter'] = 0
@@ -1140,8 +1163,13 @@ def setup_stellar_diam_and_jitter(optics,stellar_diam_and_jitter_keywords):
             # Default to calculating the delta electric fields and weights
             stellar_diam_and_jitter_keywords['use_saved_deltaE_and_weights'] = 0
         else:
+            # Check if the library has already been calculated
+            if stellar_diam_and_jitter_keywords['use_saved_deltaE_and_weights'] == 2:
+                # There needs to be an offset library already saved
+                if 'offset_field_data' not in stellar_diam_and_jitter_keywords.keys():
+                    raise KeyError('ERROR: use_saved_deltaE_and_weights = 2 but no offset field data library exists in stellar_diam_and_jitter_keywords.')
             # Must be either 0 or 1
-            if (stellar_diam_and_jitter_keywords['use_saved_deltaE_and_weights'] != 0) \
+            elif (stellar_diam_and_jitter_keywords['use_saved_deltaE_and_weights'] != 0) \
                 and (stellar_diam_and_jitter_keywords['use_saved_deltaE_and_weights'] != 1):
                     raise KeyError("ERROR: If specified, use_saved_deltaE_and_weights in stellar_diam_and_jitter_keywords must be 0 or 1.")
         # If the delta electric fields and weights will be calculated:
