@@ -134,6 +134,7 @@ def test_L1_product_fits_format():
     assert exthdr['FSAMSP_H'] ==  29387, f"Expected data FSAMSP_H=29387, but got {exthdr['FSAMSP_H']}"
     assert exthdr['FSAMSP_V'] == 12238, f"Expected data FSAMSP_V=12238, but got {exthdr['FSAMSP_V']}"
 
+    assert exthdr['FSMPRFL'] == 'NFOV' f"Expected data FSMPRFL=NFOV, but got {exthdr['FSMPRFL']}"
 
 
     ### delete file after testing
