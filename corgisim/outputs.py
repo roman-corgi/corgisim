@@ -75,17 +75,17 @@ def create_hdu_list(data, header_info, sim_info=None):
     exthdr['FSMLOS'] = 1
 
     # TODO: Figure out which one to use for spec 
-    if 'hlc' in cor_type:
+    if 'hlc' in header_info['cor_type']:
         exthdr['FSMPRFL'] = 'NFOV'
-    elif 'wide' in cor_type:
+    elif 'wide' in header_info['cor_type']:
         exthdr['FSMPRFL'] = 'WFOV'
-    elif cor_type == 'spc-spec_band2':
+    elif header_info['cor_type'] == 'spc-spec_band2':
         exthdr['FSMPRFL'] = 'SPEC660'
-    elif cor_type == 'spc-spec_band3':
+    elif header_info['cor_type'] == 'spc-spec_band3':
         exthdr['FSMPRFL'] = 'SPEC730'
     else :
         exthdr['FSMPRFL'] = 'FSM_PROFILE_UNKNOWN'
-        
+
     if header_info['PHTCNT'] == True:
         exthdr['ISPC']= int(1)
     else:
