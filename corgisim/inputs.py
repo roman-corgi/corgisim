@@ -358,7 +358,7 @@ def load_cpgs_data(filepath, return_input=False):
         scene_reference = scene.Scene(host_star_properties_reference)
 
     if (cpgs_input.find('target_autogain').text == '0'):
-        photon_counting = (cpgs_input.find('target_pcounting')=='1')
+        photon_counting = (cpgs_input.find('target_pcounting').text=='1')
         em_gain = float(cpgs_input.find('target_gain').text)
         # em_gain cannot be under 1 in emccd. Since it's possible to set it to less than 1 in CPGS for now, we overwrite it
         if em_gain < 1 : 
@@ -369,7 +369,7 @@ def load_cpgs_data(filepath, return_input=False):
 
     if reference_star_present :
         if (cpgs_input.find('reference_autogain').text == '0'):
-            photon_counting = (cpgs_input.find('reference_pcounting')=='1')
+            photon_counting = (cpgs_input.find('reference_pcounting').text=='1')
             em_gain = float(cpgs_input.find('reference_gain').text)
             # em_gain cannot be under 1 in emccd. Since it's possible to set it to less than 1 in CPGS for now, we overwrite it
             if em_gain < 1 : 
@@ -390,7 +390,7 @@ def load_cpgs_data(filepath, return_input=False):
             else:
                 isReference = False
             excam = visit.find('cgi_excam')
-            roll_angle = visit.find('position_angle').text
+            roll_angle = float(visit.find('position_angle').text)
             visit_id = visit.attrib['number']
             visit_type = visit.find('cgi_visit_type').text
             if (excam.find('auto_gain').text == 'Y'):
@@ -399,7 +399,7 @@ def load_cpgs_data(filepath, return_input=False):
                 exp_time = float(excam.find('exposure_duration').text)*3600
             else:
                 number_of_frames = int(excam.find('number_of_frames').text)
-                exp_time =  float(excam.find('exposure_duration').text)
+                exp_time =  float(excam.find('frame_time').text)
 
             visit_dict = {'number_of_frames': number_of_frames,'exp_time': exp_time, 'roll_angle':roll_angle, 'visit_id':visit_id, 'isReference':isReference}
 

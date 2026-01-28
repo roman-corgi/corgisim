@@ -169,13 +169,13 @@ class Scene():
 
                 
     @host_star_magtype.setter
-    def host_star_Vmag(self, value):
+    def host_star_magtype(self, value):
         """
         Setter method to validate and set the type of magnitude.
         Args:
             value (str): The type of magnitude
         """
-        self._host_star_magtype = float(value)
+        self._host_star_magtype = value
 
     @property
     def point_source_Vmag(self):

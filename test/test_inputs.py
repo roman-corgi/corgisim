@@ -43,6 +43,8 @@ def test_cpgs_loading():
     assert isinstance(optics, instrument.CorgiOptics)
     assert isinstance(visit_list, list)
     assert len(visit_list) > 0
+    assert detector_target.photon_counting == True
+    assert detector_reference.photon_counting == True
 
     sim_scene_target  = optics.get_host_star_psf(scene_target)
     sim_scene_reference  = optics.get_host_star_psf(scene_reference)
