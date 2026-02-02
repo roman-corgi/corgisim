@@ -41,9 +41,9 @@ build:
     python: "3.12"
   jobs:
     pre_build:
-     -  wget https://sourceforge.net/projects/proper-library/files/proper_v3.3.3_python.zip && unzip proper_v3.3.3_python.zip && cd proper_v3.3.3_python/ &&python -m pip install .
+     -  wget https://sourceforge.net/projects/proper-library/files/proper_v3.3.4_python.zip && unzip proper_v3.3.4_python.zip && cd proper_v3.3.4_python/ &&python -m pip install .
      -  git clone https://github.com/roman-corgi/cgisim_cpp.git && cd cgisim_cpp/ && python -m pip install .    
-     -  wget https://sourceforge.net/projects/cgisim/files/cgisim_v4.0.zip  && unzip  cgisim_v4.0.zip &&  cd  cgisim_v4.0/ && python -m pip install .
+     -  wget https://sourceforge.net/projects/cgisim/files/cgisim_v4.1.zip  && unzip  cgisim_v4.1.zip &&  cd  cgisim_v4.1/ && python -m pip install .
      - pip install -r docs/requirements.txt
      - pip install -e . 
      - sphinx-apidoc -o docs/source/ corgisim/

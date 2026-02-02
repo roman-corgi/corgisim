@@ -106,7 +106,7 @@ def test_excam_mode():
     prihdr = sim_scene.image_on_detector[0].header
     exthdr = sim_scene.image_on_detector[1].header
     time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
-    filename = f"CGI_{prihdr['VISITID']}_{time_in_name}_L1_.fits"
+    filename = f"cgi_{prihdr['VISITID']}_{time_in_name}_l1_.fits"
 
 
     f = os.path.join( outdir , filename)
@@ -177,6 +177,9 @@ def test_cpgs_obs():
     abs_path =  os.path.join(script_dir, filepath)
 
     scene_target, scene_reference, optics, detector_target, detector_reference, visit_list = inputs.load_cpgs_data(abs_path)
+
+    assert detector_target.photon_counting == True
+    
     len_list = 0 
     for visit in visit_list:
         len_list += visit['number_of_frames']
@@ -193,17 +196,26 @@ def test_cpgs_obs():
     point_source_info = [{'Vmag': mag_companion[0], 'magtype': 'vegamag','position_x':dx[0] , 'position_y':dy[0]}]
     simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, point_source_info=point_source_info)
 
-    for simulatedImage in simulatedImage_list:
+    i=0
+    for visit in visit_list:
+        for _ in range(visit['number_of_frames']):        
         #Check that the target has a point source and the target doesn't  
-        if simulatedImage.input_scene.ref_flag :
-            assert '_point_source_Vmag' not in simulatedImage.input_scene.__dict__
-            assert simulatedImage.point_source_image == None  
-        else:
-            assert simulatedImage.input_scene._point_source_Vmag == mag_companion
-            assert simulatedImage.input_scene._point_source_magtype == ['vegamag']
-            assert simulatedImage.input_scene.point_source_x == dx
-            assert simulatedImage.input_scene.point_source_y == dy
-            assert isinstance(simulatedImage.point_source_image, fits.hdu.image.PrimaryHDU)  
+            if simulatedImage_list[i].input_scene.ref_flag :
+                assert '_point_source_Vmag' not in simulatedImage_list[i].input_scene.__dict__
+                assert simulatedImage_list[i].point_source_image == None
+
+            else:
+                assert simulatedImage_list[i].input_scene._point_source_Vmag == mag_companion
+                assert simulatedImage_list[i].input_scene._point_source_magtype == ['vegamag']
+                assert simulatedImage_list[i].input_scene.point_source_dra == dx
+                assert simulatedImage_list[i].input_scene.point_source_ddec == dy
+                assert isinstance(simulatedImage_list[i].point_source_image, fits.hdu.image.PrimaryHDU)
+
+            line_roll = [line for line in simulatedImage_list[i].image_on_detector.header['COMMENT'] if 'roll_angle' in line]
+            _, roll = line_roll[0].split(':', 1)
+            assert float(roll) == visit["roll_angle"]
+                
+            i += 1      
 
 def test_spec_mode():
     input1 = inputs.Input()
@@ -226,7 +238,7 @@ def test_spec_mode():
                   'slit':'R1C2', 'prism':'PRISM3', 'wav_step_um':2E-3}
 
     optics_slit_prism = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords_slit_prism, if_quiet=True,
-                                small_spc_grid = 1, oversample = overfac, return_oversample = False)
+                                small_spc_grid = 1, oversampling_factor = overfac, return_oversample = False)
 
     sim_scene_slit_prism = optics_slit_prism.get_host_star_psf(base_scene)
 

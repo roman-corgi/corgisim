@@ -46,6 +46,8 @@ def test_on_axis_star():
      
     sim_scene = optics.get_host_star_psf(base_scene)
     
+    assert(sim_scene.input_scene.host_star_Vmag == 8)
+    
     for key, value in optics_keywords.items():
         if key not in optics_keywords_copy.keys():
             pytest.fail(f'optics keywords have been changed')

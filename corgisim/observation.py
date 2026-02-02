@@ -3,6 +3,7 @@
 import corgisim
 import os
 from corgisim import scene, instrument, inputs, observation, outputs
+import copy 
 
 def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, save_as_fits= False, output_dir=None, full_frame= False, loc_x=None, loc_y=None):
     """Generates a sequence of simulated observations and places them on a detector.
@@ -38,7 +39,7 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, s
         and associated FITS header information.
     """
     sim_scene = optics.get_host_star_psf(scene)
-    if hasattr(scene, 'point_source_x'):
+    if hasattr(scene, 'point_source_dra') or hasattr(scene, 'point_source_ddec'):
         sim_scene = optics.inject_point_sources(scene,sim_scene)
     
     simulatedImage_list = []
@@ -46,7 +47,7 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, s
     if full_frame == False :
         for i in range(0, n_frames):
             sim_image = detector.generate_detector_image(sim_scene,exp_time)
-            simulatedImage_list.append(sim_image)
+            simulatedImage_list.append(copy.deepcopy(sim_image))
     else:
         if save_as_fits:
             # Save the images as fits in output_dir if specified, in corgisim/test/testdata if not
@@ -60,7 +61,7 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, s
 
         for i in range(0, n_frames):
             sim_image = detector.generate_detector_image(sim_scene,exp_time,full_frame=True,loc_x=loc_x, loc_y=loc_y)
-            simulatedImage_list.append(sim_image)
+            simulatedImage_list.append(copy.deepcopy(sim_image))
 
             if save_as_fits:
                 outputs.save_hdu_to_fits(sim_image.image_on_detector,outdir=outdir, write_as_L1=True)
@@ -97,11 +98,11 @@ def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, outpu
         scene_target = scene.Scene(host_star_properties, point_source_info)
 
     for visit in visit_list:
-        #optics.roll_angle = visit['roll_angle'] Commented out for now
+        visit_optics = instrument.CorgiOptics(optics.cgi_mode, optics.bandpass_header, optics_keywords={'cor_type':optics.optics_keywords['cor_type'],'polaxis':optics.optics_keywords['polaxis'],'output_dim':optics.optics_keywords['output_dim']}, roll_angle = visit['roll_angle'] , if_quiet=True, oversampling_factor = optics.oversampling_factor)
         if visit['isReference']:
-            simulatedImage_visit = generate_observation_sequence(scene_reference, optics, detector_reference, visit['exp_time'], visit['number_of_frames'],save_as_fits= save_as_fits, output_dir=output_dir, full_frame= full_frame,loc_x=loc_x, loc_y=loc_y )
+            simulatedImage_visit = generate_observation_sequence(scene_reference, visit_optics, detector_reference, visit['exp_time'], visit['number_of_frames'],save_as_fits= save_as_fits, output_dir=output_dir, full_frame= full_frame,loc_x=loc_x, loc_y=loc_y )
         else:
-            simulatedImage_visit = generate_observation_sequence(scene_target, optics, detector_target, visit['exp_time'], visit['number_of_frames'],save_as_fits= save_as_fits, output_dir=output_dir, full_frame= full_frame,loc_x=loc_x, loc_y=loc_y  )
+            simulatedImage_visit = generate_observation_sequence(scene_target, visit_optics, detector_target, visit['exp_time'], visit['number_of_frames'],save_as_fits= save_as_fits, output_dir=output_dir, full_frame= full_frame,loc_x=loc_x, loc_y=loc_y  )
 
         simulatedImage_list.extend(simulatedImage_visit)
 
