@@ -92,8 +92,16 @@ def get_slit_mask(optics, dx_fsam_um=10.0, hires_dim_um=800, binfac=50):
     slit_width_hires = 1.0 / dx_hires_um * slit_ref_params[optics.slit]['width'] 
     slit_height_hires = 1.0 / dx_hires_um * slit_ref_params[optics.slit]['height']
     # Determine the binary, high-res transmission array
-    hires_slit = ((np.abs(XXs) < slit_height_hires / 2) & 
-                  (np.abs(YYs) < slit_width_hires / 2))
+    if 'rotation' in slit_ref_params[optics.slit].keys():
+        theta = np.deg2rad(slit_ref_params[optics.slit]['rotation'])
+        hires_slit = ((YYs < XXs / np.tan(theta) + slit_width_hires / (2 * np.sin(theta))) &
+                      (YYs > XXs / np.tan(theta) - slit_width_hires / (2 * np.sin(theta))) &
+                      (YYs < -XXs * np.tan(theta) + slit_height_hires / (2 * np.cos(theta))) &
+                      (YYs > -XXs * np.tan(theta) - slit_height_hires / (2 * np.cos(theta)))) 
+        hires_slit = np.fliplr(hires_slit) # TEMPORARY: Remove this statement when the CGISim rotated SPC bowtie mask orientation is corrected
+    else:
+        hires_slit = ((np.abs(XXs) < slit_height_hires / 2) & 
+                      (np.abs(YYs) < slit_width_hires / 2))
     # Bin the high-res array to the specified spatial sampling
     binned_slit = hires_slit.reshape(hires_dimy // binfac, binfac, 
                                      hires_dimx // binfac, binfac).mean(axis=3).mean(axis=1)
