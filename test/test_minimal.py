@@ -165,6 +165,8 @@ def test_excam_mode():
     assert exthdr['FSAMNAME'] == 'R1C1', f"Expected data FSAMNAME='R1C1', but got {exthdr['FSAMNAME']}"
     assert exthdr['FSAMSP_H'] ==  29387, f"Expected data FSAMSP_H=29387, but got {exthdr['FSAMSP_H']}"
     assert exthdr['FSAMSP_V'] == 12238, f"Expected data FSAMSP_V=12238, but got {exthdr['FSAMSP_V']}"
+    assert exthdr['FSMPRFL'] == 'NFOV', f"Expected data FSMPRFL=NFOV, but got {exthdr['FSMPRFL']}"
+    assert exthdr['FSMLOS'] == 1, f"Expected data FSMLOS=1, but got {exthdr['FSMLOS']}"
 
     os.remove(f)
 
@@ -177,6 +179,9 @@ def test_cpgs_obs():
     abs_path =  os.path.join(script_dir, filepath)
 
     scene_target, scene_reference, optics, detector_target, detector_reference, visit_list = inputs.load_cpgs_data(abs_path)
+
+    assert detector_target.photon_counting == True
+    
     len_list = 0 
     for visit in visit_list:
         len_list += visit['number_of_frames']
@@ -193,17 +198,26 @@ def test_cpgs_obs():
     point_source_info = [{'Vmag': mag_companion[0], 'magtype': 'vegamag','position_x':dx[0] , 'position_y':dy[0]}]
     simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, point_source_info=point_source_info)
 
-    for simulatedImage in simulatedImage_list:
+    i=0
+    for visit in visit_list:
+        for _ in range(visit['number_of_frames']):        
         #Check that the target has a point source and the target doesn't  
-        if simulatedImage.input_scene.ref_flag :
-            assert '_point_source_Vmag' not in simulatedImage.input_scene.__dict__
-            assert simulatedImage.point_source_image == None  
-        else:
-            assert simulatedImage.input_scene._point_source_Vmag == mag_companion
-            assert simulatedImage.input_scene._point_source_magtype == ['vegamag']
-            assert simulatedImage.input_scene.point_source_dra == dx
-            assert simulatedImage.input_scene.point_source_ddec == dy
-            assert isinstance(simulatedImage.point_source_image, fits.hdu.image.PrimaryHDU)  
+            if simulatedImage_list[i].input_scene.ref_flag :
+                assert '_point_source_Vmag' not in simulatedImage_list[i].input_scene.__dict__
+                assert simulatedImage_list[i].point_source_image == None
+
+            else:
+                assert simulatedImage_list[i].input_scene._point_source_Vmag == mag_companion
+                assert simulatedImage_list[i].input_scene._point_source_magtype == ['vegamag']
+                assert simulatedImage_list[i].input_scene.point_source_dra == dx
+                assert simulatedImage_list[i].input_scene.point_source_ddec == dy
+                assert isinstance(simulatedImage_list[i].point_source_image, fits.hdu.image.PrimaryHDU)
+
+            line_roll = [line for line in simulatedImage_list[i].image_on_detector.header['COMMENT'] if 'roll_angle' in line]
+            _, roll = line_roll[0].split(':', 1)
+            assert float(roll) == visit["roll_angle"]
+                
+            i += 1      
 
 def test_spec_mode():
     input1 = inputs.Input()

@@ -38,14 +38,14 @@ jobs:
         cd ..        
     - name: Download and install Roman preflight
       run: |
-        wget https://sourceforge.net/projects/cgisim/files/roman_preflight_proper_public_v2.0.1_python.zip && unzip roman_preflight_proper_public_v2.0.1_python.zip
-        cd roman_preflight_proper_public_v2.0.1_python/
+        git clone https://github.com/roman-corgi/cgisim_cpp.git  
+        cd cgisim_cpp/
         python -m pip install .
         cd ..        
     - name: Download and install CGISim
       run: |
-        wget https://sourceforge.net/projects/cgisim/files/cgisim_v4.0.zip  && unzip  cgisim_v4.0.zip
-        cd  cgisim_v4.0/
+        wget https://sourceforge.net/projects/cgisim/files/cgisim_v4.1.zip  && unzip  cgisim_v4.1.zip
+        cd  cgisim_v4.1/
         python -m pip install .
         cd ..   
         

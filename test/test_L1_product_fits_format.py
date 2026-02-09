@@ -134,6 +134,8 @@ def test_L1_product_fits_format():
     assert exthdr['FSAMSP_H'] ==  29387, f"Expected data FSAMSP_H=29387, but got {exthdr['FSAMSP_H']}"
     assert exthdr['FSAMSP_V'] == 12238, f"Expected data FSAMSP_V=12238, but got {exthdr['FSAMSP_V']}"
 
+    assert exthdr['FSMPRFL'] == 'NFOV', f"Expected data FSMPRFL=NFOV, but got {exthdr['FSMPRFL']}"
+    assert exthdr['FSMLOS'] == 1, f"Expected data FSMLOS=1, but got {exthdr['FSMLOS']}"
 
 
     ### delete file after testing
@@ -226,6 +228,8 @@ def test_L1_product_fits_format():
     assert exthdr['EMGAIN_C'] == gain, f"Expected data EMGAIN_C={gain}, but got {exthdr['EMGAIN_C']}"
     assert exthdr['EMGAIN_A'] == gain, f"Expected data EMGAIN_A={gain}, but got {exthdr['EMGAIN_A']}"
     assert exthdr['ISPC'] == 0, f"Expected header ISPC=0, but got {exthdr['ISPC']}"
+    assert exthdr['EACQ_ROW'] == 300, f"Expected header EACQ_ROW=300, but got {exthdr['EACQ_ROW']}"
+    assert exthdr['EACQ_COL'] == 300, f"Expected header EACQ_COL=300, but got {exthdr['EACQ_COL']}"
 
     ### delete file after testing
     print('Deleted the FITS file after testing headers populated with non-dafult values(inputs)')
@@ -340,7 +344,7 @@ def test_L1_product_from_CPGS():
 
     script_dir = os.getcwd()
 
-    filepath = 'test/test_data/cpgs_short_sequence.xml'
+    filepath = 'test/test_data/CPGS_MRT8_CGIPrime.xml'
     abs_path =  os.path.join(script_dir, filepath)
     local_path = corgisim.lib_dir
     outdir = os.path.join(local_path.split('corgisim')[0], 'corgisim/test/testdata/cpgs')
@@ -352,15 +356,19 @@ def test_L1_product_from_CPGS():
     assert len(simulatedImage_list) == len([name for name in os.listdir(outdir) if os.path.isfile(outdir+'/'+name)])
 
     #Check that the names are correct
-    for simulatedImage in simulatedImage_list:
-        prihdr = simulatedImage.image_on_detector[0].header
-        exthdr = simulatedImage.image_on_detector[1].header
-        time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
-        filename = f"cgi_{prihdr['VISITID']}_{time_in_name}_l1_.fits"
+    i = 0
+    for visit in visit_list:
+        for _ in range(visit['number_of_frames']):
 
-        f = os.path.join( outdir , filename)
-        assert os.path.isfile(f)
-    
+            prihdr = simulatedImage_list[i].image_on_detector[0].header
+            exthdr = simulatedImage_list[i].image_on_detector[1].header
+            time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
+            filename = f"cgi_{prihdr['VISITID']}_{time_in_name}_l1_.fits"
+
+            f = os.path.join( outdir , filename)
+            assert os.path.isfile(f)
+            assert prihdr['ROLL'] == visit["roll_angle"]
+            i += 1
     # Delete the files 
     shutil.rmtree(outdir)
 
@@ -374,7 +382,7 @@ def test_L1_product_from_CPGS():
     #Check that there are as many simulated images as files
     assert len(simulatedImage_list_sequence) == len([name for name in os.listdir(outdir) if os.path.isfile(outdir+'/'+name)]) == n_frames
 
-    #Check that the names are correc
+    #Check that the names are correct
     for simulatedImage in simulatedImage_list_sequence:
         prihdr = simulatedImage.image_on_detector[0].header
         exthdr = simulatedImage.image_on_detector[1].header
@@ -383,7 +391,7 @@ def test_L1_product_from_CPGS():
 
         f = os.path.join( outdir , filename)
         assert os.path.isfile(f)
-    
+     
     # Delete the files 
     shutil.rmtree(outdir)
 

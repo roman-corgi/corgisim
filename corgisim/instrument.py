@@ -317,135 +317,17 @@ class CorgiOptics():
 
         # Finite stellar diameter and jitter
         # Ignore this section if stellar_diam_and_jitter_keywords == None
-        if (stellar_diam_and_jitter_keywords != None):
-            # First, check whether finite stellar diameter and jitter are included
-            # in the provided keys            
-            if ('use_finite_stellar_diam' not in stellar_diam_and_jitter_keywords.keys()):
-                # Set the default (not adding stellar diameter)
-                stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] = 0
-            
-            if ('add_jitter' not in stellar_diam_and_jitter_keywords.keys()):
-                # Set the default (not including jitter)
-                stellar_diam_and_jitter_keywords['add_jitter'] = 0
-                
-            # Next, do the checks that are the same whether finite stellar diameter,
-            # jitter, or both are being included.
-            if (stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] == 1) or (stellar_diam_and_jitter_keywords['add_jitter'] == 1):
-                # Check that finite stellar diameter and jitter have been implemented for the selected mode
-                implemented_modes_stellar_diam = ['excam']
-                if self.cgi_mode not in implemented_modes_stellar_diam:
-                    raise KeyError('ERROR: Finite stellar diameter and jitter have not been implemented for this mode.')
-                    
-                # Check whether saved delta electric fields and weights will be used
-                if 'use_saved_deltaE_and_weights' not in stellar_diam_and_jitter_keywords.keys():
-                    # Default to calculating the delta electric fields and weights
-                    stellar_diam_and_jitter_keywords['use_saved_deltaE_and_weights'] = 0
-                
-                # If the delta electric fields and weights will be calculated:
-                if stellar_diam_and_jitter_keywords['use_saved_deltaE_and_weights'] == 0:
-                    # Check that the required keys have been provided
-                    required_keys_common = {'N_rings_of_offsets','N_offsets_per_ring','starting_offset_ang_by_ring'}
-                    missing_keys_common = required_keys_common - stellar_diam_and_jitter_keywords.keys()
-                    if missing_keys_common:
-                        raise KeyError(f"ERROR: Missing required stellar_diam_and_jitter_keywords: {missing_keys_common}")  
-                    # Check that the number of rings of offset sources is nonnegative
-                    if stellar_diam_and_jitter_keywords['N_rings_of_offsets'] < 0:
-                        raise KeyError("ERROR: N_rings_of_offsets in stellar_diam_and_jitter_keywords must be nonnegative.")
-                    # Check that the number of offset sources per ring is positive
-                    if np.min(stellar_diam_and_jitter_keywords['N_offsets_per_ring']) < 1:
-                        raise KeyError(("ERROR: Each element of N_offsets_per_ring in stellar_diam_and_jitter_keywords must be >= 1."))
-                    # Check dimensions
-                    if np.isscalar(stellar_diam_and_jitter_keywords['N_offsets_per_ring']) == False \
-                        and stellar_diam_and_jitter_keywords['N_offsets_per_ring'].shape != (stellar_diam_and_jitter_keywords['N_rings_of_offsets'],):
-                            raise KeyError("ERROR: N_offsets_per_ring in stellar_diam_and_jitter_keywords must either be a scalar or an array with N_rings_of_offsets elements.")
-                    if np.isscalar(stellar_diam_and_jitter_keywords['starting_offset_ang_by_ring']) == False\
-                        and stellar_diam_and_jitter_keywords['starting_offset_ang_by_ring'].shape != (stellar_diam_and_jitter_keywords['N_rings_of_offsets'],):
-                            raise KeyError("ERROR: starting_offset_ang_by_ring in stellar_diam_and_jitter_keywords must be either a scalar or an array with N_rings_of_offsets elements.")
-                    # If the optional parameter dr_rings is provided, check that it is
-                    # positive and has the correct shape
-                    if 'dr_rings' in stellar_diam_and_jitter_keywords.keys():
-                        if np.min(stellar_diam_and_jitter_keywords['dr_rings'])  <= 0:
-                            raise KeyError("ERROR: Each element of dr_rings in stellar_diam_and_jitter_keywords must be positive.")
-                        if np.isscalar(stellar_diam_and_jitter_keywords['dr_rings']) == False \
-                            and stellar_diam_and_jitter_keywords['dr_rings'].shape != (stellar_diam_and_jitter_keywords['N_rings_of_offsets'],):
-                                raise KeyError(("ERROR: dr_rings in stellar_diam_and_jitter_keywords must be either a scalar or an array with N_rings_of_offsets elements."))
-                                
-                elif stellar_diam_and_jitter_keywords['use_saved_deltaE_and_weights'] == 1:
-                    # If the delta electric fields and weights will be loaded from a file,
-                    # check that the file has been provided
-                    raise KeyError("ERROR: The use of saved weights and delta electric fields has not been implemented yet.")
-                    # TODO: ADD the lines that are required to load a saved file
-                                
-            # Things specific to the finite stellar diameter:
-            if stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] == 1: 
-                
-                # If the delta electric fields and weights will be calculated:
-                if stellar_diam_and_jitter_keywords['use_saved_deltaE_and_weights'] == 0:
-                    # Check that the required keys have been provided
-                    required_keys_stellar_diam = {'stellar_diam_mas'}
-                    missing_keys_stellar_diam = required_keys_stellar_diam - stellar_diam_and_jitter_keywords.keys()
-                    if missing_keys_stellar_diam:
-                        raise KeyError(f"ERROR: Missing required stellar_diam_and_jitter_keywords: {missing_keys_stellar_diam}")
-                    # Check that the provided stellar diameter is nonnegative
-                    if stellar_diam_and_jitter_keywords['stellar_diam_mas'] < 0:
-                        raise KeyError('ERROR: stellar_diam_mas in stellar_diam_and_jitter_keywords must be nonnegative.')                    
-                    # If the outer radius of the offset circle is not provided and if jitter will not be considered,
-                    # set the outer radius of the offset circle to match the radius of the stellar disc.
-                    if ('add_jitter' not in stellar_diam_and_jitter_keywords.keys()) or \
-                        stellar_diam_and_jitter_keywords['add_jitter'] != 1:
-                            if 'outer_radius_of_offset_circle' not in stellar_diam_and_jitter_keywords.keys():
-                                r_stellar_disc_mas = 0.5*stellar_diam_and_jitter_keywords['stellar_diam_mas']
-                                stellar_diam_and_jitter_keywords['r_stellar_disc_mas'] = r_stellar_disc_mas
-                                stellar_diam_and_jitter_keywords['outer_radius_of_offset_circle'] = r_stellar_disc_mas
-                                
-            elif (stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] != 0) and (stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] != 1):
-                # use_finite_stellar_diam must be either 1 or 0 if specified
-                raise KeyError("ERROR: If specified, use_finite_stellar_diam in stellar_diam_and_jitter_keywords must be 0 or 1.")
-            
-            # Things specific to jitter:
-            if stellar_diam_and_jitter_keywords['add_jitter'] == 1:
-                
-                # Check that calculating_timeseries has been set. If not, set
-                # the default to 0 (not a timeseries). This is important for
-                # jitter because the weights can change at each time step as
-                # the RMS jitter varies, and it can save time to precalculate
-                # and save these weights.
-                if 'calculating_timeseries' not in stellar_diam_and_jitter_keywords.keys():
-                    stellar_diam_and_jitter_keywords['calculating_timeseries'] = 0
-                    
-                # If the calculations are part of a time series, verify that
-                # the number time steps and the current time step are defined
-                if stellar_diam_and_jitter_keywords['calculating_timeseries'] == 1:
-                    if 'N_timesteps' not in stellar_diam_and_jitter_keywords.keys():
-                        raise KeyError("ERROR: N_timesteps is missing in stellar_diam_and_jitter_keywords.")
-                        
-                    if 'i_timestep' not in stellar_diam_and_jitter_keywords.keys():
-                        raise KeyError("ERROR: i_timestep is missing in stellar_diam_and_jitter_keywords.")
-                        # Raising a keyerror is preferable to setting a default
-                        # because raising an error makes it more difficult to 
-                        # accidentally run the entire time series with the 
-                        # parameters for the first time step.
-                        
-                # If the delta electric fields and weights will be calculated:
-                if stellar_diam_and_jitter_keywords['use_saved_deltaE_and_weights'] == 0:
-                    # Check that required keys that will not be defined elsewhere have been provided
-                    required_keys_jitter = {'jitter_sigmax','jitter_sigmay'}
-                    missing_keys_jitter = required_keys_jitter - stellar_diam_and_jitter_keywords.keys()
-                    if missing_keys_jitter:
-                        raise KeyError(f"ERROR: Missing required stellar_diam_and_jitter_keywords: {missing_keys_jitter}")
-                
-            elif (stellar_diam_and_jitter_keywords['add_jitter'] != 0 ) and (stellar_diam_and_jitter_keywords['add_jitter'] != 1):
-                # add_jitter must be either 1 or 0 if specified
-                raise KeyError("ERROR: If specified, add_jitter in stellar_diam_and_jitter_keywords must be 0 or 1.")
-                
+        if (stellar_diam_and_jitter_keywords != None): 
+            stellar_diam_and_jitter_keywords = jitter.setup_stellar_diam_and_jitter(self,stellar_diam_and_jitter_keywords)
             self.stellar_diam_and_jitter_keywords = stellar_diam_and_jitter_keywords
+            
         
         print("CorgiOptics initialized with proper keywords.")
      
-    def get_e_field(self,resizing=None):
+    def get_e_field(self,resizing=True):
         '''
         Function that only returns the e fields
-        Set resizing = 0 to return the electric fields as they are output by
+        Set resizing = False to return the electric fields as they are output by
         proper.prop_run_multi.
         
         Returns: 
@@ -461,7 +343,7 @@ class CorgiOptics():
         
         (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=self.optics_keywords,QUIET=self.quiet)
         # Stop here to return the fields as they are output from proper.
-        if resizing == 0:
+        if resizing != True:
             return fields
         else:
 
@@ -579,14 +461,9 @@ class CorgiOptics():
         delta_e_library = stellar_diam_and_jitter_keywords['offset_field_data']['delta_e_fields']
 
         # The specific calculations vary depending on the polarization case.
-        if self.prism == 'POL0':
-            # 0/90 deg polarization case
-            # The four electric field components are:
-            # delta_E_m45in_xout
-            # delta_E_45in_xout
-            # delta_E_m45in_yout
-            # delta_E_45in_yout
-            
+        # Because the syntax is essentially identical for POL0 and POL45, we can
+        # define a function that works for both cases at the expense of a little clarity.
+        def calculate_images_tem_for_pol0_or_pol45(N_offsets_counting_origin,delta_e_library,delta_e_keys,grid_dim_out_tem,fields):
             # For each offset, calculate E_offset = E_onaxis + deltaE.
             # Repeat for each electric field component.
             # Convert the electric field to an intensity.
@@ -594,36 +471,51 @@ class CorgiOptics():
             
             # Step 1: Create an array to store the weighted intensity for each offset,
             #         including (0,0)
-            I_x_all_offsets = np.zeros(N_offsets_counting_origin,delta_e_library['delta_E_m45in_xout'].shape[1],grid_dim_out_tem,grid_dim_out_tem)
-            I_y_all_offsets = np.zeros(N_offsets_counting_origin,delta_e_library['delta_E_m45in_xout'].shape[1],grid_dim_out_tem,grid_dim_out_tem)
+            I1_all_offsets = np.zeros((N_offsets_counting_origin,delta_e_library[delta_e_keys['1']].shape[1],grid_dim_out_tem,grid_dim_out_tem))
+            I2_all_offsets = np.zeros((N_offsets_counting_origin,delta_e_library[delta_e_keys['3']].shape[1],grid_dim_out_tem,grid_dim_out_tem))
             
             for i_offset in np.arange(N_offsets_counting_origin):
                 
                 # Step 2: Calculate the electric field for each polarization component
                 #         at the current offset
-                E_offset_m45in_xout = delta_e_library['delta_E_m45in_xout'][i_offset,:,:,:] + fields[0]
-                E_offset_45in_xout =  delta_e_library['delta_E_45in_xout'][i_offset,:,:,:] + fields[1]
-                E_offset_m45in_yout = delta_e_library['delta_E_m45in_yout'][i_offset,:,:,:] + fields[2]
-                E_offset_45in_yout =  delta_e_library['delta_E_45in_yout'][i_offset,:,:,:] + fields[3]
+                E_offset_1 = delta_e_library[delta_e_keys['1']][i_offset,:,:,:] + fields[0]
+                E_offset_2 = delta_e_library[delta_e_keys['2']][i_offset,:,:,:] + fields[1]
+                E_offset_3 = delta_e_library[delta_e_keys['3']][i_offset,:,:,:] + fields[2]
+                E_offset_4 = delta_e_library[delta_e_keys['4']][i_offset,:,:,:] + fields[3]
                 
-                # Step 3: Obtain the 0/90 degree polarization intensities
-                intensity_x_temp = ((np.abs(E_offset_m45in_xout) ** 2) + (np.abs(E_offset_45in_xout) ** 2)) / 2
-                intensity_y_temp = ((np.abs(E_offset_m45in_yout) ** 2) + (np.abs(E_offset_45in_yout) ** 2)) / 2
+                # Step 3: Obtain the two polarization intensities
+                intensity_1_temp = ((np.abs(E_offset_1) ** 2) + (np.abs(E_offset_2) ** 2)) / 2
+                intensity_2_temp = ((np.abs(E_offset_3) ** 2) + (np.abs(E_offset_4) ** 2)) / 2
                 
                 # Step 4: Weight the intensitites
-                intensity_x_temp = intensity_x_temp * weights[i_offset]
-                intensity_y_temp = intensity_y_temp * weights[i_offset]
+                intensity_1_temp = intensity_1_temp * weights[i_offset]
+                intensity_2_temp = intensity_2_temp * weights[i_offset]
                 
                 # Step 5: Store the intensities for the offset
-                I_x_all_offsets[i_offset,:,:] = intensity_x_temp
-                I_y_all_offsets[i_offset,:,:] = intensity_y_temp
+                I1_all_offsets[i_offset,:,:] = intensity_1_temp
+                I2_all_offsets[i_offset,:,:] = intensity_2_temp
                 
             # Step 6: Combine the weighted intensities
-            intensity_x = np.sum(I_x_all_offsets,0)
-            intensity_y = np.sum(I_y_all_offsets,0)
+            intensity_1 = np.sum(I1_all_offsets,0)
+            intensity_2 = np.sum(I2_all_offsets,0)
 
-            # Step 7: Construct the temporary images array                
-            images_tem = [intensity_x, intensity_y]
+            # Step 7: Construct and return the temporary images array                
+            images_tem = [intensity_1, intensity_2]
+            return images_tem
+            
+        if self.prism == 'POL0':
+            # 0/90 deg polarization case
+            # The four electric field components are:
+            # delta_E_m45in_xout
+            # delta_E_45in_xout
+            # delta_E_m45in_yout
+            # delta_E_45in_yout
+            # Set up a library of keys to identify these components:
+            delta_e_keys = {'1':'delta_E_m45in_xout','2':'delta_E_45in_xout','3':'delta_E_m45in_yout','4':'delta_E_45in_yout'}
+            
+            # Construct the temporary images array
+            images_tem = calculate_images_tem_for_pol0_or_pol45(N_offsets_counting_origin, delta_e_library, delta_e_keys, grid_dim_out_tem, fields)
+            
             
         elif self.prism == 'POL45':
             #45/135 case
@@ -632,44 +524,11 @@ class CorgiOptics():
             # delta_E_45in_45out
             # delta_E_m45in_135out
             # delta_E_45in_135out
-            
-            # For each offset, calculate E_offset = E_onaxis + deltaE.
-            # Repeat for each electric field component.
-            # Convert the electric field to an intensity.
-            # Multiply the intensity by the appropriate weight for the offset.
-            
-            # Step 1: Create an array to store the weighted intensity for each offset,
-            #         including (0,0)
-            I_45_all_offsets = np.zeros(N_offsets_counting_origin,delta_e_library['delta_E_m45in_45out'].shape[1],grid_dim_out_tem,grid_dim_out_tem)
-            I_135_all_offsets = np.zeros(N_offsets_counting_origin,delta_e_library['delta_E_m45in_45out'].shape[1],grid_dim_out_tem,grid_dim_out_tem)
-            
-            for i_offset in np.arange(N_offsets_counting_origin):
-                
-                # Step 2: Calculate the electric field for each polarization component
-                #         at the current offset
-                E_offset_m45in_45out = delta_e_library['delta_E_m45in_45out'][i_offset,:,:,:] + fields[0]
-                E_offset_45in_45out =  delta_e_library['delta_E_45in_45out'][i_offset,:,:,:] + fields[1]
-                E_offset_m45in_135out = delta_e_library['delta_E_m45in_135out'][i_offset,:,:,:] + fields[2]
-                E_offset_45in_135out =  delta_e_library['delta_E_45in_135out'][i_offset,:,:,:] + fields[3]
-                
-                # Step 3: Obtain the 45/135 degree polarization intensities
-                intensity_45_temp = ((np.abs(E_offset_m45in_45out) ** 2) + (np.abs(E_offset_45in_45out) ** 2)) / 2
-                intensity_135_temp = ((np.abs(E_offset_m45in_135out) ** 2) + (np.abs(E_offset_45in_135out) ** 2)) / 2
-                
-                # Step 4: Weight the intensitites
-                intensity_45_temp = intensity_45_temp * weights[i_offset]
-                intensity_45_temp = intensity_45_temp * weights[i_offset]
-                
-                # Step 5: Store the intensities for the offset
-                I_45_all_offsets[i_offset,:,:] = intensity_45_temp
-                I_135_all_offsets[i_offset,:,:] = intensity_135_temp
-                
-            # Step 6: Combine the weighted intensities
-            intensity_45 = np.sum(I_45_all_offsets,0)
-            intensity_135 = np.sum(I_135_all_offsets,0)
+            # Set up a library of keys to identify these components:
+            delta_e_keys = {'1':'delta_E_m45in_45out','2':'delta_E_45in_45out','3':'delta_E_m45in_135out','4':'delta_E_45in_135out'}
 
-            # Step 7: Construct the temporary images array                
-            images_tem = [intensity_45, intensity_135]
+            # Construct the temporary images array                
+            images_tem = calculate_images_tem_for_pol0_or_pol45(N_offsets_counting_origin, delta_e_library, delta_e_keys, grid_dim_out_tem, fields)
                     
         elif self.optics_keywords['polaxis'] == -10:
             # if polaxis is set to -10, obtain full aberration model by individually summing intensities obtained from polaxis=-2, -1, 1, 2
@@ -686,10 +545,10 @@ class CorgiOptics():
             
             # Step 1: Create an array to store the weighted intensity for each offset,
             #         including (0,0)
-            I_m45in_yout_all_offsets = np.zeros(N_offsets_counting_origin,delta_e_library['delta_E_m45in_yout'].shape[1],grid_dim_out_tem,grid_dim_out_tem)
-            I_m45in_xout_all_offsets = np.zeros(N_offsets_counting_origin,delta_e_library['delta_E_m45in_yout'].shape[1],grid_dim_out_tem,grid_dim_out_tem)
-            I_45in_xout_all_offsets = np.zeros(N_offsets_counting_origin,delta_e_library['delta_E_m45in_yout'].shape[1],grid_dim_out_tem,grid_dim_out_tem)
-            I_45in_yout_all_offsets = np.zeros(N_offsets_counting_origin,delta_e_library['delta_E_m45in_yout'].shape[1],grid_dim_out_tem,grid_dim_out_tem)
+            I_m45in_yout_all_offsets = np.zeros((N_offsets_counting_origin,delta_e_library['delta_E_m45in_yout'].shape[1],grid_dim_out_tem,grid_dim_out_tem))
+            I_m45in_xout_all_offsets = np.zeros((N_offsets_counting_origin,delta_e_library['delta_E_m45in_xout'].shape[1],grid_dim_out_tem,grid_dim_out_tem))
+            I_45in_xout_all_offsets = np.zeros((N_offsets_counting_origin,delta_e_library['delta_E_45in_xout'].shape[1],grid_dim_out_tem,grid_dim_out_tem))
+            I_45in_yout_all_offsets = np.zeros((N_offsets_counting_origin,delta_e_library['delta_E_45in_yout'].shape[1],grid_dim_out_tem,grid_dim_out_tem))
 
             for i_offset in np.arange(N_offsets_counting_origin):
                 
@@ -814,7 +673,7 @@ class CorgiOptics():
                    (self.stellar_diam_and_jitter_keywords['add_jitter'] == 1):
                     # Calculating from scratch
                     if self.stellar_diam_and_jitter_keywords['use_saved_deltaE_and_weights'] == 0:
-                        self.stellar_diam_and_jitter_keywords = jitter.build_delta_e_field_library(self.stellar_diam_and_jitter_keywords,self)
+                        self.stellar_diam_and_jitter_keywords = jitter.build_delta_e_field_library(self.stellar_diam_and_jitter_keywords,self,input_scene)
                     elif self.stellar_diam_and_jitter_keywords['use_saved_deltaE_and_weights'] == 1:
                         raise KeyError("ERROR: Use of a saved library has not been implemented yet for finite stellar diameter and jitter calculations.")
                         #TODO: Add option to use saved library
@@ -1544,7 +1403,8 @@ class CorgiDetector():
             header_info = {'EXPTIME': exptime,'EMGAIN_C':self.emccd_keywords_default['em_gain'],'PSFREF':ref_flag,
                            'PHTCNT':self.photon_counting,'KGAINPAR':self.emccd_keywords_default['e_per_dn'],'cor_type':sim_info['cor_type'], 'bandpass':sim_info['bandpass'],
                            'cgi_mode': sim_info['cgi_mode'], 'polaxis':sim_info['polaxis'],'use_fpm':use_fpm,'nd_filter':sim_info['nd_filter'], 'polarization_basis': sim_info['polarization_basis'],'SATSPOTS':sim_info['SATSPOTS'],
-                           'use_pupil_lens':use_pupil_lens,'use_lyot_stop':use_lyot_stop, 'use_field_stop':use_field_stop, 'ROLL': float(sim_info['roll_angle'])}
+                           'use_pupil_lens':use_pupil_lens,'use_lyot_stop':use_lyot_stop, 'use_field_stop':use_field_stop, 'ROLL': float(sim_info['roll_angle']),
+                           'EACQ_ROW': loc_x, 'EACQ_COL': loc_y}
             if 'fsm_x_offset_mas' in sim_info:
                 header_info['FSMX'] = float(sim_info['fsm_x_offset_mas'])
             if 'fsm_y_offset_mas' in sim_info:
