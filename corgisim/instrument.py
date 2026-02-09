@@ -13,11 +13,11 @@ from synphot.units import validate_wave_unit, convert_flux, VEGAMAG
 import matplotlib.pyplot as plt
 from emccd_detect.emccd_detect import EMCCDDetectBase, EMCCDDetect
 from corgidrp import mocks
-from corgisim import outputs, spec, pol
+from corgisim import outputs, spec, pol, jitter
 import copy
 import os
 from scipy import interpolate
-import warnings
+
 
 class CorgiOptics():
     '''
@@ -32,7 +32,7 @@ class CorgiOptics():
 
     '''
 
-    def __init__(self, cgi_mode = None, bandpass= None,  diam = 236.3114, optics_keywords=None, roll_angle= 0,satspot_keywords=None, oversampling_factor = 7, return_oversample = False, **kwargs):
+    def __init__(self, cgi_mode = None, bandpass= None,  diam = 236.3114, optics_keywords=None, roll_angle= 0, satspot_keywords=None, stellar_diam_and_jitter_keywords=None, oversampling_factor = 7, return_oversample = False, **kwargs):
         '''
 
         Initialize the class a keyword dictionary that defines the setup of cgisim/PROPER 
@@ -47,6 +47,7 @@ class CorgiOptics():
             - diam (float) in meter: diameter of the primaru mirror, the default value is 2.363114 meter
             - optics_keywords: A dictionary with the keywords that are used to set up the proper model
 	        - satspot_keywords: A dictionary with the keywords that are used to add satellite spots. See add_satspot for the keywords.
+            - stellar_diam_and_jitter_keywords: A dictionary with the keywords that are used to incorporate finite stellar diameter and/or jitter. See add_stellar_diam_and_jitter for details.
             - oversampling_factor: An integer that defines the oversampling factor of the detector when generating the image
             - return_oversample: A boolean that defines whether the function should return the oversampled image or not.
             - roll_angle : float, optional, Telescope roll angle in degrees (0 to 360). 
@@ -72,7 +73,7 @@ class CorgiOptics():
             raise KeyError(f"ERROR: Missing required optics_keywords: {missing_keys}")
 
         # some parameters to the PROPER prescription are not allowed when calling it from corgisim;
-        ## 'final_sampling_m' is directly choosed based on different cgi mode 
+        ## 'final_sampling_m' is directly chosen based on different cgi mode 
         ## 'end_at_fpm_exit_pupil','end_at_fsm' are not allowed because they will give outimage at fsm 
         forbidden_keys = {'final_sampling_lam0', 'final_sampling_m', 'end_at_fpm_exit_pupil','end_at_fsm'}
         forbidden_found = forbidden_keys & optics_keywords_internal.keys()
@@ -314,11 +315,21 @@ class CorgiOptics():
             self.SATSPOTS = int(1)
             print("satellite spots are added to DM1.")
 
+        # Finite stellar diameter and jitter
+        # Ignore this section if stellar_diam_and_jitter_keywords == None
+        if (stellar_diam_and_jitter_keywords != None): 
+            stellar_diam_and_jitter_keywords = jitter.setup_stellar_diam_and_jitter(self,stellar_diam_and_jitter_keywords)
+            self.stellar_diam_and_jitter_keywords = stellar_diam_and_jitter_keywords
+            
+        
         print("CorgiOptics initialized with proper keywords.")
      
-    def get_e_field(self):
+    def get_e_field(self,resizing=True):
         '''
-        Function that only returns the e fields 
+        Function that only returns the e fields
+        Set resizing = False to return the electric fields as they are output by
+        proper.prop_run_multi.
+        
         Returns: 
             - fields: an array that contains the field
 
@@ -331,19 +342,279 @@ class CorgiOptics():
         
         
         (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=self.optics_keywords,QUIET=self.quiet)
+        # Stop here to return the fields as they are output from proper.
+        if resizing != True:
+            return fields
+        else:
 
-        # Initialize the image array based on whether oversampling is returned
-        images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if self.return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
-        images = np.zeros(images_shape, dtype=complex)
-    
-        for i in range(fields.shape[0]):
-            ## integrate oversampled PSF back to one grid per pixel
-            images[i,:,:] +=  fields[i,:,:].reshape((self.grid_dim_out,self.oversampling_factor,self.grid_dim_out,self.oversampling_factor)).mean(3).mean(1) * self.oversampling_factor**2
-            ## update the optics_keywords['output_dim'] baclk to non_oversample size
-        self.optics_keywords['output_dim'] = self.grid_dim_out
-
-        return images
+            # Initialize the image array based on whether oversampling is returned
+            images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if self.return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
+            images = np.zeros(images_shape, dtype=complex)
         
+            for i in range(fields.shape[0]):
+                ## integrate oversampled PSF back to one grid per pixel
+                images[i,:,:] +=  fields[i,:,:].reshape((self.grid_dim_out,self.oversampling_factor,self.grid_dim_out,self.oversampling_factor)).mean(3).mean(1) * self.oversampling_factor**2
+                ## update the optics_keywords['output_dim'] back to non_oversample size
+            self.optics_keywords['output_dim'] = self.grid_dim_out
+    
+            return images
+        
+    def construct_image_array(self,grid_dim_out_tem,images_tem,obs):
+        '''
+        
+        Function that constucts an appropriately sized array depending on the
+        coronagraph mode and whether the wollaston is used
+        
+        Inputs:
+               grid_dim_out_tem: temporary size of the fields output by proper
+               images_tem:       temporary images that still need to be integrated
+                                 over the pixel size (binned down)
+               obs:              observed stellar spectrum within the defined bandpass
+                                 
+        Outputs:
+               image: array containing the image at the final resolution
+               
+        '''
+        
+        if self.cgi_mode == 'excam':
+        
+            # construct the correct image array size depending on if wollaston is used or not
+            if self.prism in ['POL0', 'POL45']:
+                # Initialize the image array based on whether oversampling is returned
+                images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if self.return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
+                images_1 = np.zeros(images_shape, dtype=float)
+                images_2 = np.zeros(images_shape, dtype=float)
+    
+                for i in range(images_tem[0].shape[0]):
+                    if self.return_oversample:
+                        ##return the oversampled PSF, default 7 grid per pixel
+                        images_1[i,:,:] +=  images_tem[0][i,:,:]
+                        images_2[i,:,:] += images_tem[1][i,:,:]
+                    else:
+                    ## integrate oversampled PSF back to one grid per pixel
+                        images_1[i,:,:] +=  images_tem[0][i,:,:].reshape((self.grid_dim_out,self.oversampling_factor,self.grid_dim_out,self.oversampling_factor)).mean(3).mean(1) * self.oversampling_factor**2
+                        images_2[i,:,:] +=  images_tem[1][i,:,:].reshape((self.grid_dim_out,self.oversampling_factor,self.grid_dim_out,self.oversampling_factor)).mean(3).mean(1) * self.oversampling_factor**2
+    
+                    dlam_um = self.lam_um[1]-self.lam_um[0]
+                    lam_um_l = (self.lam_um[i]- 0.5*dlam_um) * 1e4 ## unit of anstrom
+                    lam_um_u = (self.lam_um[i]+ 0.5*dlam_um) * 1e4 ## unit of anstrom
+                    # ares in unit of cm^2
+                    # counts in unit of photos/s
+                    # wollaston transmission is around 0.96%, divide by two to split between polarization
+                    counts = 0.48 * obs.countrate(area=self.area, waverange=[lam_um_l, lam_um_u])
+    
+                    images_1[i,:,:] = images_1[i,:,:] * counts
+                    images_2[i,:,:] = images_2[i,:,:] * counts
+    
+                # 3D datacube with the 3rd axis being polarization 
+                image = np.array([np.sum(images_1, axis=0), np.sum(images_2, axis=0)])
+            else:
+                # Initialize the image array based on whether oversampling is returned
+                images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if self.return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
+                images = np.zeros(images_shape, dtype=float)
+    
+                for i in range(images_tem.shape[0]):
+                    if self.return_oversample:
+                        ##return the oversampled PSF, default 7 grid per pixel
+                        images[i,:,:] +=  images_tem[i,:,:]
+                    else:
+                        ## integrate oversampled PSF back to one grid per pixel
+                        images[i,:,:] +=  images_tem[i,:,:].reshape((self.grid_dim_out,self.oversampling_factor,self.grid_dim_out,self.oversampling_factor)).mean(3).mean(1) * self.oversampling_factor**2
+                        ## update the optics_keywords['output_dim'] baclk to non_oversample size
+                        self.optics_keywords['output_dim'] = self.grid_dim_out
+    
+                    dlam_um = self.lam_um[1]-self.lam_um[0]
+                    lam_um_l = (self.lam_um[i]- 0.5*dlam_um) * 1e4 ## unit of anstrom
+                    lam_um_u = (self.lam_um[i]+ 0.5*dlam_um) * 1e4 ## unit of anstrom
+                    # ares in unit of cm^2
+                    # counts in unit of photos/s
+                    counts = self.polarizer_transmission * obs.countrate(area=self.area, waverange=[lam_um_l, lam_um_u])
+    
+                    images[i,:,:] = images[i,:,:] * counts
+                
+                # 2D array if no wollaston is used
+                image = np.sum(images, axis=0)
+                
+            return image
+        
+    def construct_jittered_image_from_fields(self,fields):
+        '''
+        This function uses the onaxis electric field and the library of offset
+        electric fields and their weights to determine the intensity that
+        incorporates the effects of jitter and/or finite stellar diameter.
+        Inputs:
+               fields: onaxis electric fields as returned by proper
+        Outputs:
+               images_temp: Temporary images
+
+        '''
+        # Step 0: Setup
+        # Extract the temporary grid diameter
+        grid_dim_out_tem = self.optics_keywords['output_dim']
+        # Extract the stellar diameter and jitter keywords
+        stellar_diam_and_jitter_keywords = self.stellar_diam_and_jitter_keywords
+        # Extract number of offsets, including the origin
+        N_offsets_counting_origin = stellar_diam_and_jitter_keywords['N_offsets_counting_origin']
+        # Extract the weights
+        weights = stellar_diam_and_jitter_keywords['offset_field_data']['offset_weights']
+        # Extract the delta electric field library
+        delta_e_library = stellar_diam_and_jitter_keywords['offset_field_data']['delta_e_fields']
+
+        # The specific calculations vary depending on the polarization case.
+        # Because the syntax is essentially identical for POL0 and POL45, we can
+        # define a function that works for both cases at the expense of a little clarity.
+        def calculate_images_tem_for_pol0_or_pol45(N_offsets_counting_origin,delta_e_library,delta_e_keys,grid_dim_out_tem,fields):
+            # For each offset, calculate E_offset = E_onaxis + deltaE.
+            # Repeat for each electric field component.
+            # Convert the electric field to an intensity.
+            # Multiply the intensity by the appropriate weight for the offset.
+            
+            # Step 1: Create an array to store the weighted intensity for each offset,
+            #         including (0,0)
+            I1_all_offsets = np.zeros((N_offsets_counting_origin,delta_e_library[delta_e_keys['1']].shape[1],grid_dim_out_tem,grid_dim_out_tem))
+            I2_all_offsets = np.zeros((N_offsets_counting_origin,delta_e_library[delta_e_keys['3']].shape[1],grid_dim_out_tem,grid_dim_out_tem))
+            
+            for i_offset in np.arange(N_offsets_counting_origin):
+                
+                # Step 2: Calculate the electric field for each polarization component
+                #         at the current offset
+                E_offset_1 = delta_e_library[delta_e_keys['1']][i_offset,:,:,:] + fields[0]
+                E_offset_2 = delta_e_library[delta_e_keys['2']][i_offset,:,:,:] + fields[1]
+                E_offset_3 = delta_e_library[delta_e_keys['3']][i_offset,:,:,:] + fields[2]
+                E_offset_4 = delta_e_library[delta_e_keys['4']][i_offset,:,:,:] + fields[3]
+                
+                # Step 3: Obtain the two polarization intensities
+                intensity_1_temp = ((np.abs(E_offset_1) ** 2) + (np.abs(E_offset_2) ** 2)) / 2
+                intensity_2_temp = ((np.abs(E_offset_3) ** 2) + (np.abs(E_offset_4) ** 2)) / 2
+                
+                # Step 4: Weight the intensitites
+                intensity_1_temp = intensity_1_temp * weights[i_offset]
+                intensity_2_temp = intensity_2_temp * weights[i_offset]
+                
+                # Step 5: Store the intensities for the offset
+                I1_all_offsets[i_offset,:,:] = intensity_1_temp
+                I2_all_offsets[i_offset,:,:] = intensity_2_temp
+                
+            # Step 6: Combine the weighted intensities
+            intensity_1 = np.sum(I1_all_offsets,0)
+            intensity_2 = np.sum(I2_all_offsets,0)
+
+            # Step 7: Construct and return the temporary images array                
+            images_tem = [intensity_1, intensity_2]
+            return images_tem
+            
+        if self.prism == 'POL0':
+            # 0/90 deg polarization case
+            # The four electric field components are:
+            # delta_E_m45in_xout
+            # delta_E_45in_xout
+            # delta_E_m45in_yout
+            # delta_E_45in_yout
+            # Set up a library of keys to identify these components:
+            delta_e_keys = {'1':'delta_E_m45in_xout','2':'delta_E_45in_xout','3':'delta_E_m45in_yout','4':'delta_E_45in_yout'}
+            
+            # Construct the temporary images array
+            images_tem = calculate_images_tem_for_pol0_or_pol45(N_offsets_counting_origin, delta_e_library, delta_e_keys, grid_dim_out_tem, fields)
+            
+            
+        elif self.prism == 'POL45':
+            #45/135 case
+            # The four electric field components are:
+            # delta_E_m45in_45out
+            # delta_E_45in_45out
+            # delta_E_m45in_135out
+            # delta_E_45in_135out
+            # Set up a library of keys to identify these components:
+            delta_e_keys = {'1':'delta_E_m45in_45out','2':'delta_E_45in_45out','3':'delta_E_m45in_135out','4':'delta_E_45in_135out'}
+
+            # Construct the temporary images array                
+            images_tem = calculate_images_tem_for_pol0_or_pol45(N_offsets_counting_origin, delta_e_library, delta_e_keys, grid_dim_out_tem, fields)
+                    
+        elif self.optics_keywords['polaxis'] == -10:
+            # if polaxis is set to -10, obtain full aberration model by individually summing intensities obtained from polaxis=-2, -1, 1, 2
+            # The four electric field components are:
+            # delta_E_m45in_yout
+            # delta_E_m45in_xout
+            # delta_E_45in_xout
+            # delta_E_45in_yout
+            
+            # For each offset, calculate E_offset = E_onaxis + deltaE.
+            # Repeat for each electric field component.
+            # Convert the electric field to an intensity.
+            # Multiply the intensity by the appropriate weight for the offset.
+            
+            # Step 1: Create an array to store the weighted intensity for each offset,
+            #         including (0,0)
+            I_m45in_yout_all_offsets = np.zeros((N_offsets_counting_origin,delta_e_library['delta_E_m45in_yout'].shape[1],grid_dim_out_tem,grid_dim_out_tem))
+            I_m45in_xout_all_offsets = np.zeros((N_offsets_counting_origin,delta_e_library['delta_E_m45in_xout'].shape[1],grid_dim_out_tem,grid_dim_out_tem))
+            I_45in_xout_all_offsets = np.zeros((N_offsets_counting_origin,delta_e_library['delta_E_45in_xout'].shape[1],grid_dim_out_tem,grid_dim_out_tem))
+            I_45in_yout_all_offsets = np.zeros((N_offsets_counting_origin,delta_e_library['delta_E_45in_yout'].shape[1],grid_dim_out_tem,grid_dim_out_tem))
+
+            for i_offset in np.arange(N_offsets_counting_origin):
+                
+                # Step 2: Calculate the electric field for each polarization component
+                #         at the current offset
+                E_offset_m45in_yout = delta_e_library['delta_E_m45in_yout'][i_offset,:,:,:] + fields[0]
+                E_offset_m45in_xout = delta_e_library['delta_E_m45in_xout'][i_offset,:,:,:] + fields[1]
+                E_offset_45in_xout = delta_e_library['delta_E_45in_xout'][i_offset,:,:,:] + fields[2]
+                E_offset_45in_yout = delta_e_library['delta_E_45in_yout'][i_offset,:,:,:] + fields[3]
+                
+                # Step 3: Obtain the intensities
+                I_m45in_yout_temp = np.abs(E_offset_m45in_yout) ** 2
+                I_m45in_xout_temp = np.abs(E_offset_m45in_xout) ** 2
+                I_45in_xout_temp = np.abs(E_offset_45in_xout) ** 2
+                I_45in_yout_temp = np.abs(E_offset_45in_yout) **2
+                
+                # Step 4: Weight the intensities
+                I_m45in_yout_temp = I_m45in_yout_temp * weights[i_offset]
+                I_m45in_xout_temp = I_m45in_xout_temp * weights[i_offset]
+                I_45in_xout_temp = I_45in_xout_temp * weights[i_offset]
+                I_45in_yout_temp = I_45in_yout_temp * weights[i_offset]
+                
+                # Step 5: Store the intensities for the offset
+                I_m45in_yout_all_offsets[i_offset,:,:] = I_m45in_yout_temp
+                I_m45in_xout_all_offsets[i_offset,:,:] = I_m45in_xout_temp
+                I_45in_xout_all_offsets[i_offset,:,:] = I_45in_xout_temp
+                I_45in_yout_all_offsets[i_offset,:,:] = I_45in_yout_temp
+                
+            # Step 6: Combine the weighted intensities
+            I_m45in_yout = np.sum(I_m45in_yout_all_offsets,0)
+            I_m45in_xout = np.sum(I_m45in_xout_all_offsets,0)
+            I_45in_xout = np.sum(I_45in_xout_all_offsets,0)
+            I_45in_yout = np.sum(I_45in_yout_all_offsets,0)
+            
+            intensity = (I_m45in_yout + I_m45in_xout + I_45in_xout + I_45in_yout)/4
+            
+            # Step 7: Construct the temporary images array
+            images_tem = np.array(intensity)
+            
+        else:
+            # use built in polaxis settings to obtain specific/averaged aberration
+            
+            # Step 1: Create an array to store the weighted intensity for each offset,
+            #         including (0,0)
+            I_x_y_p_all = np.zeros((N_offsets_counting_origin,delta_e_library['delta_E'].shape[1],grid_dim_out_tem,grid_dim_out_tem))
+        
+            for i_offset in range(N_offsets_counting_origin):
+        
+                # Step 2: Calculate the electric field at the current offset
+                E_x_y_p = fields + delta_e_library['delta_E'][i_offset,:,:,:]
+                
+                # Step 3: Obtain the intensity
+                I_x_y_p = np.abs(E_x_y_p) ** 2
+            
+                # Step 4: Weight the intensity
+                I_x_y_p = I_x_y_p * weights[i_offset]
+                
+                # Step 5: Store the intensity
+                I_x_y_p_all[i_offset] = I_x_y_p
+                
+            # Step 6: Combine the weighted intensities
+            images_tem = np.sum(I_x_y_p_all,0)
+            
+        # Return the image(s)
+        return images_tem
+
     def get_host_star_psf(self, input_scene, sim_scene=None, on_the_fly=False):
         '''
         
@@ -386,6 +657,26 @@ class CorgiOptics():
 
             self.optics_keywords['output_dim']=grid_dim_out_tem
             self.optics_keywords['final_sampling_m']=sampling_um_tem *1e-6
+            
+            # If the effects of finite stellar diameter or jitter are being
+            # included, calculate the delta electric fields and weights for
+            # the offsets, or load from a file.
+            # TODO: Add the option to load from a file
+            # The need to calculate the library is determined by
+            # stellar_diam_and_jitter_keywords['use_saved_deltaE_and_weights'].
+            # If this parameter is set to 0, the library needs to be created.
+            # If this parameter is set to 1, the library is loaded from a file.
+            # If this parameter is set to 2, the library already exists
+            # during this session and does not require loading or calculating.
+            if hasattr(self,'stellar_diam_and_jitter_keywords'):
+                if (self.stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] == 1) or \
+                   (self.stellar_diam_and_jitter_keywords['add_jitter'] == 1):
+                    # Calculating from scratch
+                    if self.stellar_diam_and_jitter_keywords['use_saved_deltaE_and_weights'] == 0:
+                        self.stellar_diam_and_jitter_keywords = jitter.build_delta_e_field_library(self.stellar_diam_and_jitter_keywords,self,input_scene)
+                    elif self.stellar_diam_and_jitter_keywords['use_saved_deltaE_and_weights'] == 1:
+                        raise KeyError("ERROR: Use of a saved library has not been implemented yet for finite stellar diameter and jitter calculations.")
+                        #TODO: Add option to use saved library
 
             #if polarimetry mode is enabled
             if self.prism == 'POL0':
@@ -403,9 +694,16 @@ class CorgiOptics():
                     (field, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=optics_keywords_pol_xy,QUIET=self.quiet)
                     fields.append(field)
                 #obtain 0/90 degree polarization intensities
-                intensity_x = ((np.abs(fields[0]) ** 2) + (np.abs(fields[1]) ** 2)) / 2
-                intensity_y = ((np.abs(fields[2]) ** 2) + (np.abs(fields[3]) ** 2)) / 2
-                images_tem = [intensity_x, intensity_y]
+                # If not incorporating jitter or finite stellar diameter:
+                if ((hasattr(self,'stellar_diam_and_jitter_keywords') == False) or
+                   ((self.stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] == 0) and (self.stellar_diam_and_jitter_keywords['add_jitter'] == 0))):
+                    intensity_x = ((np.abs(fields[0]) ** 2) + (np.abs(fields[1]) ** 2)) / 2
+                    intensity_y = ((np.abs(fields[2]) ** 2) + (np.abs(fields[3]) ** 2)) / 2
+                    images_tem = [intensity_x, intensity_y]
+                elif  ((self.stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] == 1) or (self.stellar_diam_and_jitter_keywords['add_jitter'] == 1)):
+                    # Incorporating jitter or finite stellar diameter:
+                    images_tem = self.construct_jittered_image_from_fields(fields)                    
+                image = self.construct_image_array(grid_dim_out_tem,images_tem,obs)
             elif self.prism == 'POL45':
                 #45/135 case
                 # models the polarization aberration of the speckle field
@@ -421,79 +719,46 @@ class CorgiOptics():
                     (field, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=optics_keywords_pol_45,QUIET=self.quiet)
                     fields.append(field)
                 #obtain 45/135 degree polarization intensities
-                intensity_45 = ((np.abs(fields[0]) ** 2) + (np.abs(fields[1]) ** 2)) / 2
-                intensity_135 = ((np.abs(fields[2]) ** 2) + (np.abs(fields[3]) ** 2)) / 2
-                images_tem = [intensity_45, intensity_135]
+                if ((hasattr(self,'stellar_diam_and_jitter_keywords') == False) or
+                   ((self.stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] == 0) and (self.stellar_diam_and_jitter_keywords['add_jitter'] == 0))):
+                    intensity_45 = ((np.abs(fields[0]) ** 2) + (np.abs(fields[1]) ** 2)) / 2
+                    intensity_135 = ((np.abs(fields[2]) ** 2) + (np.abs(fields[3]) ** 2)) / 2
+                    images_tem = [intensity_45, intensity_135]
+                elif  ((self.stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] == 1) or (self.stellar_diam_and_jitter_keywords['add_jitter'] == 1)):
+                    # Incorporating jitter or finite stellar diameter:
+                    images_tem = self.construct_jittered_image_from_fields(fields)                    
+                image = self.construct_image_array(grid_dim_out_tem,images_tem,obs)
             elif self.optics_keywords['polaxis'] == -10:
                 # if polaxis is set to -10, obtain full aberration model by individually summing intensities obtained from polaxis=-2, -1, 1, 2
                 optics_keywords_m10 = self.optics_keywords.copy()
                 polaxis_params = [-2, -1, 1, 2]
+                fields = []
                 images_pol = []
                 for polaxis in polaxis_params:
                     optics_keywords_m10['polaxis'] = polaxis
-                    (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=optics_keywords_m10,QUIET=self.quiet)
-                    images_pol.append(np.abs(fields) ** 2)
-                images_tem = np.array(sum(images_pol)) / 4
+                    (field, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=optics_keywords_m10,QUIET=self.quiet)
+                    fields.append(field)
+                    images_pol.append(np.abs(field) ** 2)
+                if ((hasattr(self,'stellar_diam_and_jitter_keywords') == False) or
+                   ((self.stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] == 0) and (self.stellar_diam_and_jitter_keywords['add_jitter'] == 0))):
+                        images_tem = np.array(sum(images_pol)) / 4
+                elif  ((self.stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] == 1) or (self.stellar_diam_and_jitter_keywords['add_jitter'] == 1)):
+                    # Incorporating jitter or finite stellar diameter:
+                    images_tem = self.construct_jittered_image_from_fields(fields)        
+                image = self.construct_image_array(grid_dim_out_tem,images_tem,obs)
             else: 
                 # use built in polaxis settings to obtain specific/averaged aberration 
                 (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=self.optics_keywords,QUIET=self.quiet)
-                images_tem = np.abs(fields)**2
-            # construct the correct image array size depending on if wollaston is used or not
-            if self.prism in ['POL0', 'POL45']:
-                # Initialize the image array based on whether oversampling is returned
-                images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if self.return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
-                images_1 = np.zeros(images_shape, dtype=float)
-                images_2 = np.zeros(images_shape, dtype=float)
-
-                for i in range(images_tem[0].shape[0]):
-                    if self.return_oversample:
-                        ##return the oversampled PSF, default 7 grid per pixel
-                        images_1[i,:,:] +=  images_tem[0][i,:,:]
-                        images_2[i,:,:] += images_tem[1][i,:,:]
-                    else:
-                    ## integrate oversampled PSF back to one grid per pixel
-                        images_1[i,:,:] +=  images_tem[0][i,:,:].reshape((self.grid_dim_out,self.oversampling_factor,self.grid_dim_out,self.oversampling_factor)).mean(3).mean(1) * self.oversampling_factor**2
-                        images_2[i,:,:] +=  images_tem[1][i,:,:].reshape((self.grid_dim_out,self.oversampling_factor,self.grid_dim_out,self.oversampling_factor)).mean(3).mean(1) * self.oversampling_factor**2
-
-                    dlam_um = self.lam_um[1]-self.lam_um[0]
-                    lam_um_l = (self.lam_um[i]- 0.5*dlam_um) * 1e4 ## unit of anstrom
-                    lam_um_u = (self.lam_um[i]+ 0.5*dlam_um) * 1e4 ## unit of anstrom
-                    # ares in unit of cm^2
-                    # counts in unit of photos/s
-                    # wollaston transmission is around 0.96%, divide by two to split between polarization
-                    counts = 0.48 * obs.countrate(area=self.area, waverange=[lam_um_l, lam_um_u])
-
-                    images_1[i,:,:] = images_1[i,:,:] * counts
-                    images_2[i,:,:] = images_2[i,:,:] * counts
-
-                # 3D datacube with the 3rd axis being polarization 
-                image = np.array([np.sum(images_1, axis=0), np.sum(images_2, axis=0)])
-            else:
-                # Initialize the image array based on whether oversampling is returned
-                images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if self.return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
-                images = np.zeros(images_shape, dtype=float)
-
-                for i in range(images_tem.shape[0]):
-                    if self.return_oversample:
-                        ##return the oversampled PSF, default 7 grid per pixel
-                        images[i,:,:] +=  images_tem[i,:,:]
-                    else:
-                        ## integrate oversampled PSF back to one grid per pixel
-                        images[i,:,:] +=  images_tem[i,:,:].reshape((self.grid_dim_out,self.oversampling_factor,self.grid_dim_out,self.oversampling_factor)).mean(3).mean(1) * self.oversampling_factor**2
-                        ## update the optics_keywords['output_dim'] baclk to non_oversample size
-                        self.optics_keywords['output_dim'] = self.grid_dim_out
-
-                    dlam_um = self.lam_um[1]-self.lam_um[0]
-                    lam_um_l = (self.lam_um[i]- 0.5*dlam_um) * 1e4 ## unit of anstrom
-                    lam_um_u = (self.lam_um[i]+ 0.5*dlam_um) * 1e4 ## unit of anstrom
-                    # ares in unit of cm^2
-                    # counts in unit of photos/s
-                    counts = self.polarizer_transmission * obs.countrate(area=self.area, waverange=[lam_um_l, lam_um_u])
-
-                    images[i,:,:] = images[i,:,:] * counts
-                
-                # 2D array if no wollaston is used
-                image = np.sum(images, axis=0)
+                # If not incorporating jitter or finite stellar diameter:
+                if ((hasattr(self,'stellar_diam_and_jitter_keywords') == False) or
+                   ((self.stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] == 0) and (self.stellar_diam_and_jitter_keywords['add_jitter'] == 0))):
+                       images_tem = np.abs(fields)**2
+                       image = self.construct_image_array(grid_dim_out_tem,images_tem,obs)
+                elif  ((self.stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] == 1) or (self.stellar_diam_and_jitter_keywords['add_jitter'] == 1)):
+                    # Incorporating jitter or finite stellar diameter:
+                    images_tem = self.construct_jittered_image_from_fields(fields)
+                image = self.construct_image_array(grid_dim_out_tem,images_tem,obs)
+                    
 
         elif self.cgi_mode == 'spec':
             if self.slit != 'None':
@@ -602,10 +867,19 @@ class CorgiOptics():
                             'dispersed_fullframe_centx','dispersed_fullframe_centy']  # Specify keys to include
         subset = {key: self.optics_keywords[key] for key in keys_to_include_in_header if key in self.optics_keywords}
         sim_info.update(subset)
-        ## add sattelite spots info 
+        
+        # add sattelite spots info 
         sim_info['SATSPOTS'] = self.SATSPOTS
         sim_info['includ_dectector_noise'] = 'False'
+        
+        # Add finite stellar diameter and jitter info if applicable
+        if hasattr(self,'stellar_diam_and_jitter_keywords') == True:
+            stellar_diam_and_jitter_keys_to_include = ['use_finite_stellar_diam', 'stellar_diam_mas','add_jitter','N_rings_of_offsets','N_offsets_counting_origin']
+            stellar_diam_and_jitter_subset = {key: self.stellar_diam_and_jitter_keywords[key] for key in stellar_diam_and_jitter_keys_to_include if key in self.stellar_diam_and_jitter_keywords}
+            sim_info.update(stellar_diam_and_jitter_subset)
+        
         sim_info['roll_angle'] = self.roll_angle
+        
         # Create the HDU object with the generated header information
 
         sim_scene.host_star_image = outputs.create_hdu(image,sim_info =sim_info)
