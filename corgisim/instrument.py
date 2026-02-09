@@ -17,7 +17,13 @@ from corgisim import outputs, spec, pol
 import copy
 import os
 from scipy import interpolate
-import warnings
+import time
+import sys
+import astropy.units as u
+import corgisim.constants as constants
+import corgisim.convolution as conv
+
+from corgisim.scene import Scene, SimulatedImage
 
 class CorgiOptics():
     '''
@@ -368,7 +374,6 @@ class CorgiOptics():
                                         HDU that contains a noiseless on-axis PSF.
 
         '''
-        
         if self.cgi_mode == 'excam':
             
             # Compute the observed stellar spectrum within the defined bandpass
@@ -645,33 +650,6 @@ class CorgiOptics():
         bp = SpectralElement(Empirical1D, points=wave, lookup_table=throughput)
 
         return bp
-
-
-    def convolve_2D_scene(self, scene, on_the_fly=False):
-        '''
-        Function that simulates a 2D scene with the current configuration of CGI. 
-
-        It should take the image data from the HDU from scene.background_scene and convolve it with a 
-        set of off-axis PSFs (also known as PRFs in some circles), and return an updated scene object with the
-        background_scene attribute populated with an astropy HDU that contains the simulated scene and associated 
-        metadata in the header.
-
-        The off-axis PSFs should be either generated on the fly, or read in from a set of pre-generated PSFs. The 
-        convolution should be flux conserving. 
-
-        TODO: Figure out the default output units. Current candidate is photoelectrons/s.
-        TODO: If the input is a scene.Simulation_Scene instead, then just pull the Scene from the attribute
-                and put the output of this function into the twoD_image attribute
-
-        Arguments: 
-            - scene: A corgisim.scene.Scene object that contains the scene to be simulated.
-            - on_the_fly: A boolean that defines whether the PSFs should be generated on the fly.
-        
-        Returns: 
-            - corgisim.scene.Simulated_Scene: A scene object with the background_scene attribute populated with an astropy
-                                        HDU that contains the simulated scene.
-        '''
-        pass
 
     def inject_point_sources(self, input_scene, sim_scene=None, on_the_fly=False):
         '''
@@ -1047,7 +1025,7 @@ class CorgiDetector():
         components = [simulated_scene.host_star_image,
                       simulated_scene.point_source_image,
                       simulated_scene.twoD_image]
-        
+
         ###check witch components is not None, and combine exsiting simulated scene
         ### read comment header from components is not None to track sim_info
         for component in components:

@@ -14,7 +14,7 @@ class Scene():
     - Information about the host star (brightness, spectral type, etc.)
     - A list of point sources (brightness, location, spectra?, etc.)
     - A 2D background scene that will be convolved with the off-axis PSFs
-        - Format needs to be determined. Likely a fits hdu with specific header keywords. 
+        - Dictionary contains info required for convolution
         - Input with North-Up East-Left orientation.
 
     Arguments: 
@@ -54,8 +54,8 @@ class Scene():
         ValueError: If the provided spectral type is invalid.
         ValueError: If the provided stokes vector is not of length 4 or the polarized intensity magnitude exceeds the total intensity magnitude
     '''
-    def __init__(self, host_star_properties=None, point_source_info=None, twoD_scene_hdu=None):
-        self._twoD_scene = copy.deepcopy(twoD_scene_hdu)
+    def __init__(self, host_star_properties=None, point_source_info=None, twoD_scene_info=None):
+        self._twoD_scene = copy.deepcopy(twoD_scene_info)
         point_source_info_internal = copy.deepcopy(point_source_info)
 
         if host_star_properties is None:
@@ -108,8 +108,22 @@ class Scene():
                 pol.check_stokes_vector_validity(self.point_source_pol_state[source])
                 self.point_source_pol_state[source] = np.divide(self.point_source_pol_state[source], self.point_source_pol_state[source][0])
 
-        
-        
+        # setting up the 2D scene
+        # twoD_scene_info: a dictionary containing 2D scene information
+        self.twoD_scene_info = twoD_scene_info
+        self.twoD_scene_spectrum = None
+        self.twoD_prf_cubes = None
+
+        # If a 2D scene is provided, generate its spectrum based on the host star's properties and the scene's contrast
+        # TODO - also need to figure out how to handle cases without pre-generated prf cube
+        # TODO - when generating prf, user should either save the input in the header, or we should create a function for that 
+        if twoD_scene_info is not None:
+            self.twoD_scene_spectrum = self.get_stellar_spectrum(
+                self._host_star_sptype,
+                self._host_star_Vmag + twoD_scene_info['contrast'],
+                magtype=self._host_star_magtype
+            )
+
     @property
     def host_star_sptype(self):
         """
