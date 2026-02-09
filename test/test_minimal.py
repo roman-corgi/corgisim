@@ -165,6 +165,8 @@ def test_excam_mode():
     assert exthdr['FSAMNAME'] == 'R1C1', f"Expected data FSAMNAME='R1C1', but got {exthdr['FSAMNAME']}"
     assert exthdr['FSAMSP_H'] ==  29387, f"Expected data FSAMSP_H=29387, but got {exthdr['FSAMSP_H']}"
     assert exthdr['FSAMSP_V'] == 12238, f"Expected data FSAMSP_V=12238, but got {exthdr['FSAMSP_V']}"
+    assert exthdr['FSMPRFL'] == 'NFOV', f"Expected data FSMPRFL=NFOV, but got {exthdr['FSMPRFL']}"
+    assert exthdr['FSMLOS'] == 1, f"Expected data FSMLOS=1, but got {exthdr['FSMLOS']}"
 
     os.remove(f)
 
