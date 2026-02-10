@@ -8,6 +8,7 @@ from astropy.io import fits
 import proper
 import roman_preflight_proper
 import pandas as pd
+import os
 """
 Jitter and Finite Stellar Diameter Tests:
     
@@ -26,8 +27,10 @@ def test_offsets_and_areas_against_example():
     '''
     ###############################################################################
     # Precalculated example
-    example_file = '../test/test_data/example_jitter_data_offsets_and_areas.txt'
-    example_data = pd.read_csv(example_file)
+    script_dir = os.getcwd()
+    filepath = 'test/test_data/example_jitter_data_offsets_and_areas.txt'
+    abs_path = os.path.join(script_dir,filepath)
+    example_data = pd.read_csv(abs_path)
     example_x_offsets = example_data['x_off']
     example_y_offsets = example_data['y_off']
     example_As = example_data['Anorm']
