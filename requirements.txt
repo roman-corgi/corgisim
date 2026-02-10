@@ -1,5 +1,5 @@
 astropy
-numpy
+numpy==2.4.1
 scipy
 ipython
 pytest
