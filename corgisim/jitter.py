@@ -705,7 +705,7 @@ def build_delta_e_field_library(stellar_diam_and_jitter_keywords,optics,input_sc
         raise KeyError(f"ERROR: Missing required keywords: {missing_keys}")
         
     #         Also check that the stellar diameter is provided in the scene
-    if (np.isnan(input_scene.stellar_diam_mas)==np.True_):
+    if (input_scene.stellar_diam_mas==None):
         raise KeyError('ERROR: Missing required keyword stellar_diam_mas in host_star_properties')
         
     #         and that the stellar diameter is a nonzero number
