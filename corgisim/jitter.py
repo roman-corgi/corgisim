@@ -1042,7 +1042,7 @@ def calculate_weights_for_jitter_and_finite_stellar_diameter(stellar_diam_and_ji
     # Step 3: Obtain the result.
     W = np.zeros(stellar_diam_and_jitter_keywords['N_offsets_counting_origin'])
     for i_offset in range(stellar_diam_and_jitter_keywords['N_offsets_counting_origin']):
-        W[i_offset] = f_interp(x_predetermined[i_offset],y_predetermined[i_offset])
+        W[i_offset] = f_interp(x_predetermined[i_offset],y_predetermined[i_offset])[0,0]
         
     # Since the interpolation is no longer symmetric about the x axis and about the y axis,
     # add that symmetry back by averaging the weights for points in the same ring that 
