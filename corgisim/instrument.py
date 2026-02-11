@@ -225,6 +225,7 @@ class CorgiOptics():
         self.sampling_lamref_div_D = mode_data['sampling_lamref_div_D'] 
         self.lamref_um = mode_data['lamref_um'] ## ref wavelength in micron
         self.owa_lamref = mode_data['owa_lamref'] ## out working angle
+
         
         if self.cgi_mode == 'spec':
             baseline_mode_data, _ = cgisim.cgisim_read_mode('excam', 'hlc_band1', '1', info_dir=info_dir)
@@ -244,6 +245,9 @@ class CorgiOptics():
         #self.area = (self.diam/2)**2 * np.pi - (self.diam/2*0.303)**2 * np.pi
         self.area =  35895.212    # primary effective area from cgisim cm^2 
         self.grid_dim_out = optics_keywords_internal['output_dim'] # number of grid in output image in one dimension
+
+        # resolution in mas (calculated at the central wavelength of the bandpass)
+        self.res_mas = (self.lam0_um*1e-6)/(self.diam/100) * constants.ARCSEC_PER_RAD * 1e3 
         
         optics_keywords_internal['lam0']=self.lam0_um
         if 'use_fpm' not in optics_keywords_internal:
