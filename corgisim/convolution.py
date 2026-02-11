@@ -461,9 +461,11 @@ def _convolve_with_prfs(obj, prfs_array, radii_lamD, azimuths_deg,
     -----
     - The PRF cube is resized internally to match the shape of `obj`
       prior to convolution.
+    - The `obj` is normalized to a sum of 1.0, the output represents the 
+      spatial distribution of flux weighted by the field-dependent PSF response.
     - The PRFs are assumed to represent the instrument intensity response to a
-      unit-flux off-axis point source. Absolute flux scaling must be applied
-      separately.
+      off-axis point source. Absolute physical flux scaling (e.g., multiplying by total disk flux or 
+      exposure time) must be applied to the result.
     - Convolution is computed via FFTs and accumulated over the set of PRF
       indices present in the field.
     """
