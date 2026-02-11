@@ -85,7 +85,7 @@ class Scene():
             
             # Check if the stellar diameter in mas is included
             if ('stellar_diam_mas' not in host_star_properties_internal.keys()):
-                host_star_properties_internal['stellar_diam_mas'] = np.nan
+                host_star_properties_internal['stellar_diam_mas'] = None
             self._stellar_diam_mas = host_star_properties_internal['stellar_diam_mas']
 
         #self._point_source_list = point_source_info

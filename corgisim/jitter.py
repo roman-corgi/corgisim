@@ -705,7 +705,7 @@ def build_delta_e_field_library(stellar_diam_and_jitter_keywords,optics,input_sc
         raise KeyError(f"ERROR: Missing required keywords: {missing_keys}")
         
     #         Also check that the stellar diameter is provided in the scene
-    if (np.isnan(input_scene.stellar_diam_mas)==np.True_):
+    if (input_scene.stellar_diam_mas==None):
         raise KeyError('ERROR: Missing required keyword stellar_diam_mas in host_star_properties')
         
     #         and that the stellar diameter is a nonzero number
@@ -1042,7 +1042,7 @@ def calculate_weights_for_jitter_and_finite_stellar_diameter(stellar_diam_and_ji
     # Step 3: Obtain the result.
     W = np.zeros(stellar_diam_and_jitter_keywords['N_offsets_counting_origin'])
     for i_offset in range(stellar_diam_and_jitter_keywords['N_offsets_counting_origin']):
-        W[i_offset] = f_interp(x_predetermined[i_offset],y_predetermined[i_offset])
+        W[i_offset] = f_interp(x_predetermined[i_offset],y_predetermined[i_offset])[0,0]
         
     # Since the interpolation is no longer symmetric about the x axis and about the y axis,
     # add that symmetry back by averaging the weights for points in the same ring that 
