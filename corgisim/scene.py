@@ -372,7 +372,7 @@ class Scene():
         # Try to load the BPGS atlas file
         spectrum_file = os.path.join(atlas_dir, filename)
 
-        if not os.path.exists(spectrum_file) or (spmethod == 'blackbody'):
+        if not os.path.isfile(spectrum_file) or (spmethod == 'blackbody'):
             print(f"Warning: BPGS atlas file {spectrum_file} not found.")
             print(f"Falling back to blackbody with T={teff}K")
             # Fall back to blackbody
