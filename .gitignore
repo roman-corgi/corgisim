@@ -166,3 +166,4 @@ cython_debug/
 #Prescription models
 roman_preflight.py
 roman_preflight_compact.py
+.DS_Store
