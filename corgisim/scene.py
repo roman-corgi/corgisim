@@ -266,7 +266,8 @@ class Scene():
 
         eetc_path = os.path.dirname(os.path.abspath(eetc.__file__))
         atlas_dir = Path(os.path.join(eetc_path, 'flux_grid_generation', 'bpgs_atlas_csv'))
-
+        filename = ''
+        
         # Mapping of spectral types to (Teff, metallicity, log_g, filename)
         # Teff values kept for reference and fallback to blackbody if file not found
         sptype_teff_mapping = {
