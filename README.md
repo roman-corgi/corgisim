@@ -16,14 +16,29 @@ Enter the directory that contains setup.py and run the following:
 ```
 python -m pip install .
 ```
-### Install roman_preflight_proper and CGISIm
+### Install roman_preflight_proper, cgi-eetc and CGISIm
 In your working directory, first clone [roman_preflight_proper](https://github.com/roman-corgi/cgisim_cpp)(
 please note that this is not the official version, but a modified version needed to implement certain functions):
 ```
 git clone https://github.com/roman-corgi/cgisim_cpp.git
+cd 
+```
+Enter the directory that contains setup.py and run the following: 
+```
+python -m pip install .
+```
+Then return to your working directory. 
+
+Clone cgi-eetc : 
+```
+git clone https://github.com/nasa-jpl/cgi-eetc.git
+```
+Enter the directory that contains setup.py and run the following: 
+```
+python -m pip install .
 ```
 Go to the [CGISim website](https://sourceforge.net/projects/cgisim/) and download cgisim_v4.0.zip
-Unzip it in your working directory. For each of them, enter the directory that contains setup.py and run the following: 
+Unzip it in your working directory. Enter the directory that contains setup.py and run the following: 
 ```
 python -m pip install .
 ```

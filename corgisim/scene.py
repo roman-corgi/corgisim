@@ -1,13 +1,21 @@
 import proper
 import numpy as np
 import re
+from astropy import units as u
 from synphot.models import BlackBodyNorm1D, Box1D, ConstFlux1D
 from synphot import units, SourceSpectrum, SpectralElement, Observation
 from synphot.units import validate_wave_unit, convert_flux, VEGAMAG
+from synphot.models import Empirical1D
+
 from corgisim import pol
 import cgisim
+from pathlib import Path
+
 import os
 import copy
+
+import eetc
+
 class Scene():
     ''' 
     A class that defines the an astrophysical scene
@@ -55,7 +63,7 @@ class Scene():
         ValueError: If the provided spectral type is invalid.
         ValueError: If the provided stokes vector is not of length 4 or the polarized intensity magnitude exceeds the total intensity magnitude
     '''
-    def __init__(self, host_star_properties=None, point_source_info=None, twoD_scene_hdu=None):
+    def __init__(self, host_star_properties=None, point_source_info=None, twoD_scene_hdu=None, spmethod='bpgs'):
         self._twoD_scene = copy.deepcopy(twoD_scene_hdu)
         point_source_info_internal = copy.deepcopy(point_source_info)
 
@@ -74,14 +82,15 @@ class Scene():
 
             ### check if input spectral type is valid
             if is_valid_spectral_type(host_star_properties_internal['spectral_type']):
-                self._host_star_sptype = host_star_properties_internal['spectral_type']  
+                self._host_star_sptype = host_star_properties_internal['spectral_type']
+
             # Set the reference flag from host_star_properties, defaulting to False if not provided
             self.ref_flag = host_star_properties_internal.get('ref_flag', False)
             
             ### Retrieve the stellar spectrum based on spectral type and V-band magnitude
             ### The self.stellar_spectrum attribute is an instance of the SourceSpectrum class (from synphot), 
             ### used to store and retrieve the wavelength and stellar flux.
-            self.stellar_spectrum = self.get_stellar_spectrum( self._host_star_sptype, self._host_star_Vmag, magtype =self._host_star_magtype)
+            self.stellar_spectrum = self.get_stellar_spectrum(self._host_star_sptype, self._host_star_Vmag, magtype =self._host_star_magtype, spmethod=spmethod)
             
             # Check if the stellar diameter in mas is included
             if ('stellar_diam_mas' not in host_star_properties_internal.keys()):
@@ -230,156 +239,200 @@ class Scene():
         self._stellar_diam_mas = float(value)
 
 
-    def get_stellar_spectrum(self, sptype, magnitude, magtype = 'vegamag', return_teff=False):
+    # def get_stellar_spectrum(self, sptype, magnitude, magtype = 'vegamag', return_teff=False):
+    def get_stellar_spectrum(self, sptype, magnitude, magtype='vegamag', spmethod='blackbody', return_teff=False):
         """
-        Retrieves or interpolates a stellar spectrum based on spectral type and magnitude.
+        Retrieves a stellar spectrum from BPGS atlas files and normalizes to magnitude.
 
-        This function either fetches the predefined temperature, metallicity, and gravity values 
-        for a given spectral type or interpolates these values if the spectral type is not directly 
-        available in the lookup table. It then generates a blackbody spectrum and normalizes it 
-        to a given magnitude.
+        This function loads a real stellar spectrum from BPGS atlas text files instead of
+        using a blackbody approximation. If the exact spectral type isn't available, it
+        can interpolate between neighboring types or fall back to blackbody.
 
         Args:
-            - sptype (str): The spectral type of the star (e.g., "G2V", "M5III").
-            - magnitude (float): The magnitude of the star in the specified system.
-            - magtype (str, optional): The magnitude type ('vegamag' by default).
-            - return_teff (bool, optional): If True, also return the effective temperature inferred from the spectral type. Default is False. 
+            sptype (str): The spectral type of the star (e.g., "G2V", "A0IV").
+            magnitude (float): The magnitude of the star in the specified system.
+            atlas_dir (str or Path): Directory containing the BPGS atlas text files.
+            magtype (str, optional): The magnitude type ('vegamag' by default).
+            return_teff (bool, optional): If True, also return the effective temperature. Default is False.
 
         Returns:
-            - sp_scale (SourceSpectrum): The scaled stellar spectrum.
-            - v0 (float, optional): Returned only if `return_teff` is True. The effective temperature of the star in Kelvin.
-
+            sp_scale (SourceSpectrum): The scaled stellar spectrum.
+            teff (float, optional): Returned only if `return_teff` is True. The effective temperature.
 
         Raises:
             ValueError: If the spectral type format is invalid.
+            FileNotFoundError: If the atlas directory or required files don't exist.
         """
-        # Mapping of spectral types to temperature, metallicity, and surface gravity
+
+        eetc_path = os.path.dirname(os.path.abspath(eetc.__file__))
+        atlas_dir = Path(os.path.join(eetc_path, 'flux_grid_generation', 'bpgs_atlas_csv'))
+        filename = ''
+        
+        # Mapping of spectral types to (Teff, metallicity, log_g, filename)
+        # Teff values kept for reference and fallback to blackbody if file not found
         sptype_teff_mapping = {
-            # https://www.pas.rochester.edu/~emamajek/EEM_dwarf_UBVIJHK_colors_Teff.txt
-            "O0V": (45000, 0.0, 4.0),  # Bracketing for interpolation
-            "O3V": (45000, 0.0, 4.0),
-            "O5V": (43000, 0.0, 4.5),
-            "O7V": (36500, 0.0, 4.0),
-            "O9V": (32500, 0.0, 4.0),
-            "B0V": (31500, 0.0, 4.0),
-            "B1V": (26000, 0.0, 4.0),
-            "B3V": (17000, 0.0, 4.0),
-            "B5V": (15700, 0.0, 4.0),
-            "B8V": (12500, 0.0, 4.0),
-            "A0V": (9700, 0.0, 4.0),
-            "A1V": (9200, 0.0, 4.0),
-            "A3V": (8550, 0.0, 4.0),
-            "A5V": (8080, 0.0, 4.0),
-            "F0V": (7220, 0.0, 4.0),
-            "F2V": (6810, 0.0, 4.0),
-            "F5V": (6510, 0.0, 4.0),
-            "F8V": (6170, 0.0, 4.5),
-            "G0V": (5920, 0.0, 4.5),
-            "G2V": (5770, 0.0, 4.5),
-            "G5V": (5660, 0.0, 4.5),
-            "G8V": (5490, 0.0, 4.5),
-            "K0V": (5280, 0.0, 4.5),
-            "K2V": (5040, 0.0, 4.5),
-            "K5V": (4410, 0.0, 4.5),
-            "K7V": (4070, 0.0, 4.5),
-            "M0V": (3870, 0.0, 4.5),
-            "M2V": (3550, 0.0, 4.5),
-            "M5V": (3030, 0.0, 5.0),
-            "M9V": (2400, 0.0, 5.0),   # Bracketing for interpolation
-            "O0IV": (45000, 0.0, 3.8),  # Bracketing for interpolation
-            "B0IV": (30000, 0.0, 3.8),
-            "B8IV": (12000, 0.0, 3.8),
-            "A0IV": (9500, 0.0, 3.8),
-            "A5IV": (8250, 0.0, 3.8),
-            "F0IV": (7250, 0.0, 3.8),
-            "F8IV": (6250, 0.0, 4.3),
-            "G0IV": (6000, 0.0, 4.3),
-            "G8IV": (5500, 0.0, 4.3),
-            "K0IV": (5250, 0.0, 4.3),
-            "K7IV": (4000, 0.0, 4.3),
-            "M0IV": (3750, 0.0, 4.3),
-            "M9IV": (3000, 0.0, 4.7),    # Bracketing for interpolation
-            "O0III": (45000, 0.0, 3.5),  # Bracketing for interpolation
-            "B0III": (29000, 0.0, 3.5),
-            "B5III": (15000, 0.0, 3.5),
-            "A0III": (9100, 0.0, 3.5),
-            "F0III": (7000, 0.0, 3.5),
-            "G0III": (5750, 0.0, 3.0),
-            "G5III": (5250, 0.0, 2.5),
-            "K0III": (4750, 0.0, 2.0),
-            "K5III": (4000, 0.0, 1.5),
-            "M0III": (3750, 0.0, 1.5),
-            "M6III": (3000, 0.0, 1.0),  # Bracketing for interpolation
-            "M9III": (2400, 0.0, 1.0),  # Bracketing for interpolation
-            "O0I": (45000, 0.0, 5.0),  # Bracketing for interpolation
-            "O6I": (39000, 0.0, 4.5),
-            "O8I": (34000, 0.0, 4.0),
-            "B0I": (26000, 0.0, 3.0),
-            "B5I": (14000, 0.0, 3.0),
-            "A0I": (9750, 0.0, 2.0),
-            "A5I": (8500, 0.0, 2.0),
-            "F0I": (7750, 0.0, 2.0),
-            "F5I": (7000, 0.0, 1.5),
-            "G0I": (5500, 0.0, 1.5),
-            "G5I": (4750, 0.0, 1.0),
-            "K0I": (4500, 0.0, 1.0),
-            "K5I": (3750, 0.0, 0.5),
-            "M0I": (3750, 0.0, 0.0),
-            "M2I": (3500, 0.0, 0.0),
-            "M5I": (3000, 0.0, 0.0), # Bracketing for interpolation 
-            "M9I": (2400, 0.0, 0.0), # Bracketing for interpolation 
-            }  
+            # Main sequence (V)
+            "O5V": (43000, 0.0, 4.5, "O5V.txt"),
+            "O9V": (32500, 0.0, 4.0, "O9V.txt"),
+            "B0V": (31500, 0.0, 4.0, "B0V.txt"),
+            "B1V": (26000, 0.0, 4.0, "B1V.txt"),
+            "B3V": (17000, 0.0, 4.0, "B3V.txt"),
+            "B5V": (15700, 0.0, 4.0, "B5V.txt"),
+            "B8V": (12500, 0.0, 4.0, "B8V.txt"),
+            "A0V": (9700, 0.0, 4.0, "A0V.txt"),
+            "A1V": (9200, 0.0, 4.0, "A1V.txt"),
+            "A3V": (8550, 0.0, 4.0, "A3V.txt"),
+            "A5V": (8080, 0.0, 4.0, "A5V.txt"),
+            "F0V": (7220, 0.0, 4.0, "F0V.txt"),
+            "F2V": (6810, 0.0, 4.0, "F2V.txt"),
+            "F5V": (6510, 0.0, 4.0, "F5V.txt"),
+            "F8V": (6170, 0.0, 4.5, "F8V.txt"),
+            "G0V": (5920, 0.0, 4.5, "G0V.txt"),
+            "G2V": (5770, 0.0, 4.5, "G2V.txt"),
+            "G5V": (5660, 0.0, 4.5, "G5V.txt"),
+            "G8V": (5490, 0.0, 4.5, "G8V.txt"),
+            "K0V": (5280, 0.0, 4.5, "K0V.txt"),
+            "K2V": (5040, 0.0, 4.5, "K2V.txt"),
+            "K5V": (4410, 0.0, 4.5, "K5V.txt"),
+            "K7V": (4070, 0.0, 4.5, "K7V.txt"),
+            "M0V": (3870, 0.0, 4.5, "M0V.txt"),
+            "M2V": (3550, 0.0, 4.5, "M2V.txt"),
+            "M5V": (3030, 0.0, 5.0, "M5V.txt"),
+
+            # Subgiants (IV)
+            "B0IV": (30000, 0.0, 3.8, "B0IV.txt"),
+            "A0IV": (9500, 0.0, 3.8, "A0IV.txt"),
+            "A5IV": (8250, 0.0, 3.8, "A5IV.txt"),
+            "F0IV": (7250, 0.0, 3.8, "F0IV.txt"),
+            "F5IV": (6500, 0.0, 3.8, "F5IV.txt"),
+            "G0IV": (6000, 0.0, 4.3, "G0IV.txt"),
+            "G5IV": (5500, 0.0, 4.3, "G5IV.txt"),
+            "K0IV": (5250, 0.0, 4.3, "K0IV.txt"),
+
+            # Giants (III)
+            "B0III": (29000, 0.0, 3.5, "B0III.txt"),
+            "A0III": (9100, 0.0, 3.5, "A0III.txt"),
+            "F0III": (7000, 0.0, 3.5, "F0III.txt"),
+            "G0III": (5750, 0.0, 3.0, "G0III.txt"),
+            "G5III": (5250, 0.0, 2.5, "G5III.txt"),
+            "K0III": (4750, 0.0, 2.0, "K0III.txt"),
+            "K5III": (4000, 0.0, 1.5, "K5III.txt"),
+            "M0III": (3750, 0.0, 1.5, "M0III.txt"),
+
+            # Supergiants (I)
+            "O6I": (39000, 0.0, 4.5, "O6I.txt"),
+            "B0I": (26000, 0.0, 3.0, "B0I.txt"),
+            "A0I": (9750, 0.0, 2.0, "A0I.txt"),
+            "F0I": (7750, 0.0, 2.0, "F0I.txt"),
+            "G0I": (5500, 0.0, 1.5, "G0I.txt"),
+            "K0I": (4500, 0.0, 1.0, "K0I.txt"),
+            "M0I": (3750, 0.0, 0.0, "M0I.txt"),
+        }
+
+        # # Attempt to auto-append "V" if no luminosity class is given
+        # if sptype not in sptype_mapping:
+        #     if len(sptype) == 2:
+        #         sptype += 'V'  # assume main sequence if no class specified
+
+        # # Get spectral type info
+        # if sptype not in sptype_mapping:
+        #     raise ValueError(f"Spectral type {sptype} not found in BPGS atlas mapping. "
+        #                     f"Available types: {list(sptype_mapping.keys())}")
+
+        # teff, metallicity, logg, filename = sptype_mapping[sptype]
 
         sptype_list = list(sptype_teff_mapping.keys())
 
         # Attempt to auto-append "V" if no luminosity class is given
         if sptype not in sptype_teff_mapping:
             if len(sptype) == 2:
-            #if not any(sptype.endswith(cls) for cls in ['I', 'II', 'III', 'IV', 'V','VI','VII','VIII']):
+                # if not any(sptype.endswith(cls) for cls in ['I', 'II', 'III', 'IV', 'V','VI','VII','VIII']):
                 sptype += 'V'  # assume main sequence if no class specified
-        
+
         if sptype in sptype_list:
-            #print('aaa',sptype)
-            v0, v1, v2 = sptype_teff_mapping[sptype]
+            # print('aaa',sptype)
+            # v0, v1, v2 = sptype_teff_mapping[sptype]
+            teff, metallicity, logg, filename = sptype_teff_mapping[sptype]
         else:
-             # Interpolate values for undefined sptype
-    
+            # Interpolate values for undefined sptype
+
             sptype_list.sort(key=sort_sptype)
             rank_list = np.array([sort_sptype(st) for st in sptype_list])
-        
+
             # Find the rank of the input spec type
-            rank = sort_sptype(sptype)  
+            rank = sort_sptype(sptype)
             # Grab values from tuples and interpolate based on rank
             tup_list0 = np.array([sptype_teff_mapping[st][0] for st in sptype_list])
             tup_list1 = np.array([sptype_teff_mapping[st][1] for st in sptype_list])
             tup_list2 = np.array([sptype_teff_mapping[st][2] for st in sptype_list])
-            v0 = np.interp(rank, rank_list, tup_list0)
-            v1 = np.interp(rank, rank_list, tup_list1)
-            v2 = np.interp(rank, rank_list, tup_list2)
-            
-        # Create a blackbody spectrum using the interpolated or retrieved temperature
-        # sp wavelengh unit is the default for synphot: angstrom
-        # sp flux unit is the default for synphot: photlam (photons/s/cm^2/anstrom)
-        sp = SourceSpectrum(BlackBodyNorm1D, temperature=v0 )
+            teff = np.interp(rank, rank_list, tup_list0)
+            metallicity = np.interp(rank, rank_list, tup_list1)
+            logg = np.interp(rank, rank_list, tup_list2)
+
+        # Try to load the BPGS atlas file
+        spectrum_file = os.path.join(atlas_dir, filename)
+
+        if not os.path.isfile(spectrum_file) or (spmethod == 'blackbody'):
+            print(f"Warning: BPGS atlas file {spectrum_file} not found.")
+            print(f"Falling back to blackbody with T={teff}K")
+            # Fall back to blackbody
+
+            sp = SourceSpectrum(BlackBodyNorm1D, temperature=teff)
+        else:
+            # Load the BPGS atlas spectrum
+            sp = self.load_bpgs_spectrum(spectrum_file)
+
         # Define the V band bandpass
         v_band = SpectralElement.from_filter('johnson_v')
-        
-        # Scale the spectrum based on magnitude 
+
+        # Scale the spectrum based on magnitude
         if magtype == 'vegamag':
-            # read vega spetrum
+            # Read Vega spectrum
             vega_spec = SourceSpectrum.from_vega()
-            # sp_scale has the same units as sp
-            sp_scale = sp.normalize(renorm_val= magnitude * VEGAMAG, band=v_band,vegaspec = vega_spec )
-        if magtype == 'ABmag':
-            raise ValueError("AB magnitude system has not been implemented yet. Please use Vega magnitudes instead.")
+            # Normalize to the desired magnitude
+            sp_scale = sp.normalize(renorm_val=magnitude * VEGAMAG, band=v_band, vegaspec=vega_spec)
+        elif magtype == 'ABmag':
+            raise ValueError(
+                "AB magnitude system has not been implemented yet. Please use Vega magnitudes instead.")
+        else:
+            raise ValueError(f"Unknown magnitude type: {magtype}")
 
         if return_teff:
-             #### This is for testing the spytpe and teff mapping
-            return sp_scale, v0
+            return sp_scale, teff
         else:
             return sp_scale
 
-   
+    def load_bpgs_spectrum(self, filepath):
+        """
+        Load a BPGS atlas spectrum from a text file.
+
+        The BPGS files have the format:
+        # wavelength, f_lambda
+        wavelength_angstroms, flux (erg/s/cm^2/Angstrom)
+
+        Args:
+            filepath (str or Path): Path to the BPGS atlas text file.
+
+        Returns:
+            SourceSpectrum: The loaded spectrum in synphot format.
+        """
+        # Read the data, skipping the comment line
+        data = np.loadtxt(filepath, delimiter=',', comments='#')
+
+        wavelength_angstrom = data[:, 0]
+        flux = data[:, 1]
+
+        # The BPGS atlas uses f_lambda units: erg/s/cm^2/Angstrom
+        # synphot expects either FLAM (erg/s/cm^2/Angstrom) or PHOTLAM (photons/s/cm^2/Angstrom)
+
+        # Create a synphot SourceSpectrum using Empirical1D model
+        sp = SourceSpectrum(
+            Empirical1D,
+            points=wavelength_angstrom * u.AA,
+            lookup_table=flux * units.FLAM
+        )
+
+        return sp
 
     def get_off_axis_source_spectrum(self, vmag, magtype, spectrum=None):
         """
