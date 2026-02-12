@@ -22,8 +22,12 @@ please note that this is not the official version, but a modified version needed
 ```
 git clone https://github.com/roman-corgi/cgisim_cpp.git
 ```
+Enter the directory that contains setup.py and run the following: 
+```
+python -m pip install .
+```
 Go to the [CGISim website](https://sourceforge.net/projects/cgisim/) and download cgisim_v4.0.zip
-Unzip it in your working directory. For each of them, enter the directory that contains setup.py and run the following: 
+Unzip it in your working directory. Enter the directory that contains setup.py and run the following: 
 ```
 python -m pip install .
 ```
