@@ -14,6 +14,8 @@ from pathlib import Path
 import os
 import copy
 
+import eetc
+
 class Scene():
     ''' 
     A class that defines the an astrophysical scene
@@ -237,7 +239,7 @@ class Scene():
 
 
     # def get_stellar_spectrum(self, sptype, magnitude, magtype = 'vegamag', return_teff=False):
-    def get_stellar_spectrum(self, sptype, magnitude, atlas_dir, magtype='vegamag', return_teff=False):
+    def get_stellar_spectrum(self, sptype, magnitude, magtype='vegamag', return_teff=False):
         """
         Retrieves a stellar spectrum from BPGS atlas files and normalizes to magnitude.
 
@@ -261,7 +263,10 @@ class Scene():
             FileNotFoundError: If the atlas directory or required files don't exist.
         """
 
-        atlas_dir = Path(atlas_dir)
+        eetc_path = os.path.dirname(os.path.abspath(eetc.__file__))
+        atlas_dir = Path(os.path.join(eetc_path, 'flux_grid_generation', 'bpgs_atlas_csv'))
+
+        # atlas_dir = Path(atlas_dir)
 
         # Mapping of spectral types to (Teff, metallicity, log_g, filename)
         # Teff values kept for reference and fallback to blackbody if file not found
