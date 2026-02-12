@@ -82,14 +82,20 @@ class Scene():
 
             ### check if input spectral type is valid
             if is_valid_spectral_type(host_star_properties_internal['spectral_type']):
-                self._host_star_sptype = host_star_properties_internal['spectral_type']  
+                self._host_star_sptype = host_star_properties_internal['spectral_type']
+
+            if 'spmethod' in host_star_properties_internal.keys():
+                self._host_star_spmethod = host_star_properties_internal['spmethod']
+            else:
+                self._host_star_spmethod = 'bpgs'
+
             # Set the reference flag from host_star_properties, defaulting to False if not provided
             self.ref_flag = host_star_properties_internal.get('ref_flag', False)
             
             ### Retrieve the stellar spectrum based on spectral type and V-band magnitude
             ### The self.stellar_spectrum attribute is an instance of the SourceSpectrum class (from synphot), 
             ### used to store and retrieve the wavelength and stellar flux.
-            self.stellar_spectrum = self.get_stellar_spectrum( self._host_star_sptype, self._host_star_Vmag, magtype =self._host_star_magtype)
+            self.stellar_spectrum = self.get_stellar_spectrum(self._host_star_sptype, self._host_star_Vmag, magtype =self._host_star_magtype, spmethod=self._host_star_spmethod)
             
             # Check if the stellar diameter in mas is included
             if ('stellar_diam_mas' not in host_star_properties_internal.keys()):
@@ -239,7 +245,7 @@ class Scene():
 
 
     # def get_stellar_spectrum(self, sptype, magnitude, magtype = 'vegamag', return_teff=False):
-    def get_stellar_spectrum(self, sptype, magnitude, magtype='vegamag', return_teff=False):
+    def get_stellar_spectrum(self, sptype, magnitude, magtype='vegamag', spmethod='blackbody', return_teff=False):
         """
         Retrieves a stellar spectrum from BPGS atlas files and normalizes to magnitude.
 
