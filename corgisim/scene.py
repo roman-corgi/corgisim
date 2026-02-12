@@ -85,7 +85,7 @@ class Scene():
                 self._host_star_sptype = host_star_properties_internal['spectral_type']
 
             if 'spmethod' in host_star_properties_internal.keys():
-                self._host_star_spmethod = host_star_properties_internal['spmethod']
+                self._host_star_spmethod = host_star_properties_internal['spmethod'].lower()
             else:
                 self._host_star_spmethod = 'bpgs'
 
@@ -272,8 +272,6 @@ class Scene():
         eetc_path = os.path.dirname(os.path.abspath(eetc.__file__))
         atlas_dir = Path(os.path.join(eetc_path, 'flux_grid_generation', 'bpgs_atlas_csv'))
 
-        # atlas_dir = Path(atlas_dir)
-
         # Mapping of spectral types to (Teff, metallicity, log_g, filename)
         # Teff values kept for reference and fallback to blackbody if file not found
         sptype_teff_mapping = {
@@ -378,7 +376,7 @@ class Scene():
         # Try to load the BPGS atlas file
         spectrum_file = os.path.join(atlas_dir, filename)
 
-        if not os.path.exists(spectrum_file):
+        if not os.path.exists(spectrum_file) or (spmethod is 'blackbody'):
             print(f"Warning: BPGS atlas file {spectrum_file} not found.")
             print(f"Falling back to blackbody with T={teff}K")
             # Fall back to blackbody
