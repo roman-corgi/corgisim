@@ -151,12 +151,12 @@ class CorgiOptics():
             #### allowed slit for band2 
             if '2' in self.bandpass:     
                 spec_kw_allowed = {
-                    'slit': ['None', 'R6C5', 'R3C1'],
+                    'slit': ['None', 'R6C5', 'R3C1', 'R4C3'],
                     'prism': ['None', 'PRISM3', 'PRISM2']}
             #### allowed slit for band3
             elif '3' in self.bandpass:
                 spec_kw_allowed = {
-                    'slit': ['None', 'R1C2', 'R3C1'],
+                    'slit': ['None', 'R1C2', 'R3C1', 'R2C2'],
                     'prism': ['None', 'PRISM3', 'PRISM2']}
             for attr_name, default_value in spec_kw_defaults.items():
                 if attr_name in optics_keywords:
