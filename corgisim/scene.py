@@ -271,75 +271,80 @@ class Scene():
         # Mapping of spectral types to (Teff, metallicity, log_g, filename)
         # Teff values kept for reference and fallback to blackbody if file not found
         sptype_teff_mapping = {
-            # Main sequence (V)
-            "O5V": (43000, 0.0, 4.5, "O5V.txt"),
-            "O9V": (32500, 0.0, 4.0, "O9V.txt"),
-            "B0V": (31500, 0.0, 4.0, "B0V.txt"),
-            "B1V": (26000, 0.0, 4.0, "B1V.txt"),
-            "B3V": (17000, 0.0, 4.0, "B3V.txt"),
-            "B5V": (15700, 0.0, 4.0, "B5V.txt"),
-            "B8V": (12500, 0.0, 4.0, "B8V.txt"),
-            "A0V": (9700, 0.0, 4.0, "A0V.txt"),
-            "A1V": (9200, 0.0, 4.0, "A1V.txt"),
-            "A3V": (8550, 0.0, 4.0, "A3V.txt"),
-            "A5V": (8080, 0.0, 4.0, "A5V.txt"),
-            "F0V": (7220, 0.0, 4.0, "F0V.txt"),
-            "F2V": (6810, 0.0, 4.0, "F2V.txt"),
-            "F5V": (6510, 0.0, 4.0, "F5V.txt"),
-            "F8V": (6170, 0.0, 4.5, "F8V.txt"),
-            "G0V": (5920, 0.0, 4.5, "G0V.txt"),
-            "G2V": (5770, 0.0, 4.5, "G2V.txt"),
-            "G5V": (5660, 0.0, 4.5, "G5V.txt"),
-            "G8V": (5490, 0.0, 4.5, "G8V.txt"),
-            "K0V": (5280, 0.0, 4.5, "K0V.txt"),
-            "K2V": (5040, 0.0, 4.5, "K2V.txt"),
-            "K5V": (4410, 0.0, 4.5, "K5V.txt"),
-            "K7V": (4070, 0.0, 4.5, "K7V.txt"),
-            "M0V": (3870, 0.0, 4.5, "M0V.txt"),
-            "M2V": (3550, 0.0, 4.5, "M2V.txt"),
-            "M5V": (3030, 0.0, 5.0, "M5V.txt"),
-
-            # Subgiants (IV)
-            "B0IV": (30000, 0.0, 3.8, "B0IV.txt"),
-            "A0IV": (9500, 0.0, 3.8, "A0IV.txt"),
-            "A5IV": (8250, 0.0, 3.8, "A5IV.txt"),
-            "F0IV": (7250, 0.0, 3.8, "F0IV.txt"),
-            "F5IV": (6500, 0.0, 3.8, "F5IV.txt"),
-            "G0IV": (6000, 0.0, 4.3, "G0IV.txt"),
-            "G5IV": (5500, 0.0, 4.3, "G5IV.txt"),
-            "K0IV": (5250, 0.0, 4.3, "K0IV.txt"),
-
-            # Giants (III)
-            "B0III": (29000, 0.0, 3.5, "B0III.txt"),
-            "A0III": (9100, 0.0, 3.5, "A0III.txt"),
-            "F0III": (7000, 0.0, 3.5, "F0III.txt"),
-            "G0III": (5750, 0.0, 3.0, "G0III.txt"),
-            "G5III": (5250, 0.0, 2.5, "G5III.txt"),
-            "K0III": (4750, 0.0, 2.0, "K0III.txt"),
-            "K5III": (4000, 0.0, 1.5, "K5III.txt"),
-            "M0III": (3750, 0.0, 1.5, "M0III.txt"),
-
-            # Supergiants (I)
-            "O6I": (39000, 0.0, 4.5, "O6I.txt"),
-            "B0I": (26000, 0.0, 3.0, "B0I.txt"),
-            "A0I": (9750, 0.0, 2.0, "A0I.txt"),
-            "F0I": (7750, 0.0, 2.0, "F0I.txt"),
-            "G0I": (5500, 0.0, 1.5, "G0I.txt"),
-            "K0I": (4500, 0.0, 1.0, "K0I.txt"),
-            "M0I": (3750, 0.0, 0.0, "M0I.txt"),
-        }
-
-        # # Attempt to auto-append "V" if no luminosity class is given
-        # if sptype not in sptype_mapping:
-        #     if len(sptype) == 2:
-        #         sptype += 'V'  # assume main sequence if no class specified
-
-        # # Get spectral type info
-        # if sptype not in sptype_mapping:
-        #     raise ValueError(f"Spectral type {sptype} not found in BPGS atlas mapping. "
-        #                     f"Available types: {list(sptype_mapping.keys())}")
-
-        # teff, metallicity, logg, filename = sptype_mapping[sptype]
+            # https://www.pas.rochester.edu/~emamajek/EEM_dwarf_UBVIJHK_colors_Teff.txt
+            "O0V": (45000, 0.0, 4.0),  # Bracketing for interpolation
+            "O3V": (45000, 0.0, 4.0),
+            "O5V": (43000, 0.0, 4.5),
+            "O7V": (36500, 0.0, 4.0),
+            "O9V": (32500, 0.0, 4.0),
+            "B0V": (31500, 0.0, 4.0),
+            "B1V": (26000, 0.0, 4.0),
+            "B3V": (17000, 0.0, 4.0),
+            "B5V": (15700, 0.0, 4.0),
+            "B8V": (12500, 0.0, 4.0),
+            "A0V": (9700, 0.0, 4.0),
+            "A1V": (9200, 0.0, 4.0),
+            "A3V": (8550, 0.0, 4.0),
+            "A5V": (8080, 0.0, 4.0),
+            "F0V": (7220, 0.0, 4.0),
+            "F2V": (6810, 0.0, 4.0),
+            "F5V": (6510, 0.0, 4.0),
+            "F8V": (6170, 0.0, 4.5),
+            "G0V": (5920, 0.0, 4.5),
+            "G2V": (5770, 0.0, 4.5),
+            "G5V": (5660, 0.0, 4.5),
+            "G8V": (5490, 0.0, 4.5),
+            "K0V": (5280, 0.0, 4.5),
+            "K2V": (5040, 0.0, 4.5),
+            "K5V": (4410, 0.0, 4.5),
+            "K7V": (4070, 0.0, 4.5),
+            "M0V": (3870, 0.0, 4.5),
+            "M2V": (3550, 0.0, 4.5),
+            "M5V": (3030, 0.0, 5.0),
+            "M9V": (2400, 0.0, 5.0),   # Bracketing for interpolation
+            "O0IV": (45000, 0.0, 3.8),  # Bracketing for interpolation
+            "B0IV": (30000, 0.0, 3.8),
+            "B8IV": (12000, 0.0, 3.8),
+            "A0IV": (9500, 0.0, 3.8),
+            "A5IV": (8250, 0.0, 3.8),
+            "F0IV": (7250, 0.0, 3.8),
+            "F8IV": (6250, 0.0, 4.3),
+            "G0IV": (6000, 0.0, 4.3),
+            "G8IV": (5500, 0.0, 4.3),
+            "K0IV": (5250, 0.0, 4.3),
+            "K7IV": (4000, 0.0, 4.3),
+            "M0IV": (3750, 0.0, 4.3),
+            "M9IV": (3000, 0.0, 4.7),    # Bracketing for interpolation
+            "O0III": (45000, 0.0, 3.5),  # Bracketing for interpolation
+            "B0III": (29000, 0.0, 3.5),
+            "B5III": (15000, 0.0, 3.5),
+            "A0III": (9100, 0.0, 3.5),
+            "F0III": (7000, 0.0, 3.5),
+            "G0III": (5750, 0.0, 3.0),
+            "G5III": (5250, 0.0, 2.5),
+            "K0III": (4750, 0.0, 2.0),
+            "K5III": (4000, 0.0, 1.5),
+            "M0III": (3750, 0.0, 1.5),
+            "M6III": (3000, 0.0, 1.0),  # Bracketing for interpolation
+            "M9III": (2400, 0.0, 1.0),  # Bracketing for interpolation
+            "O0I": (45000, 0.0, 5.0),  # Bracketing for interpolation
+            "O6I": (39000, 0.0, 4.5),
+            "O8I": (34000, 0.0, 4.0),
+            "B0I": (26000, 0.0, 3.0),
+            "B5I": (14000, 0.0, 3.0),
+            "A0I": (9750, 0.0, 2.0),
+            "A5I": (8500, 0.0, 2.0),
+            "F0I": (7750, 0.0, 2.0),
+            "F5I": (7000, 0.0, 1.5),
+            "G0I": (5500, 0.0, 1.5),
+            "G5I": (4750, 0.0, 1.0),
+            "K0I": (4500, 0.0, 1.0),
+            "K5I": (3750, 0.0, 0.5),
+            "M0I": (3750, 0.0, 0.0),
+            "M2I": (3500, 0.0, 0.0),
+            "M5I": (3000, 0.0, 0.0), # Bracketing for interpolation 
+            "M9I": (2400, 0.0, 0.0), # Bracketing for interpolation 
+            }  
 
         sptype_list = list(sptype_teff_mapping.keys())
 
@@ -352,7 +357,8 @@ class Scene():
         if sptype in sptype_list:
             # print('aaa',sptype)
             # v0, v1, v2 = sptype_teff_mapping[sptype]
-            teff, metallicity, logg, filename = sptype_teff_mapping[sptype]
+            teff, metallicity, logg = sptype_teff_mapping[sptype]
+            filename = sptype+'.txt'
         else:
             # Interpolate values for undefined sptype
 
