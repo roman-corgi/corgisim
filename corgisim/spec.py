@@ -165,7 +165,7 @@ def apply_prism(optics, image_cube):
     interp_wavs_bandpass = np.linspace(optics.lam_um[0], optics.lam_um[-1], N_wav_interp)
     delta_wavelen = interp_wavs_bandpass - prism_lamref_um
     # Approximate center of selected CFAM filter - need to improve this in future.
-    delta_wavelen_lam0 = np.mean(interp_wavs_bandpass) - optics.lamref_um
+    delta_wavelen_lam0 = np.mean(interp_wavs_bandpass) - prism_lamref_um
 
     model_sampling_mm = optics.sampling_um / optics.oversampling_factor * 1E-3
     dispers_shift_mm = dispersion_polyfunc(delta_wavelen / prism_lamref_um)
