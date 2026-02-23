@@ -239,20 +239,19 @@ class Scene():
         self._stellar_diam_mas = float(value)
 
 
-    # def get_stellar_spectrum(self, sptype, magnitude, magtype = 'vegamag', return_teff=False):
-    def get_stellar_spectrum(self, sptype, magnitude, magtype='vegamag', spmethod='blackbody', return_teff=False):
+    def get_stellar_spectrum(self, sptype, magnitude, magtype='vegamag', spmethod='bpgs', return_teff=False):
         """
-        Retrieves a stellar spectrum from BPGS atlas files and normalizes to magnitude.
-
-        This function loads a real stellar spectrum from BPGS atlas text files instead of
-        using a blackbody approximation. If the exact spectral type isn't available, it
-        can interpolate between neighboring types or fall back to blackbody.
+        Checks the spmethod and retrieves a stellar spectrum using the method requested. If spmethod is 'blackbody' then
+        a blackbody spectrum of the sptype is returned. If spmethod is BPGS, it loads a real stellar spectrum from BPGS
+        atlas text files instead of using a blackbody approximation. If the exact spectral type isn't available, it
+        defaults to a blackbody and interpolates between neighboring types.
 
         Args:
             sptype (str): The spectral type of the star (e.g., "G2V", "A0IV").
             magnitude (float): The magnitude of the star in the specified system.
             atlas_dir (str or Path): Directory containing the BPGS atlas text files.
             magtype (str, optional): The magnitude type ('vegamag' by default).
+            spmethod (str, optional): The method for generating the spectrum. Current options are 'bpgs' and 'blackbody'.
             return_teff (bool, optional): If True, also return the effective temperature. Default is False.
 
         Returns:
