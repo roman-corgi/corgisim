@@ -14,7 +14,7 @@ from corgisim.scene import SimulatedImage
 from scipy import interpolate
 import astropy.units as u
 
-def binning(img: np.ndarray, binning_factor: int) -> np.ndarray:
+def binning(img, binning_factor):
     """
     Bin a 2D image by an integer factor, conserving total flux (sum over bins).
 
@@ -56,7 +56,7 @@ def binning(img: np.ndarray, binning_factor: int) -> np.ndarray:
 
     return binim
 
-def resize_array (array: np.ndarray, size:int, cent = None) -> np.ndarray:
+def resize_array (array, size, cent=None):
     """
     Resize the array to a given size. "cent" is optional. 
 
@@ -544,119 +544,3 @@ def flux_calibration_2D_scene(optics, input_scene, conv2d):
     conv2d *= np.sum(counts, axis=0) * disk_region/psf_area   # per resolution element
 
     return conv2d 
-
-def simulate_2d_scene(optics, input_scene, output_scene=None, interpolate_prfs=False):
-    """
-    Convolve 2D scene with a pre-computed off-axis PRF cube.
-
-    This function reads a disk model from `input_scene.twoD_scene_info['disk_model_path']`,
-    normalizes it, and performs a field-dependent 2D convolution using a precomputed PRF cube
-    stored at `input_scene.twoD_scene_info['prf_path']`. The PRF sampling (radii in lambda/D and azimuthal angles)
-    is reconstructed from the PRF cube metadata. The convolution can be done using either nearest-neighbor
-    or interpolation between PRFs, controlled by the `interpolate_prfs` flag. 
-
-    After convolution, the result is scaled to a count rate integrated over the bandpass defined by 
-    `optics.bp` and `intput_scene.twoD_scene_spectrum`. The scaled convolved object is stored in 
-    `output_scene.twoD_images` as an HDU with simulation metadata written as FITS COMMENT. 
-
-    Parameters
-    ----------
-    optics: (corgisim.instrument.CorgiOptics): The optics object defining the
-            instrument configuration, including the telescope and coronagraph.
-    input_scene : Scene 
-        Scene object containing 2D image data to be convolved.
-    output_scene: SimulatedImage, optional
-        If provided, the convolved image will be stored in this object.
-    interpolate_prfs: bool, optional
-        Whether to use interpolation between PRFs for convolution.
-
-    Returns
-    -------
-    output_scene : SimulatedImage
-        Output scene with `twoD_image` replaced by the convolved and scaled result.
-
-    Raises
-    ------
-    ValueError
-        If `input_scene.twoD_scene_info['prf_path']` is missing or None.
-
-    Notes
-    -----
-    - The PRF cube is assumed to be already centred in its arrays. #TODO - add shifting? 
-    - The PRF cube is assumed to be normalised to unit input flux. Absolute flux
-        scaling is applied in this function using the input scene spectrum and the
-        optics bandpass.
-    - The disk model is normalised by its total flux prior to convolution.
-    - After convolution, the image is scaled using the integrated bandpass count
-        rate and converted to a per resolution element normalisation using an
-        estimate of the PSF FWHM area (pixels) and a thresholded disk region mask.
-    - The output is intended to represent a count rate (photoelectrons per second),
-        consistent with `Observation.countrate`.
-    """
-    # Determine which mode to use based on provided kwargs
-    if input_scene.twoD_scene_info['prf_path'] is not None:
-        has_prf_cube = True 
-    else:
-        raise ValueError("No PRF cube path provided in scene.twoD_scene_info")
-    
-    # input disk model
-    disk_model_data = fits.getdata(input_scene.twoD_scene_info['disk_model_path'])
-    disk_model_norm = disk_model_data/np.nansum(disk_model_data, axis=(0,1)) # normalisation of the disk
-
-    prf_cube_path = input_scene.twoD_scene_info['prf_path'] 
-
-    prf_sim_info = prf_simulation._get_prf_sim_info(prf_cube_path) # Get the simulation information 
-
-    # Check if PRF cube needs centering
-    prf_info_is_centred = prf_sim_info.get('centred') # 'True' or 'False'
-    # Convert string to boolean
-    is_centred = (prf_info_is_centred == 'True') 
-
-    if not is_centred:
-        print("PRF cube is not centred. centring now...")
-        from corgisim.prf_simulation import centre_prf_cube
-        prf_cube = centre_prf_cube(fits.getdata(prf_cube_path), method='centroid')
-    else: 
-        prf_cube = fits.getdata(prf_cube_path)
-
-    # 1. Get the radii grids for convolution 
-    radii_lamD, _ = build_radial_grid(
-        prf_sim_info['iwa'], 
-        prf_sim_info['owa'], 
-        prf_sim_info['inner_step'], 
-        prf_sim_info['mid_step'], 
-        prf_sim_info['outer_step'],
-        prf_sim_info['max_radius']
-    )
-
-    # 2. Get the azimuth grid for convolution
-    azimuths_deg, _ = build_azimuth_grid(prf_sim_info['step_deg'])
-
-    # 3. Perform convolution
-    conv2d = _convolve_with_prfs(
-        obj=disk_model_norm, 
-        prfs_array=prf_cube, 
-        radii_lamD=radii_lamD , 
-        azimuths_deg=azimuths_deg, 
-        pix_scale_mas=constants.PIXEL_SCALE_ARCSEC * 1e3, 
-        res_mas=optics.res_mas, 
-        interpolate_prfs=interpolate_prfs
-        )
-
-    # NOTE: An attempt to convert flux units to physical units after convolution
-    # 4. Flux calibration
-    flux_calibrated_conv2D = flux_calibration_2D_scene(optics, input_scene, conv2d)
-
-    if optics.cgi_mode in ['spec', 'lowfs', 'excam_efield']:
-        warnings.warn(f"This mode '{optics.cgi_mode}' has not implmented yet!") # still allow the usage but warn the user about this
-
-    if output_scene is None:
-        # No output format was specified - create a new SimulatedImage object
-        output_scene = SimulatedImage(input_scene)
-
-    sim_info = _set_2D_image_sim_info(optics, input_scene)
-
-    # Create the HDU object with the generated header information
-    output_scene.twoD_image = outputs.create_hdu(flux_calibrated_conv2D, sim_info=sim_info)
-
-    return output_scene
