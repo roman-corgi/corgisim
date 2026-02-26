@@ -326,17 +326,16 @@ def test_zero_radius_position_filtering():
     assert (1.0, 180.0 * u.deg) in positions
 
 def test_simulate_2d_scene_missing_prf_path():
-    """Test error handling when PRF path is missing."""
-    from corgisim.convolution import simulate_2d_scene
-    
-    # Create mock scene with missing PRF path
+    from corgisim.instrument import CorgiOptics
+    """Test error handling when PRF cube path is missing."""
     mock_scene = Mock()
     mock_scene.twoD_scene_info = {
-        'prf_path': None,
-        'disk_model_path': '/fake/path/to/disk_model.fits'
+        "disk_model_path": "/fake/path/to/disk_model.fits"
     }
-    
+
     mock_optics = Mock()
-    
-    with pytest.raises(ValueError, match="No PRF cube path provided"):
-        simulate_2d_scene(mock_optics, mock_scene)
+    mock_optics.res_mas = 1.0
+    mock_optics.cgi_mode = "imaging"  # or whatever your code expects later
+
+    with pytest.raises(ValueError, match=r"No PRF cube path provided in the input:"):
+        CorgiOptics.simulate_2d_scene(mock_optics, mock_scene, prf_cube_path=None)
