@@ -452,12 +452,12 @@ def flux_calibration_2D_scene(optics, input_scene, conv2d):
     obs = Observation(input_scene.twoD_scene_spectrum, optics.bp)
     counts = np.zeros((optics.lam_um.shape[0]))
     for i in range(optics.lam_um.shape[0]):
-        dlam_um = optics.lam_um[1]-optics.lam_um[0]
-        lam_um_l = (optics.lam_um[i]- 0.5*dlam_um) * 1e4 ## unit of anstrom
-        lam_um_u = (optics.lam_um[i]+ 0.5*dlam_um) * 1e4 ## unit of anstrom
+        dlam_um = optics.lam_um[1] - optics.lam_um[0]
+        lam_um_l = (optics.lam_um[i] - 0.5*dlam_um) * 1e4    # unit of anstrom
+        lam_um_u = (optics.lam_um[i] + 0.5*dlam_um) * 1e4    # unit of anstrom
         counts[i] = (optics.polarizer_transmission * obs.countrate(area=optics.area, waverange=[lam_um_l, lam_um_u])).value
 
-    psf_area = np.pi*(optics.res_mas/(constants.PIXEL_SCALE_ARCSEC*1e3)/2)**2 # area of the PSF FWHM in the unit of pixel
+    psf_area = np.pi*(optics.res_mas/(constants.PIXEL_SCALE_ARCSEC*1e3)/2)**2   #  area of the PSF FWHM in the unit of pixel
     disk_region = (conv2d > 0.5*np.max(conv2d)).sum()  # number of pixs in the disk region (>=50% maximum disk flux) 
     conv2d *= np.sum(counts, axis=0) * disk_region/psf_area   # per resolution element
 
