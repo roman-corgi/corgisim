@@ -7,7 +7,7 @@ from corgisim import scene
 from corgisim.sat_spots import add_cos_pattern_dm
 import cgisim
 import corgisim
-from synphot.models import BlackBodyNorm1D, Box1D,Empirical1D
+from synphot.models import BlackBodyNorm1D, Box1D, Empirical1D
 from synphot import units, SourceSpectrum, SpectralElement, Observation
 from synphot.units import validate_wave_unit, convert_flux, VEGAMAG
 import matplotlib.pyplot as plt
@@ -24,6 +24,8 @@ import corgisim.constants as constants
 import corgisim.convolution as conv
 
 from corgisim.scene import Scene, SimulatedImage
+from corgisim import outputs, spec, prf_simulation, constants
+import corgisim.convolution as conv
 warnings.simplefilter('always', UserWarning)
 class CorgiOptics():
     '''
