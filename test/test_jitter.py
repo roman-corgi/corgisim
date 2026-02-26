@@ -17,6 +17,7 @@ Jitter and Finite Stellar Diameter Tests:
     test_all_pol_obs_with_finite_stellar_diam: tests that all polarization cases run with finite stellar diameter included (except for the one case in test_minimal)
     test_jittered_weights: compares the calculated weights for a jitter+finite stellar case against an example
     test_obs_with_jitter: tests that a case with only jitter runs without issue
+    test_pol_obs_with_finite_stellar_diam_and_jitter: tests a jitter+finite stellar diameter case
 """
 
 def test_offsets_and_areas_against_example():
