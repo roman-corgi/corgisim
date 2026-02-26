@@ -1342,6 +1342,124 @@ class CorgiOptics():
             self.slit_x_offset_mas, self.slit_y_offset_mas = skycoord_to_excamcoord(self.slit_ra_offset_mas, self.slit_dec_offset_mas, value)
 
 
+    def simulate_2d_scene(self, input_scene, sim_scene=None, prf_cube_path=None, interpolate_prfs=False):
+        """
+        Convolve 2D scene with a pre-computed off-axis PRF cube.
+
+        This function reads a disk model from `input_scene.twoD_scene_info['disk_model_path']`,
+        normalizes it, and performs a field-dependent 2D convolution using a precomputed PRF cube
+        stored at `input_scene.twoD_scene_info['prf_path']`. The PRF sampling (radii in lambda/D and azimuthal angles)
+        is reconstructed from the PRF cube metadata. The convolution can be done using either nearest-neighbor
+        or interpolation between PRFs, controlled by the `interpolate_prfs` flag. 
+
+        After convolution, the result is scaled to a count rate integrated over the bandpass defined by 
+        `optics.bp` and `intput_scene.twoD_scene_spectrum`. The scaled convolved object is stored in 
+        `sim_scene.twoD_images` as an HDU with simulation metadata written as FITS COMMENT. 
+
+        Parameters
+        ----------
+        optics: (corgisim.instrument.CorgiOptics): The optics object defining the
+                instrument configuration, including the telescope and coronagraph.
+        input_scene : Scene 
+            Scene object containing 2D image data to be convolved.
+        sim_scene: SimulatedImage, optional
+            If provided, the convolved image will be stored in this object.
+        prf_cube_path: str
+            Path to the PRF cube to be used for convolution.
+        interpolate_prfs: bool, optional
+            Whether to use interpolation between PRFs for convolution.
+
+        Returns
+        -------
+        sim_scene : SimulatedImage
+            Output scene with `twoD_image` replaced by the convolved and scaled result.
+
+        Raises
+        ------
+        ValueError
+            If `prf_cube_path` is missing or None.
+
+        Notes
+        -----
+        - The PRF cube is assumed to be already centred in its arrays. 
+        - The PRF cube is assumed to be normalised to unit input flux. Absolute flux
+            scaling is applied in this function using the input scene spectrum and the
+            optics bandpass.
+        - The disk model is normalised by its total flux prior to convolution.
+        - After convolution, the image is scaled using the integrated bandpass count
+            rate and converted to a per resolution element normalisation using an
+            estimate of the PSF FWHM area (pixels) and a thresholded disk region mask.
+        - The output is intended to represent a count rate (photoelectrons per second),
+            consistent with `Observation.countrate`.
+        """
+        # Determine which mode to use based on provided kwargs
+        if prf_cube_path is not None:
+            has_prf_cube = True 
+        else:
+            raise ValueError(f"No PRF cube path provided in the input: {prf_cube_path}")
+        
+        # input disk model
+        disk_model_data = fits.getdata(input_scene.twoD_scene_info['disk_model_path'])
+        disk_model_norm = disk_model_data/np.nansum(disk_model_data, axis=(0,1)) # normalisation of the disk
+
+        prf_sim_info = prf_simulation._get_prf_sim_info(prf_cube_path) # Get the simulation information 
+
+        # Check if PRF cube needs centering
+        prf_info_is_centred = prf_sim_info.get('centred') # 'True' or 'False'
+        # Convert string to boolean
+        is_centred = (prf_info_is_centred == 'True') 
+
+        if not is_centred:
+            print("PRF cube is not centred. centring now...")
+            from corgisim.prf_simulation import centre_prf_cube
+            prf_cube = centre_prf_cube(fits.getdata(prf_cube_path), method='centroid')
+        else: 
+            prf_cube = fits.getdata(prf_cube_path)
+
+        # 1. Get the radii grids for convolution 
+        radii_lamD, _ = conv.build_radial_grid(
+            prf_sim_info['iwa'], 
+            prf_sim_info['owa'], 
+            prf_sim_info['inner_step'], 
+            prf_sim_info['mid_step'], 
+            prf_sim_info['outer_step'],
+            prf_sim_info['max_radius']
+        )
+
+        # 2. Get the azimuth grid for convolution
+        azimuths_deg, _ = conv.build_azimuth_grid(prf_sim_info['step_deg'])
+
+        # 3. Perform convolution
+        conv2d = conv._convolve_with_prfs(
+            obj=disk_model_norm, 
+            prfs_array=prf_cube, 
+            radii_lamD=radii_lamD , 
+            azimuths_deg=azimuths_deg, 
+            pix_scale_mas=constants.PIXEL_SCALE_ARCSEC * 1e3, 
+            res_mas=self.res_mas, 
+            interpolate_prfs=interpolate_prfs
+            )
+
+        # NOTE: An attempt to convert flux units to physical units after convolution
+        # NOTE: Should be remove in the future after we have a better way to track the units and perform the flux calibration in a more self-consistent way.
+        # 4. Flux calibration
+        flux_calibrated_conv2D = conv.flux_calibration_2D_scene(self, input_scene, conv2d)
+
+        if self.cgi_mode in ['spec', 'lowfs', 'excam_efield']:
+            warnings.warn(f"This mode '{self.cgi_mode}' has not implmented yet!") # still allow the usage but warn the user about this
+
+        if sim_scene is None:
+            # No output format was specified - create a new SimulatedImage object
+            sim_scene = SimulatedImage(input_scene)
+
+        sim_info = conv._set_2D_image_sim_info(self, input_scene)
+
+        # Create the HDU object with the generated header information
+        sim_scene.twoD_image = outputs.create_hdu(flux_calibrated_conv2D, sim_info=sim_info)
+
+        return sim_scene
+
+
 class CorgiDetector(): 
     
     def __init__(self ,emccd_keywords, photon_counting = True):
