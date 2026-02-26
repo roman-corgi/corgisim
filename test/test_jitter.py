@@ -379,8 +379,10 @@ def test_all_pol_obs_with_finite_stellar_diam():
 ###############################################################################
 def test_jittered_weights():
     '''
-    This function compares the calculated weights against an example for a case
-    of using jitter and a finite stellar diameter.
+    This function compares the calculated weights against an OS11-based 
+    example that includes both jitter and a finite stellar diameter. The
+    OS11-based example uses an offset source distribtuion that approximately 
+    reproduces the offsets and regions shown in a figure in John Krist's paper.
     '''
     
     # Load the example stellar diameter and jitter parameter dictionary
