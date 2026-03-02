@@ -753,7 +753,6 @@ class CorgiOptics():
                 if ((hasattr(self,'stellar_diam_and_jitter_keywords') == False) or
                    ((self.stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] == 0) and (self.stellar_diam_and_jitter_keywords['add_jitter'] == 0))):
                        images_tem = np.abs(fields)**2
-                       image = self.construct_image_array(grid_dim_out_tem,images_tem,obs)
                 elif  ((self.stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] == 1) or (self.stellar_diam_and_jitter_keywords['add_jitter'] == 1)):
                     # Incorporating jitter or finite stellar diameter:
                     images_tem = self.construct_jittered_image_from_fields(fields)
@@ -777,12 +776,38 @@ class CorgiOptics():
             self.optics_keywords['output_dim']=grid_dim_out_tem
             self.optics_keywords['final_sampling_m']=sampling_um_tem *1e-6
             
+            # If the effects of finite stellar diameter or jitter are being
+            # included, calculate the delta electric fields and weights for
+            # the offsets, or load from a file.
+            # TODO: Add the option to load from a file
+            # The need to calculate the library is determined by
+            # stellar_diam_and_jitter_keywords['use_saved_deltaE_and_weights'].
+            # If this parameter is set to 0, the library needs to be created.
+            # If this parameter is set to 1, the library is loaded from a file.
+            # If this parameter is set to 2, the library already exists
+            # during this session and does not require loading or calculating.
+            if hasattr(self,'stellar_diam_and_jitter_keywords'):
+                if (self.stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] == 1) or \
+                   (self.stellar_diam_and_jitter_keywords['add_jitter'] == 1):
+                    # Calculating from scratch
+                    if self.stellar_diam_and_jitter_keywords['use_saved_deltaE_and_weights'] == 0:
+                        self.stellar_diam_and_jitter_keywords = jitter.build_delta_e_field_library(self.stellar_diam_and_jitter_keywords,self,input_scene)
+                    elif self.stellar_diam_and_jitter_keywords['use_saved_deltaE_and_weights'] == 1:
+                        raise KeyError("ERROR: Use of a saved library has not been implemented yet for finite stellar diameter and jitter calculations.")
+                        #TODO: Add option to use saved library
+            
             if self.optics_keywords['polaxis'] == -10:
                 optics_keywords_m10 = self.optics_keywords.copy()
                 images_tem = self.generate_full_aberration_psf(optics_keywords_m10)
             else: 
                 (fields, sampling) = proper.prop_run_multi('roman_preflight', self.lam_um, 1024, PASSVALUE=self.optics_keywords, QUIET=self.quiet)
-                images_tem = np.abs(fields)**2
+                # If not incorporating jitter or finite stellar diameter:
+                if ((hasattr(self,'stellar_diam_and_jitter_keywords') == False) or
+                   ((self.stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] == 0) and (self.stellar_diam_and_jitter_keywords['add_jitter'] == 0))):
+                    images_tem = np.abs(fields)**2
+                elif  ((self.stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] == 1) or (self.stellar_diam_and_jitter_keywords['add_jitter'] == 1)):
+                    # Incorporating jitter or finite stellar diameter:
+                    images_tem = self.construct_jittered_image_from_fields(fields)
 
             # If a prism was selected, apply the dispersion model and overwrite the image cube and wavelength array.
             if self.prism != 'None': 
@@ -965,7 +990,7 @@ class CorgiOptics():
 
         Arguments: 
             - scene: A corgisim.scene.Scene object that contains the scene to be simulated.
-            - sim_scene: A corgisim.SimulatedImage object to contains the simylated scene.
+            - sim_scene: A corgisim.SimulatedImage object to contains the simulated scene.
             - on_the_fly: A boolean that defines whether the PSFs should be generated on the fly.
         
 
@@ -1040,7 +1065,7 @@ class CorgiOptics():
                 
                 if self.optics_keywords['polaxis'] == -10:
                     optics_keywords_comp_m10 = self.optics_keywords_comp.copy()
-                    images_tem = self.generate_full_aberration_psf(optics_keywords_comp_m10)
+                    images_tem = self.generate_full_aberration_psf(optics_keywords_comp_m10,is_offaxis_source=True)
                 else: 
                     (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE= self.optics_keywords_comp ,QUIET=True)
                     images_tem = np.abs(fields)**2
@@ -1251,7 +1276,7 @@ class CorgiOptics():
 
         return dm1_cos_added
 
-    def generate_full_aberration_psf(self, optics_keywords):
+    def generate_full_aberration_psf(self, optics_keywords,is_offaxis_source=False):
         '''
         Calls proper.prop_run_multi() with polaxis set to -2, 2, -1, and 1 in order to obtain fields with
         polarization aberrations describing -45->Y, 45->Y, -45->X, and 45->X, incoherently average those
@@ -1259,23 +1284,35 @@ class CorgiOptics():
 
         Arguments:
             optics_keywords: A dictionary with the keywords that are used to set up the proper model
+            is_offaxis_source: An optional Boolean specifying whether the PSF calculation is for an offaxis source or not
         
         Returns:
-            images: 3D datacube containing the PSFs sampled at various wavelengths in the pass band
+            images_tem: 3D datacube containing the PSFs sampled at various wavelengths in the pass band
         '''    
         # polaxis values to be passed into the proper model
         polaxis_params = [-2, -1, 1, 2]
+        fields = []
         images_pol = []
 
         # compute the field for each polaxis value
         for polaxis in polaxis_params:
             optics_keywords['polaxis'] = polaxis
-            (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=optics_keywords,QUIET=True)
-            images_pol.append(np.abs(fields) ** 2)
-
-        # compute the average intensity
-        images = np.array(sum(images_pol)) / 4
-        return images
+            (field, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=optics_keywords,QUIET=True)
+            fields.append(field)
+            images_pol.append(np.abs(field) ** 2)
+        if ((hasattr(self,'stellar_diam_and_jitter_keywords') == False) or
+            ((self.stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] == 0) and (self.stellar_diam_and_jitter_keywords['add_jitter'] == 0))):
+            # compute the average intensity
+            images_tem = np.array(sum(images_pol)) / 4
+        elif  ((self.stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] == 1) or (self.stellar_diam_and_jitter_keywords['add_jitter'] == 1)):
+            if is_offaxis_source == False:
+                # Incorporating jitter or finite stellar diameter:
+                images_tem = self.construct_jittered_image_from_fields(fields)
+            elif is_offaxis_source == True:
+                # don't use the finite stellar diameter model (not appropriate for a point source)
+                # also, the jitter model isn't currently set up for offaxis sources
+                images_tem = np.array(sum(images_pol)) / 4
+        return images_tem
     
 class CorgiDetector(): 
     
