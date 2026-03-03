@@ -90,12 +90,14 @@ def test_L1_product_fits_format():
     assert exthr['FSMY'] == 0.0, f"Expected data FSMY=10, but got {exthr['FSMY']}"
     assert prihr['PSFREF'] == False, f"Expected data PSFREF=False, but got {prihr['PSFREF']}"
     assert prihr['PHTCNT'] == True, f"Expected data PSFREF=True, but got {prihr['PHTCNT']}"
-    assert prihr['SATSPOTS'] == 0, f"Expected data PSFREF=True, but got {prihr['PHTCNT']}"
     assert prihr['ROLL'] == 0.0, f"Expected data ROLL=0, but got {prihr['ROLL']}"
 
+    assert exthdr['SATSPOTS'] == 0, f"Expected data SATSPOTS=0, but got {exthdr['SATSPOTS']}"
     assert exthdr['KGAINPAR'] == 8.7, f"Expected data KGAINPAR=8.7, but got {exthdr['KGAINPAR']}"
     assert exthdr['EMGAIN_C'] == 1000, f"Expected data EMGAIN_C=1000, but got {exthdr['EMGAIN_C']}"
     assert exthdr['EMGAIN_A'] == 1000, f"Expected data EMGAIN_A=1000, but got {exthdr['EMGAIN_A']}"
+    assert exthdr['RN'] == 165.0, f"Expected data RN=165.0, but got {exthdr['RN']}"
+
     assert exthdr['ISPC'] == 1, f"Expected header ISPC=1, but got {exthdr['ISPC']}"
 
     assert exthdr['SPAM_H'] ==  1001.3, f"Expected data SPAM_H=1001.3, but got {exthdr['SPAM_H']}"
