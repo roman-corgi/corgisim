@@ -92,7 +92,7 @@ def test_L1_product_fits_format():
     assert prihr['PHTCNT'] == True, f"Expected data PSFREF=True, but got {prihr['PHTCNT']}"
     assert prihr['ROLL'] == 0.0, f"Expected data ROLL=0, but got {prihr['ROLL']}"
 
-    assert exthdr['SATSPOTS'] == 0, f"Expected data PSFREF=True, but got {exthdr['SATSPOTS']}"
+    assert exthdr['SATSPOTS'] == 0, f"Expected data SATSPOTS=0, but got {exthdr['SATSPOTS']}"
     assert exthdr['KGAINPAR'] == 8.7, f"Expected data KGAINPAR=8.7, but got {exthdr['KGAINPAR']}"
     assert exthdr['EMGAIN_C'] == 1000, f"Expected data EMGAIN_C=1000, but got {exthdr['EMGAIN_C']}"
     assert exthdr['EMGAIN_A'] == 1000, f"Expected data EMGAIN_A=1000, but got {exthdr['EMGAIN_A']}"

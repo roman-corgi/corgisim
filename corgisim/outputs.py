@@ -15,7 +15,7 @@ def create_hdu_list(data, header_info, sim_info=None):
 
     Parameters
     ----------
-    data : numpy.ndarr
+    data : numpy.ndarray
         2D array representing the simulated image.
     header_info : dict
         Header keywords (e.g., 'EXPTIME', 'EMGAIN_C') to override defaults in the image HDU header.
