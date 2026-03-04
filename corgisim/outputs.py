@@ -50,7 +50,6 @@ def create_hdu_list(data, header_info, sim_info=None):
     ### currently we don't have sequence smulation, so the time per frame == exposure time
     ### it needs to be updated later
     prihdr['FRAMET'] = header_info['EXPTIME']
-    prihdr['SATSPOTS'] = int(header_info['SATSPOTS'])
     prihdr['ROLL'] = header_info['ROLL']
 
     ### wait this for tachi to add sattlite spots function
@@ -61,7 +60,8 @@ def create_hdu_list(data, header_info, sim_info=None):
     prihdr['FILENAME'] =  f"{filename}.fits"
 
     
-
+    exthdr['RN'] = int(header_info['RN'])
+    exthdr['SATSPOTS'] = int(header_info['SATSPOTS'])
     exthdr['NAXIS'] = data.ndim
     exthdr['NAXIS1'] = data.shape[0]
     exthdr['NAXIS2'] = data.shape[1]
