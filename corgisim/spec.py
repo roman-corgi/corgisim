@@ -92,8 +92,16 @@ def get_slit_mask(optics, dx_fsam_um=10.0, hires_dim_um=800, binfac=50):
     slit_width_hires = 1.0 / dx_hires_um * slit_ref_params[optics.slit]['width'] 
     slit_height_hires = 1.0 / dx_hires_um * slit_ref_params[optics.slit]['height']
     # Determine the binary, high-res transmission array
-    hires_slit = ((np.abs(XXs) < slit_height_hires / 2) & 
-                  (np.abs(YYs) < slit_width_hires / 2))
+    if 'rotation' in slit_ref_params[optics.slit].keys():
+        theta = np.deg2rad(slit_ref_params[optics.slit]['rotation'])
+        hires_slit = ((YYs < XXs / np.tan(theta) + slit_width_hires / (2 * np.sin(theta))) &
+                      (YYs > XXs / np.tan(theta) - slit_width_hires / (2 * np.sin(theta))) &
+                      (YYs < -XXs * np.tan(theta) + slit_height_hires / (2 * np.cos(theta))) &
+                      (YYs > -XXs * np.tan(theta) - slit_height_hires / (2 * np.cos(theta)))) 
+        hires_slit = np.fliplr(hires_slit) # TEMPORARY: Remove this statement when the CGISim rotated SPC bowtie mask orientation is corrected
+    else:
+        hires_slit = ((np.abs(XXs) < slit_height_hires / 2) & 
+                      (np.abs(YYs) < slit_width_hires / 2))
     # Bin the high-res array to the specified spatial sampling
     binned_slit = hires_slit.reshape(hires_dimy // binfac, binfac, 
                                      hires_dimx // binfac, binfac).mean(axis=3).mean(axis=1)
@@ -152,13 +160,15 @@ def apply_prism(optics, image_cube):
     N_wav_interp = int(round((optics.lam_um[-1] - optics.lam_um[0]) / optics.wav_step_um))
     
     dispersion_polyfunc = np.poly1d(prism_params['pos_vs_wavlen_polycoeff'])
+    # The last constant in the wavlength vs position coefficient array is the reference wavelength of the dispersion model in units of nm
+    prism_lamref_um = prism_params['wavlen_vs_pos_polycoeff'][-1] / 1000
     interp_wavs_bandpass = np.linspace(optics.lam_um[0], optics.lam_um[-1], N_wav_interp)
-    delta_wavelen = interp_wavs_bandpass - optics.lamref_um
+    delta_wavelen = interp_wavs_bandpass - prism_lamref_um
     # Approximate center of selected CFAM filter - need to improve this in future.
-    delta_wavelen_lam0 = np.mean(interp_wavs_bandpass) - optics.lamref_um
+    delta_wavelen_lam0 = np.mean(interp_wavs_bandpass) - prism_lamref_um
 
     model_sampling_mm = optics.sampling_um / optics.oversampling_factor * 1E-3
-    dispers_shift_mm = dispersion_polyfunc(delta_wavelen / optics.lamref_um)
+    dispers_shift_mm = dispersion_polyfunc(delta_wavelen / prism_lamref_um)
     dispers_shift_modelpix = dispers_shift_mm / model_sampling_mm
 
     # Interpolate the proper image cube
@@ -190,7 +200,7 @@ def apply_prism(optics, image_cube):
         dispersed_cube[i] = scipy.ndimage.map_coordinates(image_cube_interp[i], coords[:, i], order=1, mode='constant')
 
     # Dispersion shift of filter center wavelength
-    lam0_shift_mm = dispersion_polyfunc(delta_wavelen_lam0 / optics.lamref_um)
+    lam0_shift_mm = dispersion_polyfunc(delta_wavelen_lam0 / prism_lamref_um)
     lam0_shift_modelpix = lam0_shift_mm / model_sampling_mm 
     lam0_shift_y = lam0_shift_modelpix * np.sin(np.deg2rad(theta))
     lam0_shift_x = lam0_shift_modelpix * np.cos(np.deg2rad(theta))
@@ -277,7 +287,7 @@ def read_prism_params(prism_param_fname):
         ) from e
     
     # Validate parameters
-    required_params = ['pos_vs_wavlen_polycoeff', 'clocking_angle']
+    required_params = ['pos_vs_wavlen_polycoeff', 'wavlen_vs_pos_polycoeff', 'clocking_angle']
     missing_params = []
     
     for param in required_params:
