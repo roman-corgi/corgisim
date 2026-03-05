@@ -38,7 +38,7 @@ jobs:
         cd ..        
     - name: Download and install Roman preflight
       run: |
-        git clone https://github.com/roman-corgi/cgisim_cpp.git  
+        git clone https://github.com/helloWorlds0/cgisim_cpp  
         cd cgisim_cpp/
         python -m pip install .
         cd ..    
