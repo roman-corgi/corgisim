@@ -935,7 +935,8 @@ class CorgiOptics():
         lam_start_um = np.min(self.lam_um)-  1* dlam_um
         lam_end_um = np.max(self.lam_um)+  1* dlam_um
         bandpass_i = 'lam' + str(lam_start_um*1000) + 'lam' + str(lam_end_um*1000) 
-
+        
+        ###need to be updaded with curves from eetc
         wave, throughput = cgisim.cgisim_roman_throughput( bandpass_name, bandpass_i, nd, cgimode, info_dir )
         if cgimode == 'spec': # upsample the wavelength and throughput arrays
             f = interpolate.interp1d(wave, throughput, kind='linear')
