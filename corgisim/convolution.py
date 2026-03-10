@@ -64,7 +64,7 @@ def build_radial_grid(iwa, owa, inner_step, mid_step, outer_step, max_radius=Non
     }
     
     inner = np.arange(0, iwa + inner_step, inner_step)
-    mid   = np.arange(iwa + inner_step, owa, mid_step)
+    mid   = np.arange(iwa + mid_step, owa, mid_step)
     outer = np.arange(owa, max_radius + outer_step, outer_step)
     
     return np.hstack([inner, mid, outer]), param
