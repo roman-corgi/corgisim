@@ -1225,8 +1225,9 @@ class CorgiOptics():
         sim_info['output_dim'] = self.optics_keywords['output_dim'] 
         sim_info['nd_filter'] = self.nd
         sim_info['roll_angle'] = self.roll_angle
-                            
-                # Define specific keys from self.optics_keywords to include in the header            
+        sim_info['ref_flag'] = input_scene.ref_flag
+
+        # Define specific keys from self.optics_keywords to include in the header
         keys_to_include_in_header = [ 'use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
                             'use_lyot_stop','use_field_stop','fsm_x_offset_mas','fsm_y_offset_mas','slit','prism',
                             'slit_x_offset_mas','slit_y_offset_mas','use_pupil_lens', 'use_lyot_stop', 'use_field_stop']  # Specify keys to include
