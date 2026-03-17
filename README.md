@@ -1,4 +1,4 @@
-# corgisim
+# Corgisim
 A simulation suite for the Nancy Grace Roman Space Telescope Coronagraphic Instrument
 
 ### Documentation
@@ -6,8 +6,36 @@ The automatic documentation is available at https://corgisim.readthedocs.io/en/l
 
 ## Installation Instruction
 ### Python version
-This repository requires Python version 3.12 or higher
+**This repository requires Python version 3.12 or higher.**
 
+### Environnment
+We strongly recommend that you use a virtual environment for your installation. You can use conda or venv, but be aware that conda is a package manager as well as an virtual environment manager. This means that you _may_ have conflicts between packages installed with pip and packages installed with conda.
+
+#### venv
+First, make sure you are not already in a environment (no environment name in parenthesis at the beginning of your command line) with `deactivate`. 
+
+Then, do 
+```
+python3.12 -m venv environment_name
+```
+This will createn a folder called environment_name which will contain your environment. To activate it, do 
+
+```
+source environment_name/bin/activate
+```
+The name of your environment appears at the beginning of your command line.
+
+#### conda
+To make sure that you are not already in a environment, do `conda deactivate`. 
+Then, do 
+```
+conda create --name environment_name
+```
+To activate your environment, do 
+Then, do 
+```
+conda activate environment_name
+```
 ### Install Proper
 Proper is an optical propagation library that is needed for CGISim to function
 Go to the [Proper website](https://sourceforge.net/projects/proper-library/) and download proper_v3.3.4_python.zip
@@ -37,7 +65,7 @@ Enter the directory that contains setup.py and run the following:
 ```
 python -m pip install .
 ```
-Go to the [CGISim website](https://sourceforge.net/projects/cgisim/) and download cgisim_v4.0.zip
+Go to the [CGISim website](https://sourceforge.net/projects/cgisim/) and download cgisim 
 Unzip it in your working directory. Enter the directory that contains setup.py and run the following: 
 ```
 python -m pip install .
@@ -81,5 +109,7 @@ test_minimal.py runs on every pull request and push to main. Make sure that this
 
 Put your 'nominal' case here. The goal is to ensure that developers don't break any existing functionality by mistake. If possible, insert your test in an existing test and only simulate images if necessary. 
 
-Longer tests and unit tests should be in another file. All other tests run on push to main (which includes when a branch is merged) and once a week. 
+Longer tests and unit tests should be in another file. All other tests run on push to main (which includes when a branch is merged) and once a week. Make sure that these tests pass on your branch. 
+
+If your PR contains only documentation (i.e. notebooks, changes to README.md, etc.), there's no need to run the tests.
 
