@@ -32,7 +32,6 @@ Then, do
 conda create --name environment_name
 ```
 To activate your environment, do 
-Then, do 
 ```
 conda activate environment_name
 ```
