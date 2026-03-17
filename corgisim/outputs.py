@@ -142,7 +142,8 @@ def create_hdu(data, sim_info=None):
     return hdu
 
 
-def save_hdu_to_fits( hdul, outdir=None, overwrite=False, write_as_L1=False, filename=None):
+def save_hdu_to_fits( hdul, outdir=None, overwrite=False, write_as_L1=False, filename=None,
+                     overwrite_pri_keywords=None, overwrite_ext_keywords=None):
         """
         Save an Astropy HDUList to a FITS file.
 
@@ -180,10 +181,27 @@ def save_hdu_to_fits( hdul, outdir=None, overwrite=False, write_as_L1=False, fil
 
         # Construct full file path
         filepath = os.path.join(outdir, filename)
+
+        overwrite_pri_keys = overwrite_pri_keywords.keys() if overwrite_pri_keywords else []
+        overwrite_ext_keys = overwrite_ext_keywords.keys() if overwrite_ext_keywords else []
+
+        for key in overwrite_pri_keys:
+            if key in hdul[0].header:
+                hdul[0].header[key] = overwrite_pri_keywords[key]
+            else:
+                raise KeyError(f"Primary header keyword '{key}' not found in HDUList.")
         
+        for key in overwrite_ext_keys:
+            if key in hdul[1].header:
+                hdul[1].header[key] = overwrite_ext_keywords[key]
+            else:
+                raise KeyError(f"Extension header keyword '{key}' not found in HDUList.")
+
         # Write the HDUList to file
         hdul.writeto(filepath, overwrite=overwrite)
         print(f"Saved FITS file to: {filepath}")
+    
+        return filepath
 
 
 def isotime_to_yyyymmddThhmmsss(timestr):
