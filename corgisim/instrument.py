@@ -1314,11 +1314,16 @@ class CorgiOptics():
                 # also, the jitter model isn't currently set up for offaxis sources
                 images_tem = np.array(sum(images_pol)) / 4
         return images_tem
-
+    @property
+    def roll_angle(self):
+        '''
+        The roll angle
+        '''
+        return self.roll_angle
     @roll_angle.setter
     def roll_angle(self, value):
         """
-        Set the roll_angle.
+        Set the roll angle.
         Args:
             value (float) : The value of the roll angle.
         Raises:
