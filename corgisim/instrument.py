@@ -1314,7 +1314,25 @@ class CorgiOptics():
                 # also, the jitter model isn't currently set up for offaxis sources
                 images_tem = np.array(sum(images_pol)) / 4
         return images_tem
-    
+
+    @point_source_Vmag.setter
+    def roll_angle(self, value):
+        """
+        Set the roll_angle.
+        Args:
+            value (float) : The value of the roll angle.
+        Raises:
+            TypeError: If the input is not a float.
+        """
+        if not isinstance(value, list):
+            raise TypeError("roll_angle must be a float")
+
+        self.roll_angle = value % 360  # Ensure roll angle is within 0-360 degrees
+
+        # Convert slit location from sky coordinates to EXCAM coordinates (mas)
+        self.slit_x_offset_mas, self.slit_y_offset_mas = skycoord_to_excamcoord(self.slit_ra_offset_mas, self.slit_dec_offset_mas, value)
+
+
 class CorgiDetector(): 
     
     def __init__(self ,emccd_keywords, photon_counting = True):
