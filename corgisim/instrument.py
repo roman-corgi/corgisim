@@ -1315,7 +1315,7 @@ class CorgiOptics():
                 images_tem = np.array(sum(images_pol)) / 4
         return images_tem
 
-    @point_source_Vmag.setter
+    @roll_angle.setter
     def roll_angle(self, value):
         """
         Set the roll_angle.
