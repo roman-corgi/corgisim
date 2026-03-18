@@ -1329,8 +1329,8 @@ class CorgiOptics():
         Raises:
             TypeError: If the input is not a float.
         """
-        if not isinstance(value, list):
-            raise TypeError("roll_angle must be a float")
+        if not (isinstance(value, float) or isinstance(value, int)) :
+            raise TypeError("roll_angle must be a float or an int")
 
         self.roll_angle = value % 360  # Ensure roll angle is within 0-360 degrees
 
