@@ -101,7 +101,15 @@ class CorgiOptics():
 
         self.cgi_mode = cgi_mode
         self.cor_type = optics_keywords_internal['cor_type']
-        self.roll_angle = roll_angle % 360  # Ensure roll angle is within 0-360 degrees
+
+        #Initializes the slit_offset so that the roll angle setter can update them if needed
+        if self.cgi_mode == 'spec':
+            self.slit_x_offset_mas = None
+            self.slit_y_offset_mas = None
+            self.slit_ra_offset_mas = 0.0
+            self.slit_dec_offset_mas = 0.0
+
+        self.roll_angle = roll_angle 
 
         if bandpass  in ['1F','2F','3F','4F']:
             self.bandpass = bandpass.split('F')[0]
@@ -174,7 +182,7 @@ class CorgiOptics():
                     setattr(self, attr_name, default_value)
             
             # If excam coordinates are not provided, compute them from sky coordinates
-            if (self.slit_x_offset_mas is None) and (self.slit_y_offset_mas is None):
+            if ('slit_x_offset_mas' not in optics_keywords_internal) and ('slit_y_offset_mas' not in optics_keywords_internal):
                 # Convert slit location from sky coordinates to EXCAM coordinates (mas)
                 self.slit_x_offset_mas, self.slit_y_offset_mas = skycoord_to_excamcoord(self.slit_ra_offset_mas, self.slit_dec_offset_mas, self.roll_angle)
 
@@ -1319,7 +1327,8 @@ class CorgiOptics():
         '''
         The roll angle
         '''
-        return self.roll_angle
+        return self._roll_angle
+
     @roll_angle.setter
     def roll_angle(self, value):
         """
@@ -1332,10 +1341,11 @@ class CorgiOptics():
         if not (isinstance(value, float) or isinstance(value, int)) :
             raise TypeError("roll_angle must be a float or an int")
 
-        self.roll_angle = value % 360  # Ensure roll angle is within 0-360 degrees
+        self._roll_angle = value % 360  # Ensure roll angle is within 0-360 degrees
 
-        # Convert slit location from sky coordinates to EXCAM coordinates (mas)
-        self.slit_x_offset_mas, self.slit_y_offset_mas = skycoord_to_excamcoord(self.slit_ra_offset_mas, self.slit_dec_offset_mas, value)
+        # Update slit location 
+        if self.cgi_mode == 'spec':
+            self.slit_x_offset_mas, self.slit_y_offset_mas = skycoord_to_excamcoord(self.slit_ra_offset_mas, self.slit_dec_offset_mas, value)
 
 
 class CorgiDetector(): 
