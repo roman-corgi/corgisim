@@ -479,7 +479,8 @@ class Scene():
         scaled_spectra = []
         for m, spec, mtype in zip(vmag, spectrum, magtype):
             if spec is not None:
-                raise NotImplementedError("Custom spectra are not yet supported.")
+                scaled_spectra.append(spec)
+                continue
 
             if mtype != 'vegamag':
                 raise ValueError(f"Unsupported magnitude type '{mtype}'. Only 'vegamag' is supported.")
