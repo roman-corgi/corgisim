@@ -233,7 +233,7 @@ def isotime_to_yyyymmddThhmmsss(timestr):
 
     # Format as yyyymmddThhmmsss
     out = t.strftime("%Y%m%dT%H%M%S") + str(tenth_sec)
-    return out
+    return out.lower()
 
 def write_headers_SPAM(cor_type):
 
