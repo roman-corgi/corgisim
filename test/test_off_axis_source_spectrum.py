@@ -107,7 +107,7 @@ def test_custom_spectrum_no_rescale():
     Vmag_target = 22.0
     host_star_properties = {'Vmag': 6.0, 'spectral_type': 'G2V', 'magtype': 'vegamag'}
 
-    sp_custom = SourceSpectrum(BlackBodyNorm1D, temperature=1200)
+    sp_custom = SourceSpectrum(BlackBodyNorm1D, temperature=1000)
 
     point_source_info = [
         {
