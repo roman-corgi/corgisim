@@ -136,11 +136,11 @@ class CorgiOptics():
         if self.cgi_mode == 'excam':
             #DPAM prisms allowed for polarimetry
             valid_prisms = ['None', 'POL0', 'POL45']
-            if 'prism' in optics_keywords:
-                if optics_keywords['prism'] not in valid_prisms:
-                    raise ValueError(f'Invalid value for prism: {optics_keywords['prism']}.'
+            if 'prism' in optics_keywords_internal:
+                if optics_keywords_internal['prism'] not in valid_prisms:
+                    raise ValueError(f'Invalid value for prism: {optics_keywords_internal['prism']}.'
                                      f'Must be one of: {valid_prisms}')
-                setattr(self, 'prism', optics_keywords['prism'])
+                setattr(self, 'prism', optics_keywords_internal['prism'])
             else:
                 setattr(self, 'prism', 'None')
         # Set the spectroscopy parameters
@@ -167,8 +167,8 @@ class CorgiOptics():
                     'slit': ['None', 'R1C2', 'R3C1'],
                     'prism': ['None', 'PRISM3', 'PRISM2']}
             for attr_name, default_value in spec_kw_defaults.items():
-                if attr_name in optics_keywords:
-                    value = optics_keywords[attr_name]
+                if attr_name in optics_keywords_internal:
+                    value = optics_keywords_internal[attr_name]
                 
                     if attr_name in spec_kw_allowed:
                         if value not in spec_kw_allowed[attr_name]:
