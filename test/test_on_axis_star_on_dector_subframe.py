@@ -59,6 +59,7 @@ def test_on_axis_star_on_detector_subframe():
     index_last = [i for i in range(len(last_col)) if last_col[i] > gain]
     index_first = [i for i in range(len(first_col)) if first_col[i] > gain]
     wrap =False
+    #Due to the randomness of cosmic rays, this test could fail incorrectly, but not consistently
     for index in index_last:
         if index+1 in index_first:
             wrap = True
