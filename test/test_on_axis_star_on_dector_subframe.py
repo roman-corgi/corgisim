@@ -52,7 +52,17 @@ def test_on_axis_star_on_detector_subframe():
     sim_scene = detector.generate_detector_image(sim_scene,exptime)
     image2 = sim_scene.image_on_detector.data
 
-
+    #Test that there are no wrap in the tail of the cosmic rays
+    last_col = image2[:, -1] 
+    first_col = image2[:, 0]
+    #Identify rays that could wrap
+    index_last = [i for i in range(len(last_col)) if last_col[i] > gain]
+    index_first = [i for i in range(len(first_col)) if first_col[i] > gain]
+    wrap =False
+    for index in index_last:
+        if index+1 in index_first:
+            wrap = True
+    assert wrap==False
     print('Final_intensity_get:', np.sum(image, dtype = np.float64))
     
 
