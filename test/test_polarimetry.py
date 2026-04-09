@@ -45,6 +45,29 @@ def test_polarimetry():
     image_comp_corgi_x = sim_scene_0_90.point_source_image.data[0]
     image_comp_corgi_y = sim_scene_0_90.point_source_image.data[1]
 
+    #Put on detector 
+    gain =1000
+    emccd_keywords ={'em_gain':gain}
+    detector = instrument.CorgiDetector(emccd_keywords)
+    exptime = 100
+    sim_scene_0_90 = detector.generate_detector_image(sim_scene_0_90,exptime)
+    image_tot_corgi_sub_0= sim_scene_0_90.image_on_detector.data[0]
+    image_tot_corgi_sub_90= sim_scene_0_90.image_on_detector.data[1]
+    #Due to the randomness of cosmic rays, this test could fail incorrectly, but not consistently
+
+    for image in [image_tot_corgi_sub_0,image_tot_corgi_sub_90]:
+        #Test that there are no wrap in the tail of the cosmic rays
+        last_col = image[:, -1] 
+        first_col = image[:, 0]
+        #Identify rays that could wrap
+        index_last = [i for i in range(len(last_col)) if last_col[i] > gain]
+        index_first = [i for i in range(len(first_col)) if first_col[i] > gain]
+        wrap =False
+        #Due to the randomness of cosmic rays, this test could fail incorrectly, but not consistently
+        for index in index_last:
+            if index+1 in index_first:
+                wrap = True
+        assert wrap==False
     #Generate 45/135 image pair
     optics_keywords_45_135 = {'cor_type':cor_type, 'use_errors':2, 'polaxis':-10, 'output_dim':output_dim, 'prism':'POL45',\
                     'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
