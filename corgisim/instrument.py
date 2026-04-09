@@ -1399,7 +1399,7 @@ class CorgiDetector():
             else:
                 Im_noisy_full = self.emccd.sim_full_frame(flux_map, exptime).astype(np.uint16)
                 Im_noisy_1024 = Im_noisy_full[13:1037, 1088:2112] #from https://collaboration.ipac.caltech.edu/pages/viewpage.action?pageId=161617086&spaceKey=romancoronagraph&title=L1%2BCurrent%2BDRP%2BDevelopment%2BVersion
-                Im_noisy = Im_noisy_1024[loc_x-img.shape[0]//2:loc_x-img.shape[0]//2+1, loc_y-img.shape[1]//2:loc_y-img.shape[1]//2+1]
+                Im_noisy = Im_noisy_1024[loc_x-img.shape[0]//2:loc_x+img.shape[0]//2+1, loc_y-img.shape[1]//2:loc_y+img.shape[1]//2+1]
         else:
             #images separated 7.5" or 344 pix on the detector (1 pix=0.0218")
             #0/90 degree images are placed on x-axis symmetric about the user defined location
