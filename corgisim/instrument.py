@@ -1421,7 +1421,12 @@ class CorgiDetector():
                 #currently runs sim_sub_frame twice for each image
                 #add warning about subframes having different noises
                 warnings.warn('Detector noise will be different for each sub frame in polarimetry mode. For accurate detector image with noise, please generate full frame image.')
-                Im_noisy = np.array([self.emccd.sim_sub_frame(img[0], exptime).astype(np.uint16), self.emccd.sim_sub_frame(img[1], exptime).astype(np.uint16)])
+                Im_noisy_full = self.emccd.sim_full_frame(flux_map, exptime).astype(np.uint16)
+                Im_noisy_1024 = Im_noisy_full[13:1037, 1088:2112] #from https://collaboration.ipac.caltech.edu/pages/viewpage.action?pageId=161617086&spaceKey=romancoronagraph&title=L1%2BCurrent%2BDRP%2BDevelopment%2BVersion
+                Im_noisy_slice1 = Im_noisy_1024[loc_y+loc_y_from_center-img[0].shape[0]//2:loc_y+loc_y_from_center+img[0].shape[0]//2+1,loc_x-loc_x_from_center-img[0].shape[0]//2:loc_x-loc_x_from_center + img[0].shape[0]//2+1]
+                Im_noisy_slice2 = Im_noisy_1024[loc_y-loc_y_from_center-img[1].shape[0]//2:loc_y-loc_y_from_center+img[1].shape[0]//2+1,loc_x+loc_x_from_center-img[1].shape[0]//2:loc_x+loc_x_from_center + img[1].shape[0]//2+1]
+
+                Im_noisy = np.array([Im_noisy_slice1, Im_noisy_slice2])
             
         # Prepare additional information to be added as COMMENT headers in the primary HDU.
         # These are different from the default L1 headers, but extra comments that are used to track simulation-specific details.
