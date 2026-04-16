@@ -167,7 +167,7 @@ def test_L1_product_fits_format():
     os.remove(f)
 
     ####################################################################################################
-    #### testing the non-defalut(input) value pass to header
+    #### testing the non-default(input) value pass to header
     Vmag = 8
     sptype = 'G0V'
     cgi_mode = 'excam'
@@ -246,7 +246,8 @@ def test_L1_product_fits_format():
     assert prihr['PSFREF'] == True, f"Expected header PSFREF=False, but got {prihr['PSFREF']}"
     assert prihr['PHTCNT'] == False, f"Expected header PSFREF=False, but got {prihr['PHTCNT']}"
     assert prihdr['FRAMET'] == exptime, f"Expected header FRAMET = {exptime}, but got {prihdr['FRAMET']}"
-    assert prihr['ROLL'] == 10.0, f"Expected data ROLL=10, but got {prihr['ROLL']}"
+    assert prihr['ROLL'] == 0.0, f"Expected data ROLL=0, but got {prihr['ROLL']}"
+    assert prihr['PA_APER'] == roll_angle, f"Expected data ROLL={roll_angle}, but got {prihr['PA_APER']}"
 
     assert exthdr['KGAINPAR'] == e_per_dn, f"Expected data KGAINPAR={e_per_dn}, but got {exthdr['KGAINPAR']}"
     assert exthdr['EMGAIN_C'] == gain, f"Expected data EMGAIN_C={gain}, but got {exthdr['EMGAIN_C']}"
