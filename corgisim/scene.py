@@ -9,16 +9,16 @@ import cgisim
 import os
 import copy
 class Scene():
-    ''' 
+    '''
     A class that defines the an astrophysical scene
     - Information about the host star (brightness, spectral type, etc.)
     - A list of point sources (brightness, location, spectra?, etc.)
     - A 2D background scene that will be convolved with the off-axis PSFs
-        - Format needs to be determined. Likely a fits hdu with specific header keywords. 
+        - Format needs to be determined. Likely a fits hdu with specific header keywords.
         - Input with North-Up East-Left orientation.
 
-    Arguments: 
-        host_star_properties (dict): A dictionary that contains information about the host star, including: 
+    Arguments:
+        host_star_properties (dict): A dictionary that contains information about the host star, including:
             - "Vmag" (float): The V-band magnitude of the host star.
             - "spectral_type" (str): Spectral type of the host star. Must follow the format: "<Class><Subclass>[<Luminosity Class>]".
                 Valid components include:
@@ -26,7 +26,7 @@ class Scene():
                 - Subclasses: Integer from 0 to 9, optionally with a decimal (e.g., 3.5)
                 - Luminosity classes (optional): I, II, III, IV, V, VI, VII
                 - Example valid spectral types: "G2V", "M5III", "A0", "T7", "L3.5V", "B2IV"
-            - "magtype" (str): the magnitude type: 
+            - "magtype" (str): the magnitude type:
                 'vegamag' for Vega magnitude system.
                 'ABmag' for AB magnitude system
             - "ref_flag" (boolean):optional, whether the input scene is a reference star (True) or a science target (False). Default is false
@@ -38,7 +38,7 @@ class Scene():
                 - "ABmag": AB magnitude system
             - "position_dra" (float): Offset in Right Ascension (dRA) from the host star, in milliarcseconds (mas), in sky coordinates.
             - "position_ddec" (float): Offset in Declination (dDEC) from the host star, in milliarcseconds (mas), in sky coordinates.
-            - "Custom_Spectrum" (optional): 
+            - "Custom_Spectrum" (optional):
                 A custom spectrum for the source. If provided, this spectrum will override the default spectrum generated based on Vmag.
             - "pol_state" (float array): optional, vector of length 4 consisting of the I, Q, U and V components of the stokes parameter
                 describing how the source light is polarized, default is unpolarized or [1,0,0,0]
@@ -47,8 +47,8 @@ class Scene():
                 - All magnitudes must be consistent with their respective magnitude type.
                 - If no custom spectrum is provided, a default flat spectrum will be generated based on the V-band magnitude.
 
-        background_scene (HDUList): An astropy HDU that contains a background scene as data and a header full of relevant information, such as: 
-            pixel_scale, etc. 
+        background_scene (HDUList): An astropy HDU that contains a background scene as data and a header full of relevant information, such as:
+            pixel_scale, etc.
 
     Raises:
         ValueError: If the provided spectral type is invalid.
@@ -73,12 +73,12 @@ class Scene():
 
             ### check if input spectral type is valid
             if is_valid_spectral_type(host_star_properties_internal['spectral_type']):
-                self._host_star_sptype = host_star_properties_internal['spectral_type']  
+                self._host_star_sptype = host_star_properties_internal['spectral_type']
             # Set the reference flag from host_star_properties, defaulting to False if not provided
             self.ref_flag = host_star_properties_internal.get('ref_flag', False)
-            
+
             ### Retrieve the stellar spectrum based on spectral type and V-band magnitude
-            ### The self.stellar_spectrum attribute is an instance of the SourceSpectrum class (from synphot), 
+            ### The self.stellar_spectrum attribute is an instance of the SourceSpectrum class (from synphot),
             ### used to store and retrieve the wavelength and stellar flux.
             self.stellar_spectrum = self.get_stellar_spectrum( self._host_star_sptype, self._host_star_Vmag, magtype =self._host_star_magtype)
 
@@ -93,13 +93,13 @@ class Scene():
             self.point_source_dra = [source['position_x'] for source in point_source_info_internal]
             self.point_source_ddec = [source['position_y'] for source in point_source_info_internal]
             # Extract optional custom spectrum, if provided
-            self.point_source_spectrum = [source.get('Custom_Spectrum', None) for source in point_source_info_internal]  
+            self.point_source_spectrum = [source.get('Custom_Spectrum', None) for source in point_source_info_internal]
 
             # Generate the off-axis source spectrum using provided parameters
             self.off_axis_source_spectrum = self.get_off_axis_source_spectrum(self._point_source_Vmag,
                                                                             spectrum=self.point_source_spectrum,
                                                                             magtype=self._point_source_magtype)
-            
+
             #Set the polarization state of sources, default to [1,0,0,0] if none provided
             self.point_source_pol_state = [source.get('pol_state', np.array([1,0,0,0])) for source in point_source_info]
 
@@ -108,8 +108,8 @@ class Scene():
                 pol.check_stokes_vector_validity(self.point_source_pol_state[source])
                 self.point_source_pol_state[source] = np.divide(self.point_source_pol_state[source], self.point_source_pol_state[source][0])
 
-        
-        
+
+
     @property
     def host_star_sptype(self):
         """
@@ -119,18 +119,18 @@ class Scene():
         """
         return self._host_star_sptype
 
-                
+
     @host_star_sptype.setter
     def host_star_sptype(self, value):
         """
         Setter method to validate and set the host star spectral type.
         Args:
             value (str): The host star spectral type
-        
+
         """
         if is_valid_spectral_type(value):
             self._host_star_sptype = float(value)
-            
+
 
     @property
     def host_star_Vmag(self):
@@ -141,14 +141,14 @@ class Scene():
         """
         return self._host_star_Vmag
 
-                
+
     @host_star_Vmag.setter
     def host_star_Vmag(self, value):
         """
         Setter method to validate and set the host star spectral type.
         Args:
             value (str): The host star apparent magnitude
-        
+
         """
         self._host_star_Vmag = float(value)
 
@@ -161,7 +161,7 @@ class Scene():
         """
         return self._host_star_magtype
 
-                
+
     @host_star_magtype.setter
     def host_star_magtype(self, value):
         """
@@ -176,7 +176,7 @@ class Scene():
          "List of V-band magnitudes for off-axis point sources."
          return self._point_source_Vmag
 
-                
+
     @point_source_Vmag.setter
     def point_source_Vmag(self, value):
         """
@@ -190,14 +190,14 @@ class Scene():
             raise TypeError("point_source_Vmag must be a list of floats")
 
         self._point_source_Vmag = value
-        
+
 
     @property
     def point_source_magtype(self):
         "List of magnitude type for off-axis point sources."
         return self._point_source_magtype
 
-                
+
     @point_source_magtype.setter
     def point_source_magtype(self, value):
         """
@@ -217,16 +217,16 @@ class Scene():
         """
         Retrieves or interpolates a stellar spectrum based on spectral type and magnitude.
 
-        This function either fetches the predefined temperature, metallicity, and gravity values 
-        for a given spectral type or interpolates these values if the spectral type is not directly 
-        available in the lookup table. It then generates a blackbody spectrum and normalizes it 
+        This function either fetches the predefined temperature, metallicity, and gravity values
+        for a given spectral type or interpolates these values if the spectral type is not directly
+        available in the lookup table. It then generates a blackbody spectrum and normalizes it
         to a given magnitude.
 
         Args:
             - sptype (str): The spectral type of the star (e.g., "G2V", "M5III").
             - magnitude (float): The magnitude of the star in the specified system.
             - magtype (str, optional): The magnitude type ('vegamag' by default).
-            - return_teff (bool, optional): If True, also return the effective temperature inferred from the spectral type. Default is False. 
+            - return_teff (bool, optional): If True, also return the effective temperature inferred from the spectral type. Default is False.
 
         Returns:
             - sp_scale (SourceSpectrum): The scaled stellar spectrum.
@@ -309,9 +309,9 @@ class Scene():
             "K5I": (3750, 0.0, 0.5),
             "M0I": (3750, 0.0, 0.0),
             "M2I": (3500, 0.0, 0.0),
-            "M5I": (3000, 0.0, 0.0), # Bracketing for interpolation 
-            "M9I": (2400, 0.0, 0.0), # Bracketing for interpolation 
-            }  
+            "M5I": (3000, 0.0, 0.0), # Bracketing for interpolation
+            "M9I": (2400, 0.0, 0.0), # Bracketing for interpolation
+            }
 
         sptype_list = list(sptype_teff_mapping.keys())
 
@@ -320,18 +320,18 @@ class Scene():
             if len(sptype) == 2:
             #if not any(sptype.endswith(cls) for cls in ['I', 'II', 'III', 'IV', 'V','VI','VII','VIII']):
                 sptype += 'V'  # assume main sequence if no class specified
-        
+
         if sptype in sptype_list:
             #print('aaa',sptype)
             v0, v1, v2 = sptype_teff_mapping[sptype]
         else:
              # Interpolate values for undefined sptype
-    
+
             sptype_list.sort(key=sort_sptype)
             rank_list = np.array([sort_sptype(st) for st in sptype_list])
-        
+
             # Find the rank of the input spec type
-            rank = sort_sptype(sptype)  
+            rank = sort_sptype(sptype)
             # Grab values from tuples and interpolate based on rank
             tup_list0 = np.array([sptype_teff_mapping[st][0] for st in sptype_list])
             tup_list1 = np.array([sptype_teff_mapping[st][1] for st in sptype_list])
@@ -339,15 +339,15 @@ class Scene():
             v0 = np.interp(rank, rank_list, tup_list0)
             v1 = np.interp(rank, rank_list, tup_list1)
             v2 = np.interp(rank, rank_list, tup_list2)
-            
+
         # Create a blackbody spectrum using the interpolated or retrieved temperature
         # sp wavelengh unit is the default for synphot: angstrom
         # sp flux unit is the default for synphot: photlam (photons/s/cm^2/anstrom)
         sp = SourceSpectrum(BlackBodyNorm1D, temperature=v0 )
         # Define the V band bandpass
         v_band = SpectralElement.from_filter('johnson_v')
-        
-        # Scale the spectrum based on magnitude 
+
+        # Scale the spectrum based on magnitude
         if magtype == 'vegamag':
             # read vega spetrum
             vega_spec = SourceSpectrum.from_vega()
@@ -362,7 +362,7 @@ class Scene():
         else:
             return sp_scale
 
-   
+
 
     def get_off_axis_source_spectrum(self, vmag, magtype, spectrum=None):
         """
@@ -373,7 +373,7 @@ class Scene():
         vmag : list of float
             Desired V-band magnitudes for the off-axis sources.
         magtype : list of str
-            Magnitude system used for each source. 
+            Magnitude system used for each source.
         spectrum : list or None, optional
             Custom input spectra. If None, flat spectra will be used and scaled to match `vmag`.
             Custom spectra are not yet supported and will raise an error if provided.
@@ -419,14 +419,14 @@ class Scene():
             scaled_spectra.append(scaled_spec)
 
         return scaled_spectra
-    
 
 
-class SimulatedImage(): 
+
+class SimulatedImage():
     '''
-    A class that defines a simulated scene. 
+    A class that defines a simulated scene.
 
-    Arguments: 
+    Arguments:
         input_scene: A corgisim.scene.Scene object that contains the information scene to be simulated.
 
     '''
@@ -449,9 +449,9 @@ class SimulatedImage():
 
     def combine_simulated_scenes_list(scene_list):
         '''
-        Function that takes a list of Simulated_Scene objects and combines them into a single Simulated_Scene object. 
+        Function that takes a list of Simulated_Scene objects and combines them into a single Simulated_Scene object.
 
-        Arguments: 
+        Arguments:
             scene_list: A list of corgisim.scene.Simulated_Scene objects.
 
         Returns:
@@ -478,7 +478,7 @@ def sort_sptype(typestr):
             value += 50
         elif "I" in typestr:
             value += 10
-        
+
         return value
 
 
