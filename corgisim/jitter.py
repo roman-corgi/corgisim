@@ -1157,10 +1157,14 @@ def calculate_weights_for_jitter_and_finite_stellar_diameter(stellar_diam_and_ji
                 #else:
                     #print('Comparing offset %d against offset %d: Not a match' % (offset_index,ring_end_index-1))
         
-    # Normalize W to a total of 1.0
-    Wtot = np.sum(W)
-    #print(Wtot)
-    Wnorm = W/Wtot
+    # Normalize W to a total of 1.0 for cases involving jitter
+    if jitter_flag==1:
+        Wtot = np.sum(W)
+        #print(Wtot)
+        Wnorm = W/Wtot
+    else:
+        Wnorm = W # Normalizing to 1 for the stellar-diameter-only case multiplies the psf by 1/N_offsets_counting_origin
+        
     # Finally, multiply Wnorm by the normalized area for each predetermined offset
     Anorm = stellar_diam_and_jitter_keywords['offset_field_data']['A_offsets'] # The normalized areas
     offset_weights = np.zeros([stellar_diam_and_jitter_keywords['N_offsets_counting_origin'],]) # Array to store the final weights

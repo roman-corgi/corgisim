@@ -30,9 +30,9 @@ def test_offsets_and_areas_against_example():
     '''
     ###############################################################################
     # Precalculated example
-    script_dir = os.getcwd()
-    filepath = 'test/test_data/example_jitter_data_offsets_and_areas.txt'
-    abs_path = os.path.join(script_dir,filepath)
+    this_file_dir = os.path.dirname(__file__) # This file's folder
+    filepath = 'test_data/example_jitter_data_offsets_and_areas.txt'
+    abs_path = os.path.join(this_file_dir,filepath)
     example_data = pd.read_csv(abs_path)
     example_x_offsets = example_data['x_off']
     example_y_offsets = example_data['y_off']
@@ -252,6 +252,82 @@ def test_offsets_and_areas_against_example():
     assert np.allclose(total_area_norm,1.0,atol=0.1) == True
     
 ###############################################################################
+def test_finite_stellar_diam_weights():
+    '''
+    This function checks that sum(W_i * A_i) = 1 for the finite stellar diameter
+    case, where W_i is the weight of the ith offset source and A_i is the area
+    of the region represented by the ith offset source.
+    In the specific case where the star has a finite diameter and where we are
+    not considering jitter, the weights should all be 1 or 0 (1 for points inside
+    the stellar disk, 0 for points outside). They should *not* be normalized so 
+    that the sum of all the weights equals 1; normalizing the weights in this
+    manner leads to multiplying the PSF by 1/N_offsets.
+    '''
+    # Define the stellar diameter parameters
+    stellar_diam_and_jitter_keywords = {}
+    stellar_diam_mas = 5
+    stellar_diam_and_jitter_keywords['stellar_diam_mas'] = stellar_diam_mas
+    # Offset array parameters
+    stellar_diam_and_jitter_keywords['N_rings_of_offsets'] = 5
+    stellar_diam_and_jitter_keywords['r_ring0'] = (stellar_diam_mas/2)/(stellar_diam_and_jitter_keywords['N_rings_of_offsets']+1)
+    stellar_diam_and_jitter_keywords['dr_rings'] = stellar_diam_and_jitter_keywords['r_ring0']*np.ones(stellar_diam_and_jitter_keywords['N_rings_of_offsets'])
+    stellar_diam_and_jitter_keywords['N_offsets_per_ring'] = np.array([3,5,7,9,11])
+    stellar_diam_and_jitter_keywords['starting_offset_ang_by_ring'] = np.array([90,0,45,0,45])
+    stellar_diam_and_jitter_keywords['outer_radius_of_offset_circle'] = stellar_diam_and_jitter_keywords['r_ring0'] + np.sum(stellar_diam_and_jitter_keywords['dr_rings'])
+    stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] = 1
+    stellar_diam_and_jitter_keywords['add_jitter'] = 0
+    stellar_diam_and_jitter_keywords['use_saved_deltaE_and_weights'] = 0
+    stellar_diam_and_jitter_keywords['N_offsets_counting_origin'] = np.sum(stellar_diam_and_jitter_keywords['N_offsets_per_ring'])+1
+    
+    # Calculate the parameters for all of the regions in all of the rings
+    x_offsets, y_offsets, A_offsets, x_outer_dict, yu_outer_dict,yl_outer_dict, boundary_coords_dict = \
+    jitter.Determine_offsets_and_areas(stellar_diam_and_jitter_keywords['outer_radius_of_offset_circle'],
+                                       stellar_diam_and_jitter_keywords['N_rings_of_offsets'], 
+                                       stellar_diam_and_jitter_keywords['N_offsets_per_ring'], 
+                                       stellar_diam_and_jitter_keywords['starting_offset_ang_by_ring'],
+                                       stellar_diam_and_jitter_keywords['r_ring0'],
+                                       stellar_diam_and_jitter_keywords['dr_rings'])
+         
+    # For easier iterating, reshape the offsets and areas into lists
+    x_offsets_list = [];
+    y_offsets_list = [];
+    A_offsets_list = [];
+    for iring in np.arange(stellar_diam_and_jitter_keywords['N_rings_of_offsets']+1):
+        # Extract the data for the ring
+        y_offsets_iring = y_offsets[iring]
+        x_offsets_iring = x_offsets[iring]
+        A_offsets_iring = A_offsets[iring]
+        # The zeroth ring has only one data point (the onaxis source)
+        if iring==0:
+            # Append the data for the zeroth ring
+            x_offsets_list = np.append(x_offsets_list,x_offsets_iring)
+            y_offsets_list = np.append(y_offsets_list,y_offsets_iring)
+            A_offsets_list = np.append(A_offsets_list,A_offsets_iring)
+        else:
+            # The remaining rings have multiple data points
+            # Iterate over each region
+            Nregions_iring = x_offsets_iring.shape[0]
+            for ireg in range(Nregions_iring):
+                # Append the data for region ireg in ring iring
+                x_offsets_list = np.append(x_offsets_list,x_offsets_iring[ireg])
+                y_offsets_list = np.append(y_offsets_list,y_offsets_iring[ireg])
+                A_offsets_list = np.append(A_offsets_list,A_offsets_iring)
+                
+    # Store the offsets and areas in an offset_field_data dictionary
+    offset_field_data = {'x_offsets_mas':x_offsets_list,\
+                         'y_offsets_mas':y_offsets_list,\
+                         'A_offsets':A_offsets_list}
+    # and add to stellar_diam_and_jitter_keywords
+    stellar_diam_and_jitter_keywords['offset_field_data'] = offset_field_data
+
+    # Calculate the weight for each of these offsets
+    stellar_diam_and_jitter_keywords = jitter.calculate_weights_for_jitter_and_finite_stellar_diameter(stellar_diam_and_jitter_keywords)
+    
+    # The returned offset weights are equal to W_i * Anorm_i.
+    # Check that the sum of these weights is close to 1.
+    assert(np.allclose(np.sum(stellar_diam_and_jitter_keywords['offset_field_data']['offset_weights']),1.0))
+
+###############################################################################
 def test_obs_with_finite_stellar_diam():
     '''
      This function tests running an observation sequence with finite stellar diameter included.
@@ -437,9 +513,9 @@ def test_jittered_weights():
     stellar_diam_and_jitter_keywords['offset_field_data'] = offset_field_data
     
     # Define the expected RMS jitter values 
-    script_dir = os.getcwd()
-    filepath = 'test/test_data/OS11inputs.csv'
-    abs_path = os.path.join(script_dir,filepath)
+    this_file_dir = os.path.dirname(__file__) # this file's folder
+    filepath = 'test_data/OS11inputs.csv'
+    abs_path = os.path.join(this_file_dir,filepath)
     OS11inputs = pd.read_csv(abs_path)
     # use just the entries for t0 for this test
     xRMS = OS11inputs['x RMS jitter'][0]
@@ -453,8 +529,8 @@ def test_jittered_weights():
     calculated_weights = stellar_diam_and_jitter_keywords['offset_field_data']['offset_weights']
     
     # Load the example weights
-    filepath_weights = 'test/test_data/example_jitter_weights_for_timeseries.txt'
-    abs_path_weights = os.path.join(script_dir,filepath_weights)
+    filepath_weights = 'test_data/example_jitter_weights_for_timeseries.txt'
+    abs_path_weights = os.path.join(this_file_dir,filepath_weights)
     example_weights_OS11 = np.loadtxt(abs_path_weights,skiprows=1)
     # use only the first row for t0
     example_weights_t0 = example_weights_OS11[0]
@@ -580,6 +656,7 @@ def test_pol_obs_with_finite_stellar_diam_and_jitter():
 ###############################################################################
 if __name__ == '__main__':
     test_offsets_and_areas_against_example()
+    test_finite_stellar_diam_weights()
     test_obs_with_finite_stellar_diam()
     test_all_pol_obs_with_finite_stellar_diam()
     test_jittered_weights()
