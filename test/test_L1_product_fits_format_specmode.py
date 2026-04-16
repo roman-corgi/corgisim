@@ -92,7 +92,8 @@ def test_L1_product_fits_format_specmode():
     time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
     filename = f"cgi_{prihdr['VISITID']}_{time_in_name}_l1_.fits"
 
-
+    assert filename.islower()
+    
     f = os.path.join( outdir , filename)
 
     with fits.open(f) as hdul:
@@ -136,6 +137,9 @@ def test_L1_product_fits_format_specmode():
         assert exthdr['FSAMNAME'] == 'R1C2', f"Expected data FSAMNAME='R1C2', but got {exthdr['FSAMNAME']}"
         assert exthdr['FSAMSP_H'] ==  24087, f"Expected data FSAMSP_H=24087, but got {exthdr['FSAMSP_H']}"
         assert exthdr['FSAMSP_V'] == 12238, f"Expected data FSAMSP_V=12238, but got {exthdr['FSAMSP_V']}"
+    
+        assert exthdr['FSMPRFL'] == 'SPEC730', f"Expected data FSMPRFL=SPEC730, but got {exthdr['FSMPRFL']}"
+        assert exthdr['FSMLOS'] == 1, f"Expected data FSMLOS=1, but got {exthdr['FSMLOS']}"
 
         ### delete file after testing
         print('Deleted the FITS file after testing headers populated with default values')
@@ -214,6 +218,8 @@ def test_L1_product_fits_format_specmode():
         assert exthdr['FSAMNAME'] == 'OPEN', f"Expected data FSAMNAME='OPEN', but got {exthdr['FSAMNAME']}"
         assert exthdr['FSAMSP_H'] ==  30677.2, f"Expected data FSAMSP_H=30677.2, but got {exthdr['FSAMSP_H']}"
         assert exthdr['FSAMSP_V'] == 2959.5, f"Expected data FSAMSP_V=2959.5, but got {exthdr['FSAMSP_V']}"
+
+        assert exthdr['FSMPRFL'] == 'SPEC730', f"Expected data FSMPRFL=SPEC730, but got {exthdr['FSMPRFL']}"
 
         ### delete file after testing
         print('Deleted the FITS file after testing headers populated with default values')

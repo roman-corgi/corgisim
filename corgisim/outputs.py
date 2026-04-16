@@ -50,7 +50,6 @@ def create_hdu_list(data, header_info, sim_info=None):
     ### currently we don't have sequence smulation, so the time per frame == exposure time
     ### it needs to be updated later
     prihdr['FRAMET'] = header_info['EXPTIME']
-    prihdr['SATSPOTS'] = int(header_info['SATSPOTS'])
     prihdr['ROLL'] = header_info['ROLL']
 
     ### wait this for tachi to add sattlite spots function
@@ -61,7 +60,8 @@ def create_hdu_list(data, header_info, sim_info=None):
     prihdr['FILENAME'] =  f"{filename}.fits"
 
     
-
+    exthdr['RN'] = int(header_info['RN'])
+    exthdr['SATSPOTS'] = int(header_info['SATSPOTS'])
     exthdr['NAXIS'] = data.ndim
     exthdr['NAXIS1'] = data.shape[0]
     exthdr['NAXIS2'] = data.shape[1]
@@ -71,6 +71,20 @@ def create_hdu_list(data, header_info, sim_info=None):
     exthdr['KGAINPAR'] =  header_info['KGAINPAR']
     exthdr['EACQ_ROW'] =  header_info['EACQ_ROW']
     exthdr['EACQ_COL'] =  header_info['EACQ_COL']
+
+    exthdr['FSMLOS'] = 1
+
+    # TODO: Figure out which one to use for spec 
+    if 'hlc' in header_info['cor_type']:
+        exthdr['FSMPRFL'] = 'NFOV'
+    elif 'wide' in header_info['cor_type']:
+        exthdr['FSMPRFL'] = 'WFOV'
+    elif header_info['cor_type'] == 'spc-spec_band2':
+        exthdr['FSMPRFL'] = 'SPEC660'
+    elif header_info['cor_type'] == 'spc-spec_band3':
+        exthdr['FSMPRFL'] = 'SPEC730'
+    else :
+        exthdr['FSMPRFL'] = 'FSM_PROFILE_UNKNOWN'
 
     if header_info['PHTCNT'] == True:
         exthdr['ISPC']= int(1)
@@ -128,7 +142,8 @@ def create_hdu(data, sim_info=None):
     return hdu
 
 
-def save_hdu_to_fits( hdul, outdir=None, overwrite=False, write_as_L1=False, filename=None):
+def save_hdu_to_fits( hdul, outdir=None, overwrite=False, write_as_L1=False, filename=None,
+                     overwrite_pri_keywords=None, overwrite_ext_keywords=None):
         """
         Save an Astropy HDUList to a FITS file.
 
@@ -166,10 +181,27 @@ def save_hdu_to_fits( hdul, outdir=None, overwrite=False, write_as_L1=False, fil
 
         # Construct full file path
         filepath = os.path.join(outdir, filename)
+
+        overwrite_pri_keys = overwrite_pri_keywords.keys() if overwrite_pri_keywords else []
+        overwrite_ext_keys = overwrite_ext_keywords.keys() if overwrite_ext_keywords else []
+
+        for key in overwrite_pri_keys:
+            if key in hdul[0].header:
+                hdul[0].header[key] = overwrite_pri_keywords[key]
+            else:
+                raise KeyError(f"Primary header keyword '{key}' not found in HDUList.")
         
+        for key in overwrite_ext_keys:
+            if key in hdul[1].header:
+                hdul[1].header[key] = overwrite_ext_keywords[key]
+            else:
+                raise KeyError(f"Extension header keyword '{key}' not found in HDUList.")
+
         # Write the HDUList to file
         hdul.writeto(filepath, overwrite=overwrite)
         print(f"Saved FITS file to: {filepath}")
+    
+        return filepath
 
 
 def isotime_to_yyyymmddThhmmsss(timestr):
@@ -201,7 +233,7 @@ def isotime_to_yyyymmddThhmmsss(timestr):
 
     # Format as yyyymmddThhmmsss
     out = t.strftime("%Y%m%dT%H%M%S") + str(tenth_sec)
-    return out
+    return out.lower()
 
 def write_headers_SPAM(cor_type):
 

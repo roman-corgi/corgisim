@@ -1,13 +1,21 @@
 import proper
 import numpy as np
 import re
+from astropy import units as u
 from synphot.models import BlackBodyNorm1D, Box1D, ConstFlux1D
 from synphot import units, SourceSpectrum, SpectralElement, Observation
 from synphot.units import validate_wave_unit, convert_flux, VEGAMAG
+from synphot.models import Empirical1D
+
 from corgisim import pol
 import cgisim
+from pathlib import Path
+
 import os
 import copy
+
+import eetc
+
 class Scene():
     '''
     A class that defines the an astrophysical scene
@@ -30,6 +38,7 @@ class Scene():
                 'vegamag' for Vega magnitude system.
                 'ABmag' for AB magnitude system
             - "ref_flag" (boolean):optional, whether the input scene is a reference star (True) or a science target (False). Default is false
+            - "stellar_diam_mas" (float): The stellar diameter of the host star in mas.
 
         point_sources_info (list): A list of dictionaries, each representing an off-axis point source in the scene. Each dictionary must contain:
             - "Vmag" (float): The apparent V-band magnitude of the source.
@@ -54,7 +63,7 @@ class Scene():
         ValueError: If the provided spectral type is invalid.
         ValueError: If the provided stokes vector is not of length 4 or the polarized intensity magnitude exceeds the total intensity magnitude
     '''
-    def __init__(self, host_star_properties=None, point_source_info=None, twoD_scene_hdu=None):
+    def __init__(self, host_star_properties=None, point_source_info=None, twoD_scene_hdu=None, spmethod='bpgs'):
         self._twoD_scene = copy.deepcopy(twoD_scene_hdu)
         point_source_info_internal = copy.deepcopy(point_source_info)
 
@@ -80,7 +89,12 @@ class Scene():
             ### Retrieve the stellar spectrum based on spectral type and V-band magnitude
             ### The self.stellar_spectrum attribute is an instance of the SourceSpectrum class (from synphot),
             ### used to store and retrieve the wavelength and stellar flux.
-            self.stellar_spectrum = self.get_stellar_spectrum( self._host_star_sptype, self._host_star_Vmag, magtype =self._host_star_magtype)
+            self.stellar_spectrum = self.get_stellar_spectrum(self._host_star_sptype, self._host_star_Vmag, magtype =self._host_star_magtype, spmethod=spmethod)
+
+            # Check if the stellar diameter in mas is included
+            if ('stellar_diam_mas' not in host_star_properties_internal.keys()):
+                host_star_properties_internal['stellar_diam_mas'] = None
+            self._stellar_diam_mas = host_star_properties_internal['stellar_diam_mas']
 
         #self._point_source_list = point_source_info
         # Extract V-band magnitude and magnitude type from point source info
@@ -212,9 +226,21 @@ class Scene():
 
         self._point_source_magtype = value
 
+    @property
+    def stellar_diam_mas(self):
+        '''
+        Stellar diameter in mas for host star
+        '''
+        return self._stellar_diam_mas
 
-    def get_stellar_spectrum(self, sptype, magnitude, magtype = 'vegamag', return_teff=False):
+    @stellar_diam_mas.setter
+    def stellar_diam_mas(self,value):
+        self._stellar_diam_mas = float(value)
+
+
+    def get_stellar_spectrum(self, sptype, magnitude, magtype='vegamag', spmethod='bpgs', return_teff=False):
         """
+<<<<<<< HEAD
         Retrieves or interpolates a stellar spectrum based on spectral type and magnitude.
 
         This function either fetches the predefined temperature, metallicity, and gravity values
@@ -227,16 +253,36 @@ class Scene():
             - magnitude (float): The magnitude of the star in the specified system.
             - magtype (str, optional): The magnitude type ('vegamag' by default).
             - return_teff (bool, optional): If True, also return the effective temperature inferred from the spectral type. Default is False.
+=======
+        Checks the spmethod and retrieves a stellar spectrum using the method requested. If spmethod is 'blackbody' then
+        a blackbody spectrum of the sptype is returned. If spmethod is BPGS, it loads a real stellar spectrum from BPGS
+        atlas text files instead of using a blackbody approximation. If the exact spectral type isn't available, it
+        defaults to a blackbody and interpolates between neighboring types.
+
+        Args:
+            sptype (str): The spectral type of the star (e.g., "G2V", "A0IV").
+            magnitude (float): The magnitude of the star in the specified system.
+            atlas_dir (str or Path): Directory containing the BPGS atlas text files.
+            magtype (str, optional): The magnitude type ('vegamag' by default).
+            spmethod (str, optional): The method for generating the spectrum. Current options are 'bpgs' and 'blackbody'.
+            return_teff (bool, optional): If True, also return the effective temperature. Default is False.
+>>>>>>> main
 
         Returns:
-            - sp_scale (SourceSpectrum): The scaled stellar spectrum.
-            - v0 (float, optional): Returned only if `return_teff` is True. The effective temperature of the star in Kelvin.
-
+            sp_scale (SourceSpectrum): The scaled stellar spectrum.
+            teff (float, optional): Returned only if `return_teff` is True. The effective temperature.
 
         Raises:
             ValueError: If the spectral type format is invalid.
+            FileNotFoundError: If the atlas directory or required files don't exist.
         """
-        # Mapping of spectral types to temperature, metallicity, and surface gravity
+
+        eetc_path = os.path.dirname(os.path.abspath(eetc.__file__))
+        atlas_dir = Path(os.path.join(eetc_path, 'flux_grid_generation', 'bpgs_atlas_csv'))
+        filename = ''
+
+        # Mapping of spectral types to (Teff, metallicity, log_g, filename)
+        # Teff values kept for reference and fallback to blackbody if file not found
         sptype_teff_mapping = {
             # https://www.pas.rochester.edu/~emamajek/EEM_dwarf_UBVIJHK_colors_Teff.txt
             "O0V": (45000, 0.0, 4.0),  # Bracketing for interpolation
@@ -318,14 +364,16 @@ class Scene():
         # Attempt to auto-append "V" if no luminosity class is given
         if sptype not in sptype_teff_mapping:
             if len(sptype) == 2:
-            #if not any(sptype.endswith(cls) for cls in ['I', 'II', 'III', 'IV', 'V','VI','VII','VIII']):
+                # if not any(sptype.endswith(cls) for cls in ['I', 'II', 'III', 'IV', 'V','VI','VII','VIII']):
                 sptype += 'V'  # assume main sequence if no class specified
 
         if sptype in sptype_list:
-            #print('aaa',sptype)
-            v0, v1, v2 = sptype_teff_mapping[sptype]
+            # print('aaa',sptype)
+            # v0, v1, v2 = sptype_teff_mapping[sptype]
+            teff, metallicity, logg = sptype_teff_mapping[sptype]
+            filename = sptype+'.txt'
         else:
-             # Interpolate values for undefined sptype
+            # Interpolate values for undefined sptype
 
             sptype_list.sort(key=sort_sptype)
             rank_list = np.array([sort_sptype(st) for st in sptype_list])
@@ -336,33 +384,74 @@ class Scene():
             tup_list0 = np.array([sptype_teff_mapping[st][0] for st in sptype_list])
             tup_list1 = np.array([sptype_teff_mapping[st][1] for st in sptype_list])
             tup_list2 = np.array([sptype_teff_mapping[st][2] for st in sptype_list])
-            v0 = np.interp(rank, rank_list, tup_list0)
-            v1 = np.interp(rank, rank_list, tup_list1)
-            v2 = np.interp(rank, rank_list, tup_list2)
+            teff = np.interp(rank, rank_list, tup_list0)
+            metallicity = np.interp(rank, rank_list, tup_list1)
+            logg = np.interp(rank, rank_list, tup_list2)
 
-        # Create a blackbody spectrum using the interpolated or retrieved temperature
-        # sp wavelengh unit is the default for synphot: angstrom
-        # sp flux unit is the default for synphot: photlam (photons/s/cm^2/anstrom)
-        sp = SourceSpectrum(BlackBodyNorm1D, temperature=v0 )
+        # Try to load the BPGS atlas file
+        spectrum_file = os.path.join(atlas_dir, filename)
+
+        if not os.path.isfile(spectrum_file) or (spmethod == 'blackbody'):
+            print(f"Warning: BPGS atlas file {spectrum_file} not found.")
+            print(f"Falling back to blackbody with T={teff}K")
+            # Fall back to blackbody
+
+            sp = SourceSpectrum(BlackBodyNorm1D, temperature=teff)
+        else:
+            # Load the BPGS atlas spectrum
+            sp = self.load_bpgs_spectrum(spectrum_file)
+
         # Define the V band bandpass
         v_band = SpectralElement.from_filter('johnson_v')
 
         # Scale the spectrum based on magnitude
         if magtype == 'vegamag':
-            # read vega spetrum
+            # Read Vega spectrum
             vega_spec = SourceSpectrum.from_vega()
-            # sp_scale has the same units as sp
-            sp_scale = sp.normalize(renorm_val= magnitude * VEGAMAG, band=v_band,vegaspec = vega_spec )
-        if magtype == 'ABmag':
-            raise ValueError("AB magnitude system has not been implemented yet. Please use Vega magnitudes instead.")
+            # Normalize to the desired magnitude
+            sp_scale = sp.normalize(renorm_val=magnitude * VEGAMAG, band=v_band, vegaspec=vega_spec)
+        elif magtype == 'ABmag':
+            raise ValueError(
+                "AB magnitude system has not been implemented yet. Please use Vega magnitudes instead.")
+        else:
+            raise ValueError(f"Unknown magnitude type: {magtype}")
 
         if return_teff:
-             #### This is for testing the spytpe and teff mapping
-            return sp_scale, v0
+            return sp_scale, teff
         else:
             return sp_scale
 
+    def load_bpgs_spectrum(self, filepath):
+        """
+        Load a BPGS atlas spectrum from a text file.
 
+        The BPGS files have the format:
+        # wavelength, f_lambda
+        wavelength_angstroms, flux (erg/s/cm^2/Angstrom)
+
+        Args:
+            filepath (str or Path): Path to the BPGS atlas text file.
+
+        Returns:
+            SourceSpectrum: The loaded spectrum in synphot format.
+        """
+        # Read the data, skipping the comment line
+        data = np.loadtxt(filepath, delimiter=',', comments='#')
+
+        wavelength_angstrom = data[:, 0]
+        flux = data[:, 1]
+
+        # The BPGS atlas uses f_lambda units: erg/s/cm^2/Angstrom
+        # synphot expects either FLAM (erg/s/cm^2/Angstrom) or PHOTLAM (photons/s/cm^2/Angstrom)
+
+        # Create a synphot SourceSpectrum using Empirical1D model
+        sp = SourceSpectrum(
+            Empirical1D,
+            points=wavelength_angstrom * u.AA,
+            lookup_table=flux * units.FLAM
+        )
+
+        return sp
 
     def get_off_axis_source_spectrum(self, vmag, magtype, spectrum=None):
         """
