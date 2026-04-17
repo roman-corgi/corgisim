@@ -74,7 +74,8 @@ def test_L1_product_fits_format():
     filename = f"cgi_{prihdr['VISITID']}_{time_in_name}_l1_.fits"
 
     f = os.path.join( outdir , filename)
- 
+    assert filename.islower()
+
     with fits.open(f) as hdul:
         data = hdul[1].data
         prihr = hdul[0].header
