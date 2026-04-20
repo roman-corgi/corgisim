@@ -66,6 +66,73 @@ def test_off_axis_source_spectrum():
     #plt.show()
     
 
+def test_custom_spectrum_rescaled():
+    """Test that Custom_Spectrum with Rescale_Custom_Spectrum=True is normalized to the target V magnitude."""
+    print('Test that a custom spectrum is correctly rescaled to the target V-band magnitude')
+
+    Vmag_target = 22.0
+    host_star_properties = {'Vmag': 6.0, 'spectral_type': 'G2V', 'magtype': 'vegamag'}
+
+    # Use a cool blackbody as a stand-in for a planet emission spectrum
+    sp_custom = SourceSpectrum(BlackBodyNorm1D, temperature=1200)
+
+    point_source_info = [
+        {
+            'Vmag': Vmag_target,
+            'magtype': 'vegamag',
+            'position_x': 100.0,
+            'position_y': 100.0,
+            'Custom_Spectrum': sp_custom,
+            'Rescale_Custom_Spectrum': True,
+        }
+    ]
+
+    base_scene = scene.Scene(host_star_properties, point_source_info)
+    sp_result = base_scene.off_axis_source_spectrum[0]
+
+    # Measure V-band magnitude of the rescaled output spectrum
+    vega_spec = SourceSpectrum.from_vega()
+    v_band = SpectralElement.from_filter('johnson_v')
+    obs = Observation(sp_result, v_band)
+    vmag_measured = obs.effstim(VEGAMAG, vegaspec=vega_spec).value
+
+    assert vmag_measured == pytest.approx(Vmag_target, abs=0.01)
+    print('Pass Test')
+
+
+def test_custom_spectrum_no_rescale():
+    """Test that Custom_Spectrum with Rescale_Custom_Spectrum=False is returned as-is (no flux scaling)."""
+    print('Test that a custom spectrum is returned unchanged when Rescale_Custom_Spectrum=False')
+
+    Vmag_target = 22.0
+    host_star_properties = {'Vmag': 6.0, 'spectral_type': 'G2V', 'magtype': 'vegamag'}
+
+    sp_custom = SourceSpectrum(BlackBodyNorm1D, temperature=1000)
+
+    point_source_info = [
+        {
+            'Vmag': Vmag_target,
+            'magtype': 'vegamag',
+            'position_x': 100.0,
+            'position_y': 100.0,
+            'Custom_Spectrum': sp_custom,
+            'Rescale_Custom_Spectrum': False,
+        }
+    ]
+
+    base_scene = scene.Scene(host_star_properties, point_source_info)
+    sp_result = base_scene.off_axis_source_spectrum[0]
+
+    # Verify flux is unchanged at several wavelengths spanning the V band
+    for wave_aa in [4000, 5500, 7000]:
+        wave = wave_aa * u.AA
+        assert sp_result(wave).value == pytest.approx(sp_custom(wave).value, rel=1e-6)
+
+    print('Pass Test')
+
+
 if __name__ == '__main__':
     test_off_axis_source_spectrum()
+    test_custom_spectrum_rescaled()
+    test_custom_spectrum_no_rescale()
   
