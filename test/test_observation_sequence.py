@@ -71,7 +71,7 @@ def test_generate_observation_scenario_from_cpgs():
 
     #Test with target and reference
     filepath = 'test/test_data/cpgs_short_sequence.xml'
-    abs_path =  os.path.join(script_dir, filepath)
+    abs_path =  'C:/Users/abidot/corgisim/test/test_data/cpgs_short_sequence.xml' #os.path.join(script_dir, filepath)
    
     scene_target, scene_reference, optics, detector_target, detector_reference, visit_list = inputs.load_cpgs_data(abs_path)
     len_list = 0 
