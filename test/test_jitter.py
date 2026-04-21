@@ -535,8 +535,16 @@ def test_jittered_weights():
     # use only the first row for t0
     example_weights_t0 = example_weights_OS11[0]
     
+    # The example weights have a different overall normalization -- they are not
+    # normalized such that they sum to 1. To check that they agree with the
+    # calculated weights, we need to apply the scale factor alpha.
+    alpha = stellar_diam_and_jitter_keywords['weight_scale_factor_alpha']
+    
     # Compare the two sets of weights
-    assert(np.allclose(calculated_weights[1:-1],example_weights_t0[1:-1]))
+    assert(np.allclose(calculated_weights[1:-1],alpha*example_weights_t0[1:-1]))
+    
+    # Also check that the weights sum to 1
+    assert(np.allclose(calculated_weights,1.0))
 ###############################################################################
 def test_obs_with_jitter():
     '''
