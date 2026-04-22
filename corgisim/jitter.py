@@ -1161,11 +1161,24 @@ def calculate_weights_for_jitter_and_finite_stellar_diameter(stellar_diam_and_ji
     Wtot = np.sum(W)
     #print(Wtot)
     Wnorm = W/Wtot
-    # Finally, multiply Wnorm by the normalized area for each predetermined offset
+        
+    # Multiply Wnorm by the normalized area for each predetermined offset and by
+    # a scale factor. The scale factor is needed to ensure that the sum of the
+    # offset weights adds up to 1. (Although the sum of W_i = 1 and the sum of A_i = 1,
+    # there is no guarantee that the sum of W_i * A_i = 1.)
     Anorm = stellar_diam_and_jitter_keywords['offset_field_data']['A_offsets'] # The normalized areas
+    
+    # Determine the scale factor
+    # alpha = Wtot*Atot / sum(Wi*Ai)
+    alpha_num = (Wtot*np.pi*stellar_diam_and_jitter_keywords['outer_radius_of_offset_circle']**2)
+    alpha_den = np.dot(W,Anorm*np.pi*stellar_diam_and_jitter_keywords['outer_radius_of_offset_circle']**2)
+    alpha = alpha_num/alpha_den
+    # Save this scale factor for future reference. It is useful for testing, for example.
+    stellar_diam_and_jitter_keywords['weight_scale_factor_alpha'] = alpha
+
     offset_weights = np.zeros([stellar_diam_and_jitter_keywords['N_offsets_counting_origin'],]) # Array to store the final weights
     for i in range(stellar_diam_and_jitter_keywords['N_offsets_counting_origin']):
-        offset_weights[i] = Wnorm[i]*Anorm[i]
+        offset_weights[i] = alpha*Wnorm[i]*Anorm[i]
         
     # Add the offset weights to the offset field data dictionary
     stellar_diam_and_jitter_keywords['offset_field_data']['offset_weights'] = offset_weights
