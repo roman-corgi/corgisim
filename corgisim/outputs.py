@@ -1,4 +1,5 @@
 from astropy.io import fits
+from astropy.time import Time
 from corgidrp import mocks
 import os
 from datetime import datetime, timezone, timedelta
@@ -66,6 +67,10 @@ def create_hdu_list(data, header_info, sim_info=None):
     exthdr['NAXIS1'] = data.shape[0]
     exthdr['NAXIS2'] = data.shape[1]
     exthdr['EXPTIME'] = header_info['EXPTIME']
+    # Calculate MJDSRT and MJDEND from FTIMEUTC timestamp and EXPTIME
+    mjd_start = Time(exthdr['FTIMEUTC']).mjd
+    exthdr['MJDSRT'] = mjd_start
+    exthdr['MJDEND'] = mjd_start + exthdr['EXPTIME'] / 86400.0
     exthdr['EMGAIN_C'] = header_info['EMGAIN_C']
     exthdr['EMGAIN_A'] = header_info['EMGAIN_C']  
     exthdr['KGAINPAR'] =  header_info['KGAINPAR']
