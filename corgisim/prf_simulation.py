@@ -253,7 +253,7 @@ def compute_single_off_axis_psf(optics, radius_lamD, azimuth_angle,
 
     return binned
 
-def make_prf_cube(optics, radii_lamD, azimuths_deg, prf_dict, source_sed=None, centre_prf=False, output_dir=None, overwrite=False):
+def make_prf_cube(optics, radii_lamD, azimuths_deg, prf_dict, source_sed=None, centre_prf=False, output_dir=None, overwrite=False, prf_fname=None):
     """
     Build a psf cube by evaluating the off-axis PSF at specified polar positions.
 
@@ -268,6 +268,8 @@ def make_prf_cube(optics, radii_lamD, azimuths_deg, prf_dict, source_sed=None, c
     centre_prfs : bool, optional
         If True, center all PRFs via Fourier shift before saving.
         Recommended for ensuring consistent alignment. Default: False
+    prf_fname : str, optional
+        Filename for the output PRF cube. If None, a default name will be used.
 
     Returns
     -------
@@ -305,7 +307,9 @@ def make_prf_cube(optics, radii_lamD, azimuths_deg, prf_dict, source_sed=None, c
     else:
         prf_dict['centred'] = False
 
-    prf_fname = 'prf_cube' + '_'+ optics.cgi_mode + '_'+ optics.cor_type + '_band_' + optics.bandpass + '.fits'
+    if prf_fname is None:
+        prf_fname = 'prf_cube' + '_'+ optics.cgi_mode + '_'+ optics.cor_type + '_band_' + optics.bandpass + '.fits'
+        
     prf_cube_hdu = outputs.create_hdu(prf_cube, sim_info=prf_dict)
     
     if output_dir is None:
