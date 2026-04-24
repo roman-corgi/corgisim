@@ -9,6 +9,7 @@ import roman_preflight_proper
 import pytest
 import cgisim
 import os, shutil
+import glob
 
 def test_L1_product_fits_format():
     """Test the headers of saved L1 product FITS file
@@ -153,7 +154,6 @@ def test_L1_product_fits_format():
                              )
     #Open the file and check the new values in the headers
     # Find the most recently created file (filename uses current timestamp, not overridden FTIMEUTC)
-    import glob
     files = glob.glob(os.path.join(outdir, 'cgi_*_l1_.fits'))
     f = max(files, key=os.path.getmtime)
 
