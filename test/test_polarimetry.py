@@ -50,7 +50,7 @@ def test_polarimetry():
     emccd_keywords ={'em_gain':gain}
     detector = instrument.CorgiDetector(emccd_keywords)
     exptime = 100
-    sim_scene_0_90 = detector.generate_detector_image(sim_scene_0_90,exptime)
+    sim_scene_0_90 = detector.generate_detector_image(sim_scene_0_90,exptime,  cut_sub_frame = True)
     image_tot_corgi_sub_0= sim_scene_0_90.image_on_detector.data[0]
     image_tot_corgi_sub_90= sim_scene_0_90.image_on_detector.data[1]
     #Due to the randomness of cosmic rays, this test could fail incorrectly, but not consistently

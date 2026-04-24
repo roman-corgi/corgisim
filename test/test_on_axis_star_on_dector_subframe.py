@@ -49,7 +49,7 @@ def test_on_axis_star_on_detector_subframe():
     emccd_keywords ={'em_gain':gain}
     exptime = 30
     detector = instrument.CorgiDetector( emccd_keywords)
-    sim_scene = detector.generate_detector_image(sim_scene,exptime)
+    sim_scene = detector.generate_detector_image(sim_scene,exptime, cut_sub_frame = True)
     image2 = sim_scene.image_on_detector.data
 
     #Test that there are no wrap in the tail of the cosmic rays

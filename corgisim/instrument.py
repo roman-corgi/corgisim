@@ -1336,7 +1336,7 @@ class CorgiDetector():
         self.emccd = self.define_EMCCD(emccd_keywords=self.emccd_keywords)
     
 
-    def generate_detector_image(self, simulated_scene, exptime, full_frame= False, loc_x=512, loc_y=512):
+    def generate_detector_image(self, simulated_scene, exptime, full_frame= False, cut_sub_frame=False,  loc_x=512, loc_y=512):
         '''
         Function that generates a detector image from the input image, using emccd_detect. 
 
@@ -1348,6 +1348,7 @@ class CorgiDetector():
             - loc_x (int): The horizontal coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True, and image from CorgiOptics has size is smaller than 1024×1024
             - loc_y (int): The vertical coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True, and image from CorgiOptics has size is smaller than 1024×1024
             - exptime: exptime in second
+            - cut_sub_frame: if generating a sub frame, this option ellows the user to generate a full frame and then cut it down, so as to avoid the issue of cosmic rays tails wrapping to the next row
 
         Returns:
             - A corgisim.scene.SimulatedImage object that contains the detector image in the 
@@ -1397,9 +1398,12 @@ class CorgiDetector():
             if full_frame:
                 Im_noisy = self.emccd.sim_full_frame(flux_map, exptime).astype(np.uint16)
             else:
-                Im_noisy_full = self.emccd.sim_full_frame(flux_map, exptime).astype(np.uint16)
-                Im_noisy_1024 = Im_noisy_full[13:1037, 1088:2112] #from https://collaboration.ipac.caltech.edu/pages/viewpage.action?pageId=161617086&spaceKey=romancoronagraph&title=L1%2BCurrent%2BDRP%2BDevelopment%2BVersion
-                Im_noisy = Im_noisy_1024[loc_x-img.shape[0]//2:loc_x+img.shape[0]//2+1, loc_y-img.shape[1]//2:loc_y+img.shape[1]//2+1]
+                if cut_sub_frame:
+                    Im_noisy_full = self.emccd.sim_full_frame(flux_map, exptime).astype(np.uint16)
+                    Im_noisy_1024 = Im_noisy_full[13:1037, 1088:2112] #from https://collaboration.ipac.caltech.edu/pages/viewpage.action?pageId=161617086&spaceKey=romancoronagraph&title=L1%2BCurrent%2BDRP%2BDevelopment%2BVersion
+                    Im_noisy = Im_noisy_1024[loc_x-img.shape[0]//2:loc_x+img.shape[0]//2+1, loc_y-img.shape[1]//2:loc_y+img.shape[1]//2+1]
+                else: 
+                    Im_noisy = self.emccd.sim_sub_frame(img, exptime).astype(np.uint16)
         else:
             #images separated 7.5" or 344 pix on the detector (1 pix=0.0218")
             #0/90 degree images are placed on x-axis symmetric about the user defined location
@@ -1418,16 +1422,19 @@ class CorgiDetector():
             if full_frame:            
                 Im_noisy = self.emccd.sim_full_frame(flux_map, exptime).astype(np.uint16)
             else:
-                #currently runs sim_sub_frame twice for each image
-                #add warning about subframes having different noises
                 warnings.warn('Detector noise will be different for each sub frame in polarimetry mode. For accurate detector image with noise, please generate full frame image.')
-                Im_noisy_full = self.emccd.sim_full_frame(flux_map, exptime).astype(np.uint16)
-                Im_noisy_1024 = Im_noisy_full[13:1037, 1088:2112] #from https://collaboration.ipac.caltech.edu/pages/viewpage.action?pageId=161617086&spaceKey=romancoronagraph&title=L1%2BCurrent%2BDRP%2BDevelopment%2BVersion
-                Im_noisy_slice1 = Im_noisy_1024[loc_y+loc_y_from_center-img[0].shape[0]//2:loc_y+loc_y_from_center+img[0].shape[0]//2+1,loc_x-loc_x_from_center-img[0].shape[0]//2:loc_x-loc_x_from_center + img[0].shape[0]//2+1]
-                Im_noisy_slice2 = Im_noisy_1024[loc_y-loc_y_from_center-img[1].shape[0]//2:loc_y-loc_y_from_center+img[1].shape[0]//2+1,loc_x+loc_x_from_center-img[1].shape[0]//2:loc_x+loc_x_from_center + img[1].shape[0]//2+1]
 
-                Im_noisy = np.array([Im_noisy_slice1, Im_noisy_slice2])
-            
+                if cut_sub_frame:
+                    #currently runs sim_sub_frame twice for each image
+                    #add warning about subframes having different noises
+                    Im_noisy_full = self.emccd.sim_full_frame(flux_map, exptime).astype(np.uint16)
+                    Im_noisy_1024 = Im_noisy_full[13:1037, 1088:2112] #from https://collaboration.ipac.caltech.edu/pages/viewpage.action?pageId=161617086&spaceKey=romancoronagraph&title=L1%2BCurrent%2BDRP%2BDevelopment%2BVersion
+                    Im_noisy_slice1 = Im_noisy_1024[loc_y+loc_y_from_center-img[0].shape[0]//2:loc_y+loc_y_from_center+img[0].shape[0]//2+1,loc_x-loc_x_from_center-img[0].shape[0]//2:loc_x-loc_x_from_center + img[0].shape[0]//2+1]
+                    Im_noisy_slice2 = Im_noisy_1024[loc_y-loc_y_from_center-img[1].shape[0]//2:loc_y-loc_y_from_center+img[1].shape[0]//2+1,loc_x+loc_x_from_center-img[1].shape[0]//2:loc_x+loc_x_from_center + img[1].shape[0]//2+1]
+
+                    Im_noisy = np.array([Im_noisy_slice1, Im_noisy_slice2])
+                else: 
+                    Im_noisy = np.array([self.emccd.sim_sub_frame(img[0], exptime).astype(np.uint16), self.emccd.sim_sub_frame(img[1], exptime).astype(np.uint16)])
         # Prepare additional information to be added as COMMENT headers in the primary HDU.
         # These are different from the default L1 headers, but extra comments that are used to track simulation-specific details.
         sim_info['includ_dectector_noise'] = 'True'
