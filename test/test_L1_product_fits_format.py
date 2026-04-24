@@ -146,22 +146,25 @@ def test_L1_product_fits_format():
     os.remove(f)
 
 
-        ### Test overwrite_pri_hdr and overwrite_ext_hdr with non-default values
-    outputs.save_hdu_to_fits(sim_scene.image_on_detector,outdir=outdir, write_as_L1=True, 
-                             overwrite_pri_keywords={'TARGET':'HD 141569A'}, 
-                             overwrite_ext_keywords={'OPMODE': "Disco"},
+        ### Test overwrite_pri_hdr and overwrite_ext_hdr with non-default values including FTIMEUTC and MJDSRT
+    outputs.save_hdu_to_fits(sim_scene.image_on_detector,outdir=outdir, write_as_L1=True,
+                             overwrite_pri_keywords={'TARGET':'HD 141569A'},
+                             overwrite_ext_keywords={'OPMODE': "Disco", 'FTIMEUTC': '2025-01-01T00:00:00'},
                              )
     #Open the file and check the new values in the headers
-    time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
-    filename = f"cgi_{prihdr['VISITID']}_{time_in_name}_l1_.fits"
+    # Find the most recently created file (filename uses current timestamp, not overridden FTIMEUTC)
+    import glob
+    files = glob.glob(os.path.join(outdir, 'cgi_*_l1_.fits'))
+    f = max(files, key=os.path.getmtime)
 
-    f = os.path.join( outdir , filename)
     with fits.open(f) as hdul:
         prihr = hdul[0].header
         exthr = hdul[1].header
 
         assert prihr['TARGET'] == 'HD 141569A', f"Expected header TARGET=HD 141569A, but got {prihr['TARGET']}"
         assert exthr['OPMODE'] == "Disco", f"Expected header OPMODE=Disco, but got {exthr['OPMODE']}"
+        # Check that MJDSRT was correctly calculated from the overridden FTIMEUTC (2025-01-01T00:00:00 = MJD 60676.0)
+        assert exthr['MJDSRT'] == 60676.0, f"Expected header MJDSRT=60676.0 (from overridden FTIMEUTC), but got {exthr['MJDSRT']}"
 
     ### delete file after testing
     print('Deleted the FITS file after testing overwrite_pri_hdr and overwrite_ext_hdr with non-default values')

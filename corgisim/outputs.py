@@ -67,10 +67,6 @@ def create_hdu_list(data, header_info, sim_info=None):
     exthdr['NAXIS1'] = data.shape[0]
     exthdr['NAXIS2'] = data.shape[1]
     exthdr['EXPTIME'] = header_info['EXPTIME']
-    # Calculate MJDSRT and MJDEND from FTIMEUTC timestamp and EXPTIME
-    mjd_start = Time(exthdr['FTIMEUTC']).mjd
-    exthdr['MJDSRT'] = mjd_start
-    exthdr['MJDEND'] = mjd_start + exthdr['EXPTIME'] / 86400.0
     exthdr['EMGAIN_C'] = header_info['EMGAIN_C']
     exthdr['EMGAIN_A'] = header_info['EMGAIN_C']  
     exthdr['KGAINPAR'] =  header_info['KGAINPAR']
@@ -201,6 +197,11 @@ def save_hdu_to_fits( hdul, outdir=None, overwrite=False, write_as_L1=False, fil
                 hdul[1].header[key] = overwrite_ext_keywords[key]
             else:
                 raise KeyError(f"Extension header keyword '{key}' not found in HDUList.")
+
+        # Calculate MJDSRT and MJDEND from FTIMEUTC timestamp and EXPTIME
+        mjd_start = Time(hdul[1].header['FTIMEUTC']).mjd
+        hdul[1].header['MJDSRT'] = mjd_start
+        hdul[1].header['MJDEND'] = mjd_start + hdul[1].header['EXPTIME'] / 86400.0
 
         # Write the HDUList to file
         hdul.writeto(filepath, overwrite=overwrite)
