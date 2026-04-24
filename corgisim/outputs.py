@@ -42,6 +42,10 @@ def create_hdu_list(data, header_info, sim_info=None):
     prihdr['TELESCOP'] = 'ROMAN'
     prihdr['PSFREF'] = header_info['PSFREF']
     prihdr['OPGAIN'] = header_info['EMGAIN_C']
+    
+    prihdr['TARGET'] = header_info['target_name']
+    prihdr['VISTYPE'] = header_info['VISTYPE'] 
+    
     if header_info['PHTCNT'] == True:
         prihdr['PHTCNT'] =int(1)
     else:
