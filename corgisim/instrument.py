@@ -252,7 +252,7 @@ class CorgiOptics():
 
         if optics_keywords_internal['use_pupil_lens']==1 :
             if (optics_keywords_internal['use_fpm']==1) or (optics_keywords_internal['use_lyot_stop']==1) or (optics_keywords_internal['use_field_stop']==1):
-                 warnings.warn('When simulating a pupil image (use_pupil_lens=1), disable use_fpm, use_lyot_stop, and use_field_stop.', UserWarning)
+                 warnings.warn('Warning: the pupil lens is inserted while one or more of the focal mask, Lyot stop, or field stop are also in use.', UserWarning)
 
 
         # polarization
