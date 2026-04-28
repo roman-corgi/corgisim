@@ -16,9 +16,10 @@ from corgisim import outputs
 import os
 
 
-def get_reference_aberration(cycle: int = 1):
+def get_reference_cycle_times(cycle: int = 1):
     """
     Retrieve the start/end times of the requested reference star cycle from os11 scenario.
+
     Args:
         cycle (int): int between 1 and 6
 
@@ -45,9 +46,10 @@ def get_reference_aberration(cycle: int = 1):
     return time_ref_cycle_min, time_ref_cycle_max
 
 
-def get_science_acquisition(cycle: int = 1, roll: int = 1):
+def get_science_cycle_times(cycle: int = 1, roll: int = 1):
     """
         Retrieve the start/end times of the requested target star cycle/roll from os11 scenario.
+
         Args:
             cycle (int): int between 1 and 4
             roll (int): int between 1 and 4, respectively corresponding to rolls of -13°, +13°, -13° and +13° in the os11 scenario
@@ -101,9 +103,9 @@ def get_drift(exp_time: float, n_frames: int, obs: str = 'science', cycle: int =
     exp_time /= 3600  # exp_time in hour
 
     if obs == 'science':
-        t0, t1 = get_science_acquisition(cycle, roll)
+        t0, t1 = get_science_cycle_times(cycle, roll)
     elif obs == 'ref':
-        t0, t1 = get_reference_aberration(cycle)
+        t0, t1 = get_reference_cycle_times(cycle)
     else:
         raise ValueError("obs must be either 'science' or 'ref'")
 
@@ -237,14 +239,11 @@ def generate_time_series_from_os11(ref_star_properties, target_star_properties, 
     outdir_noisy = os.path.join(outdir, 'noisy')
     outdir_noiseless = os.path.join(outdir, 'noiseless')
 
-
     dm_case_name = cor_type + '_ni_' + dm_case
     dm1 = proper.prop_fits_read(
         roman_preflight_proper.lib_dir + '/examples/' + dm_case_name + '_dm1_v.fits')
     dm2 = proper.prop_fits_read(
         roman_preflight_proper.lib_dir + '/examples/' + dm_case_name + '_dm2_v.fits')
-
-
 
     if ref_star_properties is not None:
         base_scene = scene.Scene(ref_star_properties) #define the astrophysical scene for the reference star
