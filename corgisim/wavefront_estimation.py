@@ -139,9 +139,9 @@ def get_jitter(exp_time: float, n_frames: int, obs: str = 'science', cycle: int 
         cycle = int(cycle)
     exp_time /= 3600  # exp_time in hour
     if obs == 'science':
-        t0, t1 = get_science_acquisition(cycle, roll)
+        t0, t1 = get_science_cycle_times(cycle, roll)
     elif obs == 'ref':
-        t0, t1 = get_reference_aberration(cycle)
+        t0, t1 = get_reference_cycle_times(cycle)
     else:
         raise ValueError("obs must be either 'science' or 'ref'")
 
