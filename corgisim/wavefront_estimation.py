@@ -16,16 +16,20 @@ from corgisim import outputs
 import os
 
 
-def get_reference_aberration(cycle=1):
+def get_reference_aberration(cycle: int = 1):
     """
     Retrieve the start/end times of the requested reference star cycle from os11 scenario.
     Args:
-        cycle (int): int between 1 and 6 
+        cycle (int): int between 1 and 6
 
     Returns:
         time_ref_cycle_min, time_ref_cycle_max (floats): start/end times of the requested reference star cycle
 
     """
+
+    if (cycle < 1) or (cycle > 6):
+        raise ValueError('Cycle number for the reference star in the OS11 scenario must be an integer between 1 and 6')
+
     script_dir = os.path.dirname(__file__)
 
     batch_info = fits.getdata(os.path.join(script_dir , 'data/hlc_os11_inputs.fits')).transpose()
@@ -41,19 +45,25 @@ def get_reference_aberration(cycle=1):
     return time_ref_cycle_min, time_ref_cycle_max
 
 
-def get_science_acquisition(cycle=1, roll=1):
+def get_science_acquisition(cycle: int = 1, roll: int = 1):
     """
         Retrieve the start/end times of the requested target star cycle/roll from os11 scenario.
         Args:
-            cycle (int): int between 1 and 6 
-            roll (int): Either 1 or 2 corresponding respectively to the positive and negative roll angle
+            cycle (int): int between 1 and 4
+            roll (int): int between 1 and 4, respectively corresponding to rolls of -13°, +13°, -13° and +13° in the os11 scenario
 
         Returns:
             time_ref_cycle_min, time_ref_cycle_max (floats): start/end times of the requested reference star cycle
 
         """
+
+    if (cycle < 1) or (cycle > 4):
+        raise ValueError('Cycle number for the science star in the OS11 scenario must be an integer between 1 and 4')
+    if (roll < 1) or (roll > 4):
+        raise ValueError('Roll number for the science star in the OS11 scenario must be an integer between 1 and 4')
+
     script_dir = os.path.dirname(__file__)
-    
+
     batch_info = fits.getdata(os.path.join(script_dir , 'data/hlc_os11_inputs.fits')).transpose()
     batch_time = batch_info[0]
     batch_id = batch_info[2]
@@ -67,11 +77,11 @@ def get_science_acquisition(cycle=1, roll=1):
     return time_sci_cycle_min, time_sci_cycle_max
 
 
-def get_drift(exp_time, n_frames, obs='science', cycle=1, roll=1, lowfs_use=True):
+def get_drift(exp_time: float, n_frames: int, obs: str = 'science', cycle: int = 1, roll: int = 1, lowfs_use: bool = True):
     """
-    Function to interpolate the WFE estimated in OS11 on a different frame time 
+    Function to interpolate the WFE estimated in OS11 on a different frame time
     for a given observation visit (i.e. cycle and roll).
-    
+
     Args:
         exp_time (float): Exposure time for one frame in seconds
         n_frames (int): Number of frames for a visit
@@ -84,7 +94,7 @@ def get_drift(exp_time, n_frames, obs='science', cycle=1, roll=1, lowfs_use=True
         noll_index (numpy.array): zernike noll index (n_noll_index,)
         zval_m (numpy.array): of the zernike rms value in meters (n_noll_index, n_frames)
     """
-    
+
     print("n_frames", n_frames)
     if type(cycle)==str:
         cycle = int(cycle)
@@ -115,7 +125,7 @@ def get_drift(exp_time, n_frames, obs='science', cycle=1, roll=1, lowfs_use=True
 
     return noll_index, zval_m
 
-def get_jitter(exp_time, n_frames, obs='science', cycle=1, roll=1):
+def get_jitter(exp_time: float, n_frames: int, obs: str = 'science', cycle: int = 1, roll: int = 1):
     print("n_frames", n_frames)
     if type(cycle) == str:
         cycle = int(cycle)
@@ -144,14 +154,14 @@ def get_jitter(exp_time, n_frames, obs='science', cycle=1, roll=1):
     return tiptilt_index, zval_m
 
 
-def estimate_companion_position_roll(x_off_mas, y_off_mas, roll_0='positive', theta=-13):
+def estimate_companion_position_roll(x_off_mas: float, y_off_mas: float, roll_0: str = 'positive', theta: float = -13):
     """
-    
+
     Args:
-        x_off_mas (float): x-offset of the companion in mas 
-        y_off_mas (float): y-offset of the companion in mas 
+        x_off_mas (float): x-offset of the companion in mas
+        y_off_mas (float): y-offset of the companion in mas
         roll_0 (str): Either 'positive' or 'negative'
-        theta (float): Roll angle 
+        theta (float): Roll angle
 
     Returns:
 
