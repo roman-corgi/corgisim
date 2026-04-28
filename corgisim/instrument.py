@@ -53,6 +53,13 @@ class CorgiOptics():
             - roll_angle : float, optional, Telescope roll angle in degrees (0 to 360). 
                            Defined as the rotation angle of the excam coordinates (X, Y) relative to the sky coordinates(RA,DEC), positive is counter-clockwise.
                            Default is 0 degrees, corresponding to North up, East left in the sky coordinates.
+            **kwargs:
+            Additional optional keyword arguments.Supported options include:
+            - visit_type (str, optional): A string indicating the type of visit (e.g.CGIVST_CAL_TGTREF_PHOT) for populating header VISTYPE.
+            - if_quiet (bool, optional): If True, suppresses print statements during optics initialization. 
+
+              
+            
         Raises:
             - ValueError: If `cgi_mode` or `cor_type` is invalid.
             - KeyError: If required `optics_keywords` are missing.
@@ -294,6 +301,7 @@ class CorgiOptics():
 
 
         if 'if_quiet'in kwargs:self.quiet = kwargs.get("if_quiet")
+        self.visit_type = kwargs.get("visit_type", "CGIVST_TDD_OBS")
 
         ##self.SATSPOTS is the value to be populated to L1 header prihdr[SATSPOTS]
         # prihdr[SATSPOTS]= 0: No satellite spots present 
@@ -882,7 +890,9 @@ class CorgiOptics():
                     'over_sampling_factor':self.oversampling_factor,
                     'return_oversample': self.return_oversample,
                     'output_dim': self.optics_keywords['output_dim'],
-                    'nd_filter':self.nd}
+                    'nd_filter':self.nd,
+                    'target_name': input_scene.target_name,
+                    'visit_type': self.visit_type}
 
         # Define specific keys from self.optics_keywords to include in the header            
         keys_to_include_in_header = ['use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
@@ -1442,7 +1452,7 @@ class CorgiDetector():
                            'PHTCNT':self.photon_counting,'KGAINPAR':self.emccd_keywords_default['e_per_dn'],'cor_type':sim_info['cor_type'], 'bandpass':sim_info['bandpass'],
                            'cgi_mode': sim_info['cgi_mode'], 'polaxis':sim_info['polaxis'],'use_fpm':use_fpm,'nd_filter':sim_info['nd_filter'], 'polarization_basis': sim_info['polarization_basis'],'SATSPOTS':sim_info['SATSPOTS'],
                            'use_pupil_lens':use_pupil_lens,'use_lyot_stop':use_lyot_stop, 'use_field_stop':use_field_stop, 'PA_APER': float(sim_info['roll_angle']),
-                           'EACQ_ROW': loc_x, 'EACQ_COL': loc_y,'RN': self.emccd_keywords_default['read_noise']}
+                           'EACQ_ROW': loc_x, 'EACQ_COL': loc_y,'RN': self.emccd_keywords_default['read_noise'],'target_name': sim_info['target_name'],'VISTYPE': sim_info['visit_type']}
             if 'fsm_x_offset_mas' in sim_info:
                 header_info['FSMX'] = float(sim_info['fsm_x_offset_mas'])
             if 'fsm_y_offset_mas' in sim_info:

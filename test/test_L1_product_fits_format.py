@@ -92,6 +92,8 @@ def test_L1_product_fits_format():
     assert prihr['PHTCNT'] == True, f"Expected data PSFREF=True, but got {prihr['PHTCNT']}"
     assert prihr['ROLL'] == 0.0, f"Expected data ROLL=0, but got {prihr['ROLL']}"
     assert prihr['PA_APER'] == 0.0, f"Expected data PA_APER=0, but got {prihr['PA_APER']}"
+    assert prihr['TARGET'] == 'UNKNOWN', f"Expected header TARGET = 'UNKNOWN', but got {prihr['TARGET']}"
+    assert prihr['VISTYPE'] == 'CGIVST_TDD_OBS', f"Expected header VISTYPE = 'CGIVST_TDD_OBS', but got {prihr['VISTYPE']}"
 
     assert exthdr['SATSPOTS'] == 0, f"Expected data SATSPOTS=0, but got {exthdr['SATSPOTS']}"
     assert exthdr['KGAINPAR'] == 8.7, f"Expected data KGAINPAR=8.7, but got {exthdr['KGAINPAR']}"
@@ -185,7 +187,7 @@ def test_L1_product_fits_format():
     info_dir = cgisim.lib_dir + '/cgisim_info_dir/'
 
     #Define the host star properties
-    host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype': 'vegamag','ref_flag':True}
+    host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype': 'vegamag','ref_flag':True,'target_name':'HD 141569A'}
     point_source_info = [{'Vmag': mag_companion[0], 'magtype': 'vegamag','position_x':dx[0] , 'position_y':dy[0]},
                          {'Vmag': mag_companion[1], 'magtype': 'vegamag','position_x':dx[1] , 'position_y':dy[1]}]
 
@@ -205,7 +207,7 @@ def test_L1_product_fits_format():
                 ##pass fsm_x_offset_mas and fsm_y_offset_mas for no zero value as test
 
     roll_angle=10.0 ##degree
-    optics = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords, if_quiet=True, roll_angle=roll_angle)
+    optics = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords, if_quiet=True, roll_angle=roll_angle, visit_type='CGIVST_CAL_TGTREF_PHOT')
     sim_scene = optics.get_host_star_psf(base_scene)
 
     sim_scene = optics.inject_point_sources(base_scene,sim_scene)
@@ -249,6 +251,8 @@ def test_L1_product_fits_format():
     assert prihdr['FRAMET'] == exptime, f"Expected header FRAMET = {exptime}, but got {prihdr['FRAMET']}"
     assert prihr['ROLL'] == 0.0, f"Expected data ROLL=0, but got {prihr['ROLL']}"
     assert prihr['PA_APER'] == roll_angle, f"Expected data PA_APER={roll_angle}, but got {prihr['PA_APER']}"
+    assert prihr['TARGET'] == 'HD 141569A', f"Expected header TARGET = 'HD 141569A', but got {prihr['TARGET']}"
+    assert prihr['VISTYPE'] == 'CGIVST_CAL_TGTREF_PHOT', f"Expected header VISTYPE = 'CGIVST_CAL_TGTREF_PHOT', but got {prihr['VISTYPE']}"
 
     assert exthdr['KGAINPAR'] == e_per_dn, f"Expected data KGAINPAR={e_per_dn}, but got {exthdr['KGAINPAR']}"
     assert exthdr['EMGAIN_C'] == gain, f"Expected data EMGAIN_C={gain}, but got {exthdr['EMGAIN_C']}"

@@ -31,7 +31,7 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, s
             x-coordinate of the full frame's origin (top-left pixel). Required if `full_frame` is True.
         loc_y (int, optional): The y-coordinate for the center of the sub-array in pixels
             if `full_frame` is False. If `full_frame` is True, this specifies the
-            y-coordinate of the full frame's origin (top-left pixel). Required if `full_frame` is True.
+            y-coordinate of the full frame's origin (top-left pixel). Required if `full_frame` is True.        
 
     Returns:
         list[corgisim.scene.SimulatedImage]: A list of :py:class:`corgisim.scene.SimulatedImage` objects,
