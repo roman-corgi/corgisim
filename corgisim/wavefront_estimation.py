@@ -95,16 +95,22 @@ def get_drift(exp_time: float, n_frames: int, obs: str = 'science', cycle: int =
         zval_m (numpy.array): of the zernike rms value in meters (n_noll_index, n_frames)
     """
 
-    print("n_frames", n_frames)
-    if type(cycle)==str:
+    if type(cycle) == str:
         cycle = int(cycle)
+
     exp_time /= 3600  # exp_time in hour
+
     if obs == 'science':
         t0, t1 = get_science_acquisition(cycle, roll)
     elif obs == 'ref':
         t0, t1 = get_reference_aberration(cycle)
     else:
         raise ValueError("obs must be either 'science' or 'ref'")
+
+    # check that the requested number of exposures is compatible with OS11 data
+    t_requested = exp_time * n_frames  # sec - requested time
+    if t_requested > (t1 - t0):
+        raise ValueError('Number of frames and individual exposure times are not compatible with the OS11 scenario')
 
     noll_index = np.arange(4, 46, 1)
     script_dir = os.path.dirname(__file__)
