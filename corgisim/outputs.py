@@ -106,7 +106,7 @@ def create_hdu_list(data, header_info, sim_info=None):
     
     ##### need to update later
     exthdr['FPAM_H'], exthdr['FPAM_V'], exthdr['FPAMNAME'], exthdr['FPAMSP_H'],exthdr['FPAMSP_V'] = write_headers_FPAM(header_info['cor_type'], header_info['bandpass'], header_info['use_fpm'], header_info['nd_filter'])
-    exthdr['FSAM_H'], exthdr['FSAM_V'], exthdr['FSAMNAME'], exthdr['FSAMSP_H'],exthdr['FSAMSP_V'] = write_headers_FSAM(header_info['cor_type'], header_info['bandpass'], header_info['slit'], header_info['polaxis'], header_info['use_field_stop'])
+    exthdr['FSAM_H'], exthdr['FSAM_V'], exthdr['FSAMNAME'], exthdr['FSAMSP_H'],exthdr['FSAMSP_V'] = write_headers_FSAM(header_info['cor_type'], header_info['bandpass'], header_info['slit'], header_info['polarization_basis'], header_info['use_field_stop'])
 
 
 
@@ -545,11 +545,11 @@ def write_headers_FPAM(cor_type, band_pass,use_fpm,nd_filter):
         if 'hlc' in cor_type:
             ##hlc NFOV imaging mode
             if '1' in band_pass:
-                FPAM_H = 6757.2
-                FPAM_V = 22424
-                FPAMNAME = 'HLC12_C2R1'
-                FPAMSP_H = 6757.2
-                FPAMSP_V = 22424
+                FPAM_H = 6776
+                FPAM_V = 27653.3
+                FPAMNAME = 'HLC12_C2R5'
+                FPAMSP_H = 6776
+                FPAMSP_V = 27653.3
             
             if '2' in band_pass:
                 FPAM_H = 55306.4
@@ -575,11 +575,11 @@ def write_headers_FPAM(cor_type, band_pass,use_fpm,nd_filter):
         if 'wide' in cor_type:
             ##spc WFOV imaging mode
             if '1' in band_pass:
-                FPAM_H = 23719.6
-                FPAM_V = 2278.1
-                FPAMNAME = 'SPC12_R1C1'
-                FPAMSP_H = 23719.6
-                FPAMSP_V = 2278.1
+                FPAM_H = 18751
+                FPAM_V = 4621.9
+                FPAMNAME = 'SPC12_R2C1'
+                FPAMSP_H = 18751
+                FPAMSP_V = 4621.9
 
             if '4' in band_pass:
                 FPAM_H = 35354.3
@@ -623,7 +623,7 @@ def write_headers_FPAM(cor_type, band_pass,use_fpm,nd_filter):
     return FPAM_H, FPAM_V, FPAMNAME, FPAMSP_H, FPAMSP_V
 
 
-def write_headers_FSAM(cor_type, band_pass,slit,polaxis,use_field_stop):
+def write_headers_FSAM(cor_type, band_pass,slit,polarization_basis,use_field_stop):
     if not use_field_stop:
         FSAM_H =30677.2
         FSAM_V = 2959.5
@@ -634,11 +634,20 @@ def write_headers_FSAM(cor_type, band_pass,slit,polaxis,use_field_stop):
         ### determine the value for FSAM based on coronagraph type and bandpass
         if 'hlc' in cor_type:
             if '1' in band_pass:
-                FSAM_H = 29387
-                FSAM_V = 12238
-                FSAMNAME = 'R1C1'
-                FSAMSP_H = 29387
-                FSAMSP_V = 12238
+                if polarization_basis == 'None':
+                    #imaging mode, no polarization
+                    FSAM_H = 29387
+                    FSAM_V = 12238
+                    FSAMNAME = 'R1C1'
+                    FSAMSP_H = 29387
+                    FSAMSP_V = 12238
+                else:
+                    # polarization mode
+                    FSAM_H = 6687
+                    FSAM_V = 13738
+                    FSAMNAME = 'R1C5'
+                    FSAMSP_H = 6687
+                    FSAMSP_V = 13738
 
             if '2' in band_pass:
                 FSAM_H = 17937
@@ -662,14 +671,20 @@ def write_headers_FSAM(cor_type, band_pass,slit,polaxis,use_field_stop):
                 FSAMSP_V = 21238
 
         if 'wide' in cor_type:
-            if polaxis in ['0', '10']:
+            if polarization_basis == 'None':
+                #imaging mode, no polarization
                 FSAM_H =30677.2
                 FSAM_V = 2959.5
                 FSAMNAME = 'OPEN'
                 FSAMSP_H = 30677.2
                 FSAMSP_V = 2959.5
             else:
-                raise ValueError("Polarimetry mode has not been implemented for FSAM")
+                # polarization mode
+                FSAM_H = 6687
+                FSAM_V = 13738
+                FSAMNAME = 'R1C5'
+                FSAMSP_H = 6687
+                FSAMSP_V = 13738
 
         if ('spec' in cor_type) & ('rotated' not in cor_type):
             if '2' in band_pass:
