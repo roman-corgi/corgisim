@@ -1,4 +1,5 @@
 from astropy.io import fits
+from astropy.time import Time
 from corgidrp import mocks
 import os
 from datetime import datetime, timezone, timedelta
@@ -200,6 +201,11 @@ def save_hdu_to_fits( hdul, outdir=None, overwrite=False, write_as_L1=False, fil
                 hdul[1].header[key] = overwrite_ext_keywords[key]
             else:
                 raise KeyError(f"Extension header keyword '{key}' not found in HDUList.")
+
+        # Calculate MJDSRT and MJDEND from FTIMEUTC timestamp and EXPTIME
+        mjd_start = Time(hdul[1].header['FTIMEUTC']).mjd
+        hdul[1].header['MJDSRT'] = mjd_start
+        hdul[1].header['MJDEND'] = mjd_start + hdul[1].header['EXPTIME'] / 86400.0
 
         # Write the HDUList to file
         hdul.writeto(filepath, overwrite=overwrite)
