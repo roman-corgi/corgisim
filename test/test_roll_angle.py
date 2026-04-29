@@ -12,8 +12,8 @@ import cgisim
 
 def test_roll_imaging():
     #### this testing function test if the roll angle function have the results we expect
-    #### Spcifically, I generate two simulation, one with 0 deg roll angle and one with 15 deg roll angle
-    #### The function test of the PA for the companion out of two siulation offset by 15 deg and in the direction we want
+    #### Spcifically, we generate three simulations, one with 0 deg roll angle, one with 15 deg roll angle and one with 30 deg roll angle
+    #### The function test of the PA for the companion out of two simulation offset by 15 deg and in the direction we want
 
     Vmag = 8
     sptype = 'G0V'
@@ -59,6 +59,16 @@ def test_roll_imaging():
     dPA = PA1-PA2
     assert dPA == pytest.approx(roll_angle,abs=0.1), (f"Roll-angle check failed: expected  {roll_angle:.3f} degree, got roll={dPA:.3f}degree).")
     assert sep1 == pytest.approx(sep2,abs=0.1), (f"Separation check failed: expected  {sep1:.3f} mas, got {sep2:.3f} mas).")
+
+    ####Third roll,roll=30.0
+    optics_roll2.roll_angle = 390.0
+    assert optics_roll2.roll_angle == 30.0
+
+    sim_scene_roll3 = optics_roll2.inject_point_sources(base_scene)
+    x3, y3 = optics_roll2.optics_keywords_comp['source_x_offset_mas'],optics_roll2.optics_keywords_comp['source_y_offset_mas']
+
+    assert x3 != x2
+    assert y3 != y2
 
 def test_roll_spec():
     Vmag = 8
@@ -125,6 +135,30 @@ def test_roll_spec():
     dPA_slit = PA1_slit-PA2_slit
     assert sep1_slit == pytest.approx(sep2_slit,abs=0.1), (f"Separation for slit check failed: expected  {sep1_slit:.3f} mas, got {sep2_slit:.3f} mas).")
     assert dPA_slit == pytest.approx(roll_angle,abs=0.1), (f"Roll-angle for slit check failed: expected  {roll_angle:.3f} degree, got roll={dPA_slit:.3f}degree).")
+
+    ####third roll,roll=30
+    optics_roll2.roll_angle = 390.0
+    sim_scene_roll3 = optics_roll2.inject_point_sources(base_scene)
+    x3, y3 = optics_roll2.optics_keywords_comp['source_x_offset_mas'],optics_roll2.optics_keywords_comp['source_y_offset_mas']
+    x3_slit, y3_slit =  optics_roll2.slit_x_offset_mas,optics_roll2.slit_y_offset_mas
+
+    assert x3_slit != x2_slit
+    assert y3_slit != y2_slit
+    
+    sep3 = np.sqrt(x3**2+y3**2)
+    PA3 = np.rad2deg(np.arctan2(y3, x3))
+
+
+    sep3_slit = np.sqrt(x3_slit**2+y3_slit**2)
+    PA3_slit =  np.rad2deg(np.arctan2(y3_slit, x3_slit))
+
+    dPA = PA1-PA3
+    assert sep1 == pytest.approx(sep3,abs=0.1), (f"Separation check failed: expected  {sep1:.3f} mas, got {sep3:.3f} mas).")
+    assert dPA == pytest.approx(30.0,abs=0.1), (f"Roll-angle check failed: expected  {30.0:.3f} degree, got roll={dPA:.3f}degree).")
+
+    dPA_slit = PA1_slit-PA3_slit
+    assert sep1_slit == pytest.approx(sep3_slit,abs=0.1), (f"Separation for slit check failed: expected  {sep1_slit:.3f} mas, got {sep3_slit:.3f} mas).")
+    assert dPA_slit == pytest.approx(30.0,abs=0.1), (f"Roll-angle for slit check failed: expected  {30.0:.3f} degree, got roll={dPA_slit:.3f}degree).")
 
 
  

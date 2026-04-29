@@ -108,7 +108,15 @@ class CorgiOptics():
 
         self.cgi_mode = cgi_mode
         self.cor_type = optics_keywords_internal['cor_type']
-        self.roll_angle = roll_angle % 360  # Ensure roll angle is within 0-360 degrees
+
+        #Initializes the slit_offset so that the roll angle setter can update them if needed
+        if self.cgi_mode == 'spec':
+            self.slit_x_offset_mas = None
+            self.slit_y_offset_mas = None
+            self.slit_ra_offset_mas = 0.0
+            self.slit_dec_offset_mas = 0.0
+
+        self.roll_angle = roll_angle 
 
         if bandpass  in ['1F','2F','3F','4F']:
             self.bandpass = bandpass.split('F')[0]
@@ -135,11 +143,11 @@ class CorgiOptics():
         if self.cgi_mode == 'excam':
             #DPAM prisms allowed for polarimetry
             valid_prisms = ['None', 'POL0', 'POL45']
-            if 'prism' in optics_keywords:
-                if optics_keywords['prism'] not in valid_prisms:
-                    raise ValueError(f'Invalid value for prism: {optics_keywords['prism']}.'
+            if 'prism' in optics_keywords_internal:
+                if optics_keywords_internal['prism'] not in valid_prisms:
+                    raise ValueError(f'Invalid value for prism: {optics_keywords_internal['prism']}.'
                                      f'Must be one of: {valid_prisms}')
-                setattr(self, 'prism', optics_keywords['prism'])
+                setattr(self, 'prism', optics_keywords_internal['prism'])
             else:
                 setattr(self, 'prism', 'None')
         # Set the spectroscopy parameters
@@ -166,8 +174,8 @@ class CorgiOptics():
                     'slit': ['None', 'R1C2', 'R3C1'],
                     'prism': ['None', 'PRISM3', 'PRISM2']}
             for attr_name, default_value in spec_kw_defaults.items():
-                if attr_name in optics_keywords:
-                    value = optics_keywords[attr_name]
+                if attr_name in optics_keywords_internal:
+                    value = optics_keywords_internal[attr_name]
                 
                     if attr_name in spec_kw_allowed:
                         if value not in spec_kw_allowed[attr_name]:
@@ -181,7 +189,7 @@ class CorgiOptics():
                     setattr(self, attr_name, default_value)
             
             # If excam coordinates are not provided, compute them from sky coordinates
-            if (self.slit_x_offset_mas is None) and (self.slit_y_offset_mas is None):
+            if ('slit_x_offset_mas' not in optics_keywords_internal) and ('slit_y_offset_mas' not in optics_keywords_internal):
                 # Convert slit location from sky coordinates to EXCAM coordinates (mas)
                 self.slit_x_offset_mas, self.slit_y_offset_mas = skycoord_to_excamcoord(self.slit_ra_offset_mas, self.slit_dec_offset_mas, self.roll_angle)
 
@@ -1324,7 +1332,32 @@ class CorgiOptics():
                 # also, the jitter model isn't currently set up for offaxis sources
                 images_tem = np.array(sum(images_pol)) / 4
         return images_tem
-    
+    @property
+    def roll_angle(self):
+        '''
+        The roll angle
+        '''
+        return self._roll_angle
+
+    @roll_angle.setter
+    def roll_angle(self, value):
+        """
+        Set the roll angle.
+        Args:
+            value (float) : The value of the roll angle.
+        Raises:
+            TypeError: If the input is not a float.
+        """
+        if not (isinstance(value, float) or isinstance(value, int)) :
+            raise TypeError("roll_angle must be a float or an int")
+
+        self._roll_angle = value % 360  # Ensure roll angle is within 0-360 degrees
+
+        # Update slit location 
+        if self.cgi_mode == 'spec':
+            self.slit_x_offset_mas, self.slit_y_offset_mas = skycoord_to_excamcoord(self.slit_ra_offset_mas, self.slit_dec_offset_mas, value)
+
+
 class CorgiDetector(): 
     
     def __init__(self ,emccd_keywords, photon_counting = True):
