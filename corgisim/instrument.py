@@ -269,8 +269,6 @@ class CorgiOptics():
             if (optics_keywords_internal['use_fpm']==1) or (optics_keywords_internal['use_lyot_stop']==1) or (optics_keywords_internal['use_field_stop']==1):
                  warnings.warn('Warning: the pupil lens is inserted while one or more of the focal mask, Lyot stop, or field stop are also in use.', UserWarning)
 
-
-        # polarization
         
         if optics_keywords_internal['polaxis'] != 10 and optics_keywords_internal['polaxis'] != -10 and optics_keywords_internal['polaxis'] != 0:
             # wollaston transmission is around 0.96%, divide by two to split between polarization
@@ -299,6 +297,12 @@ class CorgiOptics():
                 self.nd = 0
             else:
                 raise ValueError(f"Invalid ND filter value: {optics_keywords['nd']}. Must be 0, 1, 2, or 3.")
+        
+        if optics_keywords_internal['use_fpm'] == 1 and (self.nd == 1 or self.nd == 2): 
+            raise ValueError( "FPM cannot be used with ND filter 1 (225@FPAM) or ND filter 2 (475@FPAM), because they occupy the same position in the optical path.")
+        if optics_keywords_internal['use_lyot_stop'] == 1 and  self.nd == 3:
+            raise ValueError( "Lyot stop cannot be used with ND filter 3 (475@FSAM), because they occupy the same position in the optical path.")
+        # polarization
             
         # Initialize the bandpass class (from synphot)
         # bp: wavelegth is in unit of angstrom
