@@ -67,6 +67,14 @@ class Scene():
     def __init__(self, host_star_properties=None, point_source_info=None, twoD_scene_hdu=None, spmethod='bpgs'):
         self._twoD_scene = copy.deepcopy(twoD_scene_hdu)
         point_source_info_internal = copy.deepcopy(point_source_info)
+        # Initialize empty-scene defaults before any optional inputs are applied.
+        self.ref_flag = False
+        self.target_name = "EMPTY_SCENE"
+        self._host_star_Vmag = None
+        self._host_star_magtype = None
+        self._host_star_sptype = None
+        self._stellar_diam_mas = None
+        self.stellar_spectrum = None
 
         if host_star_properties is None:
             host_star_properties_internal = None
@@ -127,6 +135,16 @@ class Scene():
 
         
         
+    @property
+    def if_empty(self):
+        """
+        Returns True when the scene has no host star, no point sources, and no 2D scene.
+        """
+        no_host_star = self.stellar_spectrum is None
+        no_point_sources = (not hasattr(self, "point_source_dra")) or len(self.point_source_dra) == 0
+        no_2d_scene = self._twoD_scene is None
+        return no_host_star and no_point_sources and no_2d_scene
+
     @property
     def host_star_sptype(self):
         """
@@ -595,4 +613,3 @@ def is_valid_spectral_type(spectral_type):
         raise ValueError(error_message)
 
     return bool(match)
-
