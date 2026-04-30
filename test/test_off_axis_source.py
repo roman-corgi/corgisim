@@ -104,9 +104,10 @@ def test_off_axis_source():
     ####################################Pytest
     # Use pytest.approx to check similarity within a tolerance between corgisim and cgisim output
     ## the test is for noise-free simulation
-    assert  image_star_corgi  == pytest.approx(image_star_cgi, rel=0.5)
-    assert  image_comp_corgi  == pytest.approx(image_comp_cgi, rel=0.5)
-    assert  customspec_image_comp_corgi  == pytest.approx(image_comp_cgi, rel=0.5)
+    assert  image_star_corgi  == pytest.approx(image_star_cgi, rel=0.15)
+    assert  image_comp_corgi  == pytest.approx(image_comp_cgi, rel=0.15)
+    assert  customspec_image_comp_corgi  == pytest.approx(image_comp_cgi, rel=0.15)
+
 
 if __name__ == '__main__':
     test_off_axis_source()

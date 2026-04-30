@@ -456,7 +456,6 @@ class Scene():
             Magnitude system used for each source.
         spectrum : list or None, optional
             Custom input spectra. If None, flat spectra will be used and scaled to match `vmag`.
-            Custom spectra are not yet supported and will raise an error if provided.
         rescale_spectrum : list of bool or None, optional
             Rescale custom spectra to match `vmag` values if True. Ignored if `spectrum` is None.
             Default is None.
