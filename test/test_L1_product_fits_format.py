@@ -9,6 +9,7 @@ import roman_preflight_proper
 import pytest
 import cgisim
 import os, shutil
+import glob
 
 def test_L1_product_fits_format():
     """Test the headers of saved L1 product FITS file
@@ -91,6 +92,9 @@ def test_L1_product_fits_format():
     assert prihr['PSFREF'] == False, f"Expected data PSFREF=False, but got {prihr['PSFREF']}"
     assert prihr['PHTCNT'] == True, f"Expected data PSFREF=True, but got {prihr['PHTCNT']}"
     assert prihr['ROLL'] == 0.0, f"Expected data ROLL=0, but got {prihr['ROLL']}"
+    assert prihr['PA_APER'] == 0.0, f"Expected data PA_APER=0, but got {prihr['PA_APER']}"
+    assert prihr['TARGET'] == 'UNKNOWN', f"Expected header TARGET = 'UNKNOWN', but got {prihr['TARGET']}"
+    assert prihr['VISTYPE'] == 'CGIVST_TDD_OBS', f"Expected header VISTYPE = 'CGIVST_TDD_OBS', but got {prihr['VISTYPE']}"
 
     assert exthdr['SATSPOTS'] == 0, f"Expected data SATSPOTS=0, but got {exthdr['SATSPOTS']}"
     assert exthdr['KGAINPAR'] == 8.7, f"Expected data KGAINPAR=8.7, but got {exthdr['KGAINPAR']}"
@@ -145,29 +149,31 @@ def test_L1_product_fits_format():
     os.remove(f)
 
 
-        ### Test overwrite_pri_hdr and overwrite_ext_hdr with non-default values
-    outputs.save_hdu_to_fits(sim_scene.image_on_detector,outdir=outdir, write_as_L1=True, 
-                             overwrite_pri_keywords={'TARGET':'HD 141569A'}, 
-                             overwrite_ext_keywords={'OPMODE': "Disco"},
+        ### Test overwrite_pri_hdr and overwrite_ext_hdr with non-default values including FTIMEUTC and MJDSRT
+    outputs.save_hdu_to_fits(sim_scene.image_on_detector,outdir=outdir, write_as_L1=True,
+                             overwrite_pri_keywords={'TARGET':'HD 141569A'},
+                             overwrite_ext_keywords={'OPMODE': "Disco", 'FTIMEUTC': '2025-01-01T00:00:00'},
                              )
     #Open the file and check the new values in the headers
-    time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
-    filename = f"cgi_{prihdr['VISITID']}_{time_in_name}_l1_.fits"
+    # Find the most recently created file (filename uses current timestamp, not overridden FTIMEUTC)
+    files = glob.glob(os.path.join(outdir, 'cgi_*_l1_.fits'))
+    f = max(files, key=os.path.getmtime)
 
-    f = os.path.join( outdir , filename)
     with fits.open(f) as hdul:
         prihr = hdul[0].header
         exthr = hdul[1].header
 
         assert prihr['TARGET'] == 'HD 141569A', f"Expected header TARGET=HD 141569A, but got {prihr['TARGET']}"
         assert exthr['OPMODE'] == "Disco", f"Expected header OPMODE=Disco, but got {exthr['OPMODE']}"
+        # Check that MJDSRT was correctly calculated from the overridden FTIMEUTC (2025-01-01T00:00:00 = MJD 60676.0)
+        assert exthr['MJDSRT'] == 60676.0, f"Expected header MJDSRT=60676.0 (from overridden FTIMEUTC), but got {exthr['MJDSRT']}"
 
     ### delete file after testing
     print('Deleted the FITS file after testing overwrite_pri_hdr and overwrite_ext_hdr with non-default values')
     os.remove(f)
 
     ####################################################################################################
-    #### testing the non-defalut(input) value pass to header
+    #### testing the non-default(input) value pass to header
     Vmag = 8
     sptype = 'G0V'
     cgi_mode = 'excam'
@@ -184,7 +190,7 @@ def test_L1_product_fits_format():
     info_dir = cgisim.lib_dir + '/cgisim_info_dir/'
 
     #Define the host star properties
-    host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype': 'vegamag','ref_flag':True}
+    host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype': 'vegamag','ref_flag':True,'target_name':'HD 141569A'}
     point_source_info = [{'Vmag': mag_companion[0], 'magtype': 'vegamag','position_x':dx[0] , 'position_y':dy[0]},
                          {'Vmag': mag_companion[1], 'magtype': 'vegamag','position_x':dx[1] , 'position_y':dy[1]}]
 
@@ -204,7 +210,7 @@ def test_L1_product_fits_format():
                 ##pass fsm_x_offset_mas and fsm_y_offset_mas for no zero value as test
 
     roll_angle=10.0 ##degree
-    optics = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords, if_quiet=True, roll_angle=roll_angle)
+    optics = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords, if_quiet=True, roll_angle=roll_angle, visit_type='CGIVST_CAL_TGTREF_PHOT')
     sim_scene = optics.get_host_star_psf(base_scene)
 
     sim_scene = optics.inject_point_sources(base_scene,sim_scene)
@@ -246,7 +252,10 @@ def test_L1_product_fits_format():
     assert prihr['PSFREF'] == True, f"Expected header PSFREF=False, but got {prihr['PSFREF']}"
     assert prihr['PHTCNT'] == False, f"Expected header PSFREF=False, but got {prihr['PHTCNT']}"
     assert prihdr['FRAMET'] == exptime, f"Expected header FRAMET = {exptime}, but got {prihdr['FRAMET']}"
-    assert prihr['ROLL'] == 10.0, f"Expected data ROLL=10, but got {prihr['ROLL']}"
+    assert prihr['ROLL'] == 0.0, f"Expected data ROLL=0, but got {prihr['ROLL']}"
+    assert prihr['PA_APER'] == roll_angle, f"Expected data PA_APER={roll_angle}, but got {prihr['PA_APER']}"
+    assert prihr['TARGET'] == 'HD 141569A', f"Expected header TARGET = 'HD 141569A', but got {prihr['TARGET']}"
+    assert prihr['VISTYPE'] == 'CGIVST_CAL_TGTREF_PHOT', f"Expected header VISTYPE = 'CGIVST_CAL_TGTREF_PHOT', but got {prihr['VISTYPE']}"
 
     assert exthdr['KGAINPAR'] == e_per_dn, f"Expected data KGAINPAR={e_per_dn}, but got {exthdr['KGAINPAR']}"
     assert exthdr['EMGAIN_C'] == gain, f"Expected data EMGAIN_C={gain}, but got {exthdr['EMGAIN_C']}"
@@ -391,7 +400,7 @@ def test_L1_product_from_CPGS():
 
             f = os.path.join( outdir , filename)
             assert os.path.isfile(f)
-            assert prihdr['ROLL'] == visit["roll_angle"]
+            assert prihdr['PA_APER'] == visit["roll_angle"]
             i += 1
     # Delete the files 
     shutil.rmtree(outdir)
