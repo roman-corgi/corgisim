@@ -145,8 +145,8 @@ class CorgiOptics():
             valid_prisms = ['None', 'POL0', 'POL45']
             if 'prism' in optics_keywords_internal:
                 if optics_keywords_internal['prism'] not in valid_prisms:
-                    raise ValueError(f'Invalid value for prism: {optics_keywords_internal['prism']}.'
-                                     f'Must be one of: {valid_prisms}')
+                    raise ValueError(f"Invalid value for prism: {optics_keywords_internal['prism']}. "
+                                     f"Must be one of: {valid_prisms}")
                 setattr(self, 'prism', optics_keywords_internal['prism'])
             else:
                 setattr(self, 'prism', 'None')
@@ -655,7 +655,58 @@ class CorgiOptics():
                                         HDU that contains a noiseless on-axis PSF.
 
         '''
-        
+        if sim_scene == None:
+            sim_scene = scene.SimulatedImage(input_scene)
+
+        if self.prism == 'POL0':
+            polarization_basis = '0/90 degrees'
+        elif self.prism == 'POL45':
+            polarization_basis = '45/135 degrees'
+        else:
+            polarization_basis = 'None'
+        sim_info = {'host_star_sptype':input_scene.host_star_sptype,
+                    'host_star_Vmag':input_scene.host_star_Vmag,
+                    'host_star_magtype':input_scene.host_star_magtype,
+                    'ref_flag':input_scene.ref_flag,
+                    'cgi_mode':self.cgi_mode,
+                    'cor_type': self.optics_keywords['cor_type'],
+                    'bandpass':self.bandpass_header,
+                    'polarization_basis': polarization_basis,
+                    'over_sampling_factor':self.oversampling_factor,
+                    'return_oversample': self.return_oversample,
+                    'output_dim': self.optics_keywords['output_dim'],
+                    'nd_filter':self.nd,
+                    'target_name': input_scene.target_name,
+                    'visit_type': self.visit_type}
+
+        keys_to_include_in_header = ['use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
+                            'slit_x_offset_mas','slit_y_offset_mas','use_pupil_lens', 'use_lyot_stop', 'use_field_stop',
+                            'fsm_x_offset_mas','fsm_y_offset_mas','slit','prism',
+                            'dispersed_image_centx','dispersed_image_centy',
+                            'dispersed_fullframe_centx','dispersed_fullframe_centy']
+        subset = {key: self.optics_keywords[key] for key in keys_to_include_in_header if key in self.optics_keywords}
+        sim_info.update(subset)
+
+        sim_info['SATSPOTS'] = self.SATSPOTS
+        sim_info['includ_dectector_noise'] = 'False'
+
+        if hasattr(self,'stellar_diam_and_jitter_keywords') == True:
+            stellar_diam_and_jitter_keys_to_include = ['use_finite_stellar_diam', 'stellar_diam_mas','add_jitter','N_rings_of_offsets','N_offsets_counting_origin']
+            stellar_diam_and_jitter_subset = {key: self.stellar_diam_and_jitter_keywords[key] for key in stellar_diam_and_jitter_keys_to_include if key in self.stellar_diam_and_jitter_keywords}
+            sim_info.update(stellar_diam_and_jitter_subset)
+
+        sim_info['roll_angle'] = self.roll_angle
+
+        if input_scene.if_empty:
+            out_dim = self.grid_dim_out * self.oversampling_factor if self.return_oversample else self.grid_dim_out
+            if self.cgi_mode == 'excam' and self.prism in ['POL0', 'POL45']:
+                image = np.zeros((2, out_dim, out_dim), dtype=float)
+            else:
+                image = np.zeros((out_dim, out_dim), dtype=float)
+
+            sim_scene.host_star_image = outputs.create_hdu(image, sim_info=sim_info)
+            return sim_scene
+
         if self.cgi_mode == 'excam':
             
             # Compute the observed stellar spectrum within the defined bandpass
@@ -872,60 +923,8 @@ class CorgiOptics():
 
         if self.cgi_mode in ['lowfs', 'excam_efield']:
             raise ValueError(f"The mode '{self.cgi_mode}' has not been implemented yet!")
-        
-        # Initialize SimulatedImage class to restore the output psf
-        if sim_scene == None:
-            sim_scene = scene.SimulatedImage(input_scene)
-        
-        
-        # Prepare additional information to be added as COMMENT headers in the primary HDU.
-        # These are different from the default L1 headers, but extra comments that are used to track simulation-specific details.
-        ## determine header info based on prism used
-        if self.prism == 'POL0':
-            polarization_basis = '0/90 degrees'
-        elif self.prism == 'POL45':
-            polarization_basis = '45/135 degrees'
-        else:
-            polarization_basis = 'None'
-        sim_info = {'host_star_sptype':input_scene.host_star_sptype,
-                    'host_star_Vmag':input_scene.host_star_Vmag,
-                    'host_star_magtype':input_scene.host_star_magtype,
-                    'ref_flag':input_scene.ref_flag,
-                    'cgi_mode':self.cgi_mode,
-                    'cor_type': self.optics_keywords['cor_type'],
-                    'bandpass':self.bandpass_header,
-                    'polarization_basis': polarization_basis,
-                    'over_sampling_factor':self.oversampling_factor,
-                    'return_oversample': self.return_oversample,
-                    'output_dim': self.optics_keywords['output_dim'],
-                    'nd_filter':self.nd,
-                    'target_name': input_scene.target_name,
-                    'visit_type': self.visit_type}
 
-        # Define specific keys from self.optics_keywords to include in the header            
-        keys_to_include_in_header = ['use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
-                            'slit_x_offset_mas','slit_y_offset_mas','use_pupil_lens', 'use_lyot_stop', 'use_field_stop',
-                            'fsm_x_offset_mas','fsm_y_offset_mas','slit','prism',
-                            'dispersed_image_centx','dispersed_image_centy',
-                            'dispersed_fullframe_centx','dispersed_fullframe_centy']  # Specify keys to include
-        subset = {key: self.optics_keywords[key] for key in keys_to_include_in_header if key in self.optics_keywords}
-        sim_info.update(subset)
-        
-        # add sattelite spots info 
-        sim_info['SATSPOTS'] = self.SATSPOTS
-        sim_info['includ_dectector_noise'] = 'False'
-        
-        # Add finite stellar diameter and jitter info if applicable
-        if hasattr(self,'stellar_diam_and_jitter_keywords') == True:
-            stellar_diam_and_jitter_keys_to_include = ['use_finite_stellar_diam', 'stellar_diam_mas','add_jitter','N_rings_of_offsets','N_offsets_counting_origin']
-            stellar_diam_and_jitter_subset = {key: self.stellar_diam_and_jitter_keywords[key] for key in stellar_diam_and_jitter_keys_to_include if key in self.stellar_diam_and_jitter_keywords}
-            sim_info.update(stellar_diam_and_jitter_subset)
-        
-        sim_info['roll_angle'] = self.roll_angle
-        
-        # Create the HDU object with the generated header information
-
-        sim_scene.host_star_image = outputs.create_hdu(image,sim_info =sim_info)
+        sim_scene.host_star_image = outputs.create_hdu(image, sim_info=sim_info)
 
         return sim_scene
 
@@ -1015,6 +1014,11 @@ class CorgiOptics():
         Returns: 
             - A 2D numpy array that contains the scene with the injected point sources. 
         '''
+        if sim_scene == None:
+            sim_scene = scene.SimulatedImage(input_scene)
+
+        if (not hasattr(input_scene, 'point_source_dra')) or len(input_scene.point_source_dra) == 0:
+            return sim_scene
 
         # Extract point source spectra, positions, and polarization
         point_source_spectra = input_scene.off_axis_source_spectrum
@@ -1213,9 +1217,6 @@ class CorgiOptics():
         if self.cgi_mode in ['lowfs', 'excam_efield']:
             raise ValueError(f"The mode '{self.cgi_mode}' has not been implemented yet!")
         
-        if sim_scene == None:
-            sim_scene = scene.SimulatedImage(input_scene)
-
         # Prepare additional information to be added as COMMENT headers in the primary HDU.
         # These are different from the default L1 headers, but extra comments that are used to track simulation-specific details.
         npl = len(input_scene.point_source_Vmag)
