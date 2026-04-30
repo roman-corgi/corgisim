@@ -1627,6 +1627,10 @@ class CorgiDetector():
 
 def skycoord_to_excamcoord(dra, ddec, roll_angle):
     """Convert sky coordinates to EXCAM coordinates. These are both relative astrometry of a companion relative to host star (or central of the frame)
+    Convention:
+    - +x = -RA
+    - +y = +Dec
+    - then rotate (x, y) counter-clockwise by roll_angle
 
     Args:
         dra (float): The right ascension offset in mas.
@@ -1639,8 +1643,13 @@ def skycoord_to_excamcoord(dra, ddec, roll_angle):
     """
     # Apply roll angle rotation
     # Because we rotate the *companion coords*, use the opposite sense: θ_comp = -roll_angle.
-    theta_comp = np.deg2rad(-1 * roll_angle)
+    theta_comp = np.deg2rad( roll_angle)
 
-    dx = dra * np.cos(theta_comp) - ddec * np.sin(theta_comp)
-    dy = dra * np.sin(theta_comp) + ddec * np.cos(theta_comp)
+    # Step 1: map sky offsets into the unrotated EXCAM frame
+    x0 = -dra
+    y0 = ddec
+
+    # Step 2: rotate the EXCAM coordinates CCW by roll_angle
+    dx = x0 * np.cos(theta_comp) - y0 * np.sin(theta_comp)
+    dy = x0 * np.sin(theta_comp) + y0 * np.cos(theta_comp)
     return dx, dy
