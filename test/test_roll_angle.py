@@ -25,8 +25,8 @@ def test_roll_imaging():
     #Define companion properties
     #Add one companions, one in FOV
     mag_companion = [20]
-    companion_x_pos = [3*49.3]
-    companion_y_pos = [-3*49.3]
+    companion_x_pos = [-3*49.3]
+    companion_y_pos = [3*49.3]
     
     #### simulate using corgisim
     host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype':'vegamag'}
@@ -81,7 +81,7 @@ def test_roll_spec():
     #Define companion properties
     #Add one companions, one in FOV
     mag_companion = [20]
-    companion_x_pos = [740]
+    companion_x_pos = [-1*740]
     companion_y_pos = [740]
     
     #### simulate using corgisim
@@ -128,11 +128,11 @@ def test_roll_spec():
     sep2_slit = np.sqrt(x2_slit**2+y2_slit**2)
     PA2_slit =  np.rad2deg(np.arctan2(y2_slit, x2_slit))
 
-    dPA = PA1-PA2
+    dPA = PA2-PA1
     assert sep1 == pytest.approx(sep2,abs=0.1), (f"Separation check failed: expected  {sep1:.3f} mas, got {sep2:.3f} mas).")
     assert dPA == pytest.approx(roll_angle,abs=0.1), (f"Roll-angle check failed: expected  {roll_angle:.3f} degree, got roll={dPA:.3f}degree).")
 
-    dPA_slit = PA1_slit-PA2_slit
+    dPA_slit = PA2_slit-PA1_slit
     assert sep1_slit == pytest.approx(sep2_slit,abs=0.1), (f"Separation for slit check failed: expected  {sep1_slit:.3f} mas, got {sep2_slit:.3f} mas).")
     assert dPA_slit == pytest.approx(roll_angle,abs=0.1), (f"Roll-angle for slit check failed: expected  {roll_angle:.3f} degree, got roll={dPA_slit:.3f}degree).")
 
@@ -152,11 +152,11 @@ def test_roll_spec():
     sep3_slit = np.sqrt(x3_slit**2+y3_slit**2)
     PA3_slit =  np.rad2deg(np.arctan2(y3_slit, x3_slit))
 
-    dPA = PA1-PA3
+    dPA = PA3-PA1
     assert sep1 == pytest.approx(sep3,abs=0.1), (f"Separation check failed: expected  {sep1:.3f} mas, got {sep3:.3f} mas).")
     assert dPA == pytest.approx(30.0,abs=0.1), (f"Roll-angle check failed: expected  {30.0:.3f} degree, got roll={dPA:.3f}degree).")
 
-    dPA_slit = PA1_slit-PA3_slit
+    dPA_slit = PA3_slit-PA1_slit
     assert sep1_slit == pytest.approx(sep3_slit,abs=0.1), (f"Separation for slit check failed: expected  {sep1_slit:.3f} mas, got {sep3_slit:.3f} mas).")
     assert dPA_slit == pytest.approx(30.0,abs=0.1), (f"Roll-angle for slit check failed: expected  {30.0:.3f} degree, got roll={dPA_slit:.3f}degree).")
 
