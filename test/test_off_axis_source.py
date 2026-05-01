@@ -26,6 +26,7 @@ def test_off_axis_source():
     cor_type = 'hlc_band1'
 
     mag_companion = [25,25]
+    spectrum_companion = [SourceSpectrum(BlackBodyNorm1D, temperature=6000), SourceSpectrum(BlackBodyNorm1D, temperature=6000)]
     ###the position of companions in unit of mas
     ####550nm/2.3m = 29.4 mas
     ###we used sep = 3 lambda/D here 
@@ -38,10 +39,15 @@ def test_off_axis_source():
     host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype': 'vegamag'}
     point_source_info = [{'Vmag': mag_companion[0], 'magtype': 'vegamag','position_x':dx[0] , 'position_y':dy[0]},
                          {'Vmag': mag_companion[1], 'magtype': 'vegamag','position_x':dx[1] , 'position_y':dy[1]}]
-
+    customspec_point_source_info = [
+                         {'Vmag': mag_companion[0], 'magtype': 'vegamag','position_x':dx[0] , 'position_y':dy[0],
+                          'Custom_Spectrum':spectrum_companion[0], 'Rescale_Custom_Spectrum':True},
+                         {'Vmag': mag_companion[1], 'magtype': 'vegamag','position_x':dx[1] , 'position_y':dy[1],
+                          'Custom_Spectrum':spectrum_companion[1], 'Rescale_Custom_Spectrum':True}]
 
     #Create a Scene object that holds all this information
     base_scene = scene.Scene(host_star_properties, point_source_info)
+    customspec_base_scene = scene.Scene(host_star_properties, customspec_point_source_info)
 
     ####setup the wavelength for the simulation, nlam=1 for monochromatic image, nlam>1 for broadband image 
     cases = ['3e-8']       
@@ -57,10 +63,14 @@ def test_off_axis_source():
     image_star_corgi = sim_scene.host_star_image.data
     assert optics.optics_keywords['output_dim'] == optics_keywords['output_dim'], f"output_dim={optics_keywords['output_dim']}, but got {optics.optics_keywords['output_dim']}"
 
-    sim_scene = optics.inject_point_sources(base_scene,sim_scene)
+    sim_scene = optics.inject_point_sources(base_scene, sim_scene)
     assert optics.optics_keywords['output_dim'] == optics_keywords['output_dim'], f"output_dim={optics_keywords['output_dim']}, but got {optics.optics_keywords['output_dim']}"
     image_comp_corgi = sim_scene.point_source_image.data 
     tot_counts_corgi = np.sum(image_comp_corgi+image_star_corgi, dtype = np.float64)
+
+    customspec_sim_scene = optics.get_host_star_psf(customspec_base_scene)
+    customspec_sim_scene = optics.inject_point_sources(customspec_base_scene)
+    customspec_image_comp_corgi = customspec_sim_scene.point_source_image.data
 
     gain =1000
     emccd_keywords ={'em_gain':gain}
@@ -94,8 +104,10 @@ def test_off_axis_source():
     ####################################Pytest
     # Use pytest.approx to check similarity within a tolerance between corgisim and cgisim output
     ## the test is for noise-free simulation
-    assert  image_star_corgi  == pytest.approx(image_star_cgi, rel=0.5)
-    assert  image_comp_corgi  == pytest.approx(image_comp_cgi, rel=0.5)
+    assert  image_star_corgi  == pytest.approx(image_star_cgi, rel=0.15)
+    assert  image_comp_corgi  == pytest.approx(image_comp_cgi, rel=0.15)
+    assert  customspec_image_comp_corgi  == pytest.approx(image_comp_cgi, rel=0.15)
+
 
 if __name__ == '__main__':
     test_off_axis_source()
