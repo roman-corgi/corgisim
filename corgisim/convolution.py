@@ -294,10 +294,35 @@ def pixel_to_polar(img_shape, pix_scale_mas, res_mas):
     return radii_lamD, azimuth_deg
 
 def _set_2D_image_sim_info(optics, input_scene): 
-    # Prepare additional information to be added as COMMENT headers in the primary HDU.
-    # These are different from the default L1 headers, but extra comments that are used to track simulation-specific details.
-    # TODO - standardize this across different simulation functions?
+    """
+    Build simulation metadata for 2D image products.
 
+    Collects scene- and optics-level settings that are written into the
+    output FITS header as simulation-tracking metadata. The returned
+    dictionary includes a fixed set of values from ``input_scene`` and
+    ``optics``, plus a subset of entries copied from
+    ``optics.optics_keywords`` when present.
+
+    Parameters
+    ----------
+    optics : object
+        Optics configuration object. Must provide attributes such as
+        ``cgi_mode``, ``bandpass_header``, ``oversampling_factor``,
+        ``return_oversample``, ``nd``, ``SATSPOTS``, and an
+        ``optics_keywords`` mapping.
+
+    input_scene : object
+        Scene description object. Must provide the attributes
+        ``host_star_sptype``, ``host_star_Vmag``, ``host_star_magtype``,
+        and ``ref_flag``.
+
+    Returns
+    -------
+    dict
+        Dictionary of simulation metadata to attach to the generated image
+        product.
+    """
+    
     sim_info = {'host_star_sptype':input_scene.host_star_sptype,
                 'host_star_Vmag':input_scene.host_star_Vmag,
                 'host_star_magtype':input_scene.host_star_magtype,
