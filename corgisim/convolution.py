@@ -306,15 +306,10 @@ def _set_2D_image_sim_info(optics, input_scene):
     Parameters
     ----------
     optics : object
-        Optics configuration object. Must provide attributes such as
-        ``cgi_mode``, ``bandpass_header``, ``oversampling_factor``,
-        ``return_oversample``, ``nd``, ``SATSPOTS``, and an
-        ``optics_keywords`` mapping.
+        Optics configuration object.
 
     input_scene : object
-        Scene description object. Must provide the attributes
-        ``host_star_sptype``, ``host_star_Vmag``, ``host_star_magtype``,
-        and ``ref_flag``.
+        Scene description object.
 
     Returns
     -------
