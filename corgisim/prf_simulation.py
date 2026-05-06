@@ -323,7 +323,21 @@ def make_prf_cube(optics, radii_lamD, azimuths_deg, prf_dict, source_sed=None, c
     return prf_cube_hdu
 
 def fourier_shift(img, shift):
-    """Subpixel shift via Fourier shift theorem."""
+    """
+    Shift an image by number of pixels in x and y directions using the Fourier shift theorem.
+
+    Parameters
+    ----------
+    img : ndarray
+        2D input image to be shifted.
+    shift : tuple of float
+        Shift in pixels as ``(dy, dx)``, where positive ``dy`` shifts the image down and positive ``dx`` shifts the image to the right. 
+        
+    Returns
+    -------
+    ndarray
+        Shifted image, same shape as input `img`.
+    """
     dy, dx = shift
     Ny, Nx = img.shape
     ky = fftfreq(Ny).reshape(-1, 1)
