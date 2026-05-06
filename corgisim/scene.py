@@ -21,12 +21,11 @@ class Scene():
     A class that defines the an astrophysical scene
     - Information about the host star (brightness, spectral type, etc.)
     - A list of point sources (brightness, location, spectra?, etc.)
-    - A 2D background scene that will be convolved with the off-axis PSFs
-        - Dictionary contains info required for convolution
-        - Input with North-Up East-Left orientation.
-
-    Arguments:
-        host_star_properties (dict): A dictionary that contains information about the host star, including:
+    - Information about the 2D scene (e.g. a disk or extended structure) with information about the flux calibration and data path. 
+    
+    
+    Arguments: 
+        host_star_properties (dict): A dictionary that contains information about the host star, including: 
             - "Vmag" (float): The V-band magnitude of the host star.
             - "spectral_type" (str): Spectral type of the host star. Must follow the format: "<Class><Subclass>[<Luminosity Class>]".
                 Valid components include:
@@ -59,8 +58,23 @@ class Scene():
                 - All magnitudes must be consistent with their respective magnitude type.
                 - If no custom spectrum is provided, a default flat spectrum will be generated based on the V-band magnitude.
 
-        background_scene (HDUList): An astropy HDU that contains a background scene as data and a header full of relevant information, such as:
-            pixel_scale, etc.
+        twoD_scene_info (dict): A dictionary containing information about an extended 2D scene, such as a disk or other extended structure. Required keys are:
+
+            - "contrast" (float): The contrast of the 2D scene relative to the host star in magnitudes (dMag). This value is currently used to generate a spectrum for the 2D scene based on the host star's spectrum, but in the future we may want to allow users to directly input the 2D scene spectrum or flux instead of relying on contrast with the host star.
+
+            - "disk_model_path" (str): The absolute file path to a FITS file containing the 2D scene image. The image data are treated as a spatial brightness template and are normalised internally so that the total scene flux sums to 1 before convolution. 
+
+                Assumptions:
+                - The FITS image must already be sampled on the same pixel scale used for convolution, currently 0.0218 arcsec/pixel, but in the future we may want to allow users to input the pixel scale as well.
+                - The image should be centred
+                - The image should be oriented in the same reference frame as the point source coordinates (typically North-up, East-left).
+                - The current implementation does not resample the input image, or infer the pixel scale from the FITS header. 
+            
+            - "prf_cube_path" (str): The absolute file path to a FITS file containing the precomputed      off-axis PRF cube used to convolve the 2D scene. 
+
+            Notes:
+            -  The 2D scene flux calibration is provisional. Future versions may allow users to provide an absolute flux or custom spectrum directly instead of deriving the scene spectrum from the host star and the contrast. 
+
 
     Raises:
         ValueError: If the provided spectral type is invalid.
@@ -130,14 +144,11 @@ class Scene():
                 self.point_source_pol_state[source] = np.divide(self.point_source_pol_state[source], self.point_source_pol_state[source][0])
 
         # setting up the 2D scene
-        # twoD_scene_info: a dictionary containing 2D scene information
         self.twoD_scene_info = twoD_scene_info
         self.twoD_scene_spectrum = None
         self.twoD_prf_cubes = None
 
         # If a 2D scene is provided, generate its spectrum based on the host star's properties and the scene's contrast
-        # TODO - also need to figure out how to handle cases without pre-generated prf cube
-        # TODO - when generating prf, user should either save the input in the header, or we should create a function for that 
         if twoD_scene_info is not None:
             self.twoD_scene_spectrum = self.get_stellar_spectrum(
                 self._host_star_sptype,
