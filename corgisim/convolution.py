@@ -466,8 +466,35 @@ def _convolve_with_prfs(obj, prfs_array, radii_lamD, azimuths_deg,
     return conv
 
 def flux_calibration_2D_scene(optics, input_scene, conv2d):
-    # NOTE: An attempt to convert flux units to physical units after convolution
-    # normalize to the given contrast
+    """
+    Apply a provisional flux calibration to a convolved 2D scene (see Notes).
+
+    Estimates the total detected counts across the bandpass using the input
+    scene spectrum and scales the convolved image to an approximate flux per
+    resolution element. The scaling uses the number of pixels above half the
+    peak convolved signal as a proxy for the disk region and normalizes by an
+    estimate of the PSF FWHM area.
+
+    Parameters
+    ----------
+    optics : object
+        Optics configuration object.
+    input_scene : object
+        Scene object containing ``twoD_scene_spectrum`` for the source being
+        calibrated.
+    conv2d : ndarray
+        Convolved 2D scene image to be scaled in place.
+
+    Returns
+    -------
+    conv2d: ndarray
+        Flux-scaled version of ``conv2d``.
+
+    Notes
+    -----
+    This calibration step is provisional and expected to change as the 2D
+    scene flux-normalization method is refined.
+    """
     # obs: flux is in unit of photons/s/cm^2/angstrom
     obs = Observation(input_scene.twoD_scene_spectrum, optics.bp)
     counts = np.zeros((optics.lam_um.shape[0]))
