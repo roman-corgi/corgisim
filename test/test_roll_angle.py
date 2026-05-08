@@ -25,7 +25,7 @@ def test_roll_imaging():
     #Define companion properties
     #Add one companions, one in FOV
     mag_companion = [20]
-    companion_x_pos = [-3*49.3]
+    companion_x_pos = [3*49.3]
     companion_y_pos = [3*49.3]
     
     #### simulate using corgisim
@@ -47,16 +47,16 @@ def test_roll_imaging():
     sim_scene_roll1 = optics_roll1.inject_point_sources(base_scene)
     x1, y1 = optics_roll1.optics_keywords_comp['source_x_offset_mas'],optics_roll1.optics_keywords_comp['source_y_offset_mas']
     sep1 = np.sqrt(x1**2+y1**2)
-    PA1 = np.rad2deg(np.arctan2(y1, x1))
+    PA1 = np.degrees(np.arctan2(x1, y1)) % 360
 
     ####second roll,roll=roll_angle
     optics_roll2 = instrument.CorgiOptics(cgi_mode, bandpass_corgisim, optics_keywords=optics_keywords, roll_angle= roll_angle,if_quiet=True,oversampling_factor = 1)
     sim_scene_roll2 = optics_roll2.inject_point_sources(base_scene)
     x2, y2 = optics_roll2.optics_keywords_comp['source_x_offset_mas'],optics_roll2.optics_keywords_comp['source_y_offset_mas']
     sep2 = np.sqrt(x2**2+y2**2)
-    PA2 = np.rad2deg(np.arctan2(y2, x2))
+    PA2 = np.degrees(np.arctan2(x2, y2)) % 360
 
-    dPA = PA1-PA2
+    dPA = PA2-PA1
     assert dPA == pytest.approx(roll_angle,abs=0.1), (f"Roll-angle check failed: expected  {roll_angle:.3f} degree, got roll={dPA:.3f}degree).")
     assert sep1 == pytest.approx(sep2,abs=0.1), (f"Separation check failed: expected  {sep1:.3f} mas, got {sep2:.3f} mas).")
 
@@ -81,7 +81,7 @@ def test_roll_spec():
     #Define companion properties
     #Add one companions, one in FOV
     mag_companion = [20]
-    companion_x_pos = [-1*740]
+    companion_x_pos = [740]
     companion_y_pos = [740]
     
     #### simulate using corgisim
@@ -109,24 +109,29 @@ def test_roll_spec():
     sim_scene_roll1 = optics_roll1.inject_point_sources(base_scene)
     x1, y1 = optics_roll1.optics_keywords_comp['source_x_offset_mas'],optics_roll1.optics_keywords_comp['source_y_offset_mas']
     sep1 = np.sqrt(x1**2+y1**2)
-    PA1 = np.rad2deg(np.arctan2(y1, x1))
-  
+    ###PA here is the angle relative to the +y axis, increasing towards +x axis.
+    PA1 = np.degrees(np.arctan2(x1, y1)) % 360
+    assert x1 == pytest.approx(-1*companion_x_pos[0],abs=0.1), (f"mapping check failed: expected  {-1*companion_x_pos[0]:.3f}, got roll={x1:.3f}).")
+    assert y1 == pytest.approx(companion_y_pos[0],abs=0.1), (f"mapping check failed: expected  {companion_y_pos[0]:.3f}, got roll={y1:.3f}).")
 
     x1_slit, y1_slit =  optics_roll1.slit_x_offset_mas,optics_roll1.slit_y_offset_mas
     sep1_slit = np.sqrt(x1_slit**2+y1_slit**2)
-    PA1_slit =  np.rad2deg(np.arctan2(y1_slit, x1_slit))
+    PA1_slit =  np.degrees(np.arctan2(x1_slit, y1_slit)) % 360
+    assert x1_slit == pytest.approx(-1*source_x_offset_mas,abs=0.1), (f"mapping check failed: expected  {-1*source_x_offset_mas:.3f}, got roll={x1_slit:.3f}).")
+    assert y1_slit == pytest.approx(source_y_offset_mas,abs=0.1), (f"mapping check failed: expected  {source_y_offset_mas:.3f}, got roll={y1_slit:.3f}).")
+
 
     ####second roll,roll=roll_angle
     optics_roll2 = instrument.CorgiOptics(cgi_mode, bandpass_corgisim, optics_keywords=optics_keywords, roll_angle= roll_angle,if_quiet=True,oversampling_factor = 1)
     sim_scene_roll2 = optics_roll2.inject_point_sources(base_scene)
     x2, y2 = optics_roll2.optics_keywords_comp['source_x_offset_mas'],optics_roll2.optics_keywords_comp['source_y_offset_mas']
     sep2 = np.sqrt(x2**2+y2**2)
-    PA2 = np.rad2deg(np.arctan2(y2, x2))
+    PA2 = np.degrees(np.arctan2(x2, y2)) % 360
 
 
     x2_slit, y2_slit =  optics_roll2.slit_x_offset_mas,optics_roll2.slit_y_offset_mas
     sep2_slit = np.sqrt(x2_slit**2+y2_slit**2)
-    PA2_slit =  np.rad2deg(np.arctan2(y2_slit, x2_slit))
+    PA2_slit =  np.degrees(np.arctan2(x2_slit, y2_slit)) % 360
 
     dPA = PA2-PA1
     assert sep1 == pytest.approx(sep2,abs=0.1), (f"Separation check failed: expected  {sep1:.3f} mas, got {sep2:.3f} mas).")
@@ -146,11 +151,11 @@ def test_roll_spec():
     assert y3_slit != y2_slit
     
     sep3 = np.sqrt(x3**2+y3**2)
-    PA3 = np.rad2deg(np.arctan2(y3, x3))
+    PA3 = np.degrees(np.arctan2(x3, y3)) % 360
 
 
     sep3_slit = np.sqrt(x3_slit**2+y3_slit**2)
-    PA3_slit =  np.rad2deg(np.arctan2(y3_slit, x3_slit))
+    PA3_slit =  np.degrees(np.arctan2(x3_slit, y3_slit)) % 360
 
     dPA = PA3-PA1
     assert sep1 == pytest.approx(sep3,abs=0.1), (f"Separation check failed: expected  {sep1:.3f} mas, got {sep3:.3f} mas).")
@@ -165,5 +170,4 @@ def test_roll_spec():
 
 if __name__ == '__main__':
     #test_roll_imaging()
-    
     test_roll_spec()

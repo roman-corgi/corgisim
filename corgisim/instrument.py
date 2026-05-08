@@ -1643,7 +1643,7 @@ def skycoord_to_excamcoord(dra, ddec, roll_angle):
     """
     # Apply roll angle rotation
     # Because we rotate the *companion coords*, use the opposite sense: θ_comp = -roll_angle.
-    theta_comp = np.deg2rad( roll_angle)
+    theta_comp = np.deg2rad( -1*roll_angle)
 
     # Step 1: map sky offsets into the unrotated EXCAM frame
     x0 = -dra
