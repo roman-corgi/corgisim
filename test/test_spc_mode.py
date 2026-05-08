@@ -61,7 +61,7 @@ def test_spc_mode():
     
     image_comp = []
     for i in range(len(mag_companion)):
-        params['source_x_offset_mas'] = companion_x_pos[i]
+        params['source_x_offset_mas'] = -1*companion_x_pos[i]
         params['source_y_offset_mas'] = companion_y_pos[i]
         comp_sim_allpol, comp_counts = cgisim.rcgisim(cgi_mode, cor_type, bandpass_cgisim,  polaxis_cgisim, params, 
         star_spectrum = sptype.lower(), star_vmag = mag_companion[i])
