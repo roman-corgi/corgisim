@@ -111,14 +111,14 @@ def test_roll_spec():
     sep1 = np.sqrt(x1**2+y1**2)
     ###PA here is the angle relative to the +y axis, increasing towards +x axis.
     PA1 = np.degrees(np.arctan2(x1, y1)) % 360
-    assert x1 == pytest.approx(-1*companion_x_pos[0],abs=0.1), (f"mapping check failed: expected  {-1*companion_x_pos[0]:.3f}, got roll={x1:.3f}).")
-    assert y1 == pytest.approx(companion_y_pos[0],abs=0.1), (f"mapping check failed: expected  {companion_y_pos[0]:.3f}, got roll={y1:.3f}).")
+    assert x1 == pytest.approx(-1*companion_x_pos[0],abs=0.1), (f"mapping check failed: expected  {-1*companion_x_pos[0]:.3f}, got x position={x1:.3f}).")
+    assert y1 == pytest.approx(companion_y_pos[0],abs=0.1), (f"mapping check failed: expected  {companion_y_pos[0]:.3f}, got y position={y1:.3f}).")
 
     x1_slit, y1_slit =  optics_roll1.slit_x_offset_mas,optics_roll1.slit_y_offset_mas
     sep1_slit = np.sqrt(x1_slit**2+y1_slit**2)
     PA1_slit =  np.degrees(np.arctan2(x1_slit, y1_slit)) % 360
-    assert x1_slit == pytest.approx(-1*source_x_offset_mas,abs=0.1), (f"mapping check failed: expected  {-1*source_x_offset_mas:.3f}, got roll={x1_slit:.3f}).")
-    assert y1_slit == pytest.approx(source_y_offset_mas,abs=0.1), (f"mapping check failed: expected  {source_y_offset_mas:.3f}, got roll={y1_slit:.3f}).")
+    assert x1_slit == pytest.approx(-1*source_x_offset_mas,abs=0.1), (f"mapping check failed: expected  {-1*source_x_offset_mas:.3f}, got slit x position={x1_slit:.3f}).")
+    assert y1_slit == pytest.approx(source_y_offset_mas,abs=0.1), (f"mapping check failed: expected  {source_y_offset_mas:.3f}, got slit y position={y1_slit:.3f}).")
 
 
     ####second roll,roll=roll_angle
