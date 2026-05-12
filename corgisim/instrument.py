@@ -1267,11 +1267,14 @@ class CorgiOptics():
         This function modifies the deformable mirror settings stored in `self.optics_keywords['dm1_v']` 
         by injecting satellite spots according to the provided `satspot_keywords`.
 
+        An optional "sign" keyword allows a user to define whether the satellite spots are added with a 
+        positive or negative cosine pattern on the DM. Defaults to "positive" if not specified.
+
         Parameters:
         ----------
         satspot_keywords : dict
             Dictionary specifying the parameters needed to define and inject 
-            satellite spots (sep_lamD, angle_deg, contrast, wavelength_m).
+            satellite spots (sep_lamD, angle_deg, contrast, wavelength_m, sign(options)).
 
         Returns:
         -------
