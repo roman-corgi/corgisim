@@ -1291,7 +1291,13 @@ class CorgiOptics():
         contrast = satspot_keywords['contrast']
         wavelength_m = satspot_keywords['wavelength_m']
 
-        dm1_cos_added = add_cos_pattern_dm(dm1_input,num_pairs,sep_lamD,angle_deg,contrast,wavelength_m)
+                    #If the user doesn't pass in the 
+        if "sign" not in satspot_keywords.keys():
+                sign = "positive"
+        else: 
+                sign = satspot_keywords["sign"]
+
+        dm1_cos_added = add_cos_pattern_dm(dm1_input,num_pairs,sep_lamD,angle_deg,contrast,wavelength_m, sign = sign)
 
         return dm1_cos_added
 

@@ -1,6 +1,6 @@
 import numpy as np
 
-def add_cos_pattern_dm(dm_volts, num_pairs=2, sep_lamD=7, angle_deg=[0,90], contrast=1e-6, wavelength_m=0.575e-6, gain_nm_per_V=None):
+def add_cos_pattern_dm(dm_volts, num_pairs=2, sep_lamD=7, angle_deg=[0,90], contrast=1e-6, wavelength_m=0.575e-6, gain_nm_per_V=None, sign = "positive"):
     """
     Add 2D cosine phase pattern(s) to Roman CGI DM solution (in volts). Reference: JPL codes from AJ Riggs and Vanessa Bailey
 
@@ -11,6 +11,7 @@ def add_cos_pattern_dm(dm_volts, num_pairs=2, sep_lamD=7, angle_deg=[0,90], cont
         - contrast: int, float, or a list of ints/floats. Expected contrast of sattelite spots, assuming amplitude_rad = 2*sqrt(contrast), where amplitude is a phase amplitude in radians
         - wavelength_m: float. Wavelength in meters
 	    - gain_nm_per_V: (optional) gain to convert the DM solution from a nm unit to volts
+        - sign: str. Sign of the cosine pattern, either "positive" or "negative"
 
     Returns:
         - dm_volts_with_pattern: 2D numpy array (in volts), updated DM map with added cosine patterns
@@ -90,6 +91,9 @@ def add_cos_pattern_dm(dm_volts, num_pairs=2, sep_lamD=7, angle_deg=[0,90], cont
         
         # Convert stroke to volts
         stroke_V = stroke_m / (gain_nm_per_V * 1e-9)
+
+        if sign == "negative":
+            stroke_V = -stroke_V
 
         # Add to original DM map (in volts)
         dm_volts_with_pattern += stroke_V
