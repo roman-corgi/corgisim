@@ -90,7 +90,7 @@ def test_L1_product_fits_format():
     assert exthr['FSMX'] == 0.0, f"Expected data FSMX=10, but got {exthr['FSMX']}" 
     assert exthr['FSMY'] == 0.0, f"Expected data FSMY=10, but got {exthr['FSMY']}"
     assert prihr['PSFREF'] == False, f"Expected data PSFREF=False, but got {prihr['PSFREF']}"
-    assert prihr['PHTCNT'] == True, f"Expected data PSFREF=True, but got {prihr['PHTCNT']}"
+    assert prihr['PHTCNT'] == False, f"Expected data PSFREF=False, but got {prihr['PHTCNT']}"
     assert prihr['ROLL'] == 0.0, f"Expected data ROLL=0, but got {prihr['ROLL']}"
     assert prihr['PA_APER'] == 0.0, f"Expected data PA_APER=0, but got {prihr['PA_APER']}"
     assert prihr['TARGET'] == 'UNKNOWN', f"Expected header TARGET = 'UNKNOWN', but got {prihr['TARGET']}"
@@ -102,7 +102,7 @@ def test_L1_product_fits_format():
     assert exthdr['EMGAIN_A'] == 1000, f"Expected data EMGAIN_A=1000, but got {exthdr['EMGAIN_A']}"
     assert exthdr['RN'] == 165.0, f"Expected data RN=165.0, but got {exthdr['RN']}"
 
-    assert exthdr['ISPC'] == 1, f"Expected header ISPC=1, but got {exthdr['ISPC']}"
+    assert exthdr['ISPC'] == 0, f"Expected header ISPC=0, but got {exthdr['ISPC']}"
 
     assert exthdr['SPAM_H'] ==  1001.3, f"Expected data SPAM_H=1001.3, but got {exthdr['SPAM_H']}"
     assert exthdr['SPAM_V']== 16627,  f"Expected data SPAM_V = 16627, but got {exthdr['SPAM_V']}"
@@ -222,7 +222,7 @@ def test_L1_product_fits_format():
     emccd_keywords ={'em_gain':gain,'e_per_dn':e_per_dn}
     exptime = 3000
 
-    detector = instrument.CorgiDetector( emccd_keywords, photon_counting = False)
+    detector = instrument.CorgiDetector( emccd_keywords, photon_counting = True)
     sim_scene = detector.generate_detector_image(sim_scene, exptime,full_frame=True,loc_x=300, loc_y=300)
     
     ### save the L1 product fits file to test/testdata folder
@@ -252,7 +252,7 @@ def test_L1_product_fits_format():
     assert exthr['FSMX'] == 10.0, f"Expected header FSMX=10, but got {exthr['FSMX']}" 
     assert exthr['FSMY'] == 20.0, f"Expected header FSMY=10, but got {exthr['FSMY']}"
     assert prihr['PSFREF'] == True, f"Expected header PSFREF=False, but got {prihr['PSFREF']}"
-    assert prihr['PHTCNT'] == False, f"Expected header PSFREF=False, but got {prihr['PHTCNT']}"
+    assert prihr['PHTCNT'] == True, f"Expected header PSFREF=True, but got {prihr['PHTCNT']}"
     assert prihdr['FRAMET'] == exptime, f"Expected header FRAMET = {exptime}, but got {prihdr['FRAMET']}"
     assert prihr['ROLL'] == 0.0, f"Expected data ROLL=0, but got {prihr['ROLL']}"
     assert prihr['PA_APER'] == roll_angle, f"Expected data PA_APER={roll_angle}, but got {prihr['PA_APER']}"
@@ -262,7 +262,7 @@ def test_L1_product_fits_format():
     assert exthdr['KGAINPAR'] == e_per_dn, f"Expected data KGAINPAR={e_per_dn}, but got {exthdr['KGAINPAR']}"
     assert exthdr['EMGAIN_C'] == gain, f"Expected data EMGAIN_C={gain}, but got {exthdr['EMGAIN_C']}"
     assert exthdr['EMGAIN_A'] == gain, f"Expected data EMGAIN_A={gain}, but got {exthdr['EMGAIN_A']}"
-    assert exthdr['ISPC'] == 0, f"Expected header ISPC=0, but got {exthdr['ISPC']}"
+    assert exthdr['ISPC'] == 1, f"Expected header ISPC=1, but got {exthdr['ISPC']}"
     assert exthdr['EACQ_ROW'] == 300, f"Expected header EACQ_ROW=300, but got {exthdr['EACQ_ROW']}"
     assert exthdr['EACQ_COL'] == 300, f"Expected header EACQ_COL=300, but got {exthdr['EACQ_COL']}"
 
