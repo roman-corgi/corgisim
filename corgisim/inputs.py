@@ -148,7 +148,8 @@ class Input():
                                   'nbits': 14  ,                        # ADC bits
                                   'numel_gain_register': 604,           # Number of gain register elements 
                                   'use_traps': False,                    # include CTI impact of traps
-                                  'date4traps': 2028.0}                        # decimal year of observation}      
+                                  'date4traps': 2028.0,                  # decimal year of observation     
+                                  'rowreadtime': 223.5e-6}              # in seconds; needed to simulate smearing
 
         host_star_properties_default = {'spectral_type' : 'G0V',
                                         'Vmag' :  5  , 

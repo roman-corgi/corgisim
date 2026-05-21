@@ -1595,7 +1595,8 @@ class CorgiDetector():
                                   'nbits': 14  ,                        # ADC bits
                                   'numel_gain_register': 604,           # Number of gain register elements 
                                   'use_traps': False,                    # include CTI impact of traps
-                                  'date4traps': 2028.0}                        # decimal year of observation}
+                                  'date4traps': 2028.0,                  # decimal year of observation
+                                  'rowreadtime': 223.5e-6}               # in seconds (needed to simulate smearing)
 
         if emccd_keywords is not None:                    
             if 'qe' in emccd_keywords.keys():
@@ -1609,7 +1610,7 @@ class CorgiDetector():
         emccd = EMCCDDetect( em_gain=self.emccd_keywords_default['em_gain'], full_well_image=self.emccd_keywords_default['full_well_image'], full_well_serial=self.emccd_keywords_default['full_well_serial'],
                              dark_current=self.emccd_keywords_default['dark_rate'], cic=self.emccd_keywords_default['cic_noise'], read_noise=self.emccd_keywords_default['read_noise'], bias=self.emccd_keywords_default['bias'],
                              qe=1.0, cr_rate=self.emccd_keywords_default['cr_rate'], pixel_pitch=self.emccd_keywords_default['pixel_pitch'], eperdn=self.emccd_keywords_default['e_per_dn'],
-                             numel_gain_register=self.emccd_keywords_default['numel_gain_register'], nbits=self.emccd_keywords_default['nbits'] )
+                             numel_gain_register=self.emccd_keywords_default['numel_gain_register'], nbits=self.emccd_keywords_default['nbits'], rowreadtime=self.emccd_keywords_default['rowreadtime'])
         
         if self.emccd_keywords_default['use_traps']: 
             raise ValueError(f"The part to simulate CTI effects using trap models has not been implemented yet!")
