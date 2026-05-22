@@ -1573,6 +1573,7 @@ class CorgiDetector():
             - nbits (int, optional): Number of bits in the analog-to-digital converter. Defaults to 14.
             - use_traps (bool, optional): Flag indicating whether to simulate CTI effects using trap models. Defaults to False.
             - date4traps (float, optional): Decimal year of observation; only applicable if `use_traps` is True. Defaults to 2028.0.
+            - row_read_time (float, optional): Row read time in seconds, needed to simulate smearing. Defaults to 223.5e-6.  For no smearing, set this to 0.
 
         Returns:
             - emccd (EMCCDDetectBase): A configured EMCCD detector object. If `use_traps` is True, the detector's CTI is updated using the corresponding trap model.
