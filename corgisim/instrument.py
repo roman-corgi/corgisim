@@ -1574,6 +1574,8 @@ class CorgiDetector():
             - use_traps (bool, optional): Flag indicating whether to simulate CTI effects using trap models. Defaults to False.
             - date4traps (float, optional): Decimal year of observation; only applicable if `use_traps` is True. Defaults to 2028.0.
             - row_read_time (float, optional): Row read time in seconds, needed to simulate smearing. Defaults to 223.5e-6.  For no smearing, set this to 0.
+            - nonlin_path (str, optional): Path to the nonlinearity file for simulating nonlinearity. Defaults to None (no nonlinearity simulated).
+            - flat_path (str, optional): Path to the flat field file for simulating flat field nonuniformity. Defaults to None (no flat field nonuniformity simulated).
 
         Returns:
             - emccd (EMCCDDetectBase): A configured EMCCD detector object. If `use_traps` is True, the detector's CTI is updated using the corresponding trap model.
@@ -1597,7 +1599,9 @@ class CorgiDetector():
                                   'numel_gain_register': 604,           # Number of gain register elements 
                                   'use_traps': False,                    # include CTI impact of traps
                                   'date4traps': 2028.0,                  # decimal year of observation
-                                  'row_read_time': 223.5e-6}               # in seconds (needed to simulate smearing)
+                                  'row_read_time': 223.5e-6,              # in seconds (needed to simulate smearing)
+                                  'nonlin_path': None,                  # path to file containing non-linearity map; if None, no input nonlinearity used
+                                  'flat_path': None}                    # path to file containing flat field map; if None, no flat field correction used
 
         if emccd_keywords is not None:                    
             if 'qe' in emccd_keywords.keys():
@@ -1611,7 +1615,8 @@ class CorgiDetector():
         emccd = EMCCDDetect( em_gain=self.emccd_keywords_default['em_gain'], full_well_image=self.emccd_keywords_default['full_well_image'], full_well_serial=self.emccd_keywords_default['full_well_serial'],
                              dark_current=self.emccd_keywords_default['dark_rate'], cic=self.emccd_keywords_default['cic_noise'], read_noise=self.emccd_keywords_default['read_noise'], bias=self.emccd_keywords_default['bias'],
                              qe=1.0, cr_rate=self.emccd_keywords_default['cr_rate'], pixel_pitch=self.emccd_keywords_default['pixel_pitch'], eperdn=self.emccd_keywords_default['e_per_dn'],
-                             numel_gain_register=self.emccd_keywords_default['numel_gain_register'], nbits=self.emccd_keywords_default['nbits'], row_read_time=self.emccd_keywords_default['row_read_time'])
+                             numel_gain_register=self.emccd_keywords_default['numel_gain_register'], nbits=self.emccd_keywords_default['nbits'], row_read_time=self.emccd_keywords_default['row_read_time'], 
+                             nonlin_path=self.emccd_keywords_default['nonlin_path'], flat_path=self.emccd_keywords_default['flat_path'])
         
         if self.emccd_keywords_default['use_traps']: 
             raise ValueError(f"The part to simulate CTI effects using trap models has not been implemented yet!")

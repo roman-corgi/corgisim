@@ -149,7 +149,10 @@ class Input():
                                   'numel_gain_register': 604,           # Number of gain register elements 
                                   'use_traps': False,                    # include CTI impact of traps
                                   'date4traps': 2028.0,                  # decimal year of observation     
-                                  'row_read_time': 223.5e-6}              # in seconds; needed to simulate smearing
+                                  'row_read_time': 223.5e-6,              # in seconds; needed to simulate smearing
+                                  'nonlin_path': None,                  # path to file containing non-linearity map; if None, no input nonlinearity used
+                                  'flat_path': None}                    # path to file containing flat field map; if None, no flat field correction used
+        
 
         host_star_properties_default = {'spectral_type' : 'G0V',
                                         'Vmag' :  5  , 
