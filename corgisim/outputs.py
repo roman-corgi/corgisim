@@ -280,6 +280,14 @@ def write_headers_SPAM(cor_type):
         SPAMSP_H = 44850.4
         SPAMSP_V = 8654.4
 
+    if 'zwfs' in cor_type: #refine values
+        SPAM_H = 1001.3
+        SPAM_V = 16627
+        SPAMNAME = 'OPEN'
+        SPAMSP_H = 1001.3
+        SPAMSP_V = 16627
+
+
     return SPAM_H,SPAM_V,SPAMNAME,SPAMSP_H, SPAMSP_V
 
 
@@ -620,6 +628,13 @@ def write_headers_FPAM(cor_type, band_pass,use_fpm,nd_filter):
                 FPAMSP_H = 40505.5
                 FPAMSP_V = 22573.8
 
+        if 'zwfs' in cor_type: #refine values
+            FPAM_H = 14407.4
+            FPAM_V = 23722.4
+            FPAMNAME = 'HLC12_C7R2'
+            FPAMSP_H = 14407.4
+            FPAMSP_V = 14407.4
+
     return FPAM_H, FPAM_V, FPAMNAME, FPAMSP_H, FPAMSP_V
 
 
@@ -727,6 +742,14 @@ def write_headers_FSAM(cor_type, band_pass,slit,polaxis,use_field_stop):
                 FSAMNAME = 'R2C2'
                 FSAMSP_H = 24687
                 FSAMSP_V = 17438
+
+        if 'zwfs' in cor_type: #refine the values
+            FSAM_H = 29387
+            FSAM_V = 12238
+            FSAMNAME = 'XXXXX'
+            FSAMSP_H = 29387
+            FSAMSP_V = 12238
+
 
     return FSAM_H, FSAM_V, FSAMNAME, FSAMSP_H, FSAMSP_V
 
