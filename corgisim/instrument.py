@@ -91,10 +91,10 @@ class CorgiOptics():
 
         valid_cgi_modes = ['excam', 'spec', 'lowfs', 'excam_efield']
         valid_cor_types = ['hlc', 'hlc_band1', 'spc-wide', 'spc-wide_band4', 
-                        'spc-wide_band1', 'hlc_band2', 'hlc_band3', 'hlc_band4','spc-spec', 'spc-spec_band2', 'spc-spec_band3' ]
+                        'spc-wide_band1', 'hlc_band2', 'hlc_band3', 'hlc_band4','spc-spec', 'spc-spec_band2', 'spc-spec_band3' , 'zwfs']
         
         #these cor_type is availbale in cgisim, but are currently untested in corgisim
-        untest_cor_types = ['spc-spec_rotated', 'spc-spec_band2_rotated', 'spc-spec_band3_rotated','spc-mswc', 'spc-mswc_band4','spc-mswc_band1', 'zwfs']
+        untest_cor_types = ['spc-spec_rotated', 'spc-spec_band2_rotated', 'spc-spec_band3_rotated','spc-mswc', 'spc-mswc_band4','spc-mswc_band1']
 
         if cgi_mode not in valid_cgi_modes:
             raise Exception('ERROR: Requested mode does not match any available mode')
@@ -259,13 +259,16 @@ class CorgiOptics():
         if 'use_fpm' not in optics_keywords_internal:
             optics_keywords_internal['use_fpm'] = 1  # use fpm by default
         if 'use_lyot_stop' not in optics_keywords_internal:
-            optics_keywords_internal['use_lyot_stop'] = 1  # use lyot stop by default
+            if self.cor_type != 'zwfs':
+                optics_keywords_internal['use_lyot_stop'] = 1  # use lyot stop by default
+            else:
+                optics_keywords_internal['use_lyot_stop'] = 0  # don't use Lyot stop for zwfs
         if 'use_field_stop' not in optics_keywords_internal:
             optics_keywords_internal['use_field_stop'] = 1  # use field stop by default
         if 'use_pupil_lens' not in optics_keywords_internal:
             optics_keywords_internal['use_pupil_lens'] = 0  # not use pupil lens by default
 
-        if optics_keywords_internal['use_pupil_lens']==1 :
+        if optics_keywords_internal['use_pupil_lens']==1 and self.cor_type != 'zwfs':
             if (optics_keywords_internal['use_fpm']==1) or (optics_keywords_internal['use_lyot_stop']==1) or (optics_keywords_internal['use_field_stop']==1):
                  warnings.warn('Warning: the pupil lens is inserted while one or more of the focal mask, Lyot stop, or field stop are also in use.', UserWarning)
 
