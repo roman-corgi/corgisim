@@ -90,7 +90,7 @@ def test_L1_product_fits_format():
     assert exthr['FSMX'] == 0.0, f"Expected data FSMX=10, but got {exthr['FSMX']}" 
     assert exthr['FSMY'] == 0.0, f"Expected data FSMY=10, but got {exthr['FSMY']}"
     assert prihr['PSFREF'] == False, f"Expected data PSFREF=False, but got {prihr['PSFREF']}"
-    assert prihr['PHTCNT'] == True, f"Expected data PSFREF=True, but got {prihr['PHTCNT']}"
+    assert prihr['PHTCNT'] == False, f"Expected data PSFREF=False, but got {prihr['PHTCNT']}"
     assert prihr['ROLL'] == 0.0, f"Expected data ROLL=0, but got {prihr['ROLL']}"
     assert prihr['PA_APER'] == 0.0, f"Expected data PA_APER=0, but got {prihr['PA_APER']}"
     assert prihr['TARGET'] == 'UNKNOWN', f"Expected header TARGET = 'UNKNOWN', but got {prihr['TARGET']}"
@@ -102,7 +102,7 @@ def test_L1_product_fits_format():
     assert exthdr['EMGAIN_A'] == 1000, f"Expected data EMGAIN_A=1000, but got {exthdr['EMGAIN_A']}"
     assert exthdr['RN'] == 165.0, f"Expected data RN=165.0, but got {exthdr['RN']}"
 
-    assert exthdr['ISPC'] == 1, f"Expected header ISPC=1, but got {exthdr['ISPC']}"
+    assert exthdr['ISPC'] == 0, f"Expected header ISPC=0, but got {exthdr['ISPC']}"
 
     assert exthdr['SPAM_H'] ==  1001.3, f"Expected data SPAM_H=1001.3, but got {exthdr['SPAM_H']}"
     assert exthdr['SPAM_V']== 16627,  f"Expected data SPAM_V = 16627, but got {exthdr['SPAM_V']}"
@@ -128,11 +128,11 @@ def test_L1_product_fits_format():
     assert exthdr['DPAMSP_H'] == 38917.1, f"Expected data DPAMSP_H=38917.1, but got {exthdr['DPAMSP_H']}"
     assert exthdr['DPAMSP_V'] == 26016.9, f"Expected data DPAMSP_V=26016.9, but got {exthdr['DPAMSP_V']}"
 
-    assert exthdr['FPAM_H'] ==  6757.2, f"Expected data FPAM_H= 6757.2, but got {exthdr['FPAM_H']}"
-    assert exthdr['FPAM_V'] == 22424, f"Expected data FPAM_V=22424, but got {exthdr['FPAM_V']}"
-    assert exthdr['FPAMNAME'] == 'HLC12_C2R1', f"Expected data FPAMNAME='HLC12_C2R1', but got {exthdr['FPAMNAME']}"
-    assert exthdr['FPAMSP_H'] ==  6757.2, f"Expected data FPAMSP_H= 6757.2, but got {exthdr['FPAMSP_H']}"
-    assert exthdr['FPAMSP_V'] == 22424, f"Expected data FPAMSP_V=22424, but got {exthdr['FPAMSP_V']}"
+    assert exthdr['FPAM_H'] ==  6776, f"Expected data FPAM_H= 6776, but got {exthdr['FPAM_H']}"
+    assert exthdr['FPAM_V'] == 27653.3, f"Expected data FPAM_V=27653.3, but got {exthdr['FPAM_V']}"
+    assert exthdr['FPAMNAME'] == 'HLC12_C2R5', f"Expected data FPAMNAME='HLC12_C2R5', but got {exthdr['FPAMNAME']}"
+    assert exthdr['FPAMSP_H'] ==  6776, f"Expected data FPAMSP_H= 6776, but got {exthdr['FPAMSP_H']}"
+    assert exthdr['FPAMSP_V'] == 27653.3, f"Expected data FPAMSP_V=27653.3, but got {exthdr['FPAMSP_V']}"
 
     assert exthdr['FSAM_H'] ==  29387, f"Expected data FSAM_H=29387, but got {exthdr['FSAM_H']}"
     assert exthdr['FSAM_V'] == 12238, f"Expected data FSAM_V=12238, but got {exthdr['FSAM_V']}"
@@ -203,8 +203,10 @@ def test_L1_product_fits_format():
     rootname = 'hlc_ni_' + cases[0]
     dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm1_v.fits' )
     dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm2_v.fits' )
-
-    optics_keywords ={'cor_type':cor_type, 'use_errors':1, 'polaxis':10, 'output_dim':51,\
+    
+    #define which wollaston prism to use
+    prism = 'POL0' 
+    optics_keywords ={'cor_type':cor_type, 'use_errors':1, 'polaxis':10, 'output_dim':51,'prism':prism,\
                     'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1,
                     'fsm_x_offset_mas':10.0,'fsm_y_offset_mas':20.0 }
                 ##pass fsm_x_offset_mas and fsm_y_offset_mas for no zero value as test
@@ -220,7 +222,7 @@ def test_L1_product_fits_format():
     emccd_keywords ={'em_gain':gain,'e_per_dn':e_per_dn}
     exptime = 3000
 
-    detector = instrument.CorgiDetector( emccd_keywords, photon_counting = False)
+    detector = instrument.CorgiDetector( emccd_keywords, photon_counting = True)
     sim_scene = detector.generate_detector_image(sim_scene, exptime,full_frame=True,loc_x=300, loc_y=300)
     
     ### save the L1 product fits file to test/testdata folder
@@ -250,7 +252,7 @@ def test_L1_product_fits_format():
     assert exthr['FSMX'] == 10.0, f"Expected header FSMX=10, but got {exthr['FSMX']}" 
     assert exthr['FSMY'] == 20.0, f"Expected header FSMY=10, but got {exthr['FSMY']}"
     assert prihr['PSFREF'] == True, f"Expected header PSFREF=False, but got {prihr['PSFREF']}"
-    assert prihr['PHTCNT'] == False, f"Expected header PSFREF=False, but got {prihr['PHTCNT']}"
+    assert prihr['PHTCNT'] == True, f"Expected header PSFREF=True, but got {prihr['PHTCNT']}"
     assert prihdr['FRAMET'] == exptime, f"Expected header FRAMET = {exptime}, but got {prihdr['FRAMET']}"
     assert prihr['ROLL'] == 0.0, f"Expected data ROLL=0, but got {prihr['ROLL']}"
     assert prihr['PA_APER'] == roll_angle, f"Expected data PA_APER={roll_angle}, but got {prihr['PA_APER']}"
@@ -260,12 +262,24 @@ def test_L1_product_fits_format():
     assert exthdr['KGAINPAR'] == e_per_dn, f"Expected data KGAINPAR={e_per_dn}, but got {exthdr['KGAINPAR']}"
     assert exthdr['EMGAIN_C'] == gain, f"Expected data EMGAIN_C={gain}, but got {exthdr['EMGAIN_C']}"
     assert exthdr['EMGAIN_A'] == gain, f"Expected data EMGAIN_A={gain}, but got {exthdr['EMGAIN_A']}"
-    assert exthdr['ISPC'] == 0, f"Expected header ISPC=0, but got {exthdr['ISPC']}"
+    assert exthdr['ISPC'] == 1, f"Expected header ISPC=1, but got {exthdr['ISPC']}"
     assert exthdr['EACQ_ROW'] == 300, f"Expected header EACQ_ROW=300, but got {exthdr['EACQ_ROW']}"
     assert exthdr['EACQ_COL'] == 300, f"Expected header EACQ_COL=300, but got {exthdr['EACQ_COL']}"
 
+    assert exthdr['DPAM_H'] == 8991.3, f"Expected data DPAM_H=8991.3, but got {exthdr['DPAM_H']}"
+    assert exthdr['DPAM_V'] ==  1261.3, f"Expected data DPAM_V=1261.3, but got {exthdr['DPAM_V']}"
+    assert exthdr['DPAMNAME'] == 'POL0', f"Expected data DPAMNAME='POL0', but got {exthdr['DPAMNAME']}"
+    assert exthdr['DPAMSP_H'] == 8991.3, f"Expected data DPAMSP_H=8991.3, but got {exthdr['DPAMSP_H']}"
+    assert exthdr['DPAMSP_V'] ==  1261.3, f"Expected data DPAMSP_V=1261.3, but got {exthdr['DPAMSP_V']}"
+
+    assert exthdr['FSAM_H'] ==  6687, f"Expected data FSAM_H=6687, but got {exthdr['FSAM_H']}"
+    assert exthdr['FSAM_V'] == 13738, f"Expected data FSAM_V=13738, but got {exthdr['FSAM_V']}"
+    assert exthdr['FSAMNAME'] == 'R1C5', f"Expected data FSAMNAME='R1C5', but got {exthdr['FSAMNAME']}"
+    assert exthdr['FSAMSP_H'] ==  6687, f"Expected data FSAMSP_H=6687, but got {exthdr['FSAMSP_H']}"
+    assert exthdr['FSAMSP_V'] == 13738, f"Expected data FSAMSP_V=13738, but got {exthdr['FSAMSP_V']}"
+
     ### delete file after testing
-    print('Deleted the FITS file after testing headers populated with non-dafult values(inputs)')
+    print('Deleted the FITS file after testing headers populated with non-default values(inputs)')
     os.remove(f)
 
     ####################################################################################################
