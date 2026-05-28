@@ -1364,13 +1364,13 @@ class CorgiOptics():
 
 class CorgiDetector(): 
     
-    def __init__(self ,emccd_keywords, photon_counting = True):
+    def __init__(self ,emccd_keywords, photon_counting = False):
         '''
         Initialize the class with a dictionary that defines the EMCCD_DETECT input parameters. 
 
         Arguments: 
             - emccd_keywords: A dictionary with the keywords that are used to set up the emccd model
-            - photon_counting: if use photon_counting mode, default is True
+            - photon_counting: if use photon_counting mode, default is False
         '''
         if emccd_keywords is None:
             self.emccd_keywords = None
