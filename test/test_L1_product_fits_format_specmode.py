@@ -92,7 +92,8 @@ def test_L1_product_fits_format_specmode():
     time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
     filename = f"cgi_{prihdr['VISITID']}_{time_in_name}_l1_.fits"
 
-
+    assert filename.islower()
+    
     f = os.path.join( outdir , filename)
 
     with fits.open(f) as hdul:

@@ -73,9 +73,9 @@ def test_L1_product_fits_format():
     time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
     filename = f"cgi_{prihdr['VISITID']}_{time_in_name}_l1_.fits"
 
-
     f = os.path.join( outdir , filename)
- 
+    assert filename.islower()
+
     with fits.open(f) as hdul:
         data = hdul[1].data
         prihr = hdul[0].header
@@ -90,12 +90,14 @@ def test_L1_product_fits_format():
     assert exthr['FSMY'] == 0.0, f"Expected data FSMY=10, but got {exthr['FSMY']}"
     assert prihr['PSFREF'] == False, f"Expected data PSFREF=False, but got {prihr['PSFREF']}"
     assert prihr['PHTCNT'] == True, f"Expected data PSFREF=True, but got {prihr['PHTCNT']}"
-    assert prihr['SATSPOTS'] == 0, f"Expected data PSFREF=True, but got {prihr['PHTCNT']}"
     assert prihr['ROLL'] == 0.0, f"Expected data ROLL=0, but got {prihr['ROLL']}"
 
+    assert exthdr['SATSPOTS'] == 0, f"Expected data SATSPOTS=0, but got {exthdr['SATSPOTS']}"
     assert exthdr['KGAINPAR'] == 8.7, f"Expected data KGAINPAR=8.7, but got {exthdr['KGAINPAR']}"
     assert exthdr['EMGAIN_C'] == 1000, f"Expected data EMGAIN_C=1000, but got {exthdr['EMGAIN_C']}"
     assert exthdr['EMGAIN_A'] == 1000, f"Expected data EMGAIN_A=1000, but got {exthdr['EMGAIN_A']}"
+    assert exthdr['RN'] == 165.0, f"Expected data RN=165.0, but got {exthdr['RN']}"
+
     assert exthdr['ISPC'] == 1, f"Expected header ISPC=1, but got {exthdr['ISPC']}"
 
     assert exthdr['SPAM_H'] ==  1001.3, f"Expected data SPAM_H=1001.3, but got {exthdr['SPAM_H']}"
@@ -140,6 +142,28 @@ def test_L1_product_fits_format():
 
     ### delete file after testing
     print('Deleted the FITS file after testing headers populated with default values')
+    os.remove(f)
+
+
+        ### Test overwrite_pri_hdr and overwrite_ext_hdr with non-default values
+    outputs.save_hdu_to_fits(sim_scene.image_on_detector,outdir=outdir, write_as_L1=True, 
+                             overwrite_pri_keywords={'TARGET':'HD 141569A'}, 
+                             overwrite_ext_keywords={'OPMODE': "Disco"},
+                             )
+    #Open the file and check the new values in the headers
+    time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
+    filename = f"cgi_{prihdr['VISITID']}_{time_in_name}_l1_.fits"
+
+    f = os.path.join( outdir , filename)
+    with fits.open(f) as hdul:
+        prihr = hdul[0].header
+        exthr = hdul[1].header
+
+        assert prihr['TARGET'] == 'HD 141569A', f"Expected header TARGET=HD 141569A, but got {prihr['TARGET']}"
+        assert exthr['OPMODE'] == "Disco", f"Expected header OPMODE=Disco, but got {exthr['OPMODE']}"
+
+    ### delete file after testing
+    print('Deleted the FITS file after testing overwrite_pri_hdr and overwrite_ext_hdr with non-default values')
     os.remove(f)
 
     ####################################################################################################

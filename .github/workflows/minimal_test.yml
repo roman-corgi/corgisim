@@ -41,6 +41,12 @@ jobs:
         git clone https://github.com/roman-corgi/cgisim_cpp.git  
         cd cgisim_cpp/
         python -m pip install .
+        cd ..    
+    - name: Download and install eetc
+      run: |
+        git clone https://github.com/nasa-jpl/cgi-eetc.git  
+        cd cgi-eetc/
+        python -m pip install .
         cd ..        
     - name: Download and install CGISim
       run: |

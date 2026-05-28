@@ -14,7 +14,10 @@ Jitter and Finite Stellar Diameter Tests:
     
     test_offsets_and_areas_against_example: tests use of jitter.py against an example
     test_obs_with_finite_stellar_diam: tests an observation sequence with finite stellar diameter included
-
+    test_all_pol_obs_with_finite_stellar_diam: tests that all polarization cases run with finite stellar diameter included (except for the one case in test_minimal)
+    test_jittered_weights: compares the calculated weights for a jitter+finite stellar case against an example
+    test_obs_with_jitter: tests that a case with only jitter runs without issue
+    test_pol_obs_with_finite_stellar_diam_and_jitter: tests a jitter+finite stellar diameter case
 """
 
 def test_offsets_and_areas_against_example():
@@ -319,8 +322,6 @@ def test_all_pol_obs_with_finite_stellar_diam():
     Test that the calculations run for optics.prism = 'POL0',
     optics.prism = 'POL45', and polaxis = -10
     '''
-    # TODO: Add pol0 and pol45 options
-    
     # Set up keywords
     # optics keywords
     Vmag = 8
@@ -377,7 +378,210 @@ def test_all_pol_obs_with_finite_stellar_diam():
     simulatedImage_list_45_135 = observation.generate_observation_sequence(base_scene, optics_45_135, detector, exp_time, n_frames)
    
 ###############################################################################
+def test_jittered_weights():
+    '''
+    This function compares the calculated weights against an OS11-based 
+    example that includes both jitter and a finite stellar diameter. The
+    OS11-based example uses an offset source distribtuion that approximately 
+    reproduces the offsets and regions shown in a figure in John Krist's paper.
+    '''
+    
+    # Load the example stellar diameter and jitter parameter dictionary
+    stellar_diam_and_jitter_keywords = jitter.load_predefined_jitter_and_stellar_diam_params()
+    # Change 'add_jitter' to 1 because the example includes jitter
+    stellar_diam_and_jitter_keywords['add_jitter']=1
+    # Add the stellar diameter for the example
+    stellar_diam_and_jitter_keywords['stellar_diam_mas'] = 0.9
+    # Add the number of offsets counting the origin
+    stellar_diam_and_jitter_keywords['N_offsets_counting_origin'] = np.sum(stellar_diam_and_jitter_keywords['N_offsets_per_ring'])+1
+    
+    # Calculate the offset locations and the area of each region
+    x_offsets, y_offsets, A_offsets, x_outer_dict, yu_outer_dict, \
+    yl_outer_dict, boundary_coords_dict = \
+    jitter.Determine_offsets_and_areas(stellar_diam_and_jitter_keywords['outer_radius_of_offset_circle'],\
+                                       stellar_diam_and_jitter_keywords['N_rings_of_offsets'], \
+                                       stellar_diam_and_jitter_keywords['N_offsets_per_ring'],\
+                                       stellar_diam_and_jitter_keywords['starting_offset_ang_by_ring'],\
+                                       stellar_diam_and_jitter_keywords['r_ring0'],\
+                                       stellar_diam_and_jitter_keywords['dr_rings'])
+    # For easier iterating, reshape the offsets and areas into lists
+    x_offsets_list = [];
+    y_offsets_list = [];
+    A_offsets_list = [];
+    for iring in np.arange(stellar_diam_and_jitter_keywords['N_rings_of_offsets']+1):
+        # Extract the data for the ring
+        x_offsets_iring = x_offsets[iring]
+        y_offsets_iring = y_offsets[iring]
+        A_offsets_iring = A_offsets[iring]
+        # The zeroth ring has only one data point (the onaxis source)
+        if iring==0:
+            # Append the data for the zeroth ring
+            x_offsets_list = np.append(x_offsets_list,x_offsets_iring)
+            y_offsets_list = np.append(y_offsets_list,y_offsets_iring)
+            A_offsets_list = np.append(A_offsets_list,A_offsets_iring)
+        else:
+            # The remaining rings have multiple data points
+            # Iterate over each region
+            Nregions_iring = x_offsets_iring.shape[0]
+            for ireg in range(Nregions_iring):
+                # Append the data for region ireg in ring iring
+                x_offsets_list = np.append(x_offsets_list,x_offsets_iring[ireg])
+                y_offsets_list = np.append(y_offsets_list,y_offsets_iring[ireg])
+                A_offsets_list = np.append(A_offsets_list,A_offsets_iring)
+                
+    # Store the offsets and areas in an offset_field_data dictionary
+    offset_field_data = {'x_offsets_mas':x_offsets_list,\
+                         'y_offsets_mas':y_offsets_list,\
+                         'A_offsets':A_offsets_list}
+    # and add to stellar_diam_and_jitter_keywords
+    stellar_diam_and_jitter_keywords['offset_field_data'] = offset_field_data
+    
+    # Define the expected RMS jitter values 
+    script_dir = os.getcwd()
+    filepath = 'test/test_data/OS11inputs.csv'
+    abs_path = os.path.join(script_dir,filepath)
+    OS11inputs = pd.read_csv(abs_path)
+    # use just the entries for t0 for this test
+    xRMS = OS11inputs['x RMS jitter'][0]
+    yRMS = OS11inputs['y RMS jitter'][0]
+    # add these values to the stellar diameter and jitter dictionary
+    stellar_diam_and_jitter_keywords['jitter_sigmax'] = xRMS
+    stellar_diam_and_jitter_keywords['jitter_sigmay'] = yRMS
+    
+    # Calculate the weights
+    stellar_diam_and_jitter_keywords = jitter.calculate_weights_for_jitter_and_finite_stellar_diameter(stellar_diam_and_jitter_keywords)
+    calculated_weights = stellar_diam_and_jitter_keywords['offset_field_data']['offset_weights']
+    
+    # Load the example weights
+    filepath_weights = 'test/test_data/example_jitter_weights_for_timeseries.txt'
+    abs_path_weights = os.path.join(script_dir,filepath_weights)
+    example_weights_OS11 = np.loadtxt(abs_path_weights,skiprows=1)
+    # use only the first row for t0
+    example_weights_t0 = example_weights_OS11[0]
+    
+    # Compare the two sets of weights
+    assert(np.allclose(calculated_weights[1:-1],example_weights_t0[1:-1]))
+###############################################################################
+def test_obs_with_jitter():
+    '''
+    This function checks that a case with only jitter runs without issue.
+    '''
+    # Set up keywords and parameters that do not change
+    # optics keywords
+    Vmag = 8
+    sptype = 'G0V'
+    cgi_mode = 'excam'
+    bandpass_corgisim = '1F'
+    cor_type = 'hlc_band1'
+    cases = ['3e-8']       
+    rootname = 'hlc_ni_' + cases[0]
+    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm1_v.fits' )
+    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm2_v.fits' )
+
+    optics_keywords ={'cor_type':cor_type, 'use_errors':1, 'polaxis':10, 'output_dim':201,\
+                    'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
+    
+    # emccd keywords
+    gain =1000
+    emccd_keywords ={'em_gain':gain}
+    
+    # Set up the detector
+    detector = instrument.CorgiDetector( emccd_keywords)
+    
+    # Define the exposure time
+    exp_time = 2000
+    
+    #--------------------------------------------------------------------------
+    # Simulation with jitter included
+    
+    # jitter and finite stellar diameter keywords
+    jitter_keywords = jitter.load_predefined_jitter_and_stellar_diam_params(quicktest=True,stellar_diam_mas=0)
+    jitter_keywords['add_jitter'] = 1
+    jitter_keywords['use_finite_stellar_diam'] = 0
+    jitter_keywords['jitter_sigmax'] = 0.3172369069947508
+    jitter_keywords['jitter_sigmay'] = 0.3080179283580678
+    
+    # Define the scene
+    host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype': 'vegamag'}
+    base_scene = scene.Scene(host_star_properties)
+    
+    # Set up the optics
+    optics_jitter =  instrument.CorgiOptics(cgi_mode, bandpass_corgisim, optics_keywords=optics_keywords, stellar_diam_and_jitter_keywords=jitter_keywords, if_quiet=True)
+    
+    # Test a single frame 
+    n_frames = 1
+    simulatedImage_list_jitter = observation.generate_observation_sequence(base_scene, optics_jitter, detector, exp_time, n_frames)
+    host_star_image_jitter = simulatedImage_list_jitter[0].host_star_image.data
+    
+    #--------------------------------------------------------------------------
+    # Same simulation without jitter
+    optics =  instrument.CorgiOptics(cgi_mode, bandpass_corgisim, optics_keywords=optics_keywords, if_quiet=True)
+    simulatedImage_list = observation.generate_observation_sequence(base_scene, optics, detector, exp_time, n_frames)
+    host_star_image = simulatedImage_list[0].host_star_image.data
+    #--------------------------------------------------------------------------
+    # Expect that jitter will reduce the maximum intensity
+    assert(np.max(host_star_image)>np.max(host_star_image_jitter))
+###############################################################################
+def test_pol_obs_with_finite_stellar_diam_and_jitter():
+    '''
+    Test that the calculations run for optics.prism = 'POL0'
+    '''
+    # Set up keywords
+    # optics keywords
+    Vmag = 8
+    sptype = 'G0V'
+    stellar_diam_mas = 10 # Arbitrary for the purposes of this test
+    cgi_mode = 'excam'
+    bandpass_corgisim = '1F'
+    cor_type = 'hlc_band1'
+    cases = ['3e-8']       
+    rootname = 'hlc_ni_' + cases[0]
+    host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype': 'vegamag','stellar_diam_mas':stellar_diam_mas}
+    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm1_v.fits' )
+    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm2_v.fits' )
+    
+    # emccd keywords
+    gain =1000
+    emccd_keywords ={'em_gain':gain}
+    
+    # Set up the detectior
+    detector = instrument.CorgiDetector( emccd_keywords)
+    
+    # Define the exposure time
+    exp_time = 2000
+    n_frames = 1
+    
+    # jitter and finite stellar diameter keywords
+    # need a clean set for each polarization
+    stellar_diam_keywords_pol0 = jitter.load_predefined_jitter_and_stellar_diam_params(quicktest=True,stellar_diam_mas=stellar_diam_mas)
+    # modify the dictionary so that jitter will be included
+    stellar_diam_keywords_pol0['add_jitter'] = 1
+    stellar_diam_keywords_pol0['jitter_sigmax'] = 0.3172369069947508
+    stellar_diam_keywords_pol0['jitter_sigmay'] = 0.3080179283580678
+    
+    # Define the scene
+    base_scene = scene.Scene(host_star_properties)
+    
+    # For pol0
+    prism = 'POL0'
+    optics_keywords_0_90 ={'cor_type':cor_type, 'use_errors':1, 'polaxis':-10, 'output_dim':201,'prism':prism,\
+                    'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
+    optics_0_90 =  instrument.CorgiOptics(cgi_mode, bandpass_corgisim, oversampling_factor=3, optics_keywords=optics_keywords_0_90, stellar_diam_and_jitter_keywords=stellar_diam_keywords_pol0, if_quiet=True)
+    simulatedImage_list_0_90 = observation.generate_observation_sequence(base_scene, optics_0_90, detector, exp_time, n_frames) 
+    host_star_image_with_diam_and_jitter = simulatedImage_list_0_90[0].host_star_image.data
+    
+    # Also look at the jitter-free point-star case
+    optics_basic = instrument.CorgiOptics(cgi_mode, bandpass_corgisim, oversampling_factor=3, optics_keywords=optics_keywords_0_90, if_quiet=True)
+    simulatedImage_list_basic = observation.generate_observation_sequence(base_scene, optics_basic, detector, exp_time, n_frames)
+    host_star_image_basic = simulatedImage_list_basic[0].host_star_image.data
+    
+    # Check that the peak intensity is higher for the jitter-free point-star case
+    assert(np.max(host_star_image_basic)>np.max(host_star_image_with_diam_and_jitter))
+###############################################################################
 if __name__ == '__main__':
     test_offsets_and_areas_against_example()
     test_obs_with_finite_stellar_diam()
     test_all_pol_obs_with_finite_stellar_diam()
+    test_jittered_weights()
+    test_obs_with_jitter()
+    test_pol_obs_with_finite_stellar_diam_and_jitter()
