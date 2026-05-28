@@ -60,7 +60,11 @@ def test_on_axis_star():
     image = sim_scene.host_star_image.data
     print('Final_intensity_get:', np.sum(image, dtype = np.float64))
  
- 
+    optics_keywords_pupil_lens ={'cor_type':cor_type, 'use_errors':1, 'polaxis':10, 'output_dim':201,\
+                'use_dm1':1, 'use_dm2':1, 'use_fpm':1, 'use_lyot_stop':0,  'use_field_stop':0,'use_pupil_lens':1 ,'use_pupil_mask':0, 'nd':2}
+                
+    with pytest.warns(UserWarning):
+        optics_pupil_lens = instrument.CorgiOptics(cgi_mode, bandpass_corgisim, optics_keywords=optics_keywords_pupil_lens, if_quiet=True)
 
     ########################  simulate using cgisim
     polaxis_cgisim = -10

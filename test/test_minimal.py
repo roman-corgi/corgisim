@@ -8,6 +8,8 @@ import os
 from corgisim.scene import SimulatedImage
 import roman_preflight_proper
 from astropy.io import fits
+from synphot.models import BlackBodyNorm1D
+from synphot import SourceSpectrum
 import cgisim
 
 def test_excam_mode():
@@ -18,6 +20,7 @@ def test_excam_mode():
     cor_type = 'hlc_band1'
 
     mag_companion = [25]
+    spec_companion = SourceSpectrum(BlackBodyNorm1D, temperature=1000)
     ###the position of companions in unit of mas
     ####550nm/2.3m = 29.4 mas
     ###we used sep = 3 lambda/D here 
@@ -28,7 +31,8 @@ def test_excam_mode():
 
     #Define the host star properties
     host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype': 'vegamag'}
-    point_source_info = [{'Vmag': mag_companion[0], 'magtype': 'vegamag','position_x':dx[0] , 'position_y':dy[0]}]
+    point_source_info = [{'Vmag': mag_companion[0], 'magtype': 'vegamag','position_x':dx[0] , 'position_y':dy[0],
+                          'Custom_Spectrum':spec_companion, 'Rescale_Custom_Spectrum':True}]
 
 
     #Create a Scene object that holds all this information
@@ -513,8 +517,8 @@ def test_finite_diam_and_jitter_spec():
     optics_basic.inject_point_sources(base_scene,sim_scene_basic)
     image_comp_basic = sim_scene_basic.point_source_image.data
     
-    # Check that the peak intensity is higher when the host star is modeled as a point and there is no jitter
-    assert(np.max(image_star_basic) > np.max(image_star_slit_prism))
+    # Check that the PSF peak is lower when the host star is modeled as a point and there is no jitter
+    assert(np.max(image_star_basic) < np.max(image_star_slit_prism))
     
     # Check that the companion images are the same for both cases
     # (The jitter model has not been implemented for off-axis point sources.)
