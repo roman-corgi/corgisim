@@ -65,7 +65,7 @@ def test_L1_product_fits_format_specmode():
     overfac = 5
 
     optics_keywords_slit_prism ={'cor_type':cor_type, 'use_errors':2, 'polaxis':polaxis, 'output_dim':output_dim, 
-                    'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,'nd':1,
+                    'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,'nd':0,
                     'slit':'R1C2', 'slit_dec_offset_mas':base_scene.point_source_ddec[0], 'prism':'PRISM3', 'wav_step_um':2E-3}
     optics_slit_prism = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords_slit_prism, if_quiet=True,
                                     small_spc_grid = 1, oversampling_factor = overfac, return_oversample = False)
