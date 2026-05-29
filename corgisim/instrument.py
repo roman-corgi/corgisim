@@ -269,8 +269,6 @@ class CorgiOptics():
             if (optics_keywords_internal['use_fpm']==1) or (optics_keywords_internal['use_lyot_stop']==1) or (optics_keywords_internal['use_field_stop']==1):
                  warnings.warn('Warning: the pupil lens is inserted while one or more of the focal mask, Lyot stop, or field stop are also in use.', UserWarning)
 
-
-        # polarization
         
         if optics_keywords_internal['polaxis'] != 10 and optics_keywords_internal['polaxis'] != -10 and optics_keywords_internal['polaxis'] != 0:
             # wollaston transmission is around 0.96%, divide by two to split between polarization
@@ -299,6 +297,12 @@ class CorgiOptics():
                 self.nd = 0
             else:
                 raise ValueError(f"Invalid ND filter value: {optics_keywords['nd']}. Must be 0, 1, 2, or 3.")
+
+        if optics_keywords_internal['use_fpm'] == 1 and (self.nd == '2.25' or self.nd == '4.75fpam'): 
+            raise ValueError( "FPM cannot be used with ND filter 1 (225@FPAM) or ND filter 2 (475@FPAM), because they occupy the same position in the optical path.")
+        if optics_keywords_internal['use_lyot_stop'] == 1 and  self.nd == '4.75fsam':
+            raise ValueError( "Lyot stop cannot be used with ND filter 3 (475@FSAM), because they occupy the same position in the optical path.")
+        # polarization
             
         # Initialize the bandpass class (from synphot)
         # bp: wavelegth is in unit of angstrom
@@ -1271,11 +1275,14 @@ class CorgiOptics():
         This function modifies the deformable mirror settings stored in `self.optics_keywords['dm1_v']` 
         by injecting satellite spots according to the provided `satspot_keywords`.
 
+        An optional "sign" keyword allows a user to define whether the satellite spots are added with a 
+        positive or negative cosine pattern on the DM. Defaults to "positive" if not specified.
+
         Parameters:
         ----------
         satspot_keywords : dict
             Dictionary specifying the parameters needed to define and inject 
-            satellite spots (sep_lamD, angle_deg, contrast, wavelength_m).
+            satellite spots (sep_lamD, angle_deg, contrast, wavelength_m, sign(options)).
 
         Returns:
         -------
@@ -1295,7 +1302,13 @@ class CorgiOptics():
         contrast = satspot_keywords['contrast']
         wavelength_m = satspot_keywords['wavelength_m']
 
-        dm1_cos_added = add_cos_pattern_dm(dm1_input,num_pairs,sep_lamD,angle_deg,contrast,wavelength_m)
+                    #If the user doesn't pass in the 
+        if "sign" not in satspot_keywords.keys():
+                sign = "positive"
+        else: 
+                sign = satspot_keywords["sign"]
+
+        dm1_cos_added = add_cos_pattern_dm(dm1_input,num_pairs,sep_lamD,angle_deg,contrast,wavelength_m, sign = sign)
 
         return dm1_cos_added
 
@@ -1364,13 +1377,13 @@ class CorgiOptics():
 
 class CorgiDetector(): 
     
-    def __init__(self ,emccd_keywords, photon_counting = True):
+    def __init__(self ,emccd_keywords, photon_counting = False):
         '''
         Initialize the class with a dictionary that defines the EMCCD_DETECT input parameters. 
 
         Arguments: 
             - emccd_keywords: A dictionary with the keywords that are used to set up the emccd model
-            - photon_counting: if use photon_counting mode, default is True
+            - photon_counting: if use photon_counting mode, default is False
         '''
         if emccd_keywords is None:
             self.emccd_keywords = None
@@ -1577,6 +1590,9 @@ class CorgiDetector():
             - nbits (int, optional): Number of bits in the analog-to-digital converter. Defaults to 14.
             - use_traps (bool, optional): Flag indicating whether to simulate CTI effects using trap models. Defaults to False.
             - date4traps (float, optional): Decimal year of observation; only applicable if `use_traps` is True. Defaults to 2028.0.
+            - row_read_time (float, optional): Row read time in seconds, needed to simulate smearing. Defaults to 223.5e-6.  For no smearing, set this to 0.
+            - nonlin_path (str, optional): Path to the nonlinearity file for simulating nonlinearity. Defaults to None (no nonlinearity simulated).
+            - flat_path (str, optional): Path to the flat field file for simulating flat field nonuniformity. Defaults to None (no flat field nonuniformity simulated).
 
         Returns:
             - emccd (EMCCDDetectBase): A configured EMCCD detector object. If `use_traps` is True, the detector's CTI is updated using the corresponding trap model.
@@ -1599,7 +1615,10 @@ class CorgiDetector():
                                   'nbits': 14  ,                        # ADC bits
                                   'numel_gain_register': 604,           # Number of gain register elements 
                                   'use_traps': False,                    # include CTI impact of traps
-                                  'date4traps': 2028.0}                        # decimal year of observation}
+                                  'date4traps': 2028.0,                  # decimal year of observation
+                                  'row_read_time': 223.5e-6,              # in seconds (needed to simulate smearing)
+                                  'nonlin_path': None,                  # path to file containing non-linearity map; if None, no input nonlinearity used
+                                  'flat_path': None}                    # path to file containing flat field map; if None, no flat field correction used
 
         if emccd_keywords is not None:                    
             if 'qe' in emccd_keywords.keys():
@@ -1613,7 +1632,8 @@ class CorgiDetector():
         emccd = EMCCDDetect( em_gain=self.emccd_keywords_default['em_gain'], full_well_image=self.emccd_keywords_default['full_well_image'], full_well_serial=self.emccd_keywords_default['full_well_serial'],
                              dark_current=self.emccd_keywords_default['dark_rate'], cic=self.emccd_keywords_default['cic_noise'], read_noise=self.emccd_keywords_default['read_noise'], bias=self.emccd_keywords_default['bias'],
                              qe=1.0, cr_rate=self.emccd_keywords_default['cr_rate'], pixel_pitch=self.emccd_keywords_default['pixel_pitch'], eperdn=self.emccd_keywords_default['e_per_dn'],
-                             numel_gain_register=self.emccd_keywords_default['numel_gain_register'], nbits=self.emccd_keywords_default['nbits'] )
+                             numel_gain_register=self.emccd_keywords_default['numel_gain_register'], nbits=self.emccd_keywords_default['nbits'], row_read_time=self.emccd_keywords_default['row_read_time'], 
+                             nonlin_path=self.emccd_keywords_default['nonlin_path'], flat_path=self.emccd_keywords_default['flat_path'])
         
         if self.emccd_keywords_default['use_traps']: 
             raise ValueError(f"The part to simulate CTI effects using trap models has not been implemented yet!")
