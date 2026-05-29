@@ -287,6 +287,7 @@ class Scene():
             "B1V": (26000, 0.0, 4.0),
             "B3V": (17000, 0.0, 4.0),
             "B5V": (15700, 0.0, 4.0),
+            "B7IV": (14700, 0.02, 3.5),
             "B8V": (12500, 0.0, 4.0),
             "A0V": (9700, 0.0, 4.0),
             "A1V": (9200, 0.0, 4.0),
@@ -327,8 +328,11 @@ class Scene():
             "A0III": (9100, 0.0, 3.5),
             "F0III": (7000, 0.0, 3.5),
             "G0III": (5750, 0.0, 3.0),
+            "G4IV": (5592, 0.04, 4.0),
             "G5III": (5250, 0.0, 2.5),
             "K0III": (4750, 0.0, 2.0),
+            "K0IV": (5000, 0.0, 3.65),
+            "K2III": (4375, 0.0, 2.25),
             "K5III": (4000, 0.0, 1.5),
             "M0III": (3750, 0.0, 1.5),
             "M6III": (3000, 0.0, 1.0),  # Bracketing for interpolation
@@ -383,7 +387,7 @@ class Scene():
 
         # Try to load the BPGS atlas file
         spectrum_file = os.path.join(atlas_dir, filename)
-
+    
         if not os.path.isfile(spectrum_file) or (spmethod == 'blackbody'):
             print(f"Warning: BPGS atlas file {spectrum_file} not found.")
             print(f"Falling back to blackbody with T={teff}K")

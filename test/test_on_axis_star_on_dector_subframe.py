@@ -65,11 +65,6 @@ def test_on_axis_star_on_detector_subframe():
         star_spectrum=sptype.lower(), star_vmag=Vmag )
     print(a0_counts, np.sum(a0_sim_allpol, dtype = np.float64))
 
-
-    ################################
-    a0_sim_allpol_ccd, a0_counts_ccd = cgisim.rcgisim( cgi_mode, cor_type, bandpass_cgisim,  polaxis_cgisim, params, ccd={'gain':gain,'exptime':exptime},
-        star_spectrum=sptype.lower(), star_vmag=Vmag )
-
     # Use pytest.approx to check similarity within a tolerance
     assert  image  == pytest.approx(a0_sim_allpol, rel=0.5)
     print("noise free image Pass")
