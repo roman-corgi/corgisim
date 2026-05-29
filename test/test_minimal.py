@@ -8,6 +8,8 @@ import os
 from corgisim.scene import SimulatedImage
 import roman_preflight_proper
 from astropy.io import fits
+from synphot.models import BlackBodyNorm1D
+from synphot import SourceSpectrum
 import cgisim
 
 def test_excam_mode():
@@ -18,6 +20,7 @@ def test_excam_mode():
     cor_type = 'hlc_band1'
 
     mag_companion = [25]
+    spec_companion = SourceSpectrum(BlackBodyNorm1D, temperature=1000)
     ###the position of companions in unit of mas
     ####550nm/2.3m = 29.4 mas
     ###we used sep = 3 lambda/D here 
@@ -28,7 +31,8 @@ def test_excam_mode():
 
     #Define the host star properties
     host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype': 'vegamag'}
-    point_source_info = [{'Vmag': mag_companion[0], 'magtype': 'vegamag','position_x':dx[0] , 'position_y':dy[0]}]
+    point_source_info = [{'Vmag': mag_companion[0], 'magtype': 'vegamag','position_x':dx[0] , 'position_y':dy[0],
+                          'Custom_Spectrum':spec_companion, 'Rescale_Custom_Spectrum':True}]
 
 
     #Create a Scene object that holds all this information
@@ -124,14 +128,14 @@ def test_excam_mode():
     assert exthr['FSMX'] == 0.0, f"Expected data FSMX=10, but got {exthr['FSMX']}" 
     assert exthr['FSMY'] == 0.0, f"Expected data FSMY=10, but got {exthr['FSMY']}"
     assert prihr['PSFREF'] == False, f"Expected data PSFREF=False, but got {prihr['PSFREF']}"
-    assert prihr['PHTCNT'] == True, f"Expected data PSFREF=True, but got {prihr['PHTCNT']}"
+    assert prihr['PHTCNT'] == False, f"Expected data PHTCNT=False, but got {prihr['PHTCNT']}"
 
     assert exthdr['SATSPOTS'] == 0, f"Expected data SATSPOTS=0, but got {exthdr['SATSPOTS']}"
     assert exthdr['RN'] == 165.0, f"Expected data RN=165.0, but got {exthdr['RN']}"
     assert exthdr['KGAINPAR'] == 8.7, f"Expected data KGAINPAR=8.7, but got {exthdr['KGAINPAR']}"
     assert exthdr['EMGAIN_C'] == 1000, f"Expected data EMGAIN_C=1000, but got {exthdr['EMGAIN_C']}"
     assert exthdr['EMGAIN_A'] == 1000, f"Expected data EMGAIN_A=1000, but got {exthdr['EMGAIN_A']}"
-    assert exthdr['ISPC'] == 1, f"Expected header ISPC=1, but got {exthdr['ISPC']}"
+    assert exthdr['ISPC'] == 0, f"Expected header ISPC=0, but got {exthdr['ISPC']}"
 
     assert exthdr['SPAM_H'] ==  1001.3, f"Expected data SPAM_H=1001.3, but got {exthdr['SPAM_H']}"
     assert exthdr['SPAM_V']== 16627,  f"Expected data SPAM_V = 16627, but got {exthdr['SPAM_V']}"
@@ -157,11 +161,11 @@ def test_excam_mode():
     assert exthdr['DPAMSP_H'] == 38917.1, f"Expected data DPAMSP_H=38917.1, but got {exthdr['DPAMSP_H']}"
     assert exthdr['DPAMSP_V'] == 26016.9, f"Expected data DPAMSP_V=26016.9, but got {exthdr['DPAMSP_V']}"
 
-    assert exthdr['FPAM_H'] ==  6757.2, f"Expected data FPAM_H= 6757.2, but got {exthdr['FPAM_H']}"
-    assert exthdr['FPAM_V'] == 22424, f"Expected data FPAM_V=22424, but got {exthdr['FPAM_V']}"
-    assert exthdr['FPAMNAME'] == 'HLC12_C2R1', f"Expected data FPAMNAME='HLC12_C2R1', but got {exthdr['FPAMNAME']}"
-    assert exthdr['FPAMSP_H'] ==  6757.2, f"Expected data FPAMSP_H= 6757.2, but got {exthdr['FPAMSP_H']}"
-    assert exthdr['FPAMSP_V'] == 22424, f"Expected data FPAMSP_V=22424, but got {exthdr['FPAMSP_V']}"
+    assert exthdr['FPAM_H'] ==  6776, f"Expected data FPAM_H= 6776, but got {exthdr['FPAM_H']}"
+    assert exthdr['FPAM_V'] == 27653.3, f"Expected data FPAM_V=27653.3, but got {exthdr['FPAM_V']}"
+    assert exthdr['FPAMNAME'] == 'HLC12_C2R5', f"Expected data FPAMNAME='HLC12_C2R5', but got {exthdr['FPAMNAME']}"
+    assert exthdr['FPAMSP_H'] ==  6776, f"Expected data FPAMSP_H= 6776, but got {exthdr['FPAMSP_H']}"
+    assert exthdr['FPAMSP_V'] == 27653.3, f"Expected data FPAMSP_V=27653.3, but got {exthdr['FPAMSP_V']}"
 
     assert exthdr['FSAM_H'] ==  29387, f"Expected data FSAM_H=29387, but got {exthdr['FSAM_H']}"
     assert exthdr['FSAM_V'] == 12238, f"Expected data FSAM_V=12238, but got {exthdr['FSAM_V']}"
