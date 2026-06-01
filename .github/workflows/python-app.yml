@@ -24,16 +24,13 @@ jobs:
           - shard: heavy
             pytest_args: >-
               ./test/test_jitter.py
-              ./test/test_minimal.py
               ./test/test_L1_product_fits_format.py
               ./test/test_L1_product_fits_format_specmode.py
               ./test/test_observation_sequence.py
-              --durations=0
           - shard: rest
             pytest_args: >-
               ./test
               --ignore=./test/test_jitter.py
-              --ignore=./test/test_minimal.py
               --ignore=./test/test_L1_product_fits_format.py
               --ignore=./test/test_L1_product_fits_format_specmode.py
               --ignore=./test/test_observation_sequence.py
