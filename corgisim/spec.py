@@ -51,7 +51,7 @@ def get_slit_mask(optics, dx_fsam_um=10.0, hires_dim_um=800, binfac=50):
 
     # Set the scale factor between physical length and diffraction model units (lambda/D) at the FSAM
     # These scale parameters are listed in the Roman Preflight Proper model manual
-    if optics.optics_keywords['cor_type'] == 'spc-spec_band2':
+    if optics.optics_keywords['cor_type'] in ['spc-spec_band2', 'spc-spec_rotated_band2']:
         fsam_meter_per_lamD = 1.34273E-5 / (1000 / 2048) # Roman Preflight PROPER Prescription manual, v2.0, pg 19
     else:
         fsam_meter_per_lamD = 1.48513E-5 / (1000 / 2048) # Roman Preflight PROPER Prescription manual, v2.0, pg 19
@@ -103,7 +103,8 @@ def get_slit_mask(optics, dx_fsam_um=10.0, hires_dim_um=800, binfac=50):
     else:
         hires_slit = ((np.abs(XXs) < slit_height_hires / 2) & 
                       (np.abs(YYs) < slit_width_hires / 2))
-    if optics.cor_type == 'spc-spec_band3_rotated' and Version(roman_preflight_proper.__version__) <= Version('2.0.2'):
+    if (optics.cor_type in ['spc-spec_rotated', 'spc-spec_band2_rotated', 'spc-spec_band3_rotated'] and 
+        Version(roman_preflight_proper.__version__) <= Version('2.0.2')):
         hires_slit = np.fliplr(hires_slit) # Left-right flip to compensate for mask orientation in roman_preflight_proper
     # Bin the high-res array to the specified spatial sampling
     binned_slit = hires_slit.reshape(hires_dimy // binfac, binfac, 
