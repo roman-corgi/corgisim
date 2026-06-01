@@ -17,6 +17,7 @@ from corgisim import outputs, spec, pol, jitter
 import copy
 import os
 from scipy import interpolate
+from packaging.version import Version
 
 warnings.simplefilter('always', UserWarning)
 class CorgiOptics():
@@ -873,6 +874,9 @@ class CorgiOptics():
 
             images *= counts[:, np.newaxis, np.newaxis]
             image = np.sum(images, axis=0)
+            ## Left-right image flip to compensate for the flipped SPECROT mask
+            if self.cor_type == 'spc-spec_band3_rotated' and Version(roman_preflight_proper.__version__) <= Version('2.0.2'):
+                image = np.fliplr(image)
 
         if self.cgi_mode in ['lowfs', 'excam_efield']:
             raise ValueError(f"The mode '{self.cgi_mode}' has not been implemented yet!")
@@ -1160,8 +1164,11 @@ class CorgiOptics():
             for j in range(len(point_source_spectra )):
                 self.optics_keywords_comp = self.optics_keywords.copy()
                 ## convert companion sky coord to exacam coord, using roll angle
-                dra_sign = -1 if self.cor_type == 'spc-spec_band3_rotated' else 1 # TEMPORARY compensation for the flipped SPECROT mask; remove when proper model updates to > v2.0.2 
-                point_source_dx, point_source_dy = skycoord_to_excamcoord(dra_sign * point_source_dra[j], point_source_ddec[j], self.roll_angle)
+                point_source_dx, point_source_dy = skycoord_to_excamcoord(point_source_dra[j], point_source_ddec[j], self.roll_angle)
+                ## If using the SPECROT mask and the roman_preflight_proper version <= 2.0.2, 
+                ## then the sign of dx must be reversed to compensate for the flipped mask orientation.
+                if (self.cor_type == 'spc-spec_band3_rotated' and Version(roman_preflight_proper.__version__) <= Version('2.0.2')):
+                    point_source_dx = -point_source_dx
 
                 self.optics_keywords_comp.update({'output_dim': grid_dim_out_tem,
                                             'final_sampling_m': sampling_um_tem * 1e-6,
@@ -1213,10 +1220,11 @@ class CorgiOptics():
                     images[i,:,:] = images[i,:,:] * counts
 
                 image = np.sum(images, axis=0)
-                if self.cor_type == 'spc-spec_band3_rotated': # TEMPORARY compensation for the flipped SPECROT mask; remove when proper model updates to > v2.0.2 
+                ## Left-right image flip to compensate for the flipped SPECROT mask
+                if self.cor_type == 'spc-spec_band3_rotated' and Version(roman_preflight_proper.__version__) <= Version('2.0.2'):
                     point_source_image.append(np.fliplr(image))
                 else:
-                    point_source_image.append(image) 
+                    point_source_image.append(image)
 
         if self.cgi_mode in ['lowfs', 'excam_efield']:
             raise ValueError(f"The mode '{self.cgi_mode}' has not been implemented yet!")

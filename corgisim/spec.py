@@ -3,6 +3,8 @@ import numpy as np
 import json
 from pathlib import Path
 import scipy.interpolate
+from packaging.version import Version
+import roman_preflight_proper
 
 def get_slit_mask(optics, dx_fsam_um=10.0, hires_dim_um=800, binfac=50):
     """Generate an FSAM slit mask array for spec mode simulations.
@@ -98,10 +100,11 @@ def get_slit_mask(optics, dx_fsam_um=10.0, hires_dim_um=800, binfac=50):
                       (YYs > XXs / np.tan(theta) - slit_width_hires / (2 * np.sin(theta))) &
                       (YYs < -XXs * np.tan(theta) + slit_height_hires / (2 * np.cos(theta))) &
                       (YYs > -XXs * np.tan(theta) - slit_height_hires / (2 * np.cos(theta)))) 
-        hires_slit = np.fliplr(hires_slit) # TEMPORARY: Remove this statement when the CGISim rotated SPC bowtie mask orientation is corrected
     else:
         hires_slit = ((np.abs(XXs) < slit_height_hires / 2) & 
                       (np.abs(YYs) < slit_width_hires / 2))
+    if optics.cor_type == 'spc-spec_band3_rotated' and Version(roman_preflight_proper.__version__) <= Version('2.0.2'):
+        hires_slit = np.fliplr(hires_slit) # Left-right flip to compensate for mask orientation in roman_preflight_proper
     # Bin the high-res array to the specified spatial sampling
     binned_slit = hires_slit.reshape(hires_dimy // binfac, binfac, 
                                      hires_dimx // binfac, binfac).mean(axis=3).mean(axis=1)
