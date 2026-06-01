@@ -28,6 +28,7 @@ jobs:
               ./test/test_L1_product_fits_format.py
               ./test/test_L1_product_fits_format_specmode.py
               ./test/test_observation_sequence.py
+              --durations=0
           - shard: rest
             pytest_args: >-
               ./test
