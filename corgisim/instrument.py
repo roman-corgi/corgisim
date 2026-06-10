@@ -1355,7 +1355,7 @@ class CorgiOptics():
             self.slit_x_offset_mas, self.slit_y_offset_mas = skycoord_to_excamcoord(self.slit_ra_offset_mas, self.slit_dec_offset_mas, value)
 
 
-    def simulate_2d_scene(self, input_scene, sim_scene=None, prf_cube_path=None, interpolate_prfs=False):
+    def simulate_2d_scene(self, input_scene, prf_cube_path, sim_scene=None, interpolate_prfs=False):
         """
         Convolve 2D scene with a pre-computed off-axis PRF cube.
 
@@ -1375,10 +1375,10 @@ class CorgiOptics():
                 instrument configuration, including the telescope and coronagraph.
         input_scene : Scene 
             Scene object containing 2D image data to be convolved.
-        sim_scene: SimulatedImage, optional
-            If provided, the convolved image will be stored in this object.
         prf_cube_path: str
             Path to the PRF cube to be used for convolution.
+        sim_scene: SimulatedImage, optional
+            If provided, the convolved image will be stored in this object.
         interpolate_prfs: bool, optional
             Whether to use interpolation between PRFs for convolution.
 
@@ -1390,7 +1390,7 @@ class CorgiOptics():
         Raises
         ------
         ValueError
-            If `prf_cube_path` is missing or None.
+            If `prf_cube_path` is None.
 
         Notes
         -----
@@ -1405,10 +1405,7 @@ class CorgiOptics():
         - The output is intended to represent a count rate (photoelectrons per second),
             consistent with `Observation.countrate`.
         """
-        # Determine which mode to use based on provided kwargs
-        if prf_cube_path is not None:
-            has_prf_cube = True 
-        else:
+        if prf_cube_path is None:
             raise ValueError(f"No PRF cube path provided in the input: {prf_cube_path}")
         
         # input disk model
