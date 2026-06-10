@@ -1407,7 +1407,11 @@ class CorgiOptics():
         """
         if prf_cube_path is None:
             raise ValueError(f"No PRF cube path provided in the input: {prf_cube_path}")
-        
+
+        if sim_scene is None:
+            # No output format was specified - create a new SimulatedImage object
+            sim_scene = SimulatedImage(input_scene)
+
         # input disk model
         disk_model_data = fits.getdata(input_scene.twoD_scene_info['disk_model_path'])
         disk_model_norm = disk_model_data/np.nansum(disk_model_data, axis=(0,1)) # normalisation of the disk
@@ -1425,6 +1429,9 @@ class CorgiOptics():
             prf_cube = centre_prf_cube(fits.getdata(prf_cube_path), method='centroid')
         else: 
             prf_cube = fits.getdata(prf_cube_path)
+
+        # Store the PRF cube in the sim_scene for potential later use (e.g., for visualisation or debugging)
+        sim_scene.twoD_prf_cubes = prf_cube
 
         # 1. Get the radii grids for convolution 
         radii_lamD, _ = conv.build_radial_grid(
@@ -1457,10 +1464,6 @@ class CorgiOptics():
 
         if self.cgi_mode in ['spec', 'lowfs', 'excam_efield']:
             warnings.warn(f"This mode '{self.cgi_mode}' has not implmented yet!") # still allow the usage but warn the user about this
-
-        if sim_scene is None:
-            # No output format was specified - create a new SimulatedImage object
-            sim_scene = SimulatedImage(input_scene)
 
         sim_info = conv._set_2D_image_sim_info(self, input_scene)
 
