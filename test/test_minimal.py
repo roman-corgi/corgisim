@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import proper
 import os
+from pathlib import Path
 from corgisim.scene import SimulatedImage
 import roman_preflight_proper
 from astropy.io import fits
@@ -179,10 +180,10 @@ def test_excam_mode():
 
 def test_cpgs_obs():
 
-    script_dir = corgisim.lib_dir
+    script_dir = Path(__file__).resolve().parent
 
     #Test with target and reference
-    filepath = '../test/test_data/cpgs_mock.xml'
+    filepath = 'test_data/cpgs_mock.xml'
     abs_path =  os.path.join(script_dir, filepath)
 
     scene_target, scene_reference, optics, detector_target, detector_reference, visit_list = inputs.load_cpgs_data(abs_path)
@@ -526,11 +527,11 @@ def test_finite_diam_and_jitter_spec():
     
     
 if __name__ == '__main__':
-    test_excam_mode()
+    # test_excam_mode()
     test_cpgs_obs()
-    test_spc_mode()
-    test_spec_mode()
-    test_pol_mode()
-    test_pol_obs_with_finite_stellar_diam()
-    test_pol_obs_with_finite_stellar_diam_and_jitter()
-    test_finite_diam_and_jitter_spec()
+    # test_spc_mode()
+    # test_spec_mode()
+    # test_pol_mode()
+    # test_pol_obs_with_finite_stellar_diam()
+    # test_pol_obs_with_finite_stellar_diam_and_jitter()
+    # test_finite_diam_and_jitter_spec()
