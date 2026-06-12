@@ -37,7 +37,7 @@ conda activate environment_name
 ```
 ### Install Proper
 Proper is an optical propagation library that is needed for CGISim to function
-Go to the [Proper website](https://sourceforge.net/projects/proper-library/) and download proper_v3.3.4_python.zip
+Go to the [Proper website](https://sourceforge.net/projects/proper-library/) and download proper_v3.3.5_python.zip
 Unzip it in your working directory
 Enter the directory that contains setup.py and run the following: 
 ```
