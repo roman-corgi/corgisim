@@ -202,10 +202,11 @@ def save_hdu_to_fits( hdul, outdir=None, overwrite=False, write_as_L1=False, fil
             else:
                 raise KeyError(f"Extension header keyword '{key}' not found in HDUList.")
 
-        # Calculate MJDSRT and MJDEND from FTIMEUTC timestamp and EXPTIME
-        mjd_start = Time(hdul[1].header['FTIMEUTC']).mjd
-        hdul[1].header['MJDSRT'] = mjd_start
-        hdul[1].header['MJDEND'] = mjd_start + hdul[1].header['EXPTIME'] / 86400.0
+        if write_as_L1:
+            # Calculate MJDSRT and MJDEND from FTIMEUTC timestamp and EXPTIME
+            mjd_start = Time(hdul[1].header['FTIMEUTC']).mjd
+            hdul[1].header['MJDSRT'] = mjd_start
+            hdul[1].header['MJDEND'] = mjd_start + hdul[1].header['EXPTIME'] / 86400.0
 
         # Write the HDUList to file
         hdul.writeto(filepath, overwrite=overwrite)
