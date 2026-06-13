@@ -95,6 +95,13 @@ def test_L1_product_fits_format():
     assert prihr['PA_APER'] == 0.0, f"Expected data PA_APER=0, but got {prihr['PA_APER']}"
     assert prihr['TARGET'] == 'UNKNOWN', f"Expected header TARGET = 'UNKNOWN', but got {prihr['TARGET']}"
     assert prihr['VISTYPE'] == 'CGIVST_TDD_OBS', f"Expected header VISTYPE = 'CGIVST_TDD_OBS', but got {prihr['VISTYPE']}"
+    assert prihr['VISITID'] == '0200001001001001001', f"Expected header VISITID = '0200001001001001001', but got {prihr['VISITID']}"
+    assert prihr['PROGNUM'] == '0200', f"Expected header PROGNUM = '0200', but got {prihr['PROGNUM']}"
+    assert prihr['EXECNUM'] == '001', f"Expected header EXECNUM = '001', but got {prihr['EXECNUM']}"
+    assert prihr['CAMPAIGN'] == '001', f"Expected header CAMPAIGN = '001', but got {prihr['CAMPAIGN']}"
+    assert prihr['SEGMENT'] == '001', f"Expected header SEGMENT = '001', but got {prihr['SEGMENT']}"
+    assert prihr['OBSNUM'] == '001', f"Expected header OBSNUM = '001', but got {prihr['OBSNUM']}"
+    assert prihr['VISNUM'] == '001', f"Expected header VISNUM = '001', but got {prihr['VISNUM']}"
 
     assert exthdr['SATSPOTS'] == 0, f"Expected data SATSPOTS=0, but got {exthdr['SATSPOTS']}"
     assert exthdr['KGAINPAR'] == 8.7, f"Expected data KGAINPAR=8.7, but got {exthdr['KGAINPAR']}"
@@ -151,7 +158,7 @@ def test_L1_product_fits_format():
 
         ### Test overwrite_pri_hdr and overwrite_ext_hdr with non-default values including FTIMEUTC and MJDSRT
     outputs.save_hdu_to_fits(sim_scene.image_on_detector,outdir=outdir, write_as_L1=True,
-                             overwrite_pri_keywords={'TARGET':'HD 141569A'},
+                             overwrite_pri_keywords={'TARGET':'HD 141569A', 'VISITID': '2200006007008009001'},
                              overwrite_ext_keywords={'OPMODE': "Disco", 'FTIMEUTC': '2025-01-01T00:00:00'},
                              )
     #Open the file and check the new values in the headers
@@ -167,6 +174,13 @@ def test_L1_product_fits_format():
         assert exthr['OPMODE'] == "Disco", f"Expected header OPMODE=Disco, but got {exthr['OPMODE']}"
         # Check that MJDSRT was correctly calculated from the overridden FTIMEUTC (2025-01-01T00:00:00 = MJD 60676.0)
         assert exthr['MJDSRT'] == 60676.0, f"Expected header MJDSRT=60676.0 (from overridden FTIMEUTC), but got {exthr['MJDSRT']}"
+        assert prihdr['VISITID'] == '2200006007008009001', f"Expected header VISITID=2200006007008009001, but got {prihr['VISITID']}"
+        assert prihdr['PROGNUM'] == '2200', f"Expected header PROGNUM=2200, but got {prihr['PROGNUM']}"
+        assert prihdr['EXECNUM'] == '006', f"Expected header EXECNUM=006, but got {prihr['EXECNUM']}"
+        assert prihdr['CAMPAIGN'] == '007', f"Expected header CAMPAIGN=007, but got {prihr['CAMPAIGN']}"
+        assert prihdr['SEGMENT'] == '008', f"Expected header SEGMENT=008, but got {prihr['SEGMENT']}"
+        assert prihdr['OBSNUM'] == '009', f"Expected header OBSNUM=009, but got {prihr['OBSNUM']}"
+        assert prihdr['VISNUM'] == '001', f"Expected header VISNUM=001, but got {prihr['VISNUM']}"
 
     ### delete file after testing
     print('Deleted the FITS file after testing overwrite_pri_hdr and overwrite_ext_hdr with non-default values')
@@ -212,7 +226,8 @@ def test_L1_product_fits_format():
                 ##pass fsm_x_offset_mas and fsm_y_offset_mas for no zero value as test
 
     roll_angle=10.0 ##degree
-    optics = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords, if_quiet=True, roll_angle=roll_angle, visit_type='CGIVST_CAL_TGTREF_PHOT')
+    optics = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords, if_quiet=True, roll_angle=roll_angle, visit_type='CGIVST_CAL_TGTREF_PHOT'
+                                    , visit_id='0300002002002901002')
     sim_scene = optics.get_host_star_psf(base_scene)
 
     sim_scene = optics.inject_point_sources(base_scene,sim_scene)
@@ -258,6 +273,13 @@ def test_L1_product_fits_format():
     assert prihr['PA_APER'] == roll_angle, f"Expected data PA_APER={roll_angle}, but got {prihr['PA_APER']}"
     assert prihr['TARGET'] == 'HD 141569A', f"Expected header TARGET = 'HD 141569A', but got {prihr['TARGET']}"
     assert prihr['VISTYPE'] == 'CGIVST_CAL_TGTREF_PHOT', f"Expected header VISTYPE = 'CGIVST_CAL_TGTREF_PHOT', but got {prihr['VISTYPE']}"
+    assert prihr['VISITID'] == '0300002002002901002', f"Expected header VISITID = '0300002002002901002', but got {prihr['VISITID']}"
+    assert prihr['PROGNUM'] == '0300', f"Expected header PROGNUM = '0300', but got {prihr['PROGNUM']}"
+    assert prihr['EXECNUM'] == '002', f"Expected header EXECNUM = '002', but got {prihr['EXECNUM']}"
+    assert prihr['CAMPAIGN'] == '002', f"Expected header CAMPAIGN = '002', but got {prihr['CAMPAIGN']}"
+    assert prihr['SEGMENT'] == '002', f"Expected header SEGMENT = '002', but got {prihr['SEGMENT']}"
+    assert prihr['OBSNUM'] == '901', f"Expected header OBSNUM = '901', but got {prihr['OBSNUM']}"
+    assert prihr['VISNUM'] == '002', f"Expected header VISNUM = '002', but got {prihr['VISNUM']}"
 
     assert exthdr['KGAINPAR'] == e_per_dn, f"Expected data KGAINPAR={e_per_dn}, but got {exthdr['KGAINPAR']}"
     assert exthdr['EMGAIN_C'] == gain, f"Expected data EMGAIN_C={gain}, but got {exthdr['EMGAIN_C']}"
@@ -442,7 +464,9 @@ def test_L1_product_from_CPGS():
     # Delete the files 
     shutil.rmtree(outdir)
 
+
+
 if __name__ == '__main__':
     #run_sim()
     test_L1_product_fits_format()
-    test_L1_product_from_CPGS()
+    #test_L1_product_from_CPGS()

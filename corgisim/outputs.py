@@ -3,6 +3,7 @@ from astropy.time import Time
 from corgidrp import mocks
 import os
 from datetime import datetime, timezone, timedelta
+import re
 #import warnings
 
 def create_hdu_list(data, header_info, sim_info=None):
@@ -46,7 +47,26 @@ def create_hdu_list(data, header_info, sim_info=None):
     
     prihdr['TARGET'] = header_info['target_name']
     prihdr['VISTYPE'] = header_info['VISTYPE'] 
-    
+    prihdr['VISITID'] = header_info['VISITID']
+
+    # Validate VISITID format
+    visit_id = prihdr['VISITID']
+    if not isinstance(visit_id, str):
+        raise TypeError("VISITID must be a string.")
+    if not re.fullmatch(r"\d{19}", visit_id):
+        raise ValueError(
+            "VISITID must be a 19-character string in the format "
+            "'PPPPPEEECCCNNNNVVV' "
+            "(P=Program, E=Execution, C=Campaign, N=Observation, V=Visit)."
+        )
+    #separet VISIID into PROGNUM, EXECNUM, CAMPAIGN, SEGMENT, OBSNUM, VISNUM
+    prihdr['PROGNUM'] = visit_id[0:4]
+    prihdr['EXECNUM']  = visit_id[4:7]
+    prihdr['CAMPAIGN'] = visit_id[7:10]
+    prihdr['SEGMENT'] = visit_id[10:13]
+    prihdr['OBSNUM'] = visit_id[13:16]
+    prihdr['VISNUM'] = visit_id[16:19]
+
     if header_info['PHTCNT'] == True:
         prihdr['PHTCNT'] =int(1)
     else:
@@ -189,6 +209,36 @@ def save_hdu_to_fits( hdul, outdir=None, overwrite=False, write_as_L1=False, fil
 
         overwrite_pri_keys = overwrite_pri_keywords.keys() if overwrite_pri_keywords else []
         overwrite_ext_keys = overwrite_ext_keywords.keys() if overwrite_ext_keywords else []
+
+        if "VISITID" in overwrite_pri_keys:
+            visit_id = overwrite_pri_keywords["VISITID"]
+
+            if not isinstance(visit_id, str):
+                raise TypeError("VISITID must be a string.")
+
+            if not re.fullmatch(r"\d{19}", visit_id):
+                raise ValueError(
+                    "VISITID must be a 19-character string in the format "
+                    "'PPPPPEEECCCNNNNVVV' "
+                    "(P=Program, E=Execution, C=Campaign, N=Observation, V=Visit)."
+                )
+
+            # If VISITID is overwritten, the corresponding keywords must also be updated.
+            prognum  = visit_id[0:4]
+            execnum  = visit_id[4:7]
+            campaign = visit_id[7:10]
+            segment  = visit_id[10:13]
+            obsnum   = visit_id[13:16]
+            visnum   = visit_id[16:19]
+
+            overwrite_pri_keywords.update({
+                "PROGNUM": prognum,
+                "EXECNUM": execnum,
+                "CAMPAIGN": campaign,
+                "SEGMENT": segment,
+                "OBSNUM": obsnum,
+                "VISNUM": visnum,
+            })
 
         for key in overwrite_pri_keys:
             if key in hdul[0].header:
