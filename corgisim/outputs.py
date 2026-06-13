@@ -196,14 +196,15 @@ def save_hdu_to_fits( hdul, outdir=None, overwrite=False, write_as_L1=False, fil
             else:
                 raise KeyError(f"Primary header keyword '{key}' not found in HDUList.")
 
-        if write_as_L1:
-            for key in overwrite_ext_keys:
-                if key in hdul[1].header:
-                    hdul[1].header[key] = overwrite_ext_keywords[key]
-                else:
-                    raise KeyError(f"Extension header keyword '{key}' not found in HDUList.")
-        else:
-            raise ValueError("Only L1 products have externsion headers, set write_as_L1 to True")
+        if overwrite_ext_keywords is not None:
+            if write_as_L1:
+                for key in overwrite_ext_keys:
+                    if key in hdul[1].header:
+                        hdul[1].header[key] = overwrite_ext_keywords[key]
+                    else:
+                        raise KeyError(f"Extension header keyword '{key}' not found in HDUList.")
+            else:
+                raise ValueError("Only L1 products have externsion headers, set write_as_L1 to True")
 
 
         if write_as_L1:
