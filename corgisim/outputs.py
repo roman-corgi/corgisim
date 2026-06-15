@@ -245,18 +245,30 @@ def save_hdu_to_fits( hdul, outdir=None, overwrite=False, write_as_L1=False, fil
                 hdul[0].header[key] = overwrite_pri_keywords[key]
             else:
                 raise KeyError(f"Primary header keyword '{key}' not found in HDUList.")
-        
-        for key in overwrite_ext_keys:
-            if key in hdul[1].header:
-                hdul[1].header[key] = overwrite_ext_keywords[key]
+
+        if overwrite_ext_keywords is not None:
+            if write_as_L1:
+                for key in overwrite_ext_keys:
+                    if key in hdul[1].header:
+                        hdul[1].header[key] = overwrite_ext_keywords[key]
+                    else:
+                        raise KeyError(f"Extension header keyword '{key}' not found in HDUList.")
             else:
-                raise KeyError(f"Extension header keyword '{key}' not found in HDUList.")
+                raise ValueError("Only L1 products have externsion headers, set write_as_L1 to True")
+
 
         if write_as_L1:
+            # these headers are only for L1 products
             # Calculate MJDSRT and MJDEND from FTIMEUTC timestamp and EXPTIME
-            mjd_start = Time(hdul[1].header['FTIMEUTC']).mjd
+            time = Time(hdul[1].header['FTIMEUTC'])
+            mjd_start = time.mjd
             hdul[1].header['MJDSRT'] = mjd_start
             hdul[1].header['MJDEND'] = mjd_start + hdul[1].header['EXPTIME'] / 86400.0
+
+            dt = time.to_datetime()
+            dt_str = dt.strftime("%Y-%m-%dT%H:%M:%S")
+            hdul[1].header['SCTSRT'] = dt_str
+            hdul[1].header['SCTEND'] = (dt + timedelta(seconds=exthdr['EXPTIME'])).strftime("%Y-%m-%dT%H:%M:%S")
 
         # Write the HDUList to file
         hdul.writeto(filepath, overwrite=overwrite)
