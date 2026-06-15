@@ -527,11 +527,11 @@ def test_finite_diam_and_jitter_spec():
     
     
 if __name__ == '__main__':
-    # test_excam_mode()
+    test_excam_mode()
     test_cpgs_obs()
-    # test_spc_mode()
-    # test_spec_mode()
-    # test_pol_mode()
-    # test_pol_obs_with_finite_stellar_diam()
-    # test_pol_obs_with_finite_stellar_diam_and_jitter()
-    # test_finite_diam_and_jitter_spec()
+    test_spc_mode()
+    test_spec_mode()
+    test_pol_mode()
+    test_pol_obs_with_finite_stellar_diam()
+    test_pol_obs_with_finite_stellar_diam_and_jitter()
+    test_finite_diam_and_jitter_spec()
