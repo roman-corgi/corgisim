@@ -320,22 +320,24 @@ class CorgiOptics():
         ##self.SATSPOTS is the value to be populated to L1 header prihdr[SATSPOTS]
         # prihdr[SATSPOTS]= 0: No satellite spots present 
         # prihdr[SATSPOTS]= 1: Satellite spots present
-        if satspot_keywords == None:
+        satspot_keywords_internal = satspot_keywords.copy() if satspot_keywords is not None else None
+        if satspot_keywords_internal == None:
             self.SATSPOTS = int(0)
         else:
             # check keywords
-            if optics_keywords['use_dm1'] != 1:
+            if optics_keywords_internal['use_dm1'] != 1:
                 raise KeyError('ERROR: use_dm1 in optics_keywords is not set 1')
             required_keys_satspot = {'num_pairs','sep_lamD', 'angle_deg', 'contrast', 'wavelength_m'}
-            missing_keys = required_keys_satspot - satspot_keywords.keys()
+            missing_keys = required_keys_satspot - satspot_keywords_internal.keys()
             if missing_keys:
                 raise KeyError(f"ERROR: Missing required satspot_keywords: {missing_keys}")
 
             #### call self.add_satspot() to satellite spots in DM files, update the dm1 info in self.optics_keywords
-            self.optics_keywords['dm1_v'] = self.add_satspot(satspot_keywords=satspot_keywords)
+            self.optics_keywords['dm1_v'] = self.add_satspot(satspot_keywords=satspot_keywords_internal)
 
             self.SATSPOTS = int(1)
             print("satellite spots are added to DM1.")
+        self.satspot_keywords = satspot_keywords_internal
 
         # Finite stellar diameter and jitter
         # Ignore this section if stellar_diam_and_jitter_keywords == None

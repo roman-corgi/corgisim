@@ -5,7 +5,7 @@ import os
 from corgisim import scene, instrument, inputs, observation, outputs
 import copy 
 
-def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, save_as_fits= False, output_dir=None, full_frame= False, loc_x=None, loc_y=None):
+def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, save_as_fits= False, output_dir=None, full_frame= False, loc_x=None, loc_y=None, n_satspot_frames=None):
     """Generates a sequence of simulated observations and places them on a detector.
 
     This function orchestrates the simulation of a given astrophysical scene through
@@ -24,6 +24,12 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, s
             the detector characteristics and noise properties.
         exp_time (float): The exposure time for each individual frame in seconds.
         n_frames (int): The total number of frames to generate in this observation sequence.
+        n_satspot_frames (int, optional): Number of frames at the beginning of
+            the sequence that should include satellite spots. This must be a
+            multiple of 3, because each set of satellite-spot frames uses
+            [negative, positive, no sign override]. To use this, set
+            `optics.satspot_keywords` before calling this function. If None,
+            the sequence uses the optics object as configured.
         full_frame (bool, optional): If True, a full-frame detector image will be generated.
             If False (default), a sub-array image is generated.
         loc_x (int, optional): The x-coordinate for the center of the sub-array in pixels
@@ -38,15 +44,82 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, s
         where each object represents a single generated observation frame with its image data
         and associated FITS header information.
     """
-    sim_scene = optics.get_host_star_psf(scene)
-    if hasattr(scene, 'point_source_dra') or hasattr(scene, 'point_source_ddec'):
-        sim_scene = optics.inject_point_sources(scene,sim_scene)
+    def generate_sim_scene():
+        sim_scene = optics.get_host_star_psf(scene)
+        if hasattr(scene, 'point_source_dra') or hasattr(scene, 'point_source_ddec'):
+            sim_scene = optics.inject_point_sources(scene,sim_scene)
+        return sim_scene
+
+    if n_satspot_frames is not None:
+        if not isinstance(n_satspot_frames, int):
+            raise TypeError("n_satspot_frames must be an integer.")
+        if n_satspot_frames < 0:
+            raise ValueError("n_satspot_frames cannot be negative.")
+        if n_satspot_frames > n_frames:
+            raise ValueError("n_satspot_frames cannot exceed n_frames.")
+        if n_satspot_frames % 3 != 0:
+            raise ValueError("n_satspot_frames must be a multiple of 3.")
+
+    original_has_dm1_v = 'dm1_v' in optics.optics_keywords
+    original_dm1_v = optics.optics_keywords.get('dm1_v')
+    original_satspots = optics.SATSPOTS
+
+    if n_satspot_frames is None:
+        regular_sim_scene = generate_sim_scene()
+        satspot_sim_scenes = {}
+    else:
+        if original_satspots == 1:
+            raise ValueError(
+                "n_satspot_frames requires an optics object that starts without "
+                "satellite spots. Set optics.satspot_keywords after creating "
+                "the optics object, then pass n_satspot_frames."
+            )
+
+        satspot_sim_scenes = {}
+        regular_sim_scene = None
+        satspot_signs = ["negative", "positive", None]
+
+        try:
+            if n_satspot_frames > 0:
+                satspot_keywords = getattr(optics, 'satspot_keywords', None)
+                if satspot_keywords is None:
+                    raise ValueError(
+                        "n_satspot_frames was set, but optics.satspot_keywords is None."
+                    )
+                if optics.optics_keywords.get('use_dm1') != 1:
+                    raise KeyError('ERROR: use_dm1 in optics_keywords is not set 1')
+
+                for sign in satspot_signs:
+                    satspot_keywords_for_frame = satspot_keywords.copy()
+                    satspot_keywords_for_frame['sign'] = sign
+
+                    optics.optics_keywords['dm1_v'] = original_dm1_v
+                    optics.optics_keywords['dm1_v'] = optics.add_satspot(
+                        satspot_keywords=satspot_keywords_for_frame
+                    )
+                    optics.SATSPOTS = int(1)
+                    satspot_sim_scenes[sign] = generate_sim_scene()
+
+            if n_satspot_frames < n_frames:
+                optics.optics_keywords['dm1_v'] = original_dm1_v
+                optics.SATSPOTS = int(0)
+                regular_sim_scene = generate_sim_scene()
+        finally:
+            if original_has_dm1_v:
+                optics.optics_keywords['dm1_v'] = original_dm1_v
+            else:
+                optics.optics_keywords.pop('dm1_v', None)
+            optics.SATSPOTS = original_satspots
     
     simulatedImage_list = []
     
     if full_frame == False :
         for i in range(0, n_frames):
-            sim_image = detector.generate_detector_image(sim_scene,exp_time)
+            if n_satspot_frames is not None and i < n_satspot_frames:
+                frame_scene = satspot_sim_scenes[satspot_signs[i % len(satspot_signs)]]
+            else:
+                frame_scene = regular_sim_scene
+            sim_image = detector.generate_detector_image(frame_scene,exp_time)
             simulatedImage_list.append(copy.deepcopy(sim_image))
     else:
         if save_as_fits:
@@ -60,7 +133,11 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, s
                 outdir = output_dir
 
         for i in range(0, n_frames):
-            sim_image = detector.generate_detector_image(sim_scene,exp_time,full_frame=True,loc_x=loc_x, loc_y=loc_y)
+            if n_satspot_frames is not None and i < n_satspot_frames:
+                frame_scene = satspot_sim_scenes[satspot_signs[i % len(satspot_signs)]]
+            else:
+                frame_scene = regular_sim_scene
+            sim_image = detector.generate_detector_image(frame_scene,exp_time,full_frame=True,loc_x=loc_x, loc_y=loc_y)
             simulatedImage_list.append(copy.deepcopy(sim_image))
 
             if save_as_fits:
