@@ -77,7 +77,7 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, s
 
         satspot_sim_scenes = {}
         regular_sim_scene = None
-        satspot_signs = ["negative", "positive", None]
+        satspot_signs = [None, "positive", "negative"]
 
         try:
             if n_satspot_frames > 0:
@@ -91,12 +91,14 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, s
 
                 for sign in satspot_signs:
                     satspot_keywords_for_frame = satspot_keywords.copy()
-                    satspot_keywords_for_frame['sign'] = sign
-
-                    optics.optics_keywords['dm1_v'] = original_dm1_v
-                    optics.optics_keywords['dm1_v'] = optics.add_satspot(
-                        satspot_keywords=satspot_keywords_for_frame
-                    )
+                    
+                    if sign is None:
+                        optics.optics_keywords['dm1_v'] = original_dm1_v
+                    else:
+                        satspot_keywords_for_frame['sign'] = sign
+                        optics.optics_keywords['dm1_v'] = original_dm1_v
+                        optics.optics_keywords['dm1_v'] = optics.add_satspot(
+                            satspot_keywords=satspot_keywords_for_frame )
                     optics.SATSPOTS = int(1)
                     satspot_sim_scenes[sign] = generate_sim_scene()
 
