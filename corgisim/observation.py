@@ -102,11 +102,12 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, s
                     optics.SATSPOTS = int(1)
                     satspot_sim_scenes[sign] = generate_sim_scene()
 
-            if n_satspot_frames < n_frames:
+            if n_satspot_frames < n_frames: 
                 optics.optics_keywords['dm1_v'] = original_dm1_v
                 optics.SATSPOTS = int(0)
                 regular_sim_scene = generate_sim_scene()
         finally:
+            #changing optics.optics_keywords['dm1_v'] and optics.SATSPOTS back to original values
             if original_has_dm1_v:
                 optics.optics_keywords['dm1_v'] = original_dm1_v
             else:
