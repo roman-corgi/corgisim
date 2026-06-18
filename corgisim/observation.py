@@ -39,7 +39,7 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, s
         and associated FITS header information.
     """
     sim_scene = optics.get_host_star_psf(scene)
-    if hasattr(scene, 'point_source_dra') or hasattr(scene, 'point_source_ddec'):
+    if hasattr(scene, 'point_source_dra') and len(scene.point_source_dra) > 0:
         sim_scene = optics.inject_point_sources(scene,sim_scene)
     
     simulatedImage_list = []

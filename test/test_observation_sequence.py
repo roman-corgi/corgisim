@@ -66,6 +66,40 @@ def test_generate_observation_sequence():
     assert isinstance(simulatedImage_list[n_frames-1], SimulatedImage)
     assert isinstance(simulatedImage_list[n_frames-1].image_on_detector, fits.hdu.image.PrimaryHDU)
 
+def test_generate_observation_sequence_empty_scene():
+
+    cgi_mode = 'excam'
+    bandpass_corgisim = '1F'
+    cor_type = 'hlc_band1'
+    cases = ['3e-8']
+    rootname = 'hlc_ni_' + cases[0]
+    dm1 = proper.prop_fits_read(roman_preflight_proper.lib_dir + '/examples/' + rootname + '_dm1_v.fits')
+    dm2 = proper.prop_fits_read(roman_preflight_proper.lib_dir + '/examples/' + rootname + '_dm2_v.fits')
+
+    optics_keywords = {'cor_type': cor_type, 'use_errors': 2, 'polaxis': 10, 'output_dim': 201,
+                    'use_dm1': 1, 'dm1_v': dm1, 'use_dm2': 1, 'dm2_v': dm2, 'use_fpm': 1, 'use_lyot_stop': 1, 'use_field_stop': 1}
+    gain = 1000
+    emccd_keywords = {'em_gain': gain}
+
+    base_scene = scene.Scene()
+    assert base_scene.if_empty
+
+    optics = instrument.CorgiOptics(cgi_mode, bandpass_corgisim, optics_keywords=optics_keywords, if_quiet=True)
+    detector = instrument.CorgiDetector(emccd_keywords)
+
+    exp_time = 2000
+    n_frames = 1
+
+    simulatedImage_list = observation.generate_observation_sequence(base_scene, optics, detector, exp_time, n_frames)
+
+    assert isinstance(simulatedImage_list, list)
+    assert len(simulatedImage_list) == n_frames
+    assert isinstance(simulatedImage_list[0], SimulatedImage)
+    assert isinstance(simulatedImage_list[0].host_star_image, fits.hdu.image.PrimaryHDU)
+    assert np.all(simulatedImage_list[0].host_star_image.data == 0)
+    assert simulatedImage_list[0].point_source_image is None
+    assert isinstance(simulatedImage_list[0].image_on_detector, fits.hdu.image.PrimaryHDU)
+
 def test_generate_observation_scenario_from_cpgs():
     script_dir = os.getcwd()
 
