@@ -17,6 +17,7 @@ from corgisim import outputs, spec, pol, jitter
 import copy
 import os
 from scipy import interpolate
+from packaging.version import Version
 
 warnings.simplefilter('always', UserWarning)
 class CorgiOptics():
@@ -91,10 +92,12 @@ class CorgiOptics():
 
         valid_cgi_modes = ['excam', 'spec', 'lowfs', 'excam_efield']
         valid_cor_types = ['hlc', 'hlc_band1', 'spc-wide', 'spc-wide_band4', 
-                        'spc-wide_band1', 'hlc_band2', 'hlc_band3', 'hlc_band4','spc-spec', 'spc-spec_band2', 'spc-spec_band3' ]
+                        'spc-wide_band1', 'hlc_band2', 'hlc_band3', 'hlc_band4',
+                        'spc-spec', 'spc-spec_band2', 'spc-spec_band3', 
+                        'spc-spec_rotated', 'spc-spec_band2_rotated', 'spc-spec_band3_rotated']
         
         #these cor_type is availbale in cgisim, but are currently untested in corgisim
-        untest_cor_types = ['spc-spec_rotated', 'spc-spec_band2_rotated', 'spc-spec_band3_rotated','spc-mswc', 'spc-mswc_band4','spc-mswc_band1', 'zwfs']
+        untest_cor_types = ['spc-mswc', 'spc-mswc_band4','spc-mswc_band1', 'zwfs']
 
         if cgi_mode not in valid_cgi_modes:
             raise Exception('ERROR: Requested mode does not match any available mode')
@@ -166,12 +169,12 @@ class CorgiOptics():
             #### allowed slit for band2 
             if '2' in self.bandpass:     
                 spec_kw_allowed = {
-                    'slit': ['None', 'R6C5', 'R3C1'],
+                    'slit': ['None', 'R6C5', 'R3C1', 'R4C3'],
                     'prism': ['None', 'PRISM3', 'PRISM2']}
             #### allowed slit for band3
             elif '3' in self.bandpass:
                 spec_kw_allowed = {
-                    'slit': ['None', 'R1C2', 'R3C1'],
+                    'slit': ['None', 'R1C2', 'R3C1', 'R2C2'],
                     'prism': ['None', 'PRISM3', 'PRISM2']}
             for attr_name, default_value in spec_kw_defaults.items():
                 if attr_name in optics_keywords_internal:
@@ -214,10 +217,10 @@ class CorgiOptics():
                 warnings.warn("No prism selected in spec mode, the dispersion model will not be applied to the image cube.")
             
             ### give a warning if the prism is not the default one for the bandpass
-            if (self.prism == 'PRISM2')&('3' in self.bandpass):
-                warnings.warn("PRISM2 is selected for Band 3, which is not the default setting for the Roman CGI, but it can still be simulated with CorgiSim.")
+            if (self.prism == 'PRISM2')&('3' in self.bandpass)&('rotated' not in self.cor_type):
+                warnings.warn("PRISM2 is selected for Band 3 with the nominal, non-rotated SPC, which is not a supported CGI configuration, but it can still be simulated with CorgiSim.")
             if (self.prism == 'PRISM3')&('2' in self.bandpass):
-                warnings.warn("PRISM3 is selected for Band 2, which is not the default setting for the Roman CGI, but it can still be simulated with CorgiSim.")
+                warnings.warn("PRISM3 is selected for Band 2, which is not a supported CGI configuration, but it can still be simulated with CorgiSim.")
             
             if self.slit != 'None':
                 slit_param_fname = os.path.join(ref_data_dir, 'FSAM_slit_params.json')
@@ -873,6 +876,10 @@ class CorgiOptics():
 
             images *= counts[:, np.newaxis, np.newaxis]
             image = np.sum(images, axis=0)
+            ## Left-right image flip to compensate for the flipped SPECROT mask
+            if (self.cor_type in ['spc-spec_rotated', 'spc-spec_band2_rotated', 'spc-spec_band3_rotated'] and 
+                Version(roman_preflight_proper.__version__) <= Version('2.0.2')):
+                image = np.fliplr(image)
 
         if self.cgi_mode in ['lowfs', 'excam_efield']:
             raise ValueError(f"The mode '{self.cgi_mode}' has not been implemented yet!")
@@ -1161,7 +1168,12 @@ class CorgiOptics():
                 self.optics_keywords_comp = self.optics_keywords.copy()
                 ## convert companion sky coord to exacam coord, using roll angle
                 point_source_dx, point_source_dy = skycoord_to_excamcoord(point_source_dra[j], point_source_ddec[j], self.roll_angle)
-               
+                ## If using the SPECROT mask and the roman_preflight_proper version <= 2.0.2, 
+                ## then the sign of dx must be reversed to compensate for the flipped mask orientation.
+                if (self.cor_type in ['spc-spec_rotated', 'spc-spec_band2_rotated', 'spc-spec_band3_rotated'] and 
+                    Version(roman_preflight_proper.__version__) <= Version('2.0.2')):
+                    point_source_dx = -point_source_dx
+
                 self.optics_keywords_comp.update({'output_dim': grid_dim_out_tem,
                                             'final_sampling_m': sampling_um_tem * 1e-6,
                                             'source_x_offset_mas': point_source_dx,
@@ -1212,7 +1224,12 @@ class CorgiOptics():
                     images[i,:,:] = images[i,:,:] * counts
 
                 image = np.sum(images, axis=0)
-                point_source_image.append(image) 
+                ## Left-right image flip to compensate for the flipped SPECROT mask
+                if (self.cor_type in ['spc-spec_rotated', 'spc-spec_band2_rotated', 'spc-spec_band3_rotated'] and 
+                    Version(roman_preflight_proper.__version__) <= Version('2.0.2')):
+                    point_source_image.append(np.fliplr(image))
+                else:
+                    point_source_image.append(image)
 
         if self.cgi_mode in ['lowfs', 'excam_efield']:
             raise ValueError(f"The mode '{self.cgi_mode}' has not been implemented yet!")

@@ -1,15 +1,30 @@
 {
     "_comment": "FSAM slit aperture dimensions in microns; values from Riggs et al., JATIS Vol. 11, 2 (2025)",
     "R1C2": {
+        "_comment": "SPC major-FWHM vertical slit, Band 3",
         "width": 60.8,
         "height": 364.8
     },
     "R6C5": {
+        "_comment": "SPC major-FWHM vertical slit, Band 2",
         "width": 55.0,
         "height": 329.7
     },
     "R3C1": {
+        "_comment": "SPC major-first null vertical slit",
         "width": 115.7,
         "height": 347.2
+    },
+    "R2C2": {
+        "_comment": "SPC minor-FWHM rotated slit, Band 3",
+        "width": 30.4,
+        "height": 516.6,
+        "rotation": 60.0
+    },
+    "R4C3": {
+        "_comment": "SPC minor-FWHM rotated slit, Band 2",
+        "width": 27.5,
+        "height": 467.0,
+        "rotation": 60.0
     }
 }
