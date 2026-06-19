@@ -60,6 +60,7 @@ def create_hdu_list(data, header_info, sim_info=None):
             "(P=Program, E=Execution, C=Campaign, N=Observation, V=Visit)."
         )
     #separet VISIID into PROGNUM, EXECNUM, CAMPAIGN, SEGMENT, OBSNUM, VISNUM
+    # defination of these number and VISITID see https://collaboration.ipac.caltech.edu/pages/viewpage.action?pageId=161617086&spaceKey=romancoronagraph&title=L1%2BCurrent%2BDRP%2BDevelopment%2BVersion
     prihdr['PROGNUM'] = visit_id[0:4]
     prihdr['EXECNUM']  = visit_id[4:7]
     prihdr['CAMPAIGN'] = visit_id[7:10]
@@ -204,41 +205,52 @@ def save_hdu_to_fits( hdul, outdir=None, overwrite=False, write_as_L1=False, fil
             if filename is None:
                 raise ValueError("Filename must be provided when write_as_L1 is False.")
 
-        # Construct full file path
-        filepath = os.path.join(outdir, filename)
 
         overwrite_pri_keys = overwrite_pri_keywords.keys() if overwrite_pri_keywords else []
         overwrite_ext_keys = overwrite_ext_keywords.keys() if overwrite_ext_keywords else []
 
-        if "VISITID" in overwrite_pri_keys:
-            visit_id = overwrite_pri_keywords["VISITID"]
+        overwrite_pri_keywords = overwrite_pri_keywords or {}
+        overwrite_ext_keywords = overwrite_ext_keywords or {}
 
-            if not isinstance(visit_id, str):
+        visitid_keywords = {"PROGNUM", "EXECNUM", "SEGMENT", "OBSNUM", "VISNUM", "FILENAME"}
+
+        if any(key in overwrite_pri_keywords for key in visitid_keywords):
+            raise ValueError(
+                "The keywords PROGNUM, EXECNUM, SEGMENT, OBSNUM, VISNUM, and FILENAME "
+                "are derived from VISITID and cannot be overwritten directly. "
+                "Please overwrite VISITID instead."
+            )
+
+        ###filename need to be updated if FTIMEUTC overwriten
+        ftimeutc = overwrite_ext_keywords.get("FTIMEUTC", exthdr["FTIMEUTC"])
+        new_time_in_name = isotime_to_yyyymmddThhmmsss(ftimeutc)
+
+        visit_id = overwrite_pri_keywords.get("VISITID", prihdr["VISITID"])
+        if not isinstance(visit_id, str):
                 raise TypeError("VISITID must be a string.")
 
-            if not re.fullmatch(r"\d{19}", visit_id):
-                raise ValueError(
-                    "VISITID must be a 19-character string in the format "
-                    "'PPPPPEEECCCNNNNVVV' "
-                    "(P=Program, E=Execution, C=Campaign, N=Observation, V=Visit)."
-                )
+        if not re.fullmatch(r"\d{19}", visit_id):
+            raise ValueError(
+                "VISITID must be a 19-character string in the format "
+                "'PPPPPEEECCCNNNNVVV' "
+                "(P=Program, E=Execution, C=Campaign, N=Observation, V=Visit).")
 
-            # If VISITID is overwritten, the corresponding keywords must also be updated.
-            prognum  = visit_id[0:4]
-            execnum  = visit_id[4:7]
-            campaign = visit_id[7:10]
-            segment  = visit_id[10:13]
-            obsnum   = visit_id[13:16]
-            visnum   = visit_id[16:19]
+        if "VISITID" in overwrite_pri_keys:
 
+            # If VISITID is overwritten, the corresponding keywords and filename must also be updated.
+            # defination of these number and VISITID see https://collaboration.ipac.caltech.edu/pages/viewpage.action?pageId=161617086&spaceKey=romancoronagraph&title=L1%2BCurrent%2BDRP%2BDevelopment%2BVersion
             overwrite_pri_keywords.update({
-                "PROGNUM": prognum,
-                "EXECNUM": execnum,
-                "CAMPAIGN": campaign,
-                "SEGMENT": segment,
-                "OBSNUM": obsnum,
-                "VISNUM": visnum,
+                "PROGNUM": visit_id[0:4],
+                "EXECNUM": visit_id[4:7],
+                "CAMPAIGN": visit_id[7:10],
+                "SEGMENT": visit_id[10:13],
+                "OBSNUM": visit_id[13:16],
+                "VISNUM": visit_id[16:19],
             })
+        
+        filename=f"cgi_{visit_id}_{new_time_in_name}_l1_.fits"
+        overwrite_pri_keywords.update({"FILENAME": filename})
+           
 
         for key in overwrite_pri_keys:
             if key in hdul[0].header:
@@ -269,7 +281,9 @@ def save_hdu_to_fits( hdul, outdir=None, overwrite=False, write_as_L1=False, fil
             dt_str = dt.strftime("%Y-%m-%dT%H:%M:%S")
             hdul[1].header['SCTSRT'] = dt_str
             hdul[1].header['SCTEND'] = (dt + timedelta(seconds=exthdr['EXPTIME'])).strftime("%Y-%m-%dT%H:%M:%S")
-
+        
+        # Construct full file path
+        filepath = os.path.join(outdir, filename)
         # Write the HDUList to file
         hdul.writeto(filepath, overwrite=overwrite)
         print(f"Saved FITS file to: {filepath}")

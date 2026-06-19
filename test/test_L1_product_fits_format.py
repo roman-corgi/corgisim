@@ -160,11 +160,13 @@ def test_L1_product_fits_format():
     outputs.save_hdu_to_fits(sim_scene.image_on_detector,outdir=outdir, write_as_L1=True,
                              overwrite_pri_keywords={'TARGET':'HD 141569A', 'VISITID': '2200006007008009001'},
                              overwrite_ext_keywords={'OPMODE': "Disco", 'FTIMEUTC': '2025-01-01T00:00:00'},
-                             )
+                             overwrite=True)
     #Open the file and check the new values in the headers
     # Find the most recently created file (filename uses current timestamp, not overridden FTIMEUTC)
     files = glob.glob(os.path.join(outdir, 'cgi_*_l1_.fits'))
     f = max(files, key=os.path.getmtime)
+    tem = outputs.isotime_to_yyyymmddThhmmsss('2025-01-01T00:00:00')
+    assert os.path.basename(f) == 'cgi_2200006007008009001_'+tem+'_l1_.fits', f"Expected filename, but got {os.path.basename(f)}" 
 
     with fits.open(f) as hdul:
         prihr = hdul[0].header
@@ -181,6 +183,7 @@ def test_L1_product_fits_format():
         assert prihdr['SEGMENT'] == '008', f"Expected header SEGMENT=008, but got {prihr['SEGMENT']}"
         assert prihdr['OBSNUM'] == '009', f"Expected header OBSNUM=009, but got {prihr['OBSNUM']}"
         assert prihdr['VISNUM'] == '001', f"Expected header VISNUM=001, but got {prihr['VISNUM']}"
+        assert prihdr['FILENAME'] == 'cgi_2200006007008009001_'+tem+'_l1_.fits', f"Expected filename, but got {prihr['FILENAME']}" 
 
     ### delete file after testing
     print('Deleted the FITS file after testing overwrite_pri_hdr and overwrite_ext_hdr with non-default values')
@@ -469,4 +472,4 @@ def test_L1_product_from_CPGS():
 if __name__ == '__main__':
     #run_sim()
     test_L1_product_fits_format()
-    test_L1_product_from_CPGS()
+    #test_L1_product_from_CPGS()
