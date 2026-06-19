@@ -378,13 +378,31 @@ def load_cpgs_data(filepath, return_input=False):
         elif (cpgs_input.find('reference_autogain').text == '1'):
             detector_reference = instrument.CorgiDetector(emccd_keywords=None) 
 
+    bandpass = cpgs_input.find('filter').text
+    coronograph_mask = cpgs_input.find('coronagraph_mask').text
 
+    # CGI mode and cor_type
+    if cpgs_input.find('is_spectroscopy').text == '1' :
+        cgi_mode = 'spec'
+        cor_type = 'spc-spec_band' +bandpass
+        # Untested but available
+        if cpgs_input.find('howfsc_spam_pos').text == 'SPECROT' :
+            cor_type = cor_type + '_rotated'
+    else:
+        cgi_mode = 'excam'
+        if coronograph_mask == '1':
+            cor_type = 'hlc_band'+ bandpass
+        elif coronograph_mask == '2':
+            cor_type = 'spc-wide_band'+ bandpass
+        
     # Create visits
     visits = root.find('visit_list')
     visit_list = []
 
     for visit in visits.iter('cgi_visit'):
-        if (visit.find('cgi_visit_type').text == 'CGIVST_TDD_OBS') :
+        visit_type = visit.find('cgi_visit_type').text
+        #if visit.find('observation_type').text == 'CGI_OBSERVE'
+        if (visit_type == 'CGIVST_TDD_OBS' or visit_type =='CGIVST_TDD_POL_OBS') :
             if reference_star_present :
                 isReference = (visit.find('fixed_target').find('reference_target').text == 'Y')
             else:
@@ -392,7 +410,27 @@ def load_cpgs_data(filepath, return_input=False):
             excam = visit.find('cgi_excam')
             roll_angle = float(visit.find('position_angle').text)
             visit_id = visit.attrib['number']
-            visit_type = visit.find('cgi_visit_type').text
+            
+            # Satellite spots
+            if (excam.find('observe_satellite_spots').text == 'N'):
+                satellite_spot_conf = None
+                satellite_spots_gain = 0.0
+                satellite_spots_frame_time = 0.0
+                satellite_spots_number_of_frames = 0.0
+            else:
+                satellite_spot_conf = int(excam.find('satellite_spots_pair_id').text)
+                satellite_spots_gain =  float(excam.find('satellite_spots_gain').text)
+                satellite_spots_frame_time =  float(excam.find('satellite_spots_frame_time').text)
+                satellite_spots_number_of_frames =  int(excam.find('satellite_spots_number_of_frames').text)   
+            satellite_dict = {'satellite_spot_conf':satellite_spot_conf,
+                              'satellite_spots_gain':satellite_spots_gain,
+                              'satellite_spots_frame_time':satellite_spots_frame_time,
+                              'satellite_spots_number_of_frames':satellite_spots_number_of_frames}        
+            # Polarimetry
+            if (visit_type == 'CGIVST_TDD_OBS'):
+                prism = visit.find('cgi_mechanisms').find('dpampos').text
+
+                
             if (excam.find('auto_gain').text == 'Y'):
                 #Only one frame, exp_time in hours
                 number_of_frames = 1
@@ -401,55 +439,21 @@ def load_cpgs_data(filepath, return_input=False):
                 number_of_frames = int(excam.find('number_of_frames').text)
                 exp_time =  float(excam.find('frame_time').text)
 
-            visit_dict = {'number_of_frames': number_of_frames,'exp_time': exp_time, 'roll_angle':roll_angle, 'visit_id':visit_id, 'isReference':isReference}
+            visit_dict = {'number_of_frames': number_of_frames,
+            'exp_time': exp_time, 
+            'roll_angle':roll_angle, 
+            'visit_id':visit_id, 
+            'isReference':isReference, 
+            'satellite_dict':satellite_dict,}
 
 
             visit_list.append(visit_dict)
 
-    # For now, filter can only take two values in cpgs:
-    #   1 <-> Band 1F (575 nm)
-    #   2 <-> Band 4F (825 nm)
-    filter_dict = {'1':'1F', '2':'4F'}
-    filt = cpgs_input.find('filter').text
-    bandpass = filter_dict[filt]
-    # For now, coronagraph_mask can only take one value in cpgs:
-    #   1 <-> hlc  
-    coronograph_mask = cpgs_input.find('coronagraph_mask').text
-
-    match bandpass:
-        case '1F':
-            if coronograph_mask == '1':
-                cor_type = 'hlc_band1'
-            else:
-                raise NotImplementedError("HLC is the only implemented mode")
-        case '4F':
-            if coronograph_mask == '1':
-                cor_type = 'hlc_band4'
-            else:
-                raise NotImplementedError("HLC is the only implemented mode")                
-
-        case _:
-            raise NotImplementedError("Only Band 1 and Band 4 have been implemented.")                
-
-    # Polarization
-    # Polarimetry is not yet implemented, but the structure is left as to simplify future implementation
-    if cpgs_input.find('with_polarization').text == '1' : 
-        match cpgs_input.find('wollaston').text :
-         # 0/90 deg
-            case '1' :
-                #raise NotImplementedError("Only 0/90 deg and 45/135 deg are implemented")       
-                pass
-            # 45/135 deg
-            case '2' :
-                #raise NotImplementedError("Only 0/90 deg and 45/135 deg are implemented")       
-                pass
-            case _: 
-                raise NotImplementedError("Only 0/90 deg and 45/135 deg are implemented")
+             
     #else :
     polaxis = 0         
 
-    # Only mode implemented for now
-    cgi_mode = 'excam'
+
 
 
     optics_keywords ={'cor_type':cor_type, 'polaxis':polaxis, 'output_dim':201}
