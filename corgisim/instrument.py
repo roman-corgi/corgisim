@@ -17,6 +17,7 @@ from corgisim import outputs, spec, pol, jitter
 import copy
 import os
 from scipy import interpolate
+from packaging.version import Version
 
 warnings.simplefilter('always', UserWarning)
 class CorgiOptics():
@@ -92,10 +93,12 @@ class CorgiOptics():
 
         valid_cgi_modes = ['excam', 'spec', 'lowfs', 'excam_efield']
         valid_cor_types = ['hlc', 'hlc_band1', 'spc-wide', 'spc-wide_band4', 
-                        'spc-wide_band1', 'hlc_band2', 'hlc_band3', 'hlc_band4','spc-spec', 'spc-spec_band2', 'spc-spec_band3' ]
+                        'spc-wide_band1', 'hlc_band2', 'hlc_band3', 'hlc_band4',
+                        'spc-spec', 'spc-spec_band2', 'spc-spec_band3', 
+                        'spc-spec_rotated', 'spc-spec_band2_rotated', 'spc-spec_band3_rotated']
         
         #these cor_type is availbale in cgisim, but are currently untested in corgisim
-        untest_cor_types = ['spc-spec_rotated', 'spc-spec_band2_rotated', 'spc-spec_band3_rotated','spc-mswc', 'spc-mswc_band4','spc-mswc_band1', 'zwfs']
+        untest_cor_types = ['spc-mswc', 'spc-mswc_band4','spc-mswc_band1', 'zwfs']
 
         if cgi_mode not in valid_cgi_modes:
             raise Exception('ERROR: Requested mode does not match any available mode')
@@ -167,12 +170,12 @@ class CorgiOptics():
             #### allowed slit for band2 
             if '2' in self.bandpass:     
                 spec_kw_allowed = {
-                    'slit': ['None', 'R6C5', 'R3C1'],
+                    'slit': ['None', 'R6C5', 'R3C1', 'R4C3'],
                     'prism': ['None', 'PRISM3', 'PRISM2']}
             #### allowed slit for band3
             elif '3' in self.bandpass:
                 spec_kw_allowed = {
-                    'slit': ['None', 'R1C2', 'R3C1'],
+                    'slit': ['None', 'R1C2', 'R3C1', 'R2C2'],
                     'prism': ['None', 'PRISM3', 'PRISM2']}
             for attr_name, default_value in spec_kw_defaults.items():
                 if attr_name in optics_keywords_internal:
@@ -215,10 +218,10 @@ class CorgiOptics():
                 warnings.warn("No prism selected in spec mode, the dispersion model will not be applied to the image cube.")
             
             ### give a warning if the prism is not the default one for the bandpass
-            if (self.prism == 'PRISM2')&('3' in self.bandpass):
-                warnings.warn("PRISM2 is selected for Band 3, which is not the default setting for the Roman CGI, but it can still be simulated with CorgiSim.")
+            if (self.prism == 'PRISM2')&('3' in self.bandpass)&('rotated' not in self.cor_type):
+                warnings.warn("PRISM2 is selected for Band 3 with the nominal, non-rotated SPC, which is not a supported CGI configuration, but it can still be simulated with CorgiSim.")
             if (self.prism == 'PRISM3')&('2' in self.bandpass):
-                warnings.warn("PRISM3 is selected for Band 2, which is not the default setting for the Roman CGI, but it can still be simulated with CorgiSim.")
+                warnings.warn("PRISM3 is selected for Band 2, which is not a supported CGI configuration, but it can still be simulated with CorgiSim.")
             
             if self.slit != 'None':
                 slit_param_fname = os.path.join(ref_data_dir, 'FSAM_slit_params.json')
@@ -875,6 +878,10 @@ class CorgiOptics():
 
             images *= counts[:, np.newaxis, np.newaxis]
             image = np.sum(images, axis=0)
+            ## Left-right image flip to compensate for the flipped SPECROT mask
+            if (self.cor_type in ['spc-spec_rotated', 'spc-spec_band2_rotated', 'spc-spec_band3_rotated'] and 
+                Version(roman_preflight_proper.__version__) <= Version('2.0.2')):
+                image = np.fliplr(image)
 
         if self.cgi_mode in ['lowfs', 'excam_efield']:
             raise ValueError(f"The mode '{self.cgi_mode}' has not been implemented yet!")
@@ -1164,7 +1171,12 @@ class CorgiOptics():
                 self.optics_keywords_comp = self.optics_keywords.copy()
                 ## convert companion sky coord to exacam coord, using roll angle
                 point_source_dx, point_source_dy = skycoord_to_excamcoord(point_source_dra[j], point_source_ddec[j], self.roll_angle)
-               
+                ## If using the SPECROT mask and the roman_preflight_proper version <= 2.0.2, 
+                ## then the sign of dx must be reversed to compensate for the flipped mask orientation.
+                if (self.cor_type in ['spc-spec_rotated', 'spc-spec_band2_rotated', 'spc-spec_band3_rotated'] and 
+                    Version(roman_preflight_proper.__version__) <= Version('2.0.2')):
+                    point_source_dx = -point_source_dx
+
                 self.optics_keywords_comp.update({'output_dim': grid_dim_out_tem,
                                             'final_sampling_m': sampling_um_tem * 1e-6,
                                             'source_x_offset_mas': point_source_dx,
@@ -1215,7 +1227,12 @@ class CorgiOptics():
                     images[i,:,:] = images[i,:,:] * counts
 
                 image = np.sum(images, axis=0)
-                point_source_image.append(image) 
+                ## Left-right image flip to compensate for the flipped SPECROT mask
+                if (self.cor_type in ['spc-spec_rotated', 'spc-spec_band2_rotated', 'spc-spec_band3_rotated'] and 
+                    Version(roman_preflight_proper.__version__) <= Version('2.0.2')):
+                    point_source_image.append(np.fliplr(image))
+                else:
+                    point_source_image.append(image)
 
         if self.cgi_mode in ['lowfs', 'excam_efield']:
             raise ValueError(f"The mode '{self.cgi_mode}' has not been implemented yet!")
@@ -1395,7 +1412,7 @@ class CorgiDetector():
         self.emccd = self.define_EMCCD(emccd_keywords=self.emccd_keywords)
     
 
-    def generate_detector_image(self, simulated_scene, exptime, full_frame= False, loc_x=512, loc_y=512):
+    def generate_detector_image(self, simulated_scene, exptime, full_frame= False, cut_sub_frame=False,  loc_x=512, loc_y=512):
         '''
         Function that generates a detector image from the input image, using emccd_detect. 
 
@@ -1407,6 +1424,7 @@ class CorgiDetector():
             - loc_x (int): The horizontal coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True, and image from CorgiOptics has size is smaller than 1024×1024
             - loc_y (int): The vertical coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True, and image from CorgiOptics has size is smaller than 1024×1024
             - exptime: exptime in second
+            - cut_sub_frame: if generating a sub frame, this option ellows the user to generate a full frame and then cut it down, so as to avoid the issue of cosmic rays tails wrapping to the next row
 
         Returns:
             - A corgisim.scene.SimulatedImage object that contains the detector image in the 
@@ -1443,42 +1461,56 @@ class CorgiDetector():
             raise ValueError('No valid simulated scene to put on detector')
       
         if sim_info['polarization_basis'] == 'None':
-            if full_frame:
                 # If the simulated image is smaller than 1024×1024, place it on the full-frame detector at (loc_x, loc_y)
                 # If the image is exactly 1024×1024, assume it's already centered and use it directly
             # If the image exceeds 1024×1024, raise an error
-                if (img.shape[0] < 1024) & (img.shape[1] < 1024):
-                    flux_map = self.place_scene_on_detector( img , loc_x, loc_y)
-                if (img.shape[0] == 1024) & (img.shape[1] == 1024):
-                    flux_map = img
-                if (img.shape[0] >1024) or (img.shape[1] >1024):
-                    raise ValueError("Science image dimensions (excluding pre-scan area) cannot exceed 1024×1024.")
-           
-                Im_noisy = self.emccd.sim_full_frame(flux_map, exptime).astype(np.uint16)
-            else:
-                Im_noisy = self.emccd.sim_sub_frame(img, exptime).astype(np.uint16)
-        else:
+            if (img.shape[0] < 1024) & (img.shape[1] < 1024):
+                flux_map = self.place_scene_on_detector( img , loc_x, loc_y)
+            if (img.shape[0] == 1024) & (img.shape[1] == 1024):
+                flux_map = img
+            if (img.shape[0] >1024) or (img.shape[1] >1024):
+                raise ValueError("Science image dimensions (excluding pre-scan area) cannot exceed 1024×1024.")
+                
             if full_frame:
-                #images separated 7.5" or 344 pix on the detector (1 pix=0.0218")
-                #0/90 degree images are placed on x-axis symmetric about the user defined location
-                #45/135 degree images are placed on -45 degree axis symmetric about the user defined location
-                if sim_info['polarization_basis'] == '0/90 degrees':
-                    loc_x_from_center = 172
-                    loc_y_from_center = 0
-                else:
-                    loc_x_from_center = 122
-                    loc_y_from_center = 122
-                if (img[0].shape[0] < 512) & (img[0].shape[1] < 512):
-                    flux_map = self.place_scene_on_detector(img[0] , loc_x-loc_x_from_center, loc_y+loc_y_from_center) + self.place_scene_on_detector(img[1] , loc_x+loc_x_from_center, loc_y-loc_y_from_center)
-                else:
-                    raise ValueError("Polarimetry mode image dimensions cannot exceed 512x512 to ensure images do not go off detector.")
                 Im_noisy = self.emccd.sim_full_frame(flux_map, exptime).astype(np.uint16)
             else:
-                #currently runs sim_sub_frame twice for each image
-                #add warning about subframes having different noises
+                if cut_sub_frame:
+                    Im_noisy_full = self.emccd.sim_full_frame(flux_map, exptime).astype(np.uint16)
+                    Im_noisy_1024 = Im_noisy_full[13:1037, 1088:2112] #from https://collaboration.ipac.caltech.edu/pages/viewpage.action?pageId=161617086&spaceKey=romancoronagraph&title=L1%2BCurrent%2BDRP%2BDevelopment%2BVersion
+                    Im_noisy = Im_noisy_1024[loc_x-img.shape[0]//2:loc_x+img.shape[0]//2+1, loc_y-img.shape[1]//2:loc_y+img.shape[1]//2+1]
+                else: 
+                    Im_noisy = self.emccd.sim_sub_frame(img, exptime).astype(np.uint16)
+        else:
+            #images separated 7.5" or 344 pix on the detector (1 pix=0.0218")
+            #0/90 degree images are placed on x-axis symmetric about the user defined location
+            #45/135 degree images are placed on -45 degree axis symmetric about the user defined location
+            if sim_info['polarization_basis'] == '0/90 degrees':
+                loc_x_from_center = 172
+                loc_y_from_center = 0
+            else:
+                loc_x_from_center = 122
+                loc_y_from_center = 122
+            if (img[0].shape[0] < 512) & (img[0].shape[1] < 512):
+                flux_map = self.place_scene_on_detector(img[0] , loc_x-loc_x_from_center, loc_y+loc_y_from_center) + self.place_scene_on_detector(img[1] , loc_x+loc_x_from_center, loc_y-loc_y_from_center)
+            else:
+                raise ValueError("Polarimetry mode image dimensions cannot exceed 512x512 to ensure images do not go off detector.")
+                
+            if full_frame:            
+                Im_noisy = self.emccd.sim_full_frame(flux_map, exptime).astype(np.uint16)
+            else:
                 warnings.warn('Detector noise will be different for each sub frame in polarimetry mode. For accurate detector image with noise, please generate full frame image.')
-                Im_noisy = np.array([self.emccd.sim_sub_frame(img[0], exptime).astype(np.uint16), self.emccd.sim_sub_frame(img[1], exptime).astype(np.uint16)])
-            
+
+                if cut_sub_frame:
+                    #currently runs sim_sub_frame twice for each image
+                    #add warning about subframes having different noises
+                    Im_noisy_full = self.emccd.sim_full_frame(flux_map, exptime).astype(np.uint16)
+                    Im_noisy_1024 = Im_noisy_full[13:1037, 1088:2112] #from https://collaboration.ipac.caltech.edu/pages/viewpage.action?pageId=161617086&spaceKey=romancoronagraph&title=L1%2BCurrent%2BDRP%2BDevelopment%2BVersion
+                    Im_noisy_slice1 = Im_noisy_1024[loc_y+loc_y_from_center-img[0].shape[0]//2:loc_y+loc_y_from_center+img[0].shape[0]//2+1,loc_x-loc_x_from_center-img[0].shape[0]//2:loc_x-loc_x_from_center + img[0].shape[0]//2+1]
+                    Im_noisy_slice2 = Im_noisy_1024[loc_y-loc_y_from_center-img[1].shape[0]//2:loc_y-loc_y_from_center+img[1].shape[0]//2+1,loc_x+loc_x_from_center-img[1].shape[0]//2:loc_x+loc_x_from_center + img[1].shape[0]//2+1]
+
+                    Im_noisy = np.array([Im_noisy_slice1, Im_noisy_slice2])
+                else: 
+                    Im_noisy = np.array([self.emccd.sim_sub_frame(img[0], exptime).astype(np.uint16), self.emccd.sim_sub_frame(img[1], exptime).astype(np.uint16)])
         # Prepare additional information to be added as COMMENT headers in the primary HDU.
         # These are different from the default L1 headers, but extra comments that are used to track simulation-specific details.
         sim_info['includ_dectector_noise'] = 'True'
