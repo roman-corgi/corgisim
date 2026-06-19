@@ -14,6 +14,9 @@ def mock_optics():
         slit = 'test_slit'
         slit_x_offset_mas = 50
         slit_y_offset_mas = 100
+        slit_ra_offset_mas = 0
+        slit_dec_offset_mas = 0
+        cor_type = "spc-spec_band3"
     return MockOptics()
 
 @pytest.fixture
@@ -79,6 +82,7 @@ def test_read_prism_params(tmp_path):
     # Create a temporary NumPy file
     test_data = {
         'pos_vs_wavlen_polycoeff': np.array([1.0, 2.0, 3.0]),
+        'wavlen_vs_pos_polycoeff': np.array([3.0, 2.0, 1.0]),
         'clocking_angle': 45.0
     }
     temp_file = tmp_path / "test_prism_params.npz"

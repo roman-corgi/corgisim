@@ -31,7 +31,7 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, s
             x-coordinate of the full frame's origin (top-left pixel). Required if `full_frame` is True.
         loc_y (int, optional): The y-coordinate for the center of the sub-array in pixels
             if `full_frame` is False. If `full_frame` is True, this specifies the
-            y-coordinate of the full frame's origin (top-left pixel). Required if `full_frame` is True.
+            y-coordinate of the full frame's origin (top-left pixel). Required if `full_frame` is True.        
 
     Returns:
         list[corgisim.scene.SimulatedImage]: A list of :py:class:`corgisim.scene.SimulatedImage` objects,
@@ -98,11 +98,11 @@ def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, outpu
         scene_target = scene.Scene(host_star_properties, point_source_info)
 
     for visit in visit_list:
-        visit_optics = instrument.CorgiOptics(optics.cgi_mode, optics.bandpass_header, optics_keywords={'cor_type':optics.optics_keywords['cor_type'],'polaxis':optics.optics_keywords['polaxis'],'output_dim':optics.optics_keywords['output_dim']}, roll_angle = visit['roll_angle'] , if_quiet=True, oversampling_factor = optics.oversampling_factor)
+        optics.roll_angle = visit['roll_angle']
         if visit['isReference']:
-            simulatedImage_visit = generate_observation_sequence(scene_reference, visit_optics, detector_reference, visit['exp_time'], visit['number_of_frames'],save_as_fits= save_as_fits, output_dir=output_dir, full_frame= full_frame,loc_x=loc_x, loc_y=loc_y )
+            simulatedImage_visit = generate_observation_sequence(scene_reference, optics, detector_reference, visit['exp_time'], visit['number_of_frames'],save_as_fits= save_as_fits, output_dir=output_dir, full_frame= full_frame,loc_x=loc_x, loc_y=loc_y )
         else:
-            simulatedImage_visit = generate_observation_sequence(scene_target, visit_optics, detector_target, visit['exp_time'], visit['number_of_frames'],save_as_fits= save_as_fits, output_dir=output_dir, full_frame= full_frame,loc_x=loc_x, loc_y=loc_y  )
+            simulatedImage_visit = generate_observation_sequence(scene_target, optics, detector_target, visit['exp_time'], visit['number_of_frames'],save_as_fits= save_as_fits, output_dir=output_dir, full_frame= full_frame,loc_x=loc_x, loc_y=loc_y  )
 
         simulatedImage_list.extend(simulatedImage_visit)
 

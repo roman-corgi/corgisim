@@ -17,8 +17,9 @@ from corgisim import outputs, spec, pol, jitter
 import copy
 import os
 from scipy import interpolate
+from packaging.version import Version
 
-
+warnings.simplefilter('always', UserWarning)
 class CorgiOptics():
     '''
     A class that defines the current configuration of the CGI optics, including the telescope
@@ -53,6 +54,13 @@ class CorgiOptics():
             - roll_angle : float, optional, Telescope roll angle in degrees (0 to 360). 
                            Defined as the rotation angle of the excam coordinates (X, Y) relative to the sky coordinates(RA,DEC), positive is counter-clockwise.
                            Default is 0 degrees, corresponding to North up, East left in the sky coordinates.
+            **kwargs:
+            Additional optional keyword arguments.Supported options include:
+            - visit_type (str, optional): A string indicating the type of visit (e.g.CGIVST_CAL_TGTREF_PHOT) for populating header VISTYPE.
+            - if_quiet (bool, optional): If True, suppresses print statements during optics initialization. 
+
+              
+            
         Raises:
             - ValueError: If `cgi_mode` or `cor_type` is invalid.
             - KeyError: If required `optics_keywords` are missing.
@@ -84,10 +92,12 @@ class CorgiOptics():
 
         valid_cgi_modes = ['excam', 'spec', 'lowfs', 'excam_efield']
         valid_cor_types = ['hlc', 'hlc_band1', 'spc-wide', 'spc-wide_band4', 
-                        'spc-wide_band1', 'hlc_band2', 'hlc_band3', 'hlc_band4','spc-spec', 'spc-spec_band2', 'spc-spec_band3' ]
+                        'spc-wide_band1', 'hlc_band2', 'hlc_band3', 'hlc_band4',
+                        'spc-spec', 'spc-spec_band2', 'spc-spec_band3', 
+                        'spc-spec_rotated', 'spc-spec_band2_rotated', 'spc-spec_band3_rotated']
         
         #these cor_type is availbale in cgisim, but are currently untested in corgisim
-        untest_cor_types = ['spc-spec_rotated', 'spc-spec_band2_rotated', 'spc-spec_band3_rotated','spc-mswc', 'spc-mswc_band4','spc-mswc_band1', 'zwfs']
+        untest_cor_types = ['spc-mswc', 'spc-mswc_band4','spc-mswc_band1', 'zwfs']
 
         if cgi_mode not in valid_cgi_modes:
             raise Exception('ERROR: Requested mode does not match any available mode')
@@ -101,7 +111,15 @@ class CorgiOptics():
 
         self.cgi_mode = cgi_mode
         self.cor_type = optics_keywords_internal['cor_type']
-        self.roll_angle = roll_angle % 360  # Ensure roll angle is within 0-360 degrees
+
+        #Initializes the slit_offset so that the roll angle setter can update them if needed
+        if self.cgi_mode == 'spec':
+            self.slit_x_offset_mas = None
+            self.slit_y_offset_mas = None
+            self.slit_ra_offset_mas = 0.0
+            self.slit_dec_offset_mas = 0.0
+
+        self.roll_angle = roll_angle 
 
         if bandpass  in ['1F','2F','3F','4F']:
             self.bandpass = bandpass.split('F')[0]
@@ -128,11 +146,11 @@ class CorgiOptics():
         if self.cgi_mode == 'excam':
             #DPAM prisms allowed for polarimetry
             valid_prisms = ['None', 'POL0', 'POL45']
-            if 'prism' in optics_keywords:
-                if optics_keywords['prism'] not in valid_prisms:
-                    raise ValueError(f'Invalid value for prism: {optics_keywords['prism']}.'
+            if 'prism' in optics_keywords_internal:
+                if optics_keywords_internal['prism'] not in valid_prisms:
+                    raise ValueError(f'Invalid value for prism: {optics_keywords_internal['prism']}.'
                                      f'Must be one of: {valid_prisms}')
-                setattr(self, 'prism', optics_keywords['prism'])
+                setattr(self, 'prism', optics_keywords_internal['prism'])
             else:
                 setattr(self, 'prism', 'None')
         # Set the spectroscopy parameters
@@ -151,16 +169,16 @@ class CorgiOptics():
             #### allowed slit for band2 
             if '2' in self.bandpass:     
                 spec_kw_allowed = {
-                    'slit': ['None', 'R6C5', 'R3C1'],
+                    'slit': ['None', 'R6C5', 'R3C1', 'R4C3'],
                     'prism': ['None', 'PRISM3', 'PRISM2']}
             #### allowed slit for band3
             elif '3' in self.bandpass:
                 spec_kw_allowed = {
-                    'slit': ['None', 'R1C2', 'R3C1'],
+                    'slit': ['None', 'R1C2', 'R3C1', 'R2C2'],
                     'prism': ['None', 'PRISM3', 'PRISM2']}
             for attr_name, default_value in spec_kw_defaults.items():
-                if attr_name in optics_keywords:
-                    value = optics_keywords[attr_name]
+                if attr_name in optics_keywords_internal:
+                    value = optics_keywords_internal[attr_name]
                 
                     if attr_name in spec_kw_allowed:
                         if value not in spec_kw_allowed[attr_name]:
@@ -174,7 +192,7 @@ class CorgiOptics():
                     setattr(self, attr_name, default_value)
             
             # If excam coordinates are not provided, compute them from sky coordinates
-            if (self.slit_x_offset_mas is None) and (self.slit_y_offset_mas is None):
+            if ('slit_x_offset_mas' not in optics_keywords_internal) and ('slit_y_offset_mas' not in optics_keywords_internal):
                 # Convert slit location from sky coordinates to EXCAM coordinates (mas)
                 self.slit_x_offset_mas, self.slit_y_offset_mas = skycoord_to_excamcoord(self.slit_ra_offset_mas, self.slit_dec_offset_mas, self.roll_angle)
 
@@ -199,10 +217,10 @@ class CorgiOptics():
                 warnings.warn("No prism selected in spec mode, the dispersion model will not be applied to the image cube.")
             
             ### give a warning if the prism is not the default one for the bandpass
-            if (self.prism == 'PRISM2')&('3' in self.bandpass):
-                warnings.warn("PRISM2 is selected for Band 3, which is not the default setting for the Roman CGI, but it can still be simulated with CorgiSim.")
+            if (self.prism == 'PRISM2')&('3' in self.bandpass)&('rotated' not in self.cor_type):
+                warnings.warn("PRISM2 is selected for Band 3 with the nominal, non-rotated SPC, which is not a supported CGI configuration, but it can still be simulated with CorgiSim.")
             if (self.prism == 'PRISM3')&('2' in self.bandpass):
-                warnings.warn("PRISM3 is selected for Band 2, which is not the default setting for the Roman CGI, but it can still be simulated with CorgiSim.")
+                warnings.warn("PRISM3 is selected for Band 2, which is not a supported CGI configuration, but it can still be simulated with CorgiSim.")
             
             if self.slit != 'None':
                 slit_param_fname = os.path.join(ref_data_dir, 'FSAM_slit_params.json')
@@ -252,10 +270,8 @@ class CorgiOptics():
 
         if optics_keywords_internal['use_pupil_lens']==1 :
             if (optics_keywords_internal['use_fpm']==1) or (optics_keywords_internal['use_lyot_stop']==1) or (optics_keywords_internal['use_field_stop']==1):
-                raise ValueError("When simulating a pupil image (use_pupil_lens=1), disable use_fpm, use_lyot_stop, and use_field_stop.")
+                 warnings.warn('Warning: the pupil lens is inserted while one or more of the focal mask, Lyot stop, or field stop are also in use.', UserWarning)
 
-
-        # polarization
         
         if optics_keywords_internal['polaxis'] != 10 and optics_keywords_internal['polaxis'] != -10 and optics_keywords_internal['polaxis'] != 0:
             # wollaston transmission is around 0.96%, divide by two to split between polarization
@@ -284,6 +300,12 @@ class CorgiOptics():
                 self.nd = 0
             else:
                 raise ValueError(f"Invalid ND filter value: {optics_keywords['nd']}. Must be 0, 1, 2, or 3.")
+
+        if optics_keywords_internal['use_fpm'] == 1 and (self.nd == '2.25' or self.nd == '4.75fpam'): 
+            raise ValueError( "FPM cannot be used with ND filter 1 (225@FPAM) or ND filter 2 (475@FPAM), because they occupy the same position in the optical path.")
+        if optics_keywords_internal['use_lyot_stop'] == 1 and  self.nd == '4.75fsam':
+            raise ValueError( "Lyot stop cannot be used with ND filter 3 (475@FSAM), because they occupy the same position in the optical path.")
+        # polarization
             
         # Initialize the bandpass class (from synphot)
         # bp: wavelegth is in unit of angstrom
@@ -294,6 +316,7 @@ class CorgiOptics():
 
 
         if 'if_quiet'in kwargs:self.quiet = kwargs.get("if_quiet")
+        self.visit_type = kwargs.get("visit_type", "CGIVST_TDD_OBS")
 
         ##self.SATSPOTS is the value to be populated to L1 header prihdr[SATSPOTS]
         # prihdr[SATSPOTS]= 0: No satellite spots present 
@@ -853,6 +876,10 @@ class CorgiOptics():
 
             images *= counts[:, np.newaxis, np.newaxis]
             image = np.sum(images, axis=0)
+            ## Left-right image flip to compensate for the flipped SPECROT mask
+            if (self.cor_type in ['spc-spec_rotated', 'spc-spec_band2_rotated', 'spc-spec_band3_rotated'] and 
+                Version(roman_preflight_proper.__version__) <= Version('2.0.2')):
+                image = np.fliplr(image)
 
         if self.cgi_mode in ['lowfs', 'excam_efield']:
             raise ValueError(f"The mode '{self.cgi_mode}' has not been implemented yet!")
@@ -882,7 +909,9 @@ class CorgiOptics():
                     'over_sampling_factor':self.oversampling_factor,
                     'return_oversample': self.return_oversample,
                     'output_dim': self.optics_keywords['output_dim'],
-                    'nd_filter':self.nd}
+                    'nd_filter':self.nd,
+                    'target_name': input_scene.target_name,
+                    'visit_type': self.visit_type}
 
         # Define specific keys from self.optics_keywords to include in the header            
         keys_to_include_in_header = ['use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
@@ -1139,7 +1168,12 @@ class CorgiOptics():
                 self.optics_keywords_comp = self.optics_keywords.copy()
                 ## convert companion sky coord to exacam coord, using roll angle
                 point_source_dx, point_source_dy = skycoord_to_excamcoord(point_source_dra[j], point_source_ddec[j], self.roll_angle)
-               
+                ## If using the SPECROT mask and the roman_preflight_proper version <= 2.0.2, 
+                ## then the sign of dx must be reversed to compensate for the flipped mask orientation.
+                if (self.cor_type in ['spc-spec_rotated', 'spc-spec_band2_rotated', 'spc-spec_band3_rotated'] and 
+                    Version(roman_preflight_proper.__version__) <= Version('2.0.2')):
+                    point_source_dx = -point_source_dx
+
                 self.optics_keywords_comp.update({'output_dim': grid_dim_out_tem,
                                             'final_sampling_m': sampling_um_tem * 1e-6,
                                             'source_x_offset_mas': point_source_dx,
@@ -1190,7 +1224,12 @@ class CorgiOptics():
                     images[i,:,:] = images[i,:,:] * counts
 
                 image = np.sum(images, axis=0)
-                point_source_image.append(image) 
+                ## Left-right image flip to compensate for the flipped SPECROT mask
+                if (self.cor_type in ['spc-spec_rotated', 'spc-spec_band2_rotated', 'spc-spec_band3_rotated'] and 
+                    Version(roman_preflight_proper.__version__) <= Version('2.0.2')):
+                    point_source_image.append(np.fliplr(image))
+                else:
+                    point_source_image.append(image)
 
         if self.cgi_mode in ['lowfs', 'excam_efield']:
             raise ValueError(f"The mode '{self.cgi_mode}' has not been implemented yet!")
@@ -1249,11 +1288,14 @@ class CorgiOptics():
         This function modifies the deformable mirror settings stored in `self.optics_keywords['dm1_v']` 
         by injecting satellite spots according to the provided `satspot_keywords`.
 
+        An optional "sign" keyword allows a user to define whether the satellite spots are added with a 
+        positive or negative cosine pattern on the DM. Defaults to "positive" if not specified.
+
         Parameters:
         ----------
         satspot_keywords : dict
             Dictionary specifying the parameters needed to define and inject 
-            satellite spots (sep_lamD, angle_deg, contrast, wavelength_m).
+            satellite spots (sep_lamD, angle_deg, contrast, wavelength_m, sign(options)).
 
         Returns:
         -------
@@ -1273,7 +1315,13 @@ class CorgiOptics():
         contrast = satspot_keywords['contrast']
         wavelength_m = satspot_keywords['wavelength_m']
 
-        dm1_cos_added = add_cos_pattern_dm(dm1_input,num_pairs,sep_lamD,angle_deg,contrast,wavelength_m)
+                    #If the user doesn't pass in the 
+        if "sign" not in satspot_keywords.keys():
+                sign = "positive"
+        else: 
+                sign = satspot_keywords["sign"]
+
+        dm1_cos_added = add_cos_pattern_dm(dm1_input,num_pairs,sep_lamD,angle_deg,contrast,wavelength_m, sign = sign)
 
         return dm1_cos_added
 
@@ -1314,16 +1362,41 @@ class CorgiOptics():
                 # also, the jitter model isn't currently set up for offaxis sources
                 images_tem = np.array(sum(images_pol)) / 4
         return images_tem
-    
+    @property
+    def roll_angle(self):
+        '''
+        The roll angle
+        '''
+        return self._roll_angle
+
+    @roll_angle.setter
+    def roll_angle(self, value):
+        """
+        Set the roll angle.
+        Args:
+            value (float) : The value of the roll angle.
+        Raises:
+            TypeError: If the input is not a float.
+        """
+        if not (isinstance(value, float) or isinstance(value, int)) :
+            raise TypeError("roll_angle must be a float or an int")
+
+        self._roll_angle = value % 360  # Ensure roll angle is within 0-360 degrees
+
+        # Update slit location 
+        if self.cgi_mode == 'spec':
+            self.slit_x_offset_mas, self.slit_y_offset_mas = skycoord_to_excamcoord(self.slit_ra_offset_mas, self.slit_dec_offset_mas, value)
+
+
 class CorgiDetector(): 
     
-    def __init__(self ,emccd_keywords, photon_counting = True):
+    def __init__(self ,emccd_keywords, photon_counting = False):
         '''
         Initialize the class with a dictionary that defines the EMCCD_DETECT input parameters. 
 
         Arguments: 
             - emccd_keywords: A dictionary with the keywords that are used to set up the emccd model
-            - photon_counting: if use photon_counting mode, default is True
+            - photon_counting: if use photon_counting mode, default is False
         '''
         if emccd_keywords is None:
             self.emccd_keywords = None
@@ -1456,8 +1529,8 @@ class CorgiDetector():
             header_info = {'EXPTIME': exptime,'EMGAIN_C':self.emccd_keywords_default['em_gain'],'PSFREF':ref_flag,
                            'PHTCNT':self.photon_counting,'KGAINPAR':self.emccd_keywords_default['e_per_dn'],'cor_type':sim_info['cor_type'], 'bandpass':sim_info['bandpass'],
                            'cgi_mode': sim_info['cgi_mode'], 'polaxis':sim_info['polaxis'],'use_fpm':use_fpm,'nd_filter':sim_info['nd_filter'], 'polarization_basis': sim_info['polarization_basis'],'SATSPOTS':sim_info['SATSPOTS'],
-                           'use_pupil_lens':use_pupil_lens,'use_lyot_stop':use_lyot_stop, 'use_field_stop':use_field_stop, 'ROLL': float(sim_info['roll_angle']),
-                           'EACQ_ROW': loc_x, 'EACQ_COL': loc_y,'RN': self.emccd_keywords_default['read_noise']}
+                           'use_pupil_lens':use_pupil_lens,'use_lyot_stop':use_lyot_stop, 'use_field_stop':use_field_stop, 'PA_APER': float(sim_info['roll_angle']),
+                           'EACQ_ROW': loc_x, 'EACQ_COL': loc_y,'RN': self.emccd_keywords_default['read_noise'],'target_name': sim_info['target_name'],'VISTYPE': sim_info['visit_type']}
             if 'fsm_x_offset_mas' in sim_info:
                 header_info['FSMX'] = float(sim_info['fsm_x_offset_mas'])
             if 'fsm_y_offset_mas' in sim_info:
@@ -1545,6 +1618,9 @@ class CorgiDetector():
             - nbits (int, optional): Number of bits in the analog-to-digital converter. Defaults to 14.
             - use_traps (bool, optional): Flag indicating whether to simulate CTI effects using trap models. Defaults to False.
             - date4traps (float, optional): Decimal year of observation; only applicable if `use_traps` is True. Defaults to 2028.0.
+            - row_read_time (float, optional): Row read time in seconds, needed to simulate smearing. Defaults to 223.5e-6.  For no smearing, set this to 0.
+            - nonlin_path (str, optional): Path to the nonlinearity file for simulating nonlinearity. Defaults to None (no nonlinearity simulated).
+            - flat_path (str, optional): Path to the flat field file for simulating flat field nonuniformity. Defaults to None (no flat field nonuniformity simulated).
 
         Returns:
             - emccd (EMCCDDetectBase): A configured EMCCD detector object. If `use_traps` is True, the detector's CTI is updated using the corresponding trap model.
@@ -1567,7 +1643,10 @@ class CorgiDetector():
                                   'nbits': 14  ,                        # ADC bits
                                   'numel_gain_register': 604,           # Number of gain register elements 
                                   'use_traps': False,                    # include CTI impact of traps
-                                  'date4traps': 2028.0}                        # decimal year of observation}
+                                  'date4traps': 2028.0,                  # decimal year of observation
+                                  'row_read_time': 223.5e-6,              # in seconds (needed to simulate smearing)
+                                  'nonlin_path': None,                  # path to file containing non-linearity map; if None, no input nonlinearity used
+                                  'flat_path': None}                    # path to file containing flat field map; if None, no flat field correction used
 
         if emccd_keywords is not None:                    
             if 'qe' in emccd_keywords.keys():
@@ -1581,7 +1660,8 @@ class CorgiDetector():
         emccd = EMCCDDetect( em_gain=self.emccd_keywords_default['em_gain'], full_well_image=self.emccd_keywords_default['full_well_image'], full_well_serial=self.emccd_keywords_default['full_well_serial'],
                              dark_current=self.emccd_keywords_default['dark_rate'], cic=self.emccd_keywords_default['cic_noise'], read_noise=self.emccd_keywords_default['read_noise'], bias=self.emccd_keywords_default['bias'],
                              qe=1.0, cr_rate=self.emccd_keywords_default['cr_rate'], pixel_pitch=self.emccd_keywords_default['pixel_pitch'], eperdn=self.emccd_keywords_default['e_per_dn'],
-                             numel_gain_register=self.emccd_keywords_default['numel_gain_register'], nbits=self.emccd_keywords_default['nbits'] )
+                             numel_gain_register=self.emccd_keywords_default['numel_gain_register'], nbits=self.emccd_keywords_default['nbits'], row_read_time=self.emccd_keywords_default['row_read_time'], 
+                             nonlin_path=self.emccd_keywords_default['nonlin_path'], flat_path=self.emccd_keywords_default['flat_path'])
         
         if self.emccd_keywords_default['use_traps']: 
             raise ValueError(f"The part to simulate CTI effects using trap models has not been implemented yet!")
@@ -1599,6 +1679,10 @@ class CorgiDetector():
 
 def skycoord_to_excamcoord(dra, ddec, roll_angle):
     """Convert sky coordinates to EXCAM coordinates. These are both relative astrometry of a companion relative to host star (or central of the frame)
+    Convention:
+    - +x = -RA
+    - +y = +Dec
+    - then rotate (x, y) counter-clockwise by roll_angle
 
     Args:
         dra (float): The right ascension offset in mas.
@@ -1611,8 +1695,13 @@ def skycoord_to_excamcoord(dra, ddec, roll_angle):
     """
     # Apply roll angle rotation
     # Because we rotate the *companion coords*, use the opposite sense: θ_comp = -roll_angle.
-    theta_comp = np.deg2rad(-1 * roll_angle)
+    theta_comp = np.deg2rad( -1*roll_angle)
 
-    dx = dra * np.cos(theta_comp) - ddec * np.sin(theta_comp)
-    dy = dra * np.sin(theta_comp) + ddec * np.cos(theta_comp)
+    # Step 1: map sky offsets into the unrotated EXCAM frame
+    x0 = -dra
+    y0 = ddec
+
+    # Step 2: rotate the EXCAM coordinates CCW by roll_angle
+    dx = x0 * np.cos(theta_comp) - y0 * np.sin(theta_comp)
+    dy = x0 * np.sin(theta_comp) + y0 * np.cos(theta_comp)
     return dx, dy

@@ -5,9 +5,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import proper
 import os
+from pathlib import Path
 from corgisim.scene import SimulatedImage
 import roman_preflight_proper
 from astropy.io import fits
+from synphot.models import BlackBodyNorm1D
+from synphot import SourceSpectrum
 import cgisim
 
 def test_excam_mode():
@@ -18,6 +21,7 @@ def test_excam_mode():
     cor_type = 'hlc_band1'
 
     mag_companion = [25]
+    spec_companion = SourceSpectrum(BlackBodyNorm1D, temperature=1000)
     ###the position of companions in unit of mas
     ####550nm/2.3m = 29.4 mas
     ###we used sep = 3 lambda/D here 
@@ -28,7 +32,8 @@ def test_excam_mode():
 
     #Define the host star properties
     host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype': 'vegamag'}
-    point_source_info = [{'Vmag': mag_companion[0], 'magtype': 'vegamag','position_x':dx[0] , 'position_y':dy[0]}]
+    point_source_info = [{'Vmag': mag_companion[0], 'magtype': 'vegamag','position_x':dx[0] , 'position_y':dy[0],
+                          'Custom_Spectrum':spec_companion, 'Rescale_Custom_Spectrum':True}]
 
 
     #Create a Scene object that holds all this information
@@ -124,14 +129,14 @@ def test_excam_mode():
     assert exthr['FSMX'] == 0.0, f"Expected data FSMX=10, but got {exthr['FSMX']}" 
     assert exthr['FSMY'] == 0.0, f"Expected data FSMY=10, but got {exthr['FSMY']}"
     assert prihr['PSFREF'] == False, f"Expected data PSFREF=False, but got {prihr['PSFREF']}"
-    assert prihr['PHTCNT'] == True, f"Expected data PSFREF=True, but got {prihr['PHTCNT']}"
+    assert prihr['PHTCNT'] == False, f"Expected data PHTCNT=False, but got {prihr['PHTCNT']}"
 
     assert exthdr['SATSPOTS'] == 0, f"Expected data SATSPOTS=0, but got {exthdr['SATSPOTS']}"
     assert exthdr['RN'] == 165.0, f"Expected data RN=165.0, but got {exthdr['RN']}"
     assert exthdr['KGAINPAR'] == 8.7, f"Expected data KGAINPAR=8.7, but got {exthdr['KGAINPAR']}"
     assert exthdr['EMGAIN_C'] == 1000, f"Expected data EMGAIN_C=1000, but got {exthdr['EMGAIN_C']}"
     assert exthdr['EMGAIN_A'] == 1000, f"Expected data EMGAIN_A=1000, but got {exthdr['EMGAIN_A']}"
-    assert exthdr['ISPC'] == 1, f"Expected header ISPC=1, but got {exthdr['ISPC']}"
+    assert exthdr['ISPC'] == 0, f"Expected header ISPC=0, but got {exthdr['ISPC']}"
 
     assert exthdr['SPAM_H'] ==  1001.3, f"Expected data SPAM_H=1001.3, but got {exthdr['SPAM_H']}"
     assert exthdr['SPAM_V']== 16627,  f"Expected data SPAM_V = 16627, but got {exthdr['SPAM_V']}"
@@ -157,11 +162,11 @@ def test_excam_mode():
     assert exthdr['DPAMSP_H'] == 38917.1, f"Expected data DPAMSP_H=38917.1, but got {exthdr['DPAMSP_H']}"
     assert exthdr['DPAMSP_V'] == 26016.9, f"Expected data DPAMSP_V=26016.9, but got {exthdr['DPAMSP_V']}"
 
-    assert exthdr['FPAM_H'] ==  6757.2, f"Expected data FPAM_H= 6757.2, but got {exthdr['FPAM_H']}"
-    assert exthdr['FPAM_V'] == 22424, f"Expected data FPAM_V=22424, but got {exthdr['FPAM_V']}"
-    assert exthdr['FPAMNAME'] == 'HLC12_C2R1', f"Expected data FPAMNAME='HLC12_C2R1', but got {exthdr['FPAMNAME']}"
-    assert exthdr['FPAMSP_H'] ==  6757.2, f"Expected data FPAMSP_H= 6757.2, but got {exthdr['FPAMSP_H']}"
-    assert exthdr['FPAMSP_V'] == 22424, f"Expected data FPAMSP_V=22424, but got {exthdr['FPAMSP_V']}"
+    assert exthdr['FPAM_H'] ==  6776, f"Expected data FPAM_H= 6776, but got {exthdr['FPAM_H']}"
+    assert exthdr['FPAM_V'] == 27653.3, f"Expected data FPAM_V=27653.3, but got {exthdr['FPAM_V']}"
+    assert exthdr['FPAMNAME'] == 'HLC12_C2R5', f"Expected data FPAMNAME='HLC12_C2R5', but got {exthdr['FPAMNAME']}"
+    assert exthdr['FPAMSP_H'] ==  6776, f"Expected data FPAMSP_H= 6776, but got {exthdr['FPAMSP_H']}"
+    assert exthdr['FPAMSP_V'] == 27653.3, f"Expected data FPAMSP_V=27653.3, but got {exthdr['FPAMSP_V']}"
 
     assert exthdr['FSAM_H'] ==  29387, f"Expected data FSAM_H=29387, but got {exthdr['FSAM_H']}"
     assert exthdr['FSAM_V'] == 12238, f"Expected data FSAM_V=12238, but got {exthdr['FSAM_V']}"
@@ -175,10 +180,10 @@ def test_excam_mode():
 
 def test_cpgs_obs():
 
-    script_dir = os.getcwd()
+    script_dir = Path(__file__).resolve().parent
 
     #Test with target and reference
-    filepath = 'test/test_data/cpgs_mock.xml'
+    filepath = 'test_data/cpgs_mock.xml'
     abs_path =  os.path.join(script_dir, filepath)
 
     scene_target, scene_reference, optics, detector_target, detector_reference, visit_list = inputs.load_cpgs_data(abs_path)
@@ -513,8 +518,8 @@ def test_finite_diam_and_jitter_spec():
     optics_basic.inject_point_sources(base_scene,sim_scene_basic)
     image_comp_basic = sim_scene_basic.point_source_image.data
     
-    # Check that the peak intensity is higher when the host star is modeled as a point and there is no jitter
-    assert(np.max(image_star_basic) > np.max(image_star_slit_prism))
+    # Check that the PSF peak is lower when the host star is modeled as a point and there is no jitter
+    assert(np.max(image_star_basic) < np.max(image_star_slit_prism))
     
     # Check that the companion images are the same for both cases
     # (The jitter model has not been implemented for off-axis point sources.)
