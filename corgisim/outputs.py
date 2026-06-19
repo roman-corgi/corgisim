@@ -46,6 +46,8 @@ def create_hdu_list(data, header_info, sim_info=None):
     
     prihdr['TARGET'] = header_info['target_name']
     prihdr['VISTYPE'] = header_info['VISTYPE'] 
+    prihdr['RA'] = float(header_info['RA'])
+    prihdr['DEC'] = float(header_info['DEC'])
     
     if header_info['PHTCNT'] == True:
         prihdr['PHTCNT'] =int(1)

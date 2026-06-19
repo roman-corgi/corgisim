@@ -40,6 +40,8 @@ class Scene():
             - "ref_flag" (boolean):optional, whether the input scene is a reference star (True) or a science target (False). Default is false
             - "stellar_diam_mas" (float): The stellar diameter of the host star in mas.
             - "target_name" (str): optional, the name of the target star, used for headers. Default is UNKNOWN.
+            - "RA" (float): optional, the ra of  star in mas. Default is 0.0
+            - "DEC" (float): optional, the dec of  star in mas. Default is 0.0
 
         point_sources_info (list): A list of dictionaries, each representing an off-axis point source in the scene. Each dictionary must contain:
             - "Vmag" (float): The apparent V-band magnitude of the source.
@@ -90,6 +92,8 @@ class Scene():
             # Set the reference flag from host_star_properties, defaulting to False if not provided
             self.ref_flag = host_star_properties_internal.get('ref_flag', False)
             self.target_name = host_star_properties_internal.get('target_name', "UNKNOWN")
+            self.RA = host_star_properties_internal.get('RA', 0.0)
+            self.DEC = host_star_properties_internal.get('DEC', 0.0)
 
             ### Retrieve the stellar spectrum based on spectral type and V-band magnitude
             ### The self.stellar_spectrum attribute is an instance of the SourceSpectrum class (from synphot),

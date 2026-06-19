@@ -911,7 +911,9 @@ class CorgiOptics():
                     'output_dim': self.optics_keywords['output_dim'],
                     'nd_filter':self.nd,
                     'target_name': input_scene.target_name,
-                    'visit_type': self.visit_type}
+                    'visit_type': self.visit_type,
+                    'RA':input_scene.RA,
+                    'DEC':input_scene.DEC}
 
         # Define specific keys from self.optics_keywords to include in the header            
         keys_to_include_in_header = ['use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
@@ -1530,7 +1532,7 @@ class CorgiDetector():
                            'PHTCNT':self.photon_counting,'KGAINPAR':self.emccd_keywords_default['e_per_dn'],'cor_type':sim_info['cor_type'], 'bandpass':sim_info['bandpass'],
                            'cgi_mode': sim_info['cgi_mode'], 'polaxis':sim_info['polaxis'],'use_fpm':use_fpm,'nd_filter':sim_info['nd_filter'], 'polarization_basis': sim_info['polarization_basis'],'SATSPOTS':sim_info['SATSPOTS'],
                            'use_pupil_lens':use_pupil_lens,'use_lyot_stop':use_lyot_stop, 'use_field_stop':use_field_stop, 'PA_APER': float(sim_info['roll_angle']),
-                           'EACQ_ROW': loc_x, 'EACQ_COL': loc_y,'RN': self.emccd_keywords_default['read_noise'],'target_name': sim_info['target_name'],'VISTYPE': sim_info['visit_type']}
+                           'EACQ_ROW': loc_x, 'EACQ_COL': loc_y,'RN': self.emccd_keywords_default['read_noise'],'target_name': sim_info['target_name'],'VISTYPE': sim_info['visit_type'],'RA':sim_info['RA'],'DEC':sim_info['DEC']}
             if 'fsm_x_offset_mas' in sim_info:
                 header_info['FSMX'] = float(sim_info['fsm_x_offset_mas'])
             if 'fsm_y_offset_mas' in sim_info:
