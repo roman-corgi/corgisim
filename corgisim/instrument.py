@@ -22,6 +22,7 @@ import sys
 import astropy.units as u
 import corgisim.constants as constants
 import corgisim.convolution as conv
+from scipy.ndimage import rotate
 
 from corgisim.scene import Scene, SimulatedImage
 from corgisim import outputs, spec, prf_simulation, constants
@@ -1342,7 +1343,7 @@ class CorgiOptics():
             self.slit_x_offset_mas, self.slit_y_offset_mas = skycoord_to_excamcoord(self.slit_ra_offset_mas, self.slit_dec_offset_mas, value)
 
 
-    def simulate_2d_scene(self, input_scene, sim_scene=None, prf_cube_path=None, interpolate_prfs=False):
+    def simulate_2d_scene(self, input_scene, sim_scene=None, prf_cube_path=None, stokes_cube_path=None,  interpolate_prfs=False):
         """
         Convolve 2D scene with a pre-computed off-axis PRF cube.
 
@@ -1366,6 +1367,8 @@ class CorgiOptics():
             If provided, the convolved image will be stored in this object.
         prf_cube_path: str
             Path to the PRF cube to be used for convolution.
+       stokes_cube_path : str (optiona)
+            Path to the stokes cube to be used
         interpolate_prfs: bool, optional
             Whether to use interpolation between PRFs for convolution.
 
@@ -1402,8 +1405,41 @@ class CorgiOptics():
         disk_model_data = fits.getdata(input_scene.twoD_scene_info['disk_model_path'])
         disk_model_norm = disk_model_data/np.nansum(disk_model_data, axis=(0,1)) # normalisation of the disk
 
+        # Apply roll angle: rotate the sky scene to detector frame
+    # roll_angle rotates the astrophysical scene in the detector plane
+        if self.roll_angle != 0:
+            disk_model_norm = rotate(disk_model_norm, angle=self.roll_angle, reshape=False, order=3)
+
+
         prf_sim_info = prf_simulation._get_prf_sim_info(prf_cube_path) # Get the simulation information 
 
+        # Load and validate the Stokes cube if provided in twoD_scene_info
+        if 'stokes_cube_path' in input_scene.twoD_scene_info:
+            stokes_cube_data = fits.getdata(input_scene.twoD_scene_info['stokes_cube_path']).astype(float)
+
+         # Shape check: must be (4, N, N)
+            if stokes_cube_data.ndim != 3 or stokes_cube_data.shape[0] != 4:
+                raise ValueError(
+                    f"The 2D scene Stokes cube loaded from '{input_scene.twoD_scene_info['stokes_cube_path']}' "
+                    f"must have shape (4, N, N) with the first axis indexing [I, Q, U, V], "
+                    f"but got shape {stokes_cube_data.shape}.")
+ 
+            # Physical validity checks (pixel-by-pixel)
+            I_map = stokes_cube_data[0]
+            # if np.any(I_map <= 0):
+                # raise ValueError(
+                    # "The 2D scene Stokes cube contains pixels with I <= 0. "
+                    # "Total intensity must be positive at every pixel.")
+            pol_deg_map = np.sqrt(stokes_cube_data[1]**2 + stokes_cube_data[2]**2 + stokes_cube_data[3]**2)
+            if np.any(pol_deg_map > I_map):
+                raise ValueError(
+                    "The 2D scene Stokes cube contains pixels where the polarized intensity "
+                    "sqrt(Q^2 + U^2 + V^2) exceeds total intensity I")
+ 
+            # Normalize so I = 1 at every pixel
+            input_scene.twoD_stokes_cube = stokes_cube_data
+
+        prf_sim_info = prf_simulation._get_prf_sim_info(prf_cube_path)
         # Check if PRF cube needs centering
         prf_info_is_centred = prf_sim_info.get('centred') # 'True' or 'False'
         # Convert string to boolean
@@ -1429,21 +1465,86 @@ class CorgiOptics():
         # 2. Get the azimuth grid for convolution
         azimuths_deg, _ = conv.build_azimuth_grid(prf_sim_info['step_deg'])
 
-        # 3. Perform convolution
-        conv2d = conv._convolve_with_prfs(
-            obj=disk_model_norm, 
-            prfs_array=prf_cube, 
-            radii_lamD=radii_lamD , 
-            azimuths_deg=azimuths_deg, 
-            pix_scale_mas=constants.PIXEL_SCALE_ARCSEC * 1e3, 
-            res_mas=self.res_mas, 
-            interpolate_prfs=interpolate_prfs
+        # # 3. Perform convolution
+        # conv2d = conv._convolve_with_prfs(
+        #     obj=disk_model_norm, 
+        #     prfs_array=prf_cube, 
+        #     radii_lamD=radii_lamD , 
+        #     azimuths_deg=azimuths_deg, 
+        #     pix_scale_mas=constants.PIXEL_SCALE_ARCSEC * 1e3, 
+        #     res_mas=self.res_mas, 
+        #     interpolate_prfs=interpolate_prfs
+        #     )
+
+        def conv2d_model(disk_model):
+            return conv._convolve_with_prfs(
+                obj=disk_model,
+                prfs_array=prf_cube,
+                radii_lamD=radii_lamD,
+                azimuths_deg=azimuths_deg,
+                pix_scale_mas=constants.PIXEL_SCALE_ARCSEC * 1e3,
+                res_mas=self.res_mas,
+                interpolate_prfs=interpolate_prfs
             )
+        
+        # Decide whether to use the polarized or unpolarized pipeline
+        use_stokes = (input_scene.twoD_stokes_cube is not None)
+        if use_stokes and self.prism not in ['POL0', 'POL45']:
+            warnings.warn(
+                "A Stokes cube was provided for the 2D scene but no Wollaston prism (POL0 or POL45) "
+                "is configured. The Stokes cube will be ignored and total intensity image will be used", UserWarning)
+            use_stokes = False
+
+        if use_stokes:
+
+             stokes_cube = input_scene.twoD_stokes_cube 
+             
+             if self.roll_angle != 0:
+                stokes_cube = np.array([rotate(stokes_cube[k], angle=self.roll_angle, reshape=False, order=1) for k in range(4)])      
+ 
+             M_instrument = pol.get_instrument_mueller_matrix(self.lam_um)  # (4,4)
+             M_instrument = M_instrument/M_instrument[0][0]
+             if self.prism == 'POL0':
+                 M_woll_1 = pol.get_wollaston_mueller_matrix(0)    # (4,4)
+                 M_woll_2 = pol.get_wollaston_mueller_matrix(90)   # (4,4)
+                 polarization_basis = '0/90 degrees'
+             else:  # POL45
+                 M_woll_1 = pol.get_wollaston_mueller_matrix(45)   # (4,4)
+                 M_woll_2 = pol.get_wollaston_mueller_matrix(135)  # (4,4)
+                 polarization_basis = '45/135 degrees'
+ 
+             disk_pol = np.array([stokes_cube[0], stokes_cube[1], stokes_cube[2], stokes_cube[3]])
+             px, py = stokes_cube.shape[1], stokes_cube.shape[2]
+             disk_pol_flattened = disk_pol.reshape(4, -1)                          # (4, px*py)
+             disk_pol_after_instrument = M_instrument @ disk_pol_flattened  
+             
+             disk_path_1 = M_woll_1 @ disk_pol_after_instrument
+             disk_path_2 = M_woll_2 @ disk_pol_after_instrument
+
+             disk_pol_path1=disk_path_1.reshape(4, px, py)
+             disk_pol_path2=disk_path_2.reshape(4, px, py)
+
+             disk_polmodel_norm_1 = disk_pol_path1[0]/np.nansum(disk_pol_path1[0], axis=(0,1)) # normalisation of the disk   # (px, py)
+             disk_polmodel_norm_2 = disk_pol_path2[0]/np.nansum(disk_pol_path2[0], axis=(0,1)) # normalisation of the disk   # (px, py)
+             
+             disk_pol_image_1 = conv2d_model(disk_polmodel_norm_1)    # (px, py)
+             disk_pol_image_2 = conv2d_model(disk_polmodel_norm_2) 
+             
+             channel_1 = conv.flux_calibration_2D_scene(self, input_scene, disk_pol_image_1)
+             channel_2 = conv.flux_calibration_2D_scene(self, input_scene, disk_pol_image_2) # (N, N)
+
+             flux_calibrated_conv2D = np.array([channel_1, channel_2])
+
+        else:
+             # Output: (2, N, N) — same shape convention as inject_point_sources in POL mode
+            conv2d = conv2d_model(disk_model_norm)
 
         # NOTE: An attempt to convert flux units to physical units after convolution
         # NOTE: Should be remove in the future after we have a better way to track the units and perform the flux calibration in a more self-consistent way.
         # 4. Flux calibration
-        flux_calibrated_conv2D = conv.flux_calibration_2D_scene(self, input_scene, conv2d)
+
+            flux_calibrated_conv2D = conv.flux_calibration_2D_scene(self, input_scene, conv2d)
+            polarization_basis = 'None'
 
         if self.cgi_mode in ['spec', 'lowfs', 'excam_efield']:
             warnings.warn(f"This mode '{self.cgi_mode}' has not implmented yet!") # still allow the usage but warn the user about this

@@ -6,6 +6,7 @@ from synphot.models import BlackBodyNorm1D, Box1D, ConstFlux1D
 from synphot import units, SourceSpectrum, SpectralElement, Observation
 from synphot.units import validate_wave_unit, convert_flux, VEGAMAG
 from synphot.models import Empirical1D
+from astropy.io import fits as fits
 
 from corgisim import pol
 import cgisim
@@ -61,6 +62,9 @@ class Scene():
             - "contrast" (float): The contrast of the 2D scene relative to the host star in magnitudes (dMag). This value is currently used to generate a spectrum for the 2D scene based on the host star's spectrum, but in the future we may want to allow users to directly input the 2D scene spectrum or flux instead of relying on contrast with the host star.
 
             - "disk_model_path" (str): The absolute file path to a FITS file containing the 2D scene image. The image data are treated as a spatial brightness template and are normalised internally so that the total scene flux sums to 1 before convolution. 
+            - "stokes_cube_path" (str): optional, the absolute file path to a FITS file containing a Stokes polarization cube for the 2D scene. The cube must have shape (4, N, N) where N
+                matches the spatial dimensions of the disk model FITS file, and the first axis indexes corresponds to the four Stokes components in order [I, Q, U, V]. 
+
 
                 Assumptions:
                 - The FITS image must already be sampled on the same pixel scale used for convolution, currently 0.0218 arcsec/pixel, but in the future we may want to allow users to input the pixel scale as well.
@@ -69,7 +73,7 @@ class Scene():
                 - The current implementation does not resample the input image, or infer the pixel scale from the FITS header. 
             
             - "prf_cube_path" (str): The absolute file path to a FITS file containing the precomputed      off-axis PRF cube used to convolve the 2D scene. 
-
+            
             Notes:
             -  The 2D scene flux calibration is provisional. Future versions may allow users to provide an absolute flux or custom spectrum directly instead of deriving the scene spectrum from the host star and the contrast. 
 
@@ -77,6 +81,7 @@ class Scene():
     Raises:
         ValueError: If the provided spectral type is invalid.
         ValueError: If the provided stokes vector is not of length 4 or the polarized intensity magnitude exceeds the total intensity magnitude
+        ValueError: If the 2D scene Stokes cube loaded from stokes_cube_path does not have shape (4, N, N), if I <= 0 at any pixel, or if sqrt(Q^2+U^2+V^2) > I at any pixel.
     '''
     def __init__(self, host_star_properties=None, point_source_info=None, twoD_scene_info=None, spmethod='bpgs'):
         point_source_info_internal = copy.deepcopy(point_source_info)
@@ -142,6 +147,7 @@ class Scene():
         self.twoD_scene_info = twoD_scene_info
         self.twoD_scene_spectrum = None
         self.twoD_prf_cubes = None
+        self.twoD_stokes_cube = None  # (4, N, N) Stokes cube for the 2D scene, or None if the disk is total intensity
 
         # If a 2D scene is provided, generate its spectrum based on the host star's properties and the scene's contrast
         if twoD_scene_info is not None:
