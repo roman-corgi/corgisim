@@ -6,6 +6,8 @@ from corgidrp import mocks
 import numpy as np
 import roman_preflight_proper as rp
 import types
+
+MAS_PIX = 500E-9 * 360.0 * 3600.0 / (2 * np.pi * 2.363) * 1000 / 2
 class Input():
     """
     A class that holds all the information necessary for a simulation.
@@ -301,7 +303,7 @@ def create_variation_input(old_input, **kwargs):
     new_input = Input(**old_input_dict_intern) 
     return new_input
 
-def load_cpgs_data(filepath, return_input=False):
+def load_cpgs_data(filepath, output_dim=201, polaxis=0, return_input=False):
     """Creates a scene and optics based on the content of a CPGS file.
 
     This function parses the CPGS file to extract simulation parameters for
@@ -382,12 +384,20 @@ def load_cpgs_data(filepath, return_input=False):
     coronograph_mask = cpgs_input.find('coronagraph_mask').text
 
     # CGI mode and cor_type
-    if cpgs_input.find('is_spectroscopy').text == '1' :
+    is_spectroscopy = (cpgs_input.find('is_spectroscopy').text == '1')
+    if is_spectroscopy :
         cgi_mode = 'spec'
         cor_type = 'spc-spec_band' +bandpass
         # Untested but available
         if cpgs_input.find('howfsc_spam_pos').text == 'SPECROT' :
             cor_type = cor_type + '_rotated'
+
+        slit = cpgs_input.find('fsam_pos_spec').text
+        slit_x_offset_mas_orientation_a = float(cpgs_input.find('fsam_dx_pix_a').text)*MAS_PIX
+        slit_y_offset_mas_orientation_a = float(cpgs_input.find('fsam_dy_pix_a').text)*MAS_PIX
+        slit_x_offset_mas_orientation_b = float(cpgs_input.find('fsam_dx_pix_b').text)*MAS_PIX
+        slit_y_offset_mas_orientation_b = float(cpgs_input.find('fsam_dy_pix_b').text)*MAS_PIX
+
     else:
         cgi_mode = 'excam'
         if coronograph_mask == '1':
@@ -430,7 +440,9 @@ def load_cpgs_data(filepath, return_input=False):
             if (visit_type == 'CGIVST_TDD_OBS'):
                 prism = visit.find('cgi_mechanisms').find('dpampos').text
 
-                
+            if is_spectroscopy:
+                prism = visit.find('cgi_mechanisms').find('dpampos_spec').text
+ 
             if (excam.find('auto_gain').text == 'Y'):
                 #Only one frame, exp_time in hours
                 number_of_frames = 1
@@ -451,12 +463,12 @@ def load_cpgs_data(filepath, return_input=False):
 
              
     #else :
-    polaxis = 0         
 
-
-
-
-    optics_keywords ={'cor_type':cor_type, 'polaxis':polaxis, 'output_dim':201}
+    if is_spectroscopy: 
+        optics_keywords ={'cor_type':cor_type, 'polaxis':polaxis, 'output_dim':output_dim, 'slit':slit, 'slit_x_offset_mas':slit_x_offset_mas_orientation_a, 'slit_y_offset_mas':slit_y_offset_mas_orientation_a, 'prism':prism}
+    else:
+        optics_keywords ={'cor_type':cor_type, 'polaxis':polaxis, 'output_dim':output_dim, 'prism':prism}
+      
     optics = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords, if_quiet=True)
     if return_input == True :
         input = Input(cgi_mode=cgi_mode, bandpass=bandpass, optics_keywords=optics_keywords,host_star_properties=host_star_properties_target, cpgs_file = filepath) 
