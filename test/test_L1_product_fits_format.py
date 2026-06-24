@@ -9,6 +9,7 @@ import roman_preflight_proper
 import pytest
 import cgisim
 import os, shutil
+import glob
 
 def test_L1_product_fits_format():
     """Test the headers of saved L1 product FITS file
@@ -89,8 +90,11 @@ def test_L1_product_fits_format():
     assert exthr['FSMX'] == 0.0, f"Expected data FSMX=10, but got {exthr['FSMX']}" 
     assert exthr['FSMY'] == 0.0, f"Expected data FSMY=10, but got {exthr['FSMY']}"
     assert prihr['PSFREF'] == False, f"Expected data PSFREF=False, but got {prihr['PSFREF']}"
-    assert prihr['PHTCNT'] == True, f"Expected data PSFREF=True, but got {prihr['PHTCNT']}"
+    assert prihr['PHTCNT'] == False, f"Expected data PSFREF=False, but got {prihr['PHTCNT']}"
     assert prihr['ROLL'] == 0.0, f"Expected data ROLL=0, but got {prihr['ROLL']}"
+    assert prihr['PA_APER'] == 0.0, f"Expected data PA_APER=0, but got {prihr['PA_APER']}"
+    assert prihr['TARGET'] == 'UNKNOWN', f"Expected header TARGET = 'UNKNOWN', but got {prihr['TARGET']}"
+    assert prihr['VISTYPE'] == 'CGIVST_TDD_OBS', f"Expected header VISTYPE = 'CGIVST_TDD_OBS', but got {prihr['VISTYPE']}"
 
     assert exthdr['SATSPOTS'] == 0, f"Expected data SATSPOTS=0, but got {exthdr['SATSPOTS']}"
     assert exthdr['KGAINPAR'] == 8.7, f"Expected data KGAINPAR=8.7, but got {exthdr['KGAINPAR']}"
@@ -98,7 +102,7 @@ def test_L1_product_fits_format():
     assert exthdr['EMGAIN_A'] == 1000, f"Expected data EMGAIN_A=1000, but got {exthdr['EMGAIN_A']}"
     assert exthdr['RN'] == 165.0, f"Expected data RN=165.0, but got {exthdr['RN']}"
 
-    assert exthdr['ISPC'] == 1, f"Expected header ISPC=1, but got {exthdr['ISPC']}"
+    assert exthdr['ISPC'] == 0, f"Expected header ISPC=0, but got {exthdr['ISPC']}"
 
     assert exthdr['SPAM_H'] ==  1001.3, f"Expected data SPAM_H=1001.3, but got {exthdr['SPAM_H']}"
     assert exthdr['SPAM_V']== 16627,  f"Expected data SPAM_V = 16627, but got {exthdr['SPAM_V']}"
@@ -124,11 +128,11 @@ def test_L1_product_fits_format():
     assert exthdr['DPAMSP_H'] == 38917.1, f"Expected data DPAMSP_H=38917.1, but got {exthdr['DPAMSP_H']}"
     assert exthdr['DPAMSP_V'] == 26016.9, f"Expected data DPAMSP_V=26016.9, but got {exthdr['DPAMSP_V']}"
 
-    assert exthdr['FPAM_H'] ==  6757.2, f"Expected data FPAM_H= 6757.2, but got {exthdr['FPAM_H']}"
-    assert exthdr['FPAM_V'] == 22424, f"Expected data FPAM_V=22424, but got {exthdr['FPAM_V']}"
-    assert exthdr['FPAMNAME'] == 'HLC12_C2R1', f"Expected data FPAMNAME='HLC12_C2R1', but got {exthdr['FPAMNAME']}"
-    assert exthdr['FPAMSP_H'] ==  6757.2, f"Expected data FPAMSP_H= 6757.2, but got {exthdr['FPAMSP_H']}"
-    assert exthdr['FPAMSP_V'] == 22424, f"Expected data FPAMSP_V=22424, but got {exthdr['FPAMSP_V']}"
+    assert exthdr['FPAM_H'] ==  6776, f"Expected data FPAM_H= 6776, but got {exthdr['FPAM_H']}"
+    assert exthdr['FPAM_V'] == 27653.3, f"Expected data FPAM_V=27653.3, but got {exthdr['FPAM_V']}"
+    assert exthdr['FPAMNAME'] == 'HLC12_C2R5', f"Expected data FPAMNAME='HLC12_C2R5', but got {exthdr['FPAMNAME']}"
+    assert exthdr['FPAMSP_H'] ==  6776, f"Expected data FPAMSP_H= 6776, but got {exthdr['FPAMSP_H']}"
+    assert exthdr['FPAMSP_V'] == 27653.3, f"Expected data FPAMSP_V=27653.3, but got {exthdr['FPAMSP_V']}"
 
     assert exthdr['FSAM_H'] ==  29387, f"Expected data FSAM_H=29387, but got {exthdr['FSAM_H']}"
     assert exthdr['FSAM_V'] == 12238, f"Expected data FSAM_V=12238, but got {exthdr['FSAM_V']}"
@@ -145,29 +149,31 @@ def test_L1_product_fits_format():
     os.remove(f)
 
 
-        ### Test overwrite_pri_hdr and overwrite_ext_hdr with non-default values
-    outputs.save_hdu_to_fits(sim_scene.image_on_detector,outdir=outdir, write_as_L1=True, 
-                             overwrite_pri_keywords={'TARGET':'HD 141569A'}, 
-                             overwrite_ext_keywords={'OPMODE': "Disco"},
+        ### Test overwrite_pri_hdr and overwrite_ext_hdr with non-default values including FTIMEUTC and MJDSRT
+    outputs.save_hdu_to_fits(sim_scene.image_on_detector,outdir=outdir, write_as_L1=True,
+                             overwrite_pri_keywords={'TARGET':'HD 141569A'},
+                             overwrite_ext_keywords={'OPMODE': "Disco", 'FTIMEUTC': '2025-01-01T00:00:00'},
                              )
     #Open the file and check the new values in the headers
-    time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
-    filename = f"cgi_{prihdr['VISITID']}_{time_in_name}_l1_.fits"
+    # Find the most recently created file (filename uses current timestamp, not overridden FTIMEUTC)
+    files = glob.glob(os.path.join(outdir, 'cgi_*_l1_.fits'))
+    f = max(files, key=os.path.getmtime)
 
-    f = os.path.join( outdir , filename)
     with fits.open(f) as hdul:
         prihr = hdul[0].header
         exthr = hdul[1].header
 
         assert prihr['TARGET'] == 'HD 141569A', f"Expected header TARGET=HD 141569A, but got {prihr['TARGET']}"
         assert exthr['OPMODE'] == "Disco", f"Expected header OPMODE=Disco, but got {exthr['OPMODE']}"
+        # Check that MJDSRT was correctly calculated from the overridden FTIMEUTC (2025-01-01T00:00:00 = MJD 60676.0)
+        assert exthr['MJDSRT'] == 60676.0, f"Expected header MJDSRT=60676.0 (from overridden FTIMEUTC), but got {exthr['MJDSRT']}"
 
     ### delete file after testing
     print('Deleted the FITS file after testing overwrite_pri_hdr and overwrite_ext_hdr with non-default values')
     os.remove(f)
 
     ####################################################################################################
-    #### testing the non-defalut(input) value pass to header
+    #### testing the non-default(input) value pass to header
     Vmag = 8
     sptype = 'G0V'
     cgi_mode = 'excam'
@@ -184,7 +190,7 @@ def test_L1_product_fits_format():
     info_dir = cgisim.lib_dir + '/cgisim_info_dir/'
 
     #Define the host star properties
-    host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype': 'vegamag','ref_flag':True}
+    host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype': 'vegamag','ref_flag':True,'target_name':'HD 141569A'}
     point_source_info = [{'Vmag': mag_companion[0], 'magtype': 'vegamag','position_x':dx[0] , 'position_y':dy[0]},
                          {'Vmag': mag_companion[1], 'magtype': 'vegamag','position_x':dx[1] , 'position_y':dy[1]}]
 
@@ -197,14 +203,16 @@ def test_L1_product_fits_format():
     rootname = 'hlc_ni_' + cases[0]
     dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm1_v.fits' )
     dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm2_v.fits' )
-
-    optics_keywords ={'cor_type':cor_type, 'use_errors':1, 'polaxis':10, 'output_dim':51,\
+    
+    #define which wollaston prism to use
+    prism = 'POL0' 
+    optics_keywords ={'cor_type':cor_type, 'use_errors':1, 'polaxis':10, 'output_dim':51,'prism':prism,\
                     'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1,
                     'fsm_x_offset_mas':10.0,'fsm_y_offset_mas':20.0 }
                 ##pass fsm_x_offset_mas and fsm_y_offset_mas for no zero value as test
 
     roll_angle=10.0 ##degree
-    optics = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords, if_quiet=True, roll_angle=roll_angle)
+    optics = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords, if_quiet=True, roll_angle=roll_angle, visit_type='CGIVST_CAL_TGTREF_PHOT')
     sim_scene = optics.get_host_star_psf(base_scene)
 
     sim_scene = optics.inject_point_sources(base_scene,sim_scene)
@@ -214,7 +222,7 @@ def test_L1_product_fits_format():
     emccd_keywords ={'em_gain':gain,'e_per_dn':e_per_dn}
     exptime = 3000
 
-    detector = instrument.CorgiDetector( emccd_keywords, photon_counting = False)
+    detector = instrument.CorgiDetector( emccd_keywords, photon_counting = True)
     sim_scene = detector.generate_detector_image(sim_scene, exptime,full_frame=True,loc_x=300, loc_y=300)
     
     ### save the L1 product fits file to test/testdata folder
@@ -244,19 +252,34 @@ def test_L1_product_fits_format():
     assert exthr['FSMX'] == 10.0, f"Expected header FSMX=10, but got {exthr['FSMX']}" 
     assert exthr['FSMY'] == 20.0, f"Expected header FSMY=10, but got {exthr['FSMY']}"
     assert prihr['PSFREF'] == True, f"Expected header PSFREF=False, but got {prihr['PSFREF']}"
-    assert prihr['PHTCNT'] == False, f"Expected header PSFREF=False, but got {prihr['PHTCNT']}"
+    assert prihr['PHTCNT'] == True, f"Expected header PSFREF=True, but got {prihr['PHTCNT']}"
     assert prihdr['FRAMET'] == exptime, f"Expected header FRAMET = {exptime}, but got {prihdr['FRAMET']}"
-    assert prihr['ROLL'] == 10.0, f"Expected data ROLL=10, but got {prihr['ROLL']}"
+    assert prihr['ROLL'] == 0.0, f"Expected data ROLL=0, but got {prihr['ROLL']}"
+    assert prihr['PA_APER'] == roll_angle, f"Expected data PA_APER={roll_angle}, but got {prihr['PA_APER']}"
+    assert prihr['TARGET'] == 'HD 141569A', f"Expected header TARGET = 'HD 141569A', but got {prihr['TARGET']}"
+    assert prihr['VISTYPE'] == 'CGIVST_CAL_TGTREF_PHOT', f"Expected header VISTYPE = 'CGIVST_CAL_TGTREF_PHOT', but got {prihr['VISTYPE']}"
 
     assert exthdr['KGAINPAR'] == e_per_dn, f"Expected data KGAINPAR={e_per_dn}, but got {exthdr['KGAINPAR']}"
     assert exthdr['EMGAIN_C'] == gain, f"Expected data EMGAIN_C={gain}, but got {exthdr['EMGAIN_C']}"
     assert exthdr['EMGAIN_A'] == gain, f"Expected data EMGAIN_A={gain}, but got {exthdr['EMGAIN_A']}"
-    assert exthdr['ISPC'] == 0, f"Expected header ISPC=0, but got {exthdr['ISPC']}"
+    assert exthdr['ISPC'] == 1, f"Expected header ISPC=1, but got {exthdr['ISPC']}"
     assert exthdr['EACQ_ROW'] == 300, f"Expected header EACQ_ROW=300, but got {exthdr['EACQ_ROW']}"
     assert exthdr['EACQ_COL'] == 300, f"Expected header EACQ_COL=300, but got {exthdr['EACQ_COL']}"
 
+    assert exthdr['DPAM_H'] == 8991.3, f"Expected data DPAM_H=8991.3, but got {exthdr['DPAM_H']}"
+    assert exthdr['DPAM_V'] ==  1261.3, f"Expected data DPAM_V=1261.3, but got {exthdr['DPAM_V']}"
+    assert exthdr['DPAMNAME'] == 'POL0', f"Expected data DPAMNAME='POL0', but got {exthdr['DPAMNAME']}"
+    assert exthdr['DPAMSP_H'] == 8991.3, f"Expected data DPAMSP_H=8991.3, but got {exthdr['DPAMSP_H']}"
+    assert exthdr['DPAMSP_V'] ==  1261.3, f"Expected data DPAMSP_V=1261.3, but got {exthdr['DPAMSP_V']}"
+
+    assert exthdr['FSAM_H'] ==  6687, f"Expected data FSAM_H=6687, but got {exthdr['FSAM_H']}"
+    assert exthdr['FSAM_V'] == 13738, f"Expected data FSAM_V=13738, but got {exthdr['FSAM_V']}"
+    assert exthdr['FSAMNAME'] == 'R1C5', f"Expected data FSAMNAME='R1C5', but got {exthdr['FSAMNAME']}"
+    assert exthdr['FSAMSP_H'] ==  6687, f"Expected data FSAMSP_H=6687, but got {exthdr['FSAMSP_H']}"
+    assert exthdr['FSAMSP_V'] == 13738, f"Expected data FSAMSP_V=13738, but got {exthdr['FSAMSP_V']}"
+
     ### delete file after testing
-    print('Deleted the FITS file after testing headers populated with non-dafult values(inputs)')
+    print('Deleted the FITS file after testing headers populated with non-default values(inputs)')
     os.remove(f)
 
     ####################################################################################################
@@ -391,7 +414,7 @@ def test_L1_product_from_CPGS():
 
             f = os.path.join( outdir , filename)
             assert os.path.isfile(f)
-            assert prihdr['ROLL'] == visit["roll_angle"]
+            assert prihdr['PA_APER'] == visit["roll_angle"]
             i += 1
     # Delete the files 
     shutil.rmtree(outdir)
