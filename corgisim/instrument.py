@@ -1412,6 +1412,11 @@ class CorgiOptics():
             # No output format was specified - create a new SimulatedImage object
             sim_scene = SimulatedImage(input_scene)
 
+        # Check if roll angle is non-zero and raise NotImplementedError if so
+        # To be removed after implementing roll angle for the 2D scene. 
+        if self.roll_angle != 0:
+            raise NotImplementedError("Roll angle rotation is not implemented yet for 2D scene.")
+
         # input disk model
         disk_model_data = fits.getdata(input_scene.twoD_scene_info['disk_model_path'])
         disk_model_norm = disk_model_data/np.nansum(disk_model_data, axis=(0,1)) # normalisation of the disk
