@@ -1484,9 +1484,6 @@ class CorgiOptics():
         else: 
             prf_cube = fits.getdata(prf_cube_path)
 
-        # Store the PRF cube in the sim_scene for potential later use (e.g., for visualisation or debugging)
-        sim_scene.twoD_prf_cubes = prf_cube
-
         # 1. Get the radii grids for convolution 
         radii_lamD, _ = conv.build_radial_grid(
             prf_sim_info['iwa'], 
