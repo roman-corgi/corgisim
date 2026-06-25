@@ -69,8 +69,6 @@ class Scene():
                 - The image should be centred
                 - The image should be oriented in the same reference frame as the point source coordinates (typically North-up, East-left).
                 - The current implementation does not resample the input image, or infer the pixel scale from the FITS header. 
-            
-            - "prf_cube_path" (str): The absolute file path to a FITS file containing the precomputed      off-axis PRF cube used to convolve the 2D scene. 
 
             Notes:
             -  The 2D scene flux calibration is provisional. Future versions may allow users to provide an absolute flux or custom spectrum directly instead of deriving the scene spectrum from the host star and the contrast. 
