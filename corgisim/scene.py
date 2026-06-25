@@ -569,7 +569,6 @@ class SimulatedImage():
         #self.host_star_image_on_detector = None
         self.point_source_image = None
         self.twoD_image = None
-        self.twoD_prf_cubes = None # the precomputed PRF cube used to convolve the 2D scene. Saving for debugging purposes, but may not need to be stored? (memory intensive?)
 
 
         #This will be basically the sum of the above three images at the right location on the detector
