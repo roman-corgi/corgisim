@@ -341,6 +341,9 @@ def _set_2D_image_sim_info(optics, input_scene):
     subset = {key: optics.optics_keywords[key] for key in keys_to_include_in_header if key in optics.optics_keywords}
     sim_info.update(subset)
 
+    # add the twoD_scene_info from the input_scene to the sim_info dictionary for bookkeeping
+    sim_info.update(input_scene.twoD_scene_info)
+    
     return sim_info
 
 def _convolve_with_prfs(obj, prfs_array, radii_lamD, azimuths_deg,
