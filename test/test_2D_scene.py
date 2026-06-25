@@ -335,7 +335,24 @@ def test_simulate_2d_scene_missing_prf_path():
 
     mock_optics = Mock()
     mock_optics.res_mas = 1.0
-    mock_optics.cgi_mode = "imaging"  # or whatever your code expects later
+    mock_optics.cgi_mode = "excam_efield"  
 
     with pytest.raises(ValueError, match=r"No PRF cube path provided in the input:"):
         CorgiOptics.simulate_2d_scene(mock_optics, mock_scene, prf_cube_path=None)
+
+def test_roll_angle_not_implemented():
+    from corgisim.instrument import CorgiOptics
+    """Test that NotImplementedError is raised for non-zero roll angle."""
+    mock_scene = Mock()
+    mock_scene.twoD_scene_info = {
+        "disk_model_path": "/fake/path/to/disk_model.fits",
+        "prf_cube_path": "/fake/path/to/prf_cube.fits"
+    }
+
+    mock_optics = Mock()
+    mock_optics.res_mas = 1.0
+    mock_optics.cgi_mode = "excam_efield"
+    mock_optics.roll_angle = 10  # Non-zero roll angle
+
+    with pytest.raises(NotImplementedError, match=r"Roll angle rotation is not implemented yet for 2D scene."):
+        CorgiOptics.simulate_2d_scene(mock_optics, mock_scene, prf_cube_path=mock_scene.twoD_scene_info["prf_cube_path"])
