@@ -3,6 +3,7 @@ import numpy as np
 import proper
 import roman_preflight_proper
 from pyklip.fakes import gaussfit2d
+import math
 
 def test_add_satellite_spots():
     
@@ -59,12 +60,15 @@ def test_add_satellite_spots():
     for sign in [None,"positive", "negative"]:
 
         if sign is None:
-            satspot_keywords = {'num_pairs':2, 'sep_lamD': 7, 'angle_deg': [0,90], 'contrast': contrast, 'wavelength_m': wavelength}
+            satspot_keywords = {'num_pairs':2, 'sep_lamD': 7, 'angle_deg': [0,90], 'contrast': contrast}
         else: 
             satspot_keywords = {'num_pairs':2, 'sep_lamD': 7, 'angle_deg': [0,90], 'contrast': contrast, 'wavelength_m': wavelength, 'sign': sign}
 
         ##define the corgi.optics class that hold all information about the instrument paramters                    
         optics_with_spots = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords_ss, satspot_keywords=satspot_keywords, if_quiet=True)
+        
+        #Check that the wavelength is the one commanded by optics
+        assert math.isclose(optics.lam0_um*1e-6, satspot_keywords['wavelength_m'] , rel_tol=1e-7)
 
         sim_scene_with_spots = optics_with_spots.get_host_star_psf(base_scene)
         image_star_with_spots = sim_scene_with_spots.host_star_image.data
