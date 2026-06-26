@@ -331,7 +331,6 @@ class CorgiOptics():
                 satspot_keywords['wavelength_m'] =  optics_keywords_internal['lam0']*1e-6
             elif  satspot_keywords['wavelength_m'] !=  optics_keywords_internal['lam0']*1e-6:
                 warnings.warn('The satellite spot wavelength is different from the optics wavelength ', UserWarning)
-git 
             required_keys_satspot = {'num_pairs','sep_lamD', 'angle_deg', 'contrast', 'wavelength_m'}
             missing_keys = required_keys_satspot - satspot_keywords.keys()
             if missing_keys:
