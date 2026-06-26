@@ -97,9 +97,59 @@ def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, outpu
         host_star_properties = {'Vmag': scene_target._host_star_Vmag, 'spectral_type': scene_target._host_star_sptype, 'magtype': scene_target._host_star_magtype, 'ref_flag': False}
         scene_target = scene.Scene(host_star_properties, point_source_info)
 
+    satellite_spot_conf = visit_list[0]['satellite_dict']['satellite_spot_conf'] 
+    if satellite_spot_conf is not None:
+        contrast1 = 1e-7
+        contrast2 = 1e-5
+        sep1 = 6.25
+        sep2 = 13
+        match satellite_spot_conf:
+            case 0:
+                sep_lamD = sep1
+                angle_deg = [0,90]
+                contrast = contrast1
+            case 1:
+                sep_lamD = sep2
+                angle_deg = [0,90]
+                contrast = contrast1
+                wavelength_m = wavelength
+            case 2:
+                sep_lamD = sep1
+                angle_deg = [45,135]
+                contrast = contrast1
+            case 3:
+                sep_lamD = sep2
+                angle_deg = [45,135]
+                contrast = contrast1
+            case 4:
+                sep_lamD = sep1
+                angle_deg = [0,90]
+                contrast = contrast2
+            case 5:
+                sep_lamD = sep2
+                angle_deg = [0,90]
+                contrast = contrast2
+            case 6:
+                sep_lamD = sep1
+                angle_deg = [45,135]
+                contrast = contrast2
+            case 7:
+                sep_lamD = sep2
+                angle_deg = [45,135]
+                contrast = contrast2
+            case _:
+                raise KeyError('Unknown satellite spots configuration')
+
+        satspot_keywords = {'num_pairs':2, 'sep_lamD': 7, 'angle_deg': [0,90], 'contrast': contrast, 'wavelength_m': wavelength, 'sign': sign}
+
     for visit in visit_list:
         optics.roll_angle = visit['roll_angle']
+        optics_with_spots = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords_ss, satspot_keywords=satspot_keywords, if_quiet=True)
+
         if visit['isReference']:
+             # Generate satellite spot images, if any
+
+            visit['satellite_dict']
             simulatedImage_visit = generate_observation_sequence(scene_reference, optics, detector_reference, visit['exp_time'], visit['number_of_frames'],save_as_fits= save_as_fits, output_dir=output_dir, full_frame= full_frame,loc_x=loc_x, loc_y=loc_y )
         else:
             simulatedImage_visit = generate_observation_sequence(scene_target, optics, detector_target, visit['exp_time'], visit['number_of_frames'],save_as_fits= save_as_fits, output_dir=output_dir, full_frame= full_frame,loc_x=loc_x, loc_y=loc_y  )
