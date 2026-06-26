@@ -18,6 +18,7 @@ import copy
 import os
 from scipy import interpolate
 from packaging.version import Version
+import math
 
 warnings.simplefilter('always', UserWarning)
 class CorgiOptics():
@@ -329,7 +330,7 @@ class CorgiOptics():
                 raise KeyError('ERROR: use_dm1 in optics_keywords is not set 1')
             if 'wavelength_m' not in satspot_keywords.keys():
                 satspot_keywords['wavelength_m'] =  optics_keywords_internal['lam0']*1e-6
-            elif  satspot_keywords['wavelength_m'] !=  optics_keywords_internal['lam0']*1e-6:
+            elif not math.isclose(self.lam0_um * 1e-6, satspot_keywords['wavelength_m'] , rel_tol=1e-7):
                 warnings.warn('The satellite spot wavelength is different from the optics wavelength ', UserWarning)
             required_keys_satspot = {'num_pairs','sep_lamD', 'angle_deg', 'contrast', 'wavelength_m'}
             missing_keys = required_keys_satspot - satspot_keywords.keys()
