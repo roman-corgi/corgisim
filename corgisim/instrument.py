@@ -325,6 +325,7 @@ class CorgiOptics():
 
 
         # call self.add_satspot() to satellite spots in DM files, update the dm1 info in self.optics_keywords
+        self.SATSPOTS = 0
         self.add_satspot(satspot_keywords=satspot_keywords)
 
 
@@ -1308,8 +1309,7 @@ class CorgiOptics():
                 raise KeyError(f"ERROR: Missing required satspot_keywords: {missing_keys}")
 
             # extract DM1
-            proper_keywords = self.optics_keywords.copy()
-            dm1_input = proper_keywords['dm1_v']
+            dm1_input = self.optics_keywords['dm1_v']
 
             # extract satspot_keywords
             num_pairs = satspot_keywords['num_pairs']
@@ -1318,7 +1318,7 @@ class CorgiOptics():
             contrast = satspot_keywords['contrast']
             wavelength_m = satspot_keywords['wavelength_m']
 
-                        #If the user doesn't pass in the 
+            #If the user doesn't pass in the sign
             if "sign" not in satspot_keywords.keys():
                     sign = "positive"
             else: 
@@ -1328,17 +1328,31 @@ class CorgiOptics():
             
             self.SATSPOTS = int(1)
 
-    def add_satspot(self,satspot_keywords):
+    def remove_satspot(self, satspot_keywords):
         """
         Remove satellite spots from deformable mirror (DM) settings.
 
         Parameters:
         ----------
         satspot_keywords : dict
-            Dictionary specifying the parameters needed to define and inject 
+            Dictionary specifying the parameters needed to define and REMOVE 
             satellite spots (sep_lamD, angle_deg, contrast, wavelength_m, sign(options)).
         """
-        
+        # Inverse the sign
+        if "sign" not in satspot_keywords.keys() or satspot_keywords["sign"] == "positive":
+            sign = "negative"
+        else :
+            sign = "positive"
+
+        inverse_satspot = satspot_keywords.copy()
+        inverse_satspot["sign"] = sign
+
+        # Remove satspots
+        self.add_satspot(inverse_satspots)
+
+        # Update keywords
+        self.SATSPOTS = int(0)
+
 
     def generate_full_aberration_psf(self, optics_keywords,is_offaxis_source=False):
         '''
