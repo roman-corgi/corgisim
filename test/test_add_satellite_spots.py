@@ -207,7 +207,7 @@ def test_measure_offset(coro_type, sep_lamD, angle_deg, band,wavelength):
     optics_keywords ={'cor_type':cor_type, 'use_errors':1, 'polaxis':polaxis, 'output_dim':output_dim,\
                     'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1,\
                  'source_x_offset_mas': shift[0], 'source_y_offset_mas': shift[1]}
-    satspot_keywords = {'num_pairs':2, 'sep_lamD': 6.5, 'angle_deg': [0,90], 'contrast': contrast}
+    satspot_keywords = {'num_pairs':2, 'sep_lamD':sep_lamD, 'angle_deg': angle_deg, 'contrast': contrast}
 
     ##define the corgi.optics class that hold all information about the instrument paramters
     optics = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords, if_quiet=True)
