@@ -1347,10 +1347,9 @@ class CorgiOptics():
         inverse_satspot = satspot_keywords.copy()
         inverse_satspot["sign"] = sign
 
-        # Remove satspots
-        self.add_satspot(inverse_satspots)
+        self.add_satspot(inverse_satspot)
 
-        # Update keywords
+        # Update header
         self.SATSPOTS = int(0)
 
 

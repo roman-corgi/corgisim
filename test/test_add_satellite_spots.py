@@ -33,7 +33,7 @@ def test_add_satellite_spots():
     ##  Define the polaxis parameter. Use 10 for non-polaxis cases only, as other options are not yet implemented.
     polaxis = 10
     # output_dim define the size of the output image
-    output_dim = 51
+    output_dim = 201
 
 
     ## 1) simulate an offset stellar PSF, as a reference ##
@@ -42,7 +42,7 @@ def test_add_satellite_spots():
     lam_D = np.degrees(wavelength/2.3)*3600*1000 # in mas
     shift = [0, 6*lam_D] # shift in [x,y]
 
-    optics_keywords ={'cor_type':cor_type, 'use_errors':2, 'polaxis':polaxis, 'output_dim':output_dim,\
+    optics_keywords ={'cor_type':cor_type, 'use_errors':1, 'polaxis':polaxis, 'output_dim':output_dim,\
                     'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1,\
                  'source_x_offset_mas': shift[0], 'source_y_offset_mas': shift[1]}
 
@@ -54,7 +54,7 @@ def test_add_satellite_spots():
     image_star = sim_scene.host_star_image.data
 
     ## 2) simulate satellite spots by modifying the DM1 solutions ##
-    optics_keywords_ss ={'cor_type':cor_type, 'use_errors':2, 'polaxis':polaxis, 'output_dim':output_dim,\
+    optics_keywords_ss ={'cor_type':cor_type, 'use_errors':1, 'polaxis':polaxis, 'output_dim':output_dim,\
                         'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
     
     for sign in [None,"positive", "negative"]:
@@ -65,8 +65,7 @@ def test_add_satellite_spots():
             satspot_keywords = {'num_pairs':2, 'sep_lamD': 7, 'angle_deg': [0,90], 'contrast': contrast, 'wavelength_m': wavelength, 'sign': sign}
 
         ##define the corgi.optics class that hold all information about the instrument paramters                    
-        optics_with_spots = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords_ss, satspot_keywords=satspot_keywords, if_quiet=True)
-        
+        optics_with_spots = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords_ss,satspot_keywords=satspot_keywords, if_quiet=True)
         #Check that the wavelength is the one commanded by optics
         assert math.isclose(optics.lam0_um*1e-6, satspot_keywords['wavelength_m'] , rel_tol=1e-7)
 
@@ -110,5 +109,76 @@ def test_add_satellite_spots():
         assert peak_satspots_ave/(peak_ref*contrast) < 1.5, peak_satspots_ave/(peak_ref*contrast) > 0.5 
         #threshold is set to 50%
 
+        # Remove satellite spots
+        optics.remove_satspot(satspot_keywords)
+        assert optics.SATSPOTS == 0
+
+        sim_scene_without_spots = optics.get_host_star_psf(base_scene)
+        image_star_without_spots = sim_scene_without_spots.host_star_image.data
+
+        #res = np.allclose(image_star_without_spots, image_star, rtol=1e-05, atol=1e-08)
+        #assert res
+
+def test_add_remove_satellite_spots():
+    Vmag = 5                            # V-band magnitude of the host star
+    sptype = 'G0V'                      # Spectral type of the host star
+    host_star_properties = {'Vmag': Vmag,
+                        'spectral_type': sptype,
+                        'magtype': 'vegamag'}
+    # contrast of satellite spots
+    contrast = 1e-5
+    ####
+
+    # --- Create the Astrophysical Scene ---
+    base_scene = scene.Scene(host_star_properties)
+
+    # Simulation mode (currently only 'excam' is implemented)
+    cgi_mode = 'excam'
+    cor_type = 'hlc'
+    bandpass = '1'
+    cases = ['3e-8']       
+    rootname = 'hlc_ni_' + cases[0]
+    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm1_v.fits' )
+    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm2_v.fits' )
+
+    ##  Define the polaxis parameter. Use 10 for non-polaxis cases only, as other options are not yet implemented.
+    polaxis = 10
+    # output_dim define the size of the output image
+    output_dim = 201
+    wavelength = 0.575e-6 # meter, assuming band 1
+    
+    optics_keywords ={'cor_type':cor_type, 'use_errors':1, 'polaxis':polaxis, 'output_dim':output_dim,\
+                        'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
+    
+    satspot_keywords = {'num_pairs':2, 'sep_lamD': 7, 'angle_deg': [0,90], 'contrast': contrast}
+
+    optics = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords, if_quiet=True)
+
+    sim_scene = optics.get_host_star_psf(base_scene)
+    image_star = sim_scene.host_star_image.data
+
+
+    optics_with_spots =  instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords, satspot_keywords=satspot_keywords, if_quiet=True)                  
+    optics.add_satspot(satspot_keywords)
+
+    sim_scene_with_spots = optics_with_spots.get_host_star_psf(base_scene)
+    image_star_with_spots = sim_scene_with_spots.host_star_image.data
+
+    sim_scene_with_spots_added = optics.get_host_star_psf(base_scene)
+    image_star_with_spots_added = sim_scene_with_spots_added.host_star_image.data
+    
+    assert np.all(optics.optics_keywords["dm1_v"] == optics_with_spots.optics_keywords["dm1_v"])
+    assert np.all(image_star_with_spots_added == image_star_with_spots)
+
+    optics.remove_satspot(satspot_keywords)
+    sim_scene_with_spots_removed = optics.get_host_star_psf(base_scene)
+    image_star_with_spots_removed = sim_scene_with_spots_removed.host_star_image.data
+
+    assert np.all(image_star_with_spots_removed == image_star)
+    assert np.allclose(optics.optics_keywords["dm1_v"], dm1,rtol=1e-15, atol=1e-15)
+
+
+
 if __name__ == '__main__':
     test_add_satellite_spots()
+    
