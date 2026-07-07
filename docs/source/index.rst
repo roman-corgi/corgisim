@@ -15,7 +15,7 @@ Corgisim Documentation
    polarimetry_demo.ipynb
    spc-wide_demo.ipynb
    spec_slit_prism_demo.ipynb
-
+   Satellite_spots_demo.ipynb
 
 
 .. toctree::
