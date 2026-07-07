@@ -415,7 +415,6 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, return_input=False):
 
     for visit in visits.iter('cgi_visit'):
         visit_type = visit.find('cgi_visit_type').text
-        #if visit.find('observation_type').text == 'CGI_OBSERVE'
         if (visit_type == 'CGIVST_TDD_OBS' or visit_type =='CGIVST_TDD_POL_OBS') :
             if reference_star_present :
                 isReference = (visit.find('fixed_target').find('reference_target').text == 'Y')
