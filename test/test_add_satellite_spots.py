@@ -113,6 +113,9 @@ def test_add_satellite_spots():
 
 @pytest.mark.parametrize("coro_type, sep_lamD, angle_deg, band", [("hlc", 6.5, [0,90], "1"), ("spc-wide", 13, [0,90],"4"), ("hlc", 6.5, [45,135], "1"),("spc-wide", 13, [45,135],"4"),])
 def test_add_remove_satellite_spots(coro_type, sep_lamD, angle_deg, band):
+    """
+    Verifies that the satellite spots can be added and removed from an optics object
+    """
     Vmag = 5                            # V-band magnitude of the host star
     sptype = 'G0V'                      # Spectral type of the host star
     host_star_properties = {'Vmag': Vmag,
@@ -136,8 +139,7 @@ def test_add_remove_satellite_spots(coro_type, sep_lamD, angle_deg, band):
     ##  Define the polaxis parameter. Use 10 for non-polaxis cases only, as other options are not yet implemented.
     polaxis = 10
     # output_dim define the size of the output image
-    output_dim = 201
-    #wavelength = 0.575e-6 # meter, assuming band 1
+    output_dim = 101
     
     optics_keywords ={'cor_type':cor_type, 'use_errors':1, 'polaxis':polaxis, 'output_dim':output_dim,\
                         'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
@@ -152,6 +154,7 @@ def test_add_remove_satellite_spots(coro_type, sep_lamD, angle_deg, band):
 
     optics_with_spots =  instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords, satspot_keywords=satspot_keywords, if_quiet=True)                  
     optics.add_satspot(satspot_keywords)
+    #Check that the keywords used in the headers have been modified 
     assert optics.SATSPOTS == 1
 
     sim_scene_with_spots = optics_with_spots.get_host_star_psf(base_scene)
@@ -160,7 +163,9 @@ def test_add_remove_satellite_spots(coro_type, sep_lamD, angle_deg, band):
     sim_scene_with_spots_added = optics.get_host_star_psf(base_scene)
     image_star_with_spots_added = sim_scene_with_spots_added.host_star_image.data
     
+    #Check that the deformable mirrors are identical
     assert np.all(optics.optics_keywords["dm1_v"] == optics_with_spots.optics_keywords["dm1_v"])
+    #Check that the generated images are identical
     assert np.all(image_star_with_spots_added == image_star_with_spots)
 
     optics.remove_satspot(satspot_keywords)
@@ -173,6 +178,9 @@ def test_add_remove_satellite_spots(coro_type, sep_lamD, angle_deg, band):
 
 @pytest.mark.parametrize("coro_type, sep_lamD, angle_deg, band, wavelength", [("hlc", 6.5, [0,90], "1", 0.575e-6), ("spc-wide", 13, [0,90],"4",0.825e-6), ("hlc", 6.5, [45,135], "1",0.575e-6),("spc-wide", 13, [45,135],"4",0.825e-6),])
 def test_measure_offset(coro_type, sep_lamD, angle_deg, band,wavelength):
+    """
+    Verifies that the satellite spots are centered around the star even if the star is not in the middle of the image
+    """
     Vmag = 5                            # V-band magnitude of the host star
     sptype = 'G0V'                      # Spectral type of the host star
     host_star_properties = {'Vmag': Vmag,
