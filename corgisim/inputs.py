@@ -409,6 +409,28 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, return_input=False):
         elif coronograph_mask == '2':
             cor_type = 'spc-wide_band'+ bandpass
         
+    # Satellite spots    
+    obtain_satspots = (cpgs_input.find('obtain_satspot_image_every_visit').text == '1')
+    satellite_dict_target = None
+    satellite_dict_reference = None
+    if obtain_satspots:
+        satellite_spot_conf = int(cpgs_input.find('satellite_spots_pair_id').text)
+        satellite_spots_gain_targ =  float(cpgs_input.find('satellite_spots_gain_targ').text)
+        satellite_spots_frame_time_targ =  float(cpgs_input.find('satellite_spots_exptime_targ').text)
+        satellite_spots_nframes_targ =  int(cpgs_input.find('satellite_spots_nframes_targ').text)
+        satellite_dict_target = {'satellite_spot_conf':satellite_spot_conf,
+                    'satellite_spots_gain':satellite_spots_gain,
+                    'satellite_spots_frame_time':satellite_spots_frame_time_targ,
+                    'satellite_spots_number_of_frames':satellite_spots_nframes_targ} 
+        if reference_star_present: 
+            satellite_spots_gain_ref =  float(cpgs_input.find('satellite_spots_gain').text)
+            satellite_spots_frame_time_ref =  float(cpgs_input.find('satellite_spots_exptime').text)
+            satellite_spots_nframe_ref =  int(cpgs_input.find('satellite_spots_nframes').text)
+            satellite_dict_reference = {'satellite_spot_conf':satellite_spot_conf,
+                                  'satellite_spots_gain':satellite_spots_gain_ref,
+                                  'satellite_spots_frame_time':satellite_spots_frame_time_ref,
+                                  'satellite_spots_number_of_frames':satellite_spots_nframe_ref}
+        
     # Create visits
     visits = root.find('visit_list')
     visit_list = []
@@ -423,22 +445,7 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, return_input=False):
             excam = visit.find('cgi_excam')
             roll_angle = float(visit.find('position_angle').text)
             visit_id = visit.attrib['number']
-            
-            # Satellite spots
-            if (excam.find('observe_satellite_spots').text == 'N'):
-                satellite_spot_conf = None
-                satellite_spots_gain = 0.0
-                satellite_spots_frame_time = 0.0
-                satellite_spots_number_of_frames = 0.0
-            else:
-                satellite_spot_conf = int(excam.find('satellite_spots_pair_id').text)
-                satellite_spots_gain =  float(excam.find('satellite_spots_gain').text)
-                satellite_spots_frame_time =  float(excam.find('satellite_spots_frame_time').text)
-                satellite_spots_number_of_frames =  int(excam.find('satellite_spots_number_of_frames').text)   
-            satellite_dict = {'satellite_spot_conf':satellite_spot_conf,
-                              'satellite_spots_gain':satellite_spots_gain,
-                              'satellite_spots_frame_time':satellite_spots_frame_time,
-                              'satellite_spots_number_of_frames':satellite_spots_number_of_frames}        
+               
             # Polarimetry
             if (visit_type == 'CGIVST_TDD_OBS'):
                 prism = visit.find('cgi_mechanisms').find('dpampos').text
@@ -478,9 +485,9 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, return_input=False):
         return input
     else:
         if reference_star_present :
-            return scene_target, scene_reference, optics, detector_target, detector_reference, visit_list
+            return scene_target, scene_reference, optics, detector_target, detector_reference, visit_list, satellite_dict_target, satellite_dict_reference
         else:
-            return scene_target, optics, detector_target, visit_list
+            return scene_target, optics, detector_target, visit_list, satellite_dict_target
 
 
 
