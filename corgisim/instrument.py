@@ -18,6 +18,7 @@ import copy
 import os
 from scipy import interpolate
 from packaging.version import Version
+import math
 
 warnings.simplefilter('always', UserWarning)
 class CorgiOptics():
@@ -321,22 +322,13 @@ class CorgiOptics():
         ##self.SATSPOTS is the value to be populated to L1 header prihdr[SATSPOTS]
         # prihdr[SATSPOTS]= 0: No satellite spots present 
         # prihdr[SATSPOTS]= 1: Satellite spots present
-        if satspot_keywords == None:
-            self.SATSPOTS = int(0)
-        else:
-            # check keywords
-            if optics_keywords['use_dm1'] != 1:
-                raise KeyError('ERROR: use_dm1 in optics_keywords is not set 1')
-            required_keys_satspot = {'num_pairs','sep_lamD', 'angle_deg', 'contrast', 'wavelength_m'}
-            missing_keys = required_keys_satspot - satspot_keywords.keys()
-            if missing_keys:
-                raise KeyError(f"ERROR: Missing required satspot_keywords: {missing_keys}")
 
-            #### call self.add_satspot() to satellite spots in DM files, update the dm1 info in self.optics_keywords
-            self.optics_keywords['dm1_v'] = self.add_satspot(satspot_keywords=satspot_keywords)
 
-            self.SATSPOTS = int(1)
-            print("satellite spots are added to DM1.")
+        # call self.add_satspot() to satellite spots in DM files, update the dm1 info in self.optics_keywords
+        self.SATSPOTS = 0
+        self.add_satspot(satspot_keywords=satspot_keywords)
+
+
 
         # Finite stellar diameter and jitter
         # Ignore this section if stellar_diam_and_jitter_keywords == None
@@ -1299,31 +1291,67 @@ class CorgiOptics():
 
         Returns:
         -------
-        dm1_cos_added : 2D ndarray
-            Updated DM1 voltage map with satellite spots added.
-       
+
         """
+        if satspot_keywords == None:
+            self.SATSPOTS = int(0)
+        else:
+            # check keywords
+            if self.optics_keywords['use_dm1'] != 1:
+                raise KeyError('ERROR: use_dm1 in optics_keywords is not set 1')
+            if 'wavelength_m' not in satspot_keywords.keys():
+                satspot_keywords['wavelength_m'] =  self.lam0_um*1e-6
+            elif not math.isclose(self.lam0_um * 1e-6, satspot_keywords['wavelength_m'] , rel_tol=1e-7):
+                warnings.warn('The satellite spot wavelength is different from the optics wavelength ', UserWarning)
+            required_keys_satspot = {'num_pairs','sep_lamD', 'angle_deg', 'contrast', 'wavelength_m'}
+            missing_keys = required_keys_satspot - satspot_keywords.keys()
+            if missing_keys:
+                raise KeyError(f"ERROR: Missing required satspot_keywords: {missing_keys}")
 
-        # extract DM1
-        proper_keywords = self.optics_keywords.copy()
-        dm1_input = proper_keywords['dm1_v']
+            # extract DM1
+            dm1_input = self.optics_keywords['dm1_v']
 
-        # extract satspot_keywords
-        num_pairs = satspot_keywords['num_pairs']
-        sep_lamD = satspot_keywords['sep_lamD']
-        angle_deg = satspot_keywords['angle_deg']
-        contrast = satspot_keywords['contrast']
-        wavelength_m = satspot_keywords['wavelength_m']
+            # extract satspot_keywords
+            num_pairs = satspot_keywords['num_pairs']
+            sep_lamD = satspot_keywords['sep_lamD']
+            angle_deg = satspot_keywords['angle_deg']
+            contrast = satspot_keywords['contrast']
+            wavelength_m = satspot_keywords['wavelength_m']
 
-                    #If the user doesn't pass in the 
-        if "sign" not in satspot_keywords.keys():
-                sign = "positive"
-        else: 
-                sign = satspot_keywords["sign"]
+            #If the user doesn't pass in the sign
+            if "sign" not in satspot_keywords.keys():
+                    sign = "positive"
+            else: 
+                    sign = satspot_keywords["sign"]
 
-        dm1_cos_added = add_cos_pattern_dm(dm1_input,num_pairs,sep_lamD,angle_deg,contrast,wavelength_m, sign = sign)
+            self.optics_keywords['dm1_v'] = add_cos_pattern_dm(dm1_input,num_pairs,sep_lamD,angle_deg,contrast,wavelength_m, sign = sign)
+            
+            self.SATSPOTS = int(1)
 
-        return dm1_cos_added
+    def remove_satspot(self, satspot_keywords):
+        """
+        Remove satellite spots from deformable mirror (DM) settings.
+
+        Parameters:
+        ----------
+        satspot_keywords : dict
+            Dictionary specifying the parameters needed to define and REMOVE 
+            satellite spots (sep_lamD, angle_deg, contrast, wavelength_m, sign(options)).
+        """
+        # Inverse the sign
+        if "sign" not in satspot_keywords.keys() or satspot_keywords["sign"] == "positive":
+            sign = "negative"
+        else :
+            sign = "positive"
+
+        inverse_satspot = satspot_keywords.copy()
+        inverse_satspot["sign"] = sign
+
+        self.add_satspot(inverse_satspot)
+
+        # Update header
+        self.SATSPOTS = int(0)
+
 
     def generate_full_aberration_psf(self, optics_keywords,is_offaxis_source=False):
         '''
@@ -1362,6 +1390,7 @@ class CorgiOptics():
                 # also, the jitter model isn't currently set up for offaxis sources
                 images_tem = np.array(sum(images_pol)) / 4
         return images_tem
+        
     @property
     def roll_angle(self):
         '''
