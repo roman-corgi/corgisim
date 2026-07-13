@@ -104,7 +104,7 @@ def get_slit_mask(optics, dx_fsam_um=10.0, hires_dim_um=800, binfac=50):
         hires_slit = ((np.abs(XXs) < slit_height_hires / 2) & 
                       (np.abs(YYs) < slit_width_hires / 2))
     if (optics.cor_type in ['spc-spec_rotated', 'spc-spec_band2_rotated', 'spc-spec_band3_rotated'] and 
-        Version(roman_preflight_proper.__version__) <= Version('2.0.2')):
+        Version(roman_preflight_proper.__version__) <= Version('2.0.3')):
         hires_slit = np.fliplr(hires_slit) # Left-right flip to compensate for mask orientation in roman_preflight_proper
     # Bin the high-res array to the specified spatial sampling
     binned_slit = hires_slit.reshape(hires_dimy // binfac, binfac, 
