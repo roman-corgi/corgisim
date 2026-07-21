@@ -428,9 +428,6 @@ def _convolve_with_prfs(obj, prfs_array, radii_lamD, azimuths_deg,
     # Map pixels to polar coordinates (r, theta) in lambda/D and degrees
     r_lamD, theta_deg = pixel_to_polar(obj.shape, pix_scale_mas, res_mas)
 
-    # Resize PRFs to match the shape of the object
-    prfs_resized = prf_simulation.resize_prf_cube(prfs_array, obj.shape)
-
     # Accumulator for the field-dependent convolution result.
     conv = np.zeros_like(obj, dtype=float)
     
