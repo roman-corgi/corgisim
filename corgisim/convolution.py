@@ -429,8 +429,8 @@ def _convolve_with_prfs(obj, prfs_array, radii_lamD, azimuths_deg,
     r_lamD, theta_deg = pixel_to_polar(obj.shape, pix_scale_mas, res_mas)
 
     # Accumulator for the field-dependent convolution result.
-    conv = np.zeros_like(obj, dtype=float)
-    
+    conv = np.zeros(prfs_array.shape[1:], dtype=float)
+
     if not interpolate_prfs:
         # Nearest-neighbor 
         # Each pixel is assigned directly to its nearest PRF index 
@@ -442,7 +442,8 @@ def _convolve_with_prfs(obj, prfs_array, radii_lamD, azimuths_deg,
             mask = (prf_ids == prf_idx) 
             if np.any(mask):
                 weighted_scene = obj * mask
-                conv += fftconvolve(weighted_scene, prfs_resized[prf_idx], mode="same")
+                # same = output array has the same shape as the first input array (in1)
+                conv += fftconvolve(prfs_array[prf_idx], weighted_scene,mode="same")
     
     else:
         # Bilinear interpolation convolution
@@ -475,8 +476,8 @@ def _convolve_with_prfs(obj, prfs_array, radii_lamD, azimuths_deg,
             
             if np.any(weight_map > 0):
                 weighted_scene = obj * weight_map
-                conv += fftconvolve(weighted_scene, prfs_resized[prf_idx], mode="same")
-    
+                conv += fftconvolve(prfs_array[prf_idx], weighted_scene, mode="same")
+
     return conv
 
 def flux_calibration_2D_scene(optics, input_scene, conv2d):
