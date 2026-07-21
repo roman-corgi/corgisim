@@ -13,6 +13,7 @@ from corgisim import outputs, spec, prf_simulation, constants
 from corgisim.scene import SimulatedImage
 from scipy import interpolate
 import astropy.units as u
+import warnings
 
 
 def build_radial_grid(iwa, owa, inner_step, mid_step, outer_step, max_radius=None):
@@ -233,6 +234,19 @@ def bilinear_indices_weights(r_lamD, theta_deg, radii_lamD, azimuths_deg):
     # Fractional radial interpolation weight (alpha); zero when dr=0 but only perform division where dr != 0
     alpha  = np.divide(r_lamD - radii_lamD[radial_id_low], dr,
                        out=np.zeros_like(r_lamD), where=dr != 0)
+
+    # Prevent radial extrapolation beyond the available PRF grid to avoid negative weights. Pixels outside the PRF grid will be assigned the outermost PRF.
+    outside_prf_grid = r_lamD > radii_lamD[-1]
+
+    # Raise a warning if any object pixels are outside the PRF radial grid. These pixels will be assigned the outermost available PRF.
+    if np.any(outside_prf_grid):
+        warnings.warn(
+            "The scene extends beyond the PRF radial grid. "
+            "The outermost available radial PRF will be used.",
+            stacklevel=2,
+        )
+
+    alpha = np.clip(alpha, 0.0, 1.0)
 
     # --- Mapping from (r, θ) grid indices to flat PRF cube indices --
     # on-axis PRF is excluded. 
