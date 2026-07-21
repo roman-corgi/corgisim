@@ -79,4 +79,4 @@ jobs:
 
     - name: Test with pytest (${{ matrix.shard }})
       run: |
-        pytest ${{ matrix.pytest_args }}
+        pytest --durations=0 ${{ matrix.pytest_args }}
