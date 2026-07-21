@@ -1675,7 +1675,8 @@ class CorgiDetector():
                                   'date4traps': 2028.0,                  # decimal year of observation
                                   'row_read_time': 223.5e-6,              # in seconds (needed to simulate smearing)
                                   'nonlin_path': None,                  # path to file containing non-linearity map; if None, no input nonlinearity used
-                                  'flat_path': None}                    # path to file containing flat field map; if None, no flat field correction used
+                                  'flat_path': None,            # path to file containing flat field map; if None, no flat field correction used
+                                  'fast_gain_mode': True}           #If True, a faster but less accurate method (uses Erlang/Gamma distribution for EM gain) of simulating the gain register is used.          
 
         if emccd_keywords is not None:                    
             if 'qe' in emccd_keywords.keys():
@@ -1685,7 +1686,9 @@ class CorgiDetector():
                 if key in self.emccd_keywords_default:
                     self.emccd_keywords_default[key] = value
 
-    
+        if (self.emccd_keywords_default['fast_gain_mode'] and self.emccd_keywords_default['em_gain'] < 200):
+            warnings.warn('Warning: Fast gain mode needs em_gain to be over 200 to be reasonably accurate')
+
         emccd = EMCCDDetect( em_gain=self.emccd_keywords_default['em_gain'], full_well_image=self.emccd_keywords_default['full_well_image'], full_well_serial=self.emccd_keywords_default['full_well_serial'],
                              dark_current=self.emccd_keywords_default['dark_rate'], cic=self.emccd_keywords_default['cic_noise'], read_noise=self.emccd_keywords_default['read_noise'], bias=self.emccd_keywords_default['bias'],
                              qe=1.0, cr_rate=self.emccd_keywords_default['cr_rate'], pixel_pitch=self.emccd_keywords_default['pixel_pitch'], eperdn=self.emccd_keywords_default['e_per_dn'],
