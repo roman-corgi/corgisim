@@ -312,6 +312,7 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, return_input=False):
 
     This function parses the CPGS file to extract simulation parameters for
     target and, if present, reference stars, along with visit-specific details.
+    output_dim: dimension of the simulation output in pixels (before being placed on the detector)
 
     Args:
         filepath (str): Path to the input CPGS XML file.
