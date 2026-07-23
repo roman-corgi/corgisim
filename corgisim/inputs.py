@@ -367,23 +367,18 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, return_input=False):
     if (cpgs_input.find('target_autogain').text == '0'):
         photon_counting = (cpgs_input.find('target_pcounting').text=='1')
         em_gain = float(cpgs_input.find('target_gain').text)
-        # em_gain cannot be under 1 in emccd. Since it's possible to set it to less than 1 in CPGS for now, we overwrite it
-        if em_gain < 1 : 
-            em_gain = 1.0 
         detector_target = instrument.CorgiDetector(emccd_keywords={'em_gain':em_gain}, photon_counting=photon_counting) 
     elif (cpgs_input.find('target_autogain').text == '1'):
-        raise NotImplementedError("Autogain is not implemented.") 
-
+        #TO DO use eetc for better gain approximation
+        detector_target = instrument.CorgiDetector(emccd_keywords={'em_gain':1000}, photon_counting=True)        #TO DO: have a approximate autogain using eetc
     if reference_star_present :
         if (cpgs_input.find('reference_autogain').text == '0'):
             photon_counting = (cpgs_input.find('reference_pcounting').text=='1')
-            em_gain = float(cpgs_input.find('reference_gain').text)
-            # em_gain cannot be under 1 in emccd. Since it's possible to set it to less than 1 in CPGS for now, we overwrite it
-            if em_gain < 1 : 
-                em_gain = 1.0             
+            em_gain = float(cpgs_input.find('reference_gain').text)   
             detector_reference = instrument.CorgiDetector(emccd_keywords={'em_gain':em_gain}, photon_counting=photon_counting) 
         elif (cpgs_input.find('reference_autogain').text == '1'):
-            detector_reference = instrument.CorgiDetector(emccd_keywords=None) 
+            detector_target = instrument.CorgiDetector(emccd_keywords={'em_gain':1000}, photon_counting=True)        #TO DO: have a approximate autogain using eetc
+            #TO DO: have a approximate autogain using eetc
 
     bandpass = cpgs_input.find('filter').text
     coronograph_mask = cpgs_input.find('coronagraph_mask').text
@@ -431,7 +426,8 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, return_input=False):
                                   'satellite_spots_gain':satellite_spots_gain_ref,
                                   'satellite_spots_frame_time':satellite_spots_frame_time_ref,
                                   'satellite_spots_number_of_frames':satellite_spots_nframe_ref}
-        
+    else:
+        satellite_dict = None    
     # Create visits
     visits = root.find('visit_list')
     visit_list = []
@@ -443,19 +439,25 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, return_input=False):
                 isReference = (visit.find('fixed_target').find('reference_target').text == 'Y')
             else:
                 isReference = False
+            if obtain_satspots and isReference:
+                satellite_dict = satellite_dict_reference
+            if obtain_satspots and not isReference: 
+                satellite_dict = satellite_dict_target
             excam = visit.find('cgi_excam')
             roll_angle = float(visit.find('position_angle').text)
             visit_id = visit.attrib['number']
-               
             # Polarimetry
-            if (visit_type == 'CGIVST_TDD_OBS'):
+            if (visit_type == 'CGIVST_TDD_POL_OBS'):
                 prism = visit.find('cgi_mechanisms').find('dpampos').text
 
-            if is_spectroscopy:
+            elif is_spectroscopy:
                 prism = visit.find('cgi_mechanisms').find('dpampos_spec').text
  
+            else:
+                prism = None
             if (excam.find('auto_gain').text == 'Y'):
                 #Only one frame, exp_time in hours
+                # TO DO : have a better approximation
                 number_of_frames = 1
                 exp_time = float(excam.find('exposure_duration').text)*3600
             else:
@@ -467,7 +469,7 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, return_input=False):
             'roll_angle':roll_angle, 
             'visit_id':visit_id, 
             'isReference':isReference, 
-            'satellite_dict':satellite_dict,}
+            'satellite_dict':satellite_dict}
 
 
             visit_list.append(visit_dict)
