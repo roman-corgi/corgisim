@@ -40,8 +40,8 @@ class Scene():
             - "ref_flag" (boolean):optional, whether the input scene is a reference star (True) or a science target (False). Default is false
             - "stellar_diam_mas" (float): The stellar diameter of the host star in mas.
             - "target_name" (str): optional, the name of the target star, used for headers. Default is UNKNOWN.
-            - "RA" (float): optional, the ra of  star in mas. Default is 0.0
-            - "DEC" (float): optional, the dec of  star in mas. Default is 0.0
+            - "RA" (float): optional, the ra of  star in degree. Default is 0.0
+            - "DEC" (float): optional, the dec of  star in degree. Default is 0.0
 
         point_sources_info (list): A list of dictionaries, each representing an off-axis point source in the scene. Each dictionary must contain:
             - "Vmag" (float): The apparent V-band magnitude of the source.
