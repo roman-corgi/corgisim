@@ -439,10 +439,6 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, return_input=False):
                 isReference = (visit.find('fixed_target').find('reference_target').text == 'Y')
             else:
                 isReference = False
-            if obtain_satspots and isReference:
-                satellite_dict = satellite_dict_reference
-            if obtain_satspots and not isReference: 
-                satellite_dict = satellite_dict_target
             excam = visit.find('cgi_excam')
             roll_angle = float(visit.find('position_angle').text)
             visit_id = visit.attrib['number']
@@ -468,8 +464,7 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, return_input=False):
             'exp_time': exp_time, 
             'roll_angle':roll_angle, 
             'visit_id':visit_id, 
-            'isReference':isReference, 
-            'satellite_dict':satellite_dict}
+            'isReference':isReference}
 
 
             visit_list.append(visit_dict)

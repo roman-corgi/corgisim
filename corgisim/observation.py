@@ -25,6 +25,8 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, s
             the detector characteristics and noise properties.
         exp_time (float): The exposure time for each individual frame in seconds.
         n_frames (int): The total number of frames to generate in this observation sequence.
+        save_as_fits (bool): wether or not to save the generated images as fits file
+        output_dir: if saving as fits file, where to save them 
         full_frame (bool, optional): If True, a full-frame detector image will be generated.
             If False (default), a sub-array image is generated.
         loc_x (int, optional): The x-coordinate for the center of the sub-array in pixels
@@ -69,7 +71,7 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, s
 
     return simulatedImage_list
 
-def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, output_dir=None, full_frame=False, loc_x=None, loc_y=None, point_source_info=None):
+def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, save_as_list=False, output_dir=None, full_frame=False, loc_x=None, loc_y=None, point_source_info=None):
     """Generates an observation scenario by loading instrument, scene, and visit
     information from a CPGS file.
 
@@ -78,6 +80,10 @@ def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, outpu
 
     Args:
         - filepath (str): The path to the CPGS XML file.
+        - save_as_fits (bool): wether or not to save the generated images as fits file
+        - save_as_list (bool): wether or not to save the generated images as list of file. In order to save memory, default behaviour is not to save as a list if we're saving as fits
+        - output_dir: if saving as fits file, where to save them 
+        - full_frame (bool, optional): If True, a full-frame detector image will be generated.
         - loc_x (int): The horizontal coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True, and image from CorgiOptics has size is smaller than 1024×1024
         - loc_y (int): The vertical coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True, and image from CorgiOptics has size is smaller than 1024×1024
         - point_sources_info (list): A list of dictionaries, each representing an off-axis point source in the scene.
@@ -157,13 +163,13 @@ def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, outpu
                 # For each frame, we take background (no satellite spots), positive and negative
                 # Background 
                 optics.SATSPOTS = 1
-                simulatedImage_visit_satspots = generate_observation_sequence(scene_reference, optics,detector_reference_satspots, satellite_dict_reference['satellite_spots_frame_time'], satellite_dict_reference['satellite_spots_number_of_frames'],save_as_fits= save_as_fits, output_dir=output_dir, full_frame= full_frame,loc_x=loc_x, loc_y=loc_y )
+                simulatedImage_visit_satspots = generate_observation_sequence(scene_reference, optics,detector_satspots_reference, satellite_dict_reference['satellite_spots_frame_time'], satellite_dict_reference['satellite_spots_number_of_frames'],save_as_fits= save_as_fits, output_dir=output_dir, full_frame= full_frame,loc_x=loc_x, loc_y=loc_y )
                 simulatedImage_visit.extend(simulatedImage_visit_satspots)
 
                 for sign in ["positive", "negative"]:
                     satspot_keywords["sign"] = sign
                     optics.add_satspot(satspot_keywords=satspot_keywords)
-                    simulatedImage_visit_satspots = generate_observation_sequence(scene_reference, optics,detector_reference_satspots, satellite_dict_reference['satellite_spots_frame_time'], satellite_dict_reference['satellite_spots_number_of_frames'],save_as_fits= save_as_fits, output_dir=output_dir, full_frame= full_frame,loc_x=loc_x, loc_y=loc_y )
+                    simulatedImage_visit_satspots = generate_observation_sequence(scene_reference, optics,detector_satspots_reference, satellite_dict_reference['satellite_spots_frame_time'], satellite_dict_reference['satellite_spots_number_of_frames'],save_as_fits= save_as_fits, output_dir=output_dir, full_frame= full_frame,loc_x=loc_x, loc_y=loc_y )
                     simulatedImage_visit.extend(simulatedImage_visit_satspots)
                     optics.remove_satspot(satspot_keywords=satspot_keywords)
 
@@ -175,20 +181,20 @@ def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, outpu
                 # For each frame, we take background (no satellite spots), positive and negative
                 # Background 
                 optics.SATSPOTS = 1
-                simulatedImage_visit_satspots = generate_observation_sequence(scene_target, optics,detector_target_satspots, satellite_dict_target['satellite_spots_frame_time'], satellite_dict_target['satellite_spots_number_of_frames'],save_as_fits= save_as_fits, output_dir=output_dir, full_frame= full_frame,loc_x=loc_x, loc_y=loc_y )
+                simulatedImage_visit_satspots = generate_observation_sequence(scene_target, optics,detector_satspots_target, satellite_dict_target['satellite_spots_frame_time'], satellite_dict_target['satellite_spots_number_of_frames'],save_as_fits= save_as_fits, output_dir=output_dir, full_frame= full_frame,loc_x=loc_x, loc_y=loc_y )
                 simulatedImage_visit.extend(simulatedImage_visit_satspots)
 
                 for sign in ["positive", "negative"]:
                     satspot_keywords["sign"] = sign
                     optics.add_satspot(satspot_keywords=satspot_keywords)
-                    simulatedImage_visit_satspots = generate_observation_sequence(scene_reference, optics,detector_reference_satspots, satellite_dict_target['satellite_spots_frame_time'], satellite_dict_target['satellite_spots_number_of_frames'],save_as_fits= save_as_fits, output_dir=output_dir, full_frame= full_frame,loc_x=loc_x, loc_y=loc_y )
+                    simulatedImage_visit_satspots = generate_observation_sequence(scene_reference, optics,detector_satspots_target, satellite_dict_target['satellite_spots_frame_time'], satellite_dict_target['satellite_spots_number_of_frames'],save_as_fits= save_as_fits, output_dir=output_dir, full_frame= full_frame,loc_x=loc_x, loc_y=loc_y )
                     simulatedImage_visit.extend(simulatedImage_visit_satspots)
                     optics.remove_satspot(satspot_keywords=satspot_keywords)
 
             simulatedImage_visit_sci = generate_observation_sequence(scene_target, optics, detector_target, visit['exp_time'], visit['number_of_frames'],save_as_fits= save_as_fits, output_dir=output_dir, full_frame= full_frame,loc_x=loc_x, loc_y=loc_y  )
             simulatedImage_visit.extend(simulatedImage_visit_sci)
 
-        if not save_as_fits: # If we are writing the files, we are not storing the images
+        if not save_as_fits or (save_as_fits and save_as_list): # If we are writing the files, we are not storing the images
             simulatedImage_list.extend(simulatedImage_visit)
 
     return simulatedImage_list
