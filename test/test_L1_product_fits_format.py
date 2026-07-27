@@ -396,7 +396,7 @@ def test_L1_product_from_CPGS():
     local_path = corgisim.lib_dir
     outdir = os.path.join(local_path.split('corgisim')[0], 'corgisim/test/testdata/cpgs')
     
-    scene_target, scene_reference, optics, detector_target, detector_reference, visit_list = inputs.load_cpgs_data(abs_path)
+    scene_target, scene_reference, optics, detector_target, detector_reference, visit_list, satellite_dict_target, satellite_dict_reference = inputs.load_cpgs_data(abs_path)
     simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, full_frame=True, loc_x=300, loc_y=300, save_as_fits=True, output_dir=outdir)
 
     #Check that there are as many simulated images as files

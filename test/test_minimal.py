@@ -186,14 +186,17 @@ def test_cpgs_obs():
     filepath = 'test_data/cpgs_mock.xml'
     abs_path =  os.path.join(script_dir, filepath)
 
-    scene_target, scene_reference, optics, detector_target, detector_reference, visit_list = inputs.load_cpgs_data(abs_path)
+    scene_target, scene_reference, optics, detector_target, detector_reference, visit_list, satellite_dict_target, satellite_dict_reference = inputs.load_cpgs_data(abs_path)
 
     assert detector_target.photon_counting == True
     
     len_list = 0 
     for visit in visit_list:
         len_list += visit['number_of_frames']
-
+        if visit['isReference']:
+            len_list+=(satellite_dict_reference['satellite_spots_number_of_frames']*3)
+        else:
+            len_list+=(satellite_dict_target['satellite_spots_number_of_frames']*3)
     simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path)
     assert isinstance(simulatedImage_list, list)
     assert len(simulatedImage_list) == len_list
