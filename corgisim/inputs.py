@@ -4,7 +4,8 @@ from  xml.etree.ElementTree import ParseError
 from astropy.io import fits
 from corgidrp import mocks
 import numpy as np
-import roman_preflight_proper as rp
+import proper
+import roman_preflight_proper
 import types
 
 MAS_PIX = 500E-9 * 360.0 * 3600.0 / (2 * np.pi * 2.363) * 1000 / 2
@@ -384,12 +385,18 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, return_input=False):
 
     bandpass = cpgs_input.find('filter').text
     coronograph_mask = cpgs_input.find('coronagraph_mask').text
+    required_contrast = cpgs_input.find('initial_target_planet_star_flux_ratio').text
 
-    # CGI mode and cor_type
+    # CGI mode, cor_type and dm 
     is_spectroscopy = (cpgs_input.find('is_spectroscopy').text == '1')
     if is_spectroscopy :
         cgi_mode = 'spec'
         cor_type = 'spc-spec_band' +bandpass
+        cases = [1E-9,2E-8,4E-9 ]
+        contrast = str(min(cases, key=lambda x: abs(x - float(required_contrast))))
+        # The operation inserts a 0 we need to get rid of
+        rootname = 'spc-spec_ni_' + contrast[:-2] + contrast[-1]
+
         # Untested but available
         if cpgs_input.find('howfsc_spam_pos').text == 'SPECROT' :
             cor_type = cor_type + '_rotated'
@@ -404,9 +411,21 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, return_input=False):
         cgi_mode = 'excam'
         if coronograph_mask == '1':
             cor_type = 'hlc_band'+ bandpass
+            cases = [2E-9,3E-8,5E-9 ]
+            contrast = str(min(cases, key=lambda x: abs(x - float(required_contrast))))
+            # The operation inserts a 0 we need to get rid of
+            rootname = 'hlc_ni_' + contrast[:-2] + contrast[-1]
+
         elif coronograph_mask == '2':
             cor_type = 'spc-wide_band'+ bandpass
-        
+            cases = [3E-9,5E-9 ]
+            contrast = str(min(cases, key=lambda x: abs(x - float(required_contrast))))
+            # The operation inserts a 0 we need to get rid of
+            rootname = 'spc-wide_ni_' + contrast[:-2] + contrast[-1]
+
+    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm1_v.fits' )
+    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm2_v.fits' )
+
     # Satellite spots    
     obtain_satspots = (cpgs_input.find('obtain_satspot_image_every_visit').text == '1')
     satellite_dict_target = None
@@ -475,13 +494,12 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, return_input=False):
 
             visit_list.append(visit_dict)
 
-             
-    #else :
+              
 
     if is_spectroscopy: 
-        optics_keywords ={'cor_type':cor_type, 'polaxis':polaxis, 'output_dim':output_dim, 'slit':slit, 'slit_x_offset_mas':slit_x_offset_mas_orientation_a, 'slit_y_offset_mas':slit_y_offset_mas_orientation_a, 'prism':prism}
+        optics_keywords ={'cor_type':cor_type, 'polaxis':polaxis, 'output_dim':output_dim, 'slit':slit, 'slit_x_offset_mas':slit_x_offset_mas_orientation_a, 'slit_y_offset_mas':slit_y_offset_mas_orientation_a, 'prism':prism, 'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,}
     else:
-        optics_keywords ={'cor_type':cor_type, 'polaxis':polaxis, 'output_dim':output_dim, 'prism':prism}
+        optics_keywords ={'cor_type':cor_type, 'polaxis':polaxis, 'output_dim':output_dim, 'prism':prism, 'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,}
       
     optics = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords, if_quiet=True)
     if return_input == True :

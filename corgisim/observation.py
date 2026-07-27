@@ -3,6 +3,8 @@
 import corgisim
 import os
 from corgisim import scene, instrument, inputs, observation, outputs
+from corgidrp import mocks
+
 import copy 
 
 def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, vistype = None, visit_id= None, save_as_fits= False, output_dir=None, full_frame= False, loc_x=None, loc_y=None):
@@ -160,7 +162,7 @@ def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, save_
         visit_id = visit_id_root + visit['visit_num']
         # make a new subfolder for each visit 
         subfolder_name = 'V' + visit_id
-        subfolder_path =  os.path.join(output_dir, subfolder_name)
+        subfolder_path =  os.path.join(str(output_dir or ''), subfolder_name)
         os.makedirs(subfolder_path, exist_ok=True)
 
         optics.roll_angle = visit['roll_angle']
