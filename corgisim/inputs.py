@@ -354,14 +354,16 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, return_input=False):
     # # Create a host star and scene for each target
     target_v_mag = float(cpgs_input.find('target_v_mag').text)
     target_sptype =  cpgs_input.find('target_spec_type').text + cpgs_input.find('target_sub_type').text[:1] 
-    host_star_properties_target = {'Vmag': target_v_mag, 'spectral_type': target_sptype, 'magtype':"vegamag", 'ref_flag': False}
+    target_name = cpgs_input.find('target_name').text
+    host_star_properties_target = {'Vmag': target_v_mag, 'spectral_type': target_sptype, 'magtype':"vegamag", 'ref_flag': False, 'target_name': target_name}
     scene_target = scene.Scene(host_star_properties_target)
     reference_star_present = (cpgs_input.find('reference_name') != None)
+    reference_name = cpgs_input.find('reference_name').text
 
     if reference_star_present:
         reference_v_mag = float(cpgs_input.find('reference_v_mag').text)
         reference_sptype =  cpgs_input.find('reference_spec_type').text + cpgs_input.find('reference_sub_type').text[:1] 
-        host_star_properties_reference = {'Vmag': reference_v_mag, 'spectral_type': reference_sptype, 'magtype':"vegamag", 'ref_flag': True}
+        host_star_properties_reference = {'Vmag': reference_v_mag, 'spectral_type': reference_sptype, 'magtype':"vegamag", 'ref_flag': True, 'target_name': reference_name}
         scene_reference = scene.Scene(host_star_properties_reference)
 
     if (cpgs_input.find('target_autogain').text == '0'):
@@ -464,7 +466,8 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, return_input=False):
             'exp_time': exp_time, 
             'roll_angle':roll_angle, 
             'visit_id':visit_id, 
-            'isReference':isReference}
+            'isReference':isReference,
+            'vistype': visit_type}
 
 
             visit_list.append(visit_dict)
