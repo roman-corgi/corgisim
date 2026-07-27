@@ -443,7 +443,10 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, return_input=False):
                 isReference = False
             excam = visit.find('cgi_excam')
             roll_angle = float(visit.find('position_angle').text)
-            visit_id = visit.attrib['number']
+
+            visit_num = visit.attrib['number']
+            for i in range(0,3-len(visit_num)):
+                visit_num = '0'+visit_num
             # Polarimetry
             if (visit_type == 'CGIVST_TDD_POL_OBS'):
                 prism = visit.find('cgi_mechanisms').find('dpampos').text
@@ -465,7 +468,7 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, return_input=False):
             visit_dict = {'number_of_frames': number_of_frames,
             'exp_time': exp_time, 
             'roll_angle':roll_angle, 
-            'visit_id':visit_id, 
+            'visit_num':visit_num, 
             'isReference':isReference,
             'vistype': visit_type}
 
