@@ -186,7 +186,7 @@ def test_cpgs_obs():
     filepath = 'test_data/cpgs_mock.xml'
     abs_path =  os.path.join(script_dir, filepath)
 
-    scene_target, scene_reference, optics, detector_target, detector_reference, visit_list, satellite_dict_target, satellite_dict_reference = inputs.load_cpgs_data(abs_path)
+    scene_target, scene_reference, optics, detector_target, detector_reference, visit_list, satellite_dict_target, satellite_dict_reference = inputs.load_cpgs_data(abs_path, output_dim=51, fast_gain_mode = True)
 
     assert detector_target.photon_counting == True
     
@@ -207,7 +207,7 @@ def test_cpgs_obs():
     dx= [3*49.3]
     dy= [3*49.3]
     point_source_info = [{'Vmag': mag_companion[0], 'magtype': 'vegamag','position_x':dx[0] , 'position_y':dy[0]}]
-    simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, point_source_info=point_source_info)
+    simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, point_source_info=point_source_info, output_dim=51, fast_gain_mode = True)
 
     i=0
     for visit in visit_list:

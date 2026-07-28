@@ -391,17 +391,16 @@ def test_L1_product_from_CPGS():
 
     script_dir = os.getcwd()
 
-    filepath = 'test/test_data/CPGS_MRT8_CGIPrime.xml'
+    filepath = 'test/test_data/CPGS_MRT8_CGIPrime_new_format.xml'
     abs_path =  os.path.join(script_dir, filepath)
     local_path = corgisim.lib_dir
     outdir = os.path.join(local_path.split('corgisim')[0], 'corgisim/test/testdata/cpgs')
     
-    scene_target, scene_reference, optics, detector_target, detector_reference, visit_list, satellite_dict_target, satellite_dict_reference = inputs.load_cpgs_data(abs_path)
-    simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, full_frame=True, loc_x=300, loc_y=300, save_as_fits=True, output_dir=outdir)
+    scene_target, scene_reference, optics, detector_target, detector_reference, visit_list, satellite_dict_target, satellite_dict_reference = inputs.load_cpgs_data(abs_path, output_dim=51, fast_gain_mode = True)
+    simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, full_frame=True, loc_x=300, loc_y=300, save_as_fits=True, output_dir=outdir, output_dim=51, fast_gain_mode = True)
 
     #Check that there are as many simulated images as files
-    assert len(simulatedImage_list) == len([name for name in os.listdir(outdir) if os.path.isfile(outdir+'/'+name)])
-
+    assert len(simulatedImage_list) == sum(len(files) for _, _, files in os.walk(outdir))
     #Check that the names are correct
     i = 0
     for visit in visit_list:
@@ -412,7 +411,7 @@ def test_L1_product_from_CPGS():
             time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
             filename = f"cgi_{prihdr['VISITID']}_{time_in_name}_l1_.fits"
 
-            f = os.path.join( outdir , filename)
+            f = os.path.join( outdir ,'V', prihdr['VISITID'], filename)
             assert os.path.isfile(f)
             assert prihdr['PA_APER'] == visit["roll_angle"]
             i += 1
@@ -424,7 +423,7 @@ def test_L1_product_from_CPGS():
     n_frames = 100
     exp_time = 30
 
-    simulatedImage_list_sequence = observation.generate_observation_sequence( scene_target, optics, detector_target, exp_time, n_frames, save_as_fits=True, output_dir=outdir, full_frame=True, loc_x=300, loc_y=300)
+    simulatedImage_list_sequence = observation.generate_observation_sequence( scene_target, optics, detector_target, exp_time, n_frames, save_as_fits=True, output_dir=outdir, full_frame=True, loc_x=300, loc_y=300, output_dim=51, fast_gain_mode = True)
     
     #Check that there are as many simulated images as files
     assert len(simulatedImage_list_sequence) == len([name for name in os.listdir(outdir) if os.path.isfile(outdir+'/'+name)]) == n_frames

@@ -33,10 +33,10 @@ def test_cpgs_loading():
     # TO DO Add a file without autogain with polarization to test the error handling 
     
     # Test object creation 
-    filepath = 'test/test_data/Satelite_spots_pol.xml'
+    filepath = 'test/test_data/Satellite_spots_pol.xml'
     abs_path =  os.path.join(script_dir, '..', filepath)
 
-    scene_target, scene_reference, optics, detector_target, detector_reference, visit_list, satellite_dict_target, satellite_dict_reference = inputs.load_cpgs_data(abs_path)
+    scene_target, scene_reference, optics, detector_target, detector_reference, visit_list, satellite_dict_target, satellite_dict_reference = inputs.load_cpgs_data(abs_path, output_dim=51, fast_gain_mode = True)
     assert isinstance(scene_target, scene.Scene)
     assert isinstance(scene_reference, scene.Scene)
     assert isinstance(detector_target, instrument.CorgiDetector)
@@ -191,7 +191,7 @@ def test_input_from_cpgs():
     # Test that the correct file is used
     assert input.cpgs_file == abs_path
 
-    scene_target, scene_reference, optics, detector_target, detector_reference, visit_list, satellite_dict_target, satellite_dict_reference = inputs.load_cpgs_data(abs_path)
+    scene_target, scene_reference, optics, detector_target, detector_reference, visit_list, satellite_dict_target, satellite_dict_reference = inputs.load_cpgs_data(abs_path, output_dim=51, fast_gain_mode = True)
 
     scene_input = scene.Scene(input.host_star_properties)
     optics_input =  instrument.CorgiOptics(input.cgi_mode, input.bandpass, optics_keywords=input.optics_keywords, if_quiet=True)
