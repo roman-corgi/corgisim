@@ -108,12 +108,13 @@ def test_generate_observation_scenario_from_cpgs():
 
 
     #Test with only target
-    filepath = 'test/test_data/cpgs_without_reference.xml'
+    filepath = 'test/test_data/cpgs_without_reference_new_format.xml'
     abs_path =  os.path.join(script_dir, filepath)
     scene_target, optics, detector_target, visit_list, satellite_dict_target = inputs.load_cpgs_data(abs_path)
     len_list = 0 
     for visit in visit_list:
         len_list += visit['number_of_frames']
+        len_list+=(satellite_dict_target['satellite_spots_number_of_frames']*3)
 
     simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path)
     assert isinstance(simulatedImage_list, list)

@@ -359,11 +359,11 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, return_input=False):
     host_star_properties_target = {'Vmag': target_v_mag, 'spectral_type': target_sptype, 'magtype':"vegamag", 'ref_flag': False, 'target_name': target_name}
     scene_target = scene.Scene(host_star_properties_target)
     reference_star_present = (cpgs_input.find('reference_name') != None)
-    reference_name = cpgs_input.find('reference_name').text
 
     if reference_star_present:
         reference_v_mag = float(cpgs_input.find('reference_v_mag').text)
         reference_sptype =  cpgs_input.find('reference_spec_type').text + cpgs_input.find('reference_sub_type').text[:1] 
+        reference_name = cpgs_input.find('reference_name').text
         host_star_properties_reference = {'Vmag': reference_v_mag, 'spectral_type': reference_sptype, 'magtype':"vegamag", 'ref_flag': True, 'target_name': reference_name}
         scene_reference = scene.Scene(host_star_properties_reference)
 

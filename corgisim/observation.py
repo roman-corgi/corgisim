@@ -153,7 +153,7 @@ def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, save_
 
     if satspots_are_present: 
         detector_satspots_target = instrument.CorgiDetector(emccd_keywords={'em_gain':satellite_dict_target['satellite_spots_gain']}, photon_counting=False) 
-        if satellite_dict_reference is not None:
+        if 'satellite_dict_reference' in locals():
             detector_satspots_reference = instrument.CorgiDetector(emccd_keywords={'em_gain':satellite_dict_reference['satellite_spots_gain']}, photon_counting=False) 
 
     prihdr, exthdr = mocks.create_default_L1_headers()
@@ -163,7 +163,8 @@ def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, save_
         # make a new subfolder for each visit 
         subfolder_name = 'V' + visit_id
         subfolder_path =  os.path.join(str(output_dir or ''), subfolder_name)
-        os.makedirs(subfolder_path, exist_ok=True)
+        if save_as_fits:
+            os.makedirs(subfolder_path, exist_ok=True)
 
         optics.roll_angle = visit['roll_angle']
         simulatedImage_visit = []
@@ -197,7 +198,7 @@ def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, save_
                 for sign in ["positive", "negative"]:
                     satspot_keywords["sign"] = sign
                     optics.add_satspot(satspot_keywords=satspot_keywords)
-                    simulatedImage_visit_satspots = generate_observation_sequence(scene_reference, optics,detector_satspots_target, satellite_dict_target['satellite_spots_frame_time'], satellite_dict_target['satellite_spots_number_of_frames'], visit_id= visit_id, vistype= visit['vistype'], save_as_fits= save_as_fits, output_dir=subfolder_path, full_frame= full_frame,loc_x=loc_x, loc_y=loc_y )
+                    simulatedImage_visit_satspots = generate_observation_sequence(scene_target, optics,detector_satspots_target, satellite_dict_target['satellite_spots_frame_time'], satellite_dict_target['satellite_spots_number_of_frames'], visit_id= visit_id, vistype= visit['vistype'], save_as_fits= save_as_fits, output_dir=subfolder_path, full_frame= full_frame,loc_x=loc_x, loc_y=loc_y )
                     simulatedImage_visit.extend(simulatedImage_visit_satspots)
                     optics.remove_satspot(satspot_keywords=satspot_keywords)
 
