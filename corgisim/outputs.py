@@ -3,6 +3,7 @@ from astropy.time import Time
 from corgidrp import mocks
 import os
 from datetime import datetime, timezone, timedelta
+import re
 #import warnings
 
 def create_hdu_list(data, header_info, sim_info=None):
@@ -46,7 +47,27 @@ def create_hdu_list(data, header_info, sim_info=None):
     
     prihdr['TARGET'] = header_info['target_name']
     prihdr['VISTYPE'] = header_info['VISTYPE'] 
-    
+    prihdr['VISITID'] = header_info['VISITID']
+
+    # Validate VISITID format
+    visit_id = prihdr['VISITID']
+    if not isinstance(visit_id, str):
+        raise TypeError("VISITID must be a string.")
+    if not re.fullmatch(r"\d{19}", visit_id):
+        raise ValueError(
+            "VISITID must be a 19-character string in the format "
+            "'PPPPPEEECCCNNNNVVV' "
+            "(P=Program, E=Execution, C=Campaign, N=Observation, V=Visit)."
+        )
+    #separet VISIID into PROGNUM, EXECNUM, CAMPAIGN, SEGMENT, OBSNUM, VISNUM
+    # defination of these number and VISITID see https://collaboration.ipac.caltech.edu/pages/viewpage.action?pageId=161617086&spaceKey=romancoronagraph&title=L1%2BCurrent%2BDRP%2BDevelopment%2BVersion
+    prihdr['PROGNUM'] = visit_id[0:4]
+    prihdr['EXECNUM']  = visit_id[4:7]
+    prihdr['CAMPAIGN'] = visit_id[7:10]
+    prihdr['SEGMENT'] = visit_id[10:13]
+    prihdr['OBSNUM'] = visit_id[13:16]
+    prihdr['VISNUM'] = visit_id[16:19]
+
     if header_info['PHTCNT'] == True:
         prihdr['PHTCNT'] =int(1)
     else:
@@ -183,29 +204,73 @@ def save_hdu_to_fits( hdul, outdir=None, overwrite=False, write_as_L1=False, fil
         else:
             if filename is None:
                 raise ValueError("Filename must be provided when write_as_L1 is False.")
+        
+        ## intermediate products only have comments headers, so the overwrite keywords should only applied for L1 products
+        if (not write_as_L1) and (
+            overwrite_pri_keywords is not None or overwrite_ext_keywords is not None):
+            raise ValueError("Only L1 product have formal headers to be overwritten. Please set write_as_L1 as True")
 
-        # Construct full file path
-        filepath = os.path.join(outdir, filename)
+        if write_as_L1:
+            overwrite_pri_keys = overwrite_pri_keywords.keys() if overwrite_pri_keywords else []
+            overwrite_ext_keys = overwrite_ext_keywords.keys() if overwrite_ext_keywords else []
 
-        overwrite_pri_keys = overwrite_pri_keywords.keys() if overwrite_pri_keywords else []
-        overwrite_ext_keys = overwrite_ext_keywords.keys() if overwrite_ext_keywords else []
+            overwrite_pri_keywords = overwrite_pri_keywords or {}
+            overwrite_ext_keywords = overwrite_ext_keywords or {}
 
-        for key in overwrite_pri_keys:
-            if key in hdul[0].header:
-                hdul[0].header[key] = overwrite_pri_keywords[key]
-            else:
-                raise KeyError(f"Primary header keyword '{key}' not found in HDUList.")
+            visitid_keywords = {"PROGNUM", "EXECNUM", "SEGMENT", "OBSNUM", "VISNUM", "FILENAME"}
 
-        if overwrite_ext_keywords is not None:
-            if write_as_L1:
-                for key in overwrite_ext_keys:
-                    if key in hdul[1].header:
-                        hdul[1].header[key] = overwrite_ext_keywords[key]
-                    else:
-                        raise KeyError(f"Extension header keyword '{key}' not found in HDUList.")
-            else:
-                raise ValueError("Only L1 products have externsion headers, set write_as_L1 to True")
+            if any(key in overwrite_pri_keywords for key in visitid_keywords):
+                raise ValueError(
+                    "The keywords PROGNUM, EXECNUM, SEGMENT, OBSNUM, VISNUM, and FILENAME "
+                    "are derived from VISITID and cannot be overwritten directly. "
+                    "Please overwrite VISITID instead."
+                )
+        
+            ###filename need to be updated if FTIMEUTC overwriten for L1 product
+            ftimeutc = overwrite_ext_keywords.get("FTIMEUTC", exthdr["FTIMEUTC"])
+            new_time_in_name = isotime_to_yyyymmddThhmmsss(ftimeutc)
 
+            visit_id = overwrite_pri_keywords.get("VISITID", prihdr["VISITID"])
+            if not isinstance(visit_id, str):
+                    raise TypeError("VISITID must be a string.")
+
+            if not re.fullmatch(r"\d{19}", visit_id):
+                raise ValueError(
+                    "VISITID must be a 19-character string in the format "
+                    "'PPPPPEEECCCNNNNVVV' "
+                    "(P=Program, E=Execution, C=Campaign, N=Observation, V=Visit).")
+
+            if "VISITID" in overwrite_pri_keys:
+
+                # If VISITID is overwritten, the corresponding keywords and filename must also be updated.
+                # defination of these number and VISITID see https://collaboration.ipac.caltech.edu/pages/viewpage.action?pageId=161617086&spaceKey=romancoronagraph&title=L1%2BCurrent%2BDRP%2BDevelopment%2BVersion
+                overwrite_pri_keywords.update({
+                    "PROGNUM": visit_id[0:4],
+                    "EXECNUM": visit_id[4:7],
+                    "CAMPAIGN": visit_id[7:10],
+                    "SEGMENT": visit_id[10:13],
+                    "OBSNUM": visit_id[13:16],
+                    "VISNUM": visit_id[16:19],
+                })
+
+            ###filename need to be updated if FTIMEUTC or VISITID overwriten for L1 product
+            filename=f"cgi_{visit_id}_{new_time_in_name}_l1_.fits"
+            overwrite_pri_keywords.update({"FILENAME": filename})
+            
+
+            for key in overwrite_pri_keys:
+                if key in hdul[0].header:
+                    hdul[0].header[key] = overwrite_pri_keywords[key]
+                else:
+                    raise KeyError(f"Primary header keyword '{key}' not found in HDUList.")
+
+       
+            for key in overwrite_ext_keys:
+                if key in hdul[1].header:
+                    hdul[1].header[key] = overwrite_ext_keywords[key]
+                else:
+                    raise KeyError(f"Extension header keyword '{key}' not found in HDUList.")
+        
 
         if write_as_L1:
             # these headers are only for L1 products
@@ -219,7 +284,9 @@ def save_hdu_to_fits( hdul, outdir=None, overwrite=False, write_as_L1=False, fil
             dt_str = dt.strftime("%Y-%m-%dT%H:%M:%S")
             hdul[1].header['SCTSRT'] = dt_str
             hdul[1].header['SCTEND'] = (dt + timedelta(seconds=exthdr['EXPTIME'])).strftime("%Y-%m-%dT%H:%M:%S")
-
+        
+        # Construct full file path
+        filepath = os.path.join(outdir, filename)
         # Write the HDUList to file
         hdul.writeto(filepath, overwrite=overwrite)
         print(f"Saved FITS file to: {filepath}")
