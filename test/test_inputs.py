@@ -33,7 +33,7 @@ def test_cpgs_loading():
     # TO DO Add a file without autogain with polarization to test the error handling 
     
     # Test object creation 
-    filepath = 'test/test_data/Satellite_spots_pol.xml'
+    filepath = 'test/test_data/cpgs_ref_pol_satspots.xml'
     abs_path =  os.path.join(script_dir, '..', filepath)
 
     scene_target, scene_reference, optics, detector_target, detector_reference, visit_list, satellite_dict_target, satellite_dict_reference = inputs.load_cpgs_data(abs_path, output_dim=51, fast_gain_mode = True)
