@@ -108,7 +108,7 @@ def test_generate_observation_scenario_from_cpgs():
 
 
     #Test with only target
-    filepath = 'test/test_data/cpgs_without_reference_new_format.xml'
+    filepath = 'test/test_data/cpgs_without_reference.xml'
     abs_path =  os.path.join(script_dir, filepath)
     scene_target, optics, detector_target, visit_list, satellite_dict_target = inputs.load_cpgs_data(abs_path, output_dim=51, fast_gain_mode = True)
     len_list = 0 

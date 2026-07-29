@@ -22,7 +22,7 @@ def test_cpgs_loading():
 
     # Test autogain default values
     # # TO DO: give automatic gain through eetc
-    # filepath = 'test/test_data/cpgs_default.xml'
+    # filepath = 'test/test_data/autogain.xml'
     # abs_path =  os.path.join(script_dir, '..', filepath)
 
     # with pytest.raises(NotImplementedError) as excinfo:  
@@ -175,7 +175,7 @@ def test_input():
 
 def test_input_from_cpgs():
     script_dir = os.getcwd()
-    filepath = 'test/test_data/cpgs_without_polarization_new_format.xml'
+    filepath = 'test/test_data/cpgs_without_polarization.xml'
     abs_path =  os.path.join(script_dir, filepath)
 
     input = inputs.load_cpgs_data(abs_path, return_input=True)
