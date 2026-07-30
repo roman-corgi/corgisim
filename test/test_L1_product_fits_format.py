@@ -411,7 +411,7 @@ def test_L1_product_from_CPGS():
             time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
             filename = f"cgi_{prihdr['VISITID']}_{time_in_name}_l1_.fits"
 
-            f = os.path.join( outdir ,'V', prihdr['VISITID'], filename)
+            f = os.path.join( outdir ,'V'+ prihdr['VISITID'], filename)
             assert os.path.isfile(f)
             assert prihdr['PA_APER'] == visit["roll_angle"]
             i += 1
