@@ -308,7 +308,7 @@ def create_variation_input(old_input, **kwargs):
     new_input = Input(**old_input_dict_intern) 
     return new_input
 
-def load_cpgs_data(filepath, output_dim=201, polaxis=0, fast_gain_mode='auto', return_input=False):
+def load_cpgs_data(filepath, output_dim=201, polaxis=0, fast_gain_mode='auto', gain_CIC_Q = 'roman', return_input=False):
     """Creates a scene and optics based on the content of a CPGS file.
 
     This function parses the CPGS file to extract simulation parameters for
@@ -323,6 +323,7 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, fast_gain_mode='auto', r
         output_dim
         polaxis
         fast_gain_mode
+        gain_CIC_Q
     Returns:
         tuple or corgisim.inputs.Input:
             If "return_input" is False (default):
@@ -372,17 +373,17 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, fast_gain_mode='auto', r
     if (cpgs_input.find('target_autogain').text == '0'):
         photon_counting = (cpgs_input.find('target_pcounting').text=='1')
         em_gain = float(cpgs_input.find('target_gain').text)
-        detector_target = instrument.CorgiDetector(emccd_keywords={'em_gain':em_gain, 'fast_gain_mode': fast_gain_mode}, photon_counting=photon_counting) 
+        detector_target = instrument.CorgiDetector(emccd_keywords={'em_gain':em_gain, 'fast_gain_mode': fast_gain_mode, 'gain_CIC_Q': gain_CIC_Q}, photon_counting=photon_counting) 
     elif (cpgs_input.find('target_autogain').text == '1'):
         #TO DO use eetc for better gain approximation
-        detector_target = instrument.CorgiDetector(emccd_keywords={'em_gain':1000, 'fast_gain_mode': fast_gain_mode}, photon_counting=True)        #TO DO: have a approximate autogain using eetc
+        detector_target = instrument.CorgiDetector(emccd_keywords={'em_gain':1000, 'fast_gain_mode': fast_gain_mode, 'gain_CIC_Q': gain_CIC_Q}, photon_counting=True)        #TO DO: have a approximate autogain using eetc
     if reference_star_present :
         if (cpgs_input.find('reference_autogain').text == '0'):
             photon_counting = (cpgs_input.find('reference_pcounting').text=='1')
             em_gain = float(cpgs_input.find('reference_gain').text)   
-            detector_reference = instrument.CorgiDetector(emccd_keywords={'em_gain':em_gain, 'fast_gain_mode': fast_gain_mode}, photon_counting=photon_counting) 
+            detector_reference = instrument.CorgiDetector(emccd_keywords={'em_gain':em_gain, 'fast_gain_mode': fast_gain_mode, 'gain_CIC_Q': gain_CIC_Q}, photon_counting=photon_counting) 
         elif (cpgs_input.find('reference_autogain').text == '1'):
-            detector_target = instrument.CorgiDetector(emccd_keywords={'em_gain':1000, 'fast_gain_mode': fast_gain_mode}, photon_counting=True)        #TO DO: have a approximate autogain using eetc
+            detector_target = instrument.CorgiDetector(emccd_keywords={'em_gain':1000, 'fast_gain_mode': fast_gain_mode, 'gain_CIC_Q': gain_CIC_Q}, photon_counting=True)        #TO DO: have a approximate autogain using eetc
             #TO DO: have a approximate autogain using eetc
 
     #Color filter

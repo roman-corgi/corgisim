@@ -73,7 +73,7 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, v
 
     return simulatedImage_list
 
-def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, save_as_list=False, output_dir=None, full_frame=False, loc_x=None, loc_y=None, point_source_info=None, output_dim=201, polaxis=0, fast_gain_mode='auto' ):
+def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, save_as_list=False, output_dir=None, full_frame=False, loc_x=None, loc_y=None, point_source_info=None, output_dim=201, polaxis=0, fast_gain_mode='auto', gain_CIC_Q='roman' ):
     """Generates an observation scenario by loading instrument, scene, and visit
     information from a CPGS file.
 
@@ -97,10 +97,10 @@ def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, save_
     simulatedImage_list = []
     # Try to get target and reference
     try:
-        scene_target, scene_reference, optics, detector_target, detector_reference, visit_list,satellite_dict_target, satellite_dict_reference, = inputs.load_cpgs_data(filepath,output_dim=201, polaxis=0, fast_gain_mode='auto')
+        scene_target, scene_reference, optics, detector_target, detector_reference, visit_list,satellite_dict_target, satellite_dict_reference, = inputs.load_cpgs_data(filepath,output_dim=output_dim, polaxis=polaxis, fast_gain_mode=fast_gain_mode, gain_CIC_Q=gain_CIC_Q)
     # If error, only get the target        
     except ValueError:
-        scene_target, optics, detector_target, visit_list, satellite_dict_target = inputs.load_cpgs_data(filepath,output_dim=201, polaxis=0, fast_gain_mode='auto')
+        scene_target, optics, detector_target, visit_list, satellite_dict_target = inputs.load_cpgs_data(filepath,output_dim=output_dim, polaxis=polaxis, fast_gain_mode=fast_gain_mode, gain_CIC_Q=gain_CIC_Q)
 
     if point_source_info is not None:
         host_star_properties = {'Vmag': scene_target._host_star_Vmag, 'spectral_type': scene_target._host_star_sptype, 'magtype': scene_target._host_star_magtype, 'ref_flag': False}
