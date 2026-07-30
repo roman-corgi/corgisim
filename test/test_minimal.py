@@ -183,7 +183,7 @@ def test_cpgs_obs():
     script_dir = Path(__file__).resolve().parent
 
     #Test with target and reference
-    filepath = 'test/test_data/cpgs_short_sequence.xml'
+    filepath = 'test_data/cpgs_short_sequence.xml'
     abs_path =  os.path.join(script_dir, filepath)
 
     scene_target, scene_reference, optics, detector_target, detector_reference, visit_list, satellite_dict_target, satellite_dict_reference = inputs.load_cpgs_data(abs_path, output_dim=51, fast_gain_mode = True)
