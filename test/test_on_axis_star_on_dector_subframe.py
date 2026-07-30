@@ -45,10 +45,15 @@ def test_on_axis_star_on_detector_subframe():
     sim_scene = optics.get_host_star_psf(base_scene)
     image = sim_scene.host_star_image.data
     
-    gain =1000
-    emccd_keywords ={'em_gain':gain}
+    emccd_keywords ={'em_gain':1, 'fast_gain_mode':True}
     exptime = 30
+    with pytest.warns(UserWarning):
+        detector = instrument.CorgiDetector( emccd_keywords)
+
+    gain = 1000
+    emccd_keywords ={'em_gain':gain}
     detector = instrument.CorgiDetector( emccd_keywords)
+
     sim_scene = detector.generate_detector_image(sim_scene,exptime, cut_sub_frame = True)
     image2 = sim_scene.image_on_detector.data
 
