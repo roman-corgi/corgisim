@@ -385,7 +385,11 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, fast_gain_mode='auto', r
             detector_target = instrument.CorgiDetector(emccd_keywords={'em_gain':1000, 'fast_gain_mode': fast_gain_mode}, photon_counting=True)        #TO DO: have a approximate autogain using eetc
             #TO DO: have a approximate autogain using eetc
 
-    bandpass = cpgs_input.find('filter').text
+    #Color filter
+    bandpass = cpgs_input.find('howfsc_cfam_pos').text
+    if bandpass == 'NONE':
+        bandpass = cpgs_input.find('filter').text + 'F'
+
     coronograph_mask = cpgs_input.find('coronagraph_mask').text
     required_contrast = cpgs_input.find('initial_target_planet_star_flux_ratio').text
 
@@ -393,7 +397,7 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, fast_gain_mode='auto', r
     is_spectroscopy = (cpgs_input.find('is_spectroscopy').text == '1')
     if is_spectroscopy :
         cgi_mode = 'spec'
-        cor_type = 'spc-spec_band' +bandpass
+        cor_type = 'spc-spec_band' +bandpass[0]
         cases = [1E-9,2E-8,4E-9 ]
         contrast = str(min(cases, key=lambda x: abs(x - float(required_contrast))))
         # The operation inserts a 0 we need to get rid of
@@ -412,14 +416,14 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, fast_gain_mode='auto', r
     else:
         cgi_mode = 'excam'
         if coronograph_mask == '1':
-            cor_type = 'hlc_band'+ bandpass
+            cor_type = 'hlc_band'+ bandpass[0]
             cases = [2E-9,3E-8,5E-9 ]
             contrast = str(min(cases, key=lambda x: abs(x - float(required_contrast))))
             # The operation inserts a 0 we need to get rid of
             rootname = 'hlc_ni_' + contrast[:-2] + contrast[-1]
 
         elif coronograph_mask == '2':
-            cor_type = 'spc-wide_band'+ bandpass
+            cor_type = 'spc-wide_band'+ bandpass[0]
             cases = [3E-9,5E-9 ]
             contrast = str(min(cases, key=lambda x: abs(x - float(required_contrast))))
             # The operation inserts a 0 we need to get rid of
@@ -457,7 +461,7 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, fast_gain_mode='auto', r
 
     for visit in visits.iter('cgi_visit'):
         visit_type = visit.find('cgi_visit_type').text
-        if (visit_type in ['CGIVST_TDD_OBS','CGIVST_TDD_POL_OBS','CGIVST_TDD_OBS_HOWFSC' ]) :
+        if (visit_type in ['CGIVST_TDD_OBS','CGIVST_TDD_POL_OBS','CGIVST_TDD_OBS_HOWFSC', 'CGIVST_TDD_SETUP_HOWFSC' ]) :
             if reference_star_present :
                 isReference = (visit.find('fixed_target').find('reference_target').text == 'Y')
             else:

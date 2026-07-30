@@ -191,7 +191,7 @@ def test_input_from_cpgs():
     # Test that the correct file is used
     assert input.cpgs_file == abs_path
 
-    scene_target, scene_reference, optics, detector_target, detector_reference, visit_list, satellite_dict_target, satellite_dict_reference = inputs.load_cpgs_data(abs_path, output_dim=51, fast_gain_mode = True)
+    scene_target, scene_reference, optics, detector_target, detector_reference, visit_list, satellite_dict_target, satellite_dict_reference = inputs.load_cpgs_data(abs_path)
 
     scene_input = scene.Scene(input.host_star_properties)
     optics_input =  instrument.CorgiOptics(input.cgi_mode, input.bandpass, optics_keywords=input.optics_keywords, if_quiet=True)
@@ -209,7 +209,11 @@ def test_input_from_cpgs():
             # For dictionnaries, we only check that the key that are presents have the same values 
             if key in ['optics_keywords', 'emccd_keywords', 'host_star_properties']:
                 for keyword in (optics.__dict__['optics_keywords'].keys() & optics_input.__dict__['optics_keywords'].keys()):
-                    assert optics.__dict__[key][keyword] == optics_input.__dict__[key][keyword]                                   
+                    #DM solutions are arrays
+                    if type(optics.__dict__[key][keyword]).__module__ == 'numpy':
+                        assert (optics.__dict__[key][keyword] == optics_input.__dict__[key][keyword]).all()                                   
+                    else:
+                        assert optics.__dict__[key][keyword] == optics_input.__dict__[key][keyword]                                   
             else:
                 assert optics_input.__dict__[key] == val
 

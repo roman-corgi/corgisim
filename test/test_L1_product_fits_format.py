@@ -396,8 +396,8 @@ def test_L1_product_from_CPGS():
     local_path = corgisim.lib_dir
     outdir = os.path.join(local_path.split('corgisim')[0], 'corgisim/test/testdata/cpgs')
     
-    scene_target, scene_reference, optics, detector_target, detector_reference, visit_list, satellite_dict_target, satellite_dict_reference = inputs.load_cpgs_data(abs_path, output_dim=51, fast_gain_mode = True)
-    simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, full_frame=True, loc_x=300, loc_y=300, save_as_fits=True, output_dir=outdir, output_dim=51, fast_gain_mode = True)
+    scene_target, scene_reference, optics, detector_target, detector_reference, visit_list, satellite_dict_target, satellite_dict_reference = inputs.load_cpgs_data(abs_path, output_dim=121, fast_gain_mode = True)
+    simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, full_frame=True, loc_x=300, loc_y=300, save_as_fits=True, save_as_list= True, output_dir=outdir, output_dim=121, fast_gain_mode = True)
 
     #Check that there are as many simulated images as files
     assert len(simulatedImage_list) == sum(len(files) for _, _, files in os.walk(outdir))
@@ -420,10 +420,10 @@ def test_L1_product_from_CPGS():
 
     # test at the observation sequence level
     # n_frames and exp_time values are not critical
-    n_frames = 100
+    n_frames = 10
     exp_time = 30
 
-    simulatedImage_list_sequence = observation.generate_observation_sequence( scene_target, optics, detector_target, exp_time, n_frames, save_as_fits=True, output_dir=outdir, full_frame=True, loc_x=300, loc_y=300, output_dim=51, fast_gain_mode = True)
+    simulatedImage_list_sequence = observation.generate_observation_sequence( scene_target, optics, detector_target, exp_time, n_frames, save_as_fits=True, output_dir=outdir, full_frame=True, loc_x=300, loc_y=300, output_dim=121, fast_gain_mode = True)
     
     #Check that there are as many simulated images as files
     assert len(simulatedImage_list_sequence) == len([name for name in os.listdir(outdir) if os.path.isfile(outdir+'/'+name)]) == n_frames
@@ -442,6 +442,5 @@ def test_L1_product_from_CPGS():
     shutil.rmtree(outdir)
 
 if __name__ == '__main__':
-    #run_sim()
     test_L1_product_fits_format()
     test_L1_product_from_CPGS()

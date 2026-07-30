@@ -6,7 +6,7 @@
       <label>CPGS_test_python</label>
       <observer_firstname>Jim</observer_firstname>
       <observer_lastname>Ingalls</observer_lastname>
-      <cpgs_filename>1785242089.xml</cpgs_filename>
+      <cpgs_filename>1785396107.xml</cpgs_filename>
    </observation_information>
    <target_list>
       <target>
@@ -167,7 +167,7 @@
       </cgi_visit>
    </visit_list>
    <cpgs_input>
-      <filename>/local2/rails/vmromancpgs1/releases/20260709063825/public/cpgs/1785242089.json</filename>
+      <filename>/local2/rails/vmromancpgs1/releases/20260709063825/public/cpgs/1785396107.json</filename>
       <observation_label>CPGS_test_python</observation_label>
       <observation_number>1</observation_number>
       <observer_firstname>Jim</observer_firstname>
@@ -226,7 +226,7 @@
       <howfsc_fsam_pos_coarse>NONE</howfsc_fsam_pos_coarse>
       <howfsc_fsam_pos>NONE</howfsc_fsam_pos>
       <howfsc_cfam_pos_acq>NONE</howfsc_cfam_pos_acq>
-      <howfsc_cfam_pos>NONE</howfsc_cfam_pos>
+      <howfsc_cfam_pos>1F</howfsc_cfam_pos>
       <howfsc_dpam_pos>IMAGING</howfsc_dpam_pos>
       <howfsc_fcm_pos>NONE</howfsc_fcm_pos>
       <howfsc_locam_gain_targ>1.0</howfsc_locam_gain_targ>
