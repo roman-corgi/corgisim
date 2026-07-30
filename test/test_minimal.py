@@ -208,7 +208,7 @@ def test_cpgs_obs():
 
     i=0
     for visit in visit_list:
-        for _ in range(visit['number_of_frames']+satellite_dict_target['satellite_spots_number_of_frames']*3)        
+        for _ in range(visit['number_of_frames']+satellite_dict_target['satellite_spots_number_of_frames']*3):
         #Check that the target has a point source and the target doesn't  
             if simulatedImage_list[i].input_scene.ref_flag :
                 assert '_point_source_Vmag' not in simulatedImage_list[i].input_scene.__dict__
