@@ -73,7 +73,7 @@ def test_generate_observation_scenario_from_cpgs():
     filepath = 'test/test_data/Satellite_spots_pol.xml'
     abs_path =  os.path.join(script_dir, filepath)
    
-    scene_target, scene_reference, optics, detector_target, detector_reference, visit_list, satellite_dict_target, satellite_dict_reference = inputs.load_cpgs_data(abs_path, output_dim=51, fast_gain_mode = True)
+    scene_target, scene_reference, optics, detector_target, detector_reference, visit_list, satellite_dict_target, satellite_dict_reference = inputs.load_cpgs_data(abs_path, output_dim=51, fast_gain_mode = True, gain_CIC_Q=0.0)
     len_list = 0 
     for visit in visit_list:
         len_list += visit['number_of_frames']
@@ -82,7 +82,7 @@ def test_generate_observation_scenario_from_cpgs():
         else:
             len_list+=(satellite_dict_target['satellite_spots_number_of_frames']*3)
             
-    simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, output_dim=51, fast_gain_mode = True)
+    simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, output_dim=51, fast_gain_mode = True, gain_CIC_Q=0.0)
     assert isinstance(simulatedImage_list, list)
     assert len(simulatedImage_list) == len_list
     assert isinstance(simulatedImage_list[0], SimulatedImage)
@@ -92,7 +92,7 @@ def test_generate_observation_scenario_from_cpgs():
     dx= [3*49.3]
     dy= [3*49.3]
     point_source_info = [{'Vmag': mag_companion[0], 'magtype': 'vegamag','position_x':dx[0] , 'position_y':dy[0]}]
-    simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, point_source_info=point_source_info, output_dim=51, fast_gain_mode = True)
+    simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, point_source_info=point_source_info, output_dim=51, fast_gain_mode = True, gain_CIC_Q=0.0)
 
     for simulatedImage in simulatedImage_list:
         #Check that the target has a point source and the target doesn't  
@@ -110,13 +110,13 @@ def test_generate_observation_scenario_from_cpgs():
     #Test with only target
     filepath = 'test/test_data/cpgs_without_reference.xml'
     abs_path =  os.path.join(script_dir, filepath)
-    scene_target, optics, detector_target, visit_list, satellite_dict_target = inputs.load_cpgs_data(abs_path, output_dim=51, fast_gain_mode = True)
+    scene_target, optics, detector_target, visit_list, satellite_dict_target = inputs.load_cpgs_data(abs_path, output_dim=51, fast_gain_mode = True, gain_CIC_Q=0.0)
     len_list = 0 
     for visit in visit_list:
         len_list += visit['number_of_frames']
         len_list+=(satellite_dict_target['satellite_spots_number_of_frames']*3)
 
-    simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, output_dim=51, fast_gain_mode = True)
+    simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, output_dim=51, fast_gain_mode = True, gain_CIC_Q=0.0)
     assert isinstance(simulatedImage_list, list)
     assert len(simulatedImage_list) == len_list
     assert isinstance(simulatedImage_list[0], SimulatedImage)

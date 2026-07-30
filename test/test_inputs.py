@@ -36,7 +36,7 @@ def test_cpgs_loading():
     filepath = 'test/test_data/cpgs_ref_pol_satspots.xml'
     abs_path =  os.path.join(script_dir, '..', filepath)
 
-    scene_target, scene_reference, optics, detector_target, detector_reference, visit_list, satellite_dict_target, satellite_dict_reference = inputs.load_cpgs_data(abs_path, output_dim=51, fast_gain_mode = True)
+    scene_target, scene_reference, optics, detector_target, detector_reference, visit_list, satellite_dict_target, satellite_dict_reference = inputs.load_cpgs_data(abs_path, output_dim=51, fast_gain_mode = True, gain_CIC_Q=0.0)
     assert isinstance(scene_target, scene.Scene)
     assert isinstance(scene_reference, scene.Scene)
     assert isinstance(detector_target, instrument.CorgiDetector)

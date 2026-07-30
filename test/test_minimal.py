@@ -186,18 +186,15 @@ def test_cpgs_obs():
     filepath = 'test_data/cpgs_short_sequence.xml'
     abs_path =  os.path.join(script_dir, filepath)
 
-    scene_target, scene_reference, optics, detector_target, detector_reference, visit_list, satellite_dict_target, satellite_dict_reference = inputs.load_cpgs_data(abs_path, output_dim=51, fast_gain_mode = True)
+    scene_target, optics, detector_target, visit_list, satellite_dict_target = inputs.load_cpgs_data(abs_path, output_dim=51, fast_gain_mode = True, gain_CIC_Q=0.0)
 
     assert detector_target.photon_counting == True
     
     len_list = 0 
     for visit in visit_list:
         len_list += visit['number_of_frames']
-        if visit['isReference']:
-            len_list+=(satellite_dict_reference['satellite_spots_number_of_frames']*3)
-        else:
-            len_list+=(satellite_dict_target['satellite_spots_number_of_frames']*3)
-    simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path)
+        len_list+=(satellite_dict_target['satellite_spots_number_of_frames']*3)
+    simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, output_dim=51, fast_gain_mode = True, gain_CIC_Q=0.0)
     assert isinstance(simulatedImage_list, list)
     assert len(simulatedImage_list) == len_list
     assert isinstance(simulatedImage_list[0], SimulatedImage)
@@ -207,11 +204,11 @@ def test_cpgs_obs():
     dx= [3*49.3]
     dy= [3*49.3]
     point_source_info = [{'Vmag': mag_companion[0], 'magtype': 'vegamag','position_x':dx[0] , 'position_y':dy[0]}]
-    simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, point_source_info=point_source_info, output_dim=51, fast_gain_mode = True)
+    simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, point_source_info=point_source_info, output_dim=51, fast_gain_mode = True, gain_CIC_Q=0.0)
 
     i=0
     for visit in visit_list:
-        for _ in range(visit['number_of_frames']):        
+        for _ in range(visit['number_of_frames']+satellite_dict_target['satellite_spots_number_of_frames']*3)        
         #Check that the target has a point source and the target doesn't  
             if simulatedImage_list[i].input_scene.ref_flag :
                 assert '_point_source_Vmag' not in simulatedImage_list[i].input_scene.__dict__
