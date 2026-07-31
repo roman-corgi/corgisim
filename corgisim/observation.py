@@ -43,6 +43,8 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, v
         where each object represents a single generated observation frame with its image data
         and associated FITS header information.
     """
+    optics.visit_id = visit_id
+    optics.visit_type = vistype
     sim_scene = optics.get_host_star_psf(scene)
     if hasattr(scene, 'point_source_dra') or hasattr(scene, 'point_source_ddec'):
         sim_scene = optics.inject_point_sources(scene,sim_scene)
@@ -69,7 +71,7 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, v
             simulatedImage_list.append(copy.deepcopy(sim_image))
 
             if save_as_fits:
-                outputs.save_hdu_to_fits(sim_image.image_on_detector,outdir=outdir, overwrite_pri_keywords={'TARGET':scene.target_name, 'VISITID': visit_id, 'VISTYPE':vistype } ,write_as_L1=True)
+                outputs.save_hdu_to_fits(sim_image.image_on_detector,outdir=outdir ,write_as_L1=True)
 
     return simulatedImage_list
 
