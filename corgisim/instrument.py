@@ -1653,7 +1653,11 @@ class CorgiDetector():
             - row_read_time (float, optional): Row read time in seconds, needed to simulate smearing. Defaults to 223.5e-6.  For no smearing, set this to 0.
             - nonlin_path (str, optional): Path to the nonlinearity file for simulating nonlinearity. Defaults to None (no nonlinearity simulated).
             - flat_path (str, optional): Path to the flat field file for simulating flat field nonuniformity. Defaults to None (no flat field nonuniformity simulated).
-
+            - fast_gain_mode : bool or 'auto' If True, a faster but less accurate method (uses Erlang/Gamma distribution for EM gain) of simulating the gain register is used.  
+            If False, a slower but more accurate method (marches each pixel through the gain register with binomial distribution) is used. The fast method is quite accurate 
+            for em_gain > 200 if the number of incoming particles to the gain register is n > 1.  If 'auto', both speed and accuracy are prioritized:the fast method is used 
+            if em_gain > 200 (and n>1) and 'roman' is used for gain_CIC_Q,and the slow method is used with gain_CIC_Q = 0 (since partial CIC is negligible for low gains) 
+            for em_gain <= 200 (or if n=1 for any gain). Defaults to 'auto'.
         Returns:
             - emccd (EMCCDDetectBase): A configured EMCCD detector object. If `use_traps` is True, the detector's CTI is updated using the corresponding trap model.
         
@@ -1678,8 +1682,8 @@ class CorgiDetector():
                                   'date4traps': 2028.0,                  # decimal year of observation
                                   'row_read_time': 223.5e-6,              # in seconds (needed to simulate smearing)
                                   'nonlin_path': None,                  # path to file containing non-linearity map; if None, no input nonlinearity used
-                                  'flat_path': None}                    # path to file containing flat field map; if None, no flat field correction used
-
+                                  'flat_path': None,            # path to file containing flat field map; if None, no flat field correction used
+                                  'fast_gain_mode':'auto'}
         if emccd_keywords is not None:                    
             if 'qe' in emccd_keywords.keys():
                 raise Warning("Quantum efficiency has been added in the bandpass throughput; it must be enforced as 1 here.")
@@ -1688,7 +1692,9 @@ class CorgiDetector():
                 if key in self.emccd_keywords_default:
                     self.emccd_keywords_default[key] = value
 
-    
+        if (self.emccd_keywords_default['fast_gain_mode'] and self.emccd_keywords_default['em_gain'] < 200):
+            warnings.warn('Warning: Fast gain mode needs em_gain to be over 200 to be reasonably accurate')
+
         emccd = EMCCDDetect( em_gain=self.emccd_keywords_default['em_gain'], full_well_image=self.emccd_keywords_default['full_well_image'], full_well_serial=self.emccd_keywords_default['full_well_serial'],
                              dark_current=self.emccd_keywords_default['dark_rate'], cic=self.emccd_keywords_default['cic_noise'], read_noise=self.emccd_keywords_default['read_noise'], bias=self.emccd_keywords_default['bias'],
                              qe=1.0, cr_rate=self.emccd_keywords_default['cr_rate'], pixel_pitch=self.emccd_keywords_default['pixel_pitch'], eperdn=self.emccd_keywords_default['e_per_dn'],
