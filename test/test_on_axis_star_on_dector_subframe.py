@@ -53,7 +53,7 @@ def test_on_axis_star_on_detector_subframe():
     gain = 1000
     emccd_keywords ={'em_gain':gain}
     detector = instrument.CorgiDetector( emccd_keywords)
-
+    assert detector.emccd_keywords['bias'] == 1500 
     sim_scene = detector.generate_detector_image(sim_scene,exptime, cut_sub_frame = True)
     image2 = sim_scene.image_on_detector.data
 
