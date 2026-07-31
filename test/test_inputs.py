@@ -22,15 +22,12 @@ def test_cpgs_loading():
 
     # Test autogain default values
     # # TO DO: give automatic gain through eetc
-    # filepath = 'test/test_data/autogain.xml'
-    # abs_path =  os.path.join(script_dir, '..', filepath)
+    filepath = 'test/test_data/cpgs_autogain.xml'
+    abs_path =  os.path.join(script_dir, '..', filepath)
 
-    # with pytest.raises(NotImplementedError) as excinfo:  
-    #     scene_target, scene_reference, optics, detector_target, detector_reference, visit_list, satellite_dict_target, satellite_dict_reference = inputs.load_cpgs_data(abs_path)  
-    # assert str(excinfo.value) == "Autogain is not implemented." 
+    scene_target, optics, detector_target, visit_list, satellite_dict_target = inputs.load_cpgs_data(abs_path)  
+    assert detector_target.emccd_keywords['em_gain'] == 1000
 
-    # Test polarization not implemented
-    # TO DO Add a file without autogain with polarization to test the error handling 
     
     # Test object creation 
     filepath = 'test/test_data/cpgs_ref_pol_satspots.xml'
