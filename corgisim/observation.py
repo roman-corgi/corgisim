@@ -26,8 +26,8 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, s
         n_frames (int): The total number of frames to generate in this observation sequence.
         n_satspot_frames (int, optional): Number of frames at the beginning of
             the sequence that should include satellite spots. This must be a
-            multiple of 3, because each set of satellite-spot frames uses
-            [negative, positive, no sign override]. To use this, set
+            multiple of 3. Frames are grouped by satellite-spot offset state:
+            no-offset first, then positive, then negative. To use this, set
             `optics.satspot_keywords` before calling this function. If None,
             the sequence uses the optics object as configured.
         full_frame (bool, optional): If True, a full-frame detector image will be generated.
@@ -63,6 +63,16 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, s
     original_has_dm1_v = 'dm1_v' in optics.optics_keywords
     original_dm1_v = optics.optics_keywords.get('dm1_v')
     original_satspots = optics.SATSPOTS
+    satspot_signs = [None, "positive", "negative"]
+    satspot_frame_signs = []
+
+    if n_satspot_frames is not None:
+        frames_per_satspot_state = n_satspot_frames // len(satspot_signs)
+        satspot_frame_signs = [
+            sign
+            for sign in satspot_signs
+            for _ in range(frames_per_satspot_state)
+        ]
 
     if n_satspot_frames is None:
         regular_sim_scene = generate_sim_scene()
@@ -77,7 +87,6 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, s
 
         satspot_sim_scenes = {}
         regular_sim_scene = None
-        satspot_signs = [None, "positive", "negative"]
 
         try:
             if n_satspot_frames > 0:
@@ -115,13 +124,15 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, s
             optics.SATSPOTS = original_satspots
     
     simulatedImage_list = []
+
+    def get_frame_scene(i):
+        if i < len(satspot_frame_signs):
+            return satspot_sim_scenes[satspot_frame_signs[i]]
+        return regular_sim_scene
     
     if full_frame == False :
         for i in range(0, n_frames):
-            if n_satspot_frames is not None and i < n_satspot_frames:
-                frame_scene = satspot_sim_scenes[satspot_signs[i % len(satspot_signs)]]
-            else:
-                frame_scene = regular_sim_scene
+            frame_scene = get_frame_scene(i)
             sim_image = detector.generate_detector_image(frame_scene,exp_time)
             simulatedImage_list.append(copy.deepcopy(sim_image))
     else:
@@ -136,10 +147,7 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, s
                 outdir = output_dir
 
         for i in range(0, n_frames):
-            if n_satspot_frames is not None and i < n_satspot_frames:
-                frame_scene = satspot_sim_scenes[satspot_signs[i % len(satspot_signs)]]
-            else:
-                frame_scene = regular_sim_scene
+            frame_scene = get_frame_scene(i)
             sim_image = detector.generate_detector_image(frame_scene,exp_time,full_frame=True,loc_x=loc_x, loc_y=loc_y)
             simulatedImage_list.append(copy.deepcopy(sim_image))
 

@@ -7,6 +7,52 @@ import pytest
 import numpy as np
 import os
 
+class _FakeOptics:
+    def __init__(self):
+        self.optics_keywords = {'use_dm1': 1, 'dm1_v': 'no-offset'}
+        self.SATSPOTS = 0
+        self.satspot_keywords = {'satspot': True}
+
+    def add_satspot(self, satspot_keywords):
+        return satspot_keywords['sign']
+
+    def get_host_star_psf(self, scene):
+        return f"{self.optics_keywords['dm1_v']}:{self.SATSPOTS}"
+
+
+class _FakeDetector:
+    def generate_detector_image(self, frame_scene, exp_time, **kwargs):
+        return frame_scene
+
+
+def test_generate_observation_sequence_groups_satspot_offsets():
+    optics = _FakeOptics()
+    detector = _FakeDetector()
+    scene_without_point_sources = object()
+
+    simulatedImage_list = observation.generate_observation_sequence(
+        scene_without_point_sources,
+        optics,
+        detector,
+        exp_time=1,
+        n_frames=8,
+        n_satspot_frames=6,
+    )
+
+    assert simulatedImage_list == [
+        'no-offset:1',
+        'no-offset:1',
+        'positive:1',
+        'positive:1',
+        'negative:1',
+        'negative:1',
+        'no-offset:0',
+        'no-offset:0',
+    ]
+    assert optics.optics_keywords['dm1_v'] == 'no-offset'
+    assert optics.SATSPOTS == 0
+
+
 def test_generate_observation_sequence():
 
     Vmag = 8
