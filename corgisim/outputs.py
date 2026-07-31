@@ -272,7 +272,7 @@ def save_hdu_to_fits( hdul, outdir=None, overwrite=False, write_as_L1=False, fil
 
         # Write the HDUList to file
         hdul.writeto(filepath, overwrite=overwrite)
-        print(f"Saved FITS file to: {filepath}")
+        #print(f"Saved FITS file to: {filepath}")
     
         return filepath
 
