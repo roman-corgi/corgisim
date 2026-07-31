@@ -453,7 +453,7 @@ def test_L1_product_from_CPGS():
     n_frames = 10
     exp_time = 30
 
-    simulatedImage_list_sequence = observation.generate_observation_sequence( scene_target, optics, detector_target, exp_time, n_frames, save_as_fits=True, output_dir=outdir, full_frame=True, loc_x=300, loc_y=300, fast_gain_mode = True, gain_CIC_Q=0.0)
+    simulatedImage_list_sequence = observation.generate_observation_sequence( scene_target, optics, detector_target, exp_time, n_frames, save_as_fits=True, output_dir=outdir, full_frame=True, loc_x=300, loc_y=300)
     
     #Check that there are as many simulated images as files
     assert len(simulatedImage_list_sequence) == len([name for name in os.listdir(outdir) if os.path.isfile(outdir+'/'+name)]) == n_frames
