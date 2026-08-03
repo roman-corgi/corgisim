@@ -414,13 +414,11 @@ def _convolve_with_prfs(obj, prfs_array, radii_lamD, azimuths_deg,
 
     Notes
     -----
-    - The PRF cube is resized internally to match the shape of `obj`
-      prior to convolution.
+    - The output image dimension is defined by the input `obj` array.
     - The `obj` is normalized to a sum of 1.0, the output represents the 
       spatial distribution of flux weighted by the field-dependent PSF response.
     - The PRFs are assumed to represent the instrument intensity response to a
-      off-axis point source. Absolute physical flux scaling (e.g., multiplying by total disk flux or 
-      exposure time) must be applied to the result.
+      off-axis point source. Absolute physical flux scaling (e.g., multiplying by total disk flux or exposure time) must be applied to the result.
     - Convolution is computed via FFTs and accumulated over the set of PRF
       indices present in the field.
     """
@@ -443,7 +441,7 @@ def _convolve_with_prfs(obj, prfs_array, radii_lamD, azimuths_deg,
             if np.any(mask):
                 weighted_scene = obj * mask
                 # same = output array has the same shape as the first input array (in1)
-                conv += fftconvolve(prfs_array[prf_idx], weighted_scene,mode="same")
+                conv += fftconvolve(weighted_scene, prfs_array[prf_idx], mode="same")
     
     else:
         # Bilinear interpolation convolution
@@ -476,7 +474,7 @@ def _convolve_with_prfs(obj, prfs_array, radii_lamD, azimuths_deg,
             
             if np.any(weight_map > 0):
                 weighted_scene = obj * weight_map
-                conv += fftconvolve(prfs_array[prf_idx], weighted_scene, mode="same")
+                conv += fftconvolve(weighted_scene, prfs_array[prf_idx], mode="same")
 
     return conv
 
