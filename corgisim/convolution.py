@@ -235,17 +235,6 @@ def bilinear_indices_weights(r_lamD, theta_deg, radii_lamD, azimuths_deg):
     alpha  = np.divide(r_lamD - radii_lamD[radial_id_low], dr,
                        out=np.zeros_like(r_lamD), where=dr != 0)
 
-    # Prevent radial extrapolation beyond the available PRF grid to avoid negative weights. Pixels outside the PRF grid will be assigned the outermost PRF.
-    outside_prf_grid = r_lamD > radii_lamD[-1]
-
-    # Raise a warning if any object pixels are outside the PRF radial grid. These pixels will be assigned the outermost available PRF.
-    if np.any(outside_prf_grid):
-        warnings.warn(
-            "The scene extends beyond the PRF radial grid. "
-            "The outermost available radial PRF will be used.",
-            stacklevel=2,
-        )
-
     alpha = np.clip(alpha, 0.0, 1.0)
 
     # --- Mapping from (r, θ) grid indices to flat PRF cube indices --
@@ -425,6 +414,19 @@ def _convolve_with_prfs(obj, prfs_array, radii_lamD, azimuths_deg,
 
     # Map pixels to polar coordinates (r, theta) in lambda/D and degrees
     r_lamD, theta_deg = pixel_to_polar(obj.shape, pix_scale_mas, res_mas)
+
+    # Check PRF coverage before performing the convolution
+    outside_prf_grid = r_lamD > radii_lamD[-1]
+    nonzero_scene = np.isfinite(obj) & (obj != 0)
+
+    # Raise a warning if any object pixels are outside the PRF radial grid. These pixels will be assigned the outermost available PRF.
+    if np.any(outside_prf_grid & nonzero_scene):
+        warnings.warn(
+            "The scene contains flux beyond the outermost sampled PRF radius. "
+            "The outermost available radial PRF will be used as an approximation.",
+            UserWarning,
+            stacklevel=2,
+        )
 
     # Accumulator for the field-dependent convolution result.
     conv = np.zeros(prfs_array.shape[1:], dtype=float)
