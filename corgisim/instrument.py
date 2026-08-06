@@ -1658,6 +1658,7 @@ class CorgiDetector():
             for em_gain > 200 if the number of incoming particles to the gain register is n > 1.  If 'auto', both speed and accuracy are prioritized:the fast method is used 
             if em_gain > 200 (and n>1) and 'roman' is used for gain_CIC_Q,and the slow method is used with gain_CIC_Q = 0 (since partial CIC is negligible for low gains) 
             for em_gain <= 200 (or if n=1 for any gain). Defaults to 'auto'.
+            - gain_CIC_Q: optional: The gain of the CIC (Clock-Induced Charge) in the EM register. Set gain_CIC_Q = 0 to disable it to have faster simulation. The value will be overwrite if fast_gain_mode = 'auto'. 
         Returns:
             - emccd (EMCCDDetectBase): A configured EMCCD detector object. If `use_traps` is True, the detector's CTI is updated using the corresponding trap model.
         
@@ -1683,14 +1684,19 @@ class CorgiDetector():
                                   'row_read_time': 223.5e-6,              # in seconds (needed to simulate smearing)
                                   'nonlin_path': None,                  # path to file containing non-linearity map; if None, no input nonlinearity used
                                   'flat_path': None,            # path to file containing flat field map; if None, no flat field correction used
-                                  'fast_gain_mode':'auto'}
+                                  'fast_gain_mode':'auto',
+                                  'gain_CIC_Q':'Roman'}                 # gain of the CIC in the EM register; set to 0 to disable it to have faster simulation}
         if emccd_keywords is not None:                    
             if 'qe' in emccd_keywords.keys():
                 raise Warning("Quantum efficiency has been added in the bandpass throughput; it must be enforced as 1 here.")
+            
             # Override default parameters with user-specified ones
             for key, value in emccd_keywords.items():
                 if key in self.emccd_keywords_default:
                     self.emccd_keywords_default[key] = value
+
+            if 'gain_CIC_Q' in emccd_keywords and self.emccd_keywords_default.get('fast_gain_mode') == 'auto':
+                warnings.warn("gain_CIC_Q is set by default when fast_gain_mode='auto'. If you want to change gain_CIC_Q, please set fast_gain_mode to True or False.")
 
         if (self.emccd_keywords_default['fast_gain_mode'] and self.emccd_keywords_default['em_gain'] < 200):
             warnings.warn('Warning: Fast gain mode needs em_gain to be over 200 to be reasonably accurate')
@@ -1699,7 +1705,7 @@ class CorgiDetector():
                              dark_current=self.emccd_keywords_default['dark_rate'], cic=self.emccd_keywords_default['cic_noise'], read_noise=self.emccd_keywords_default['read_noise'], bias=self.emccd_keywords_default['bias'],
                              qe=1.0, cr_rate=self.emccd_keywords_default['cr_rate'], pixel_pitch=self.emccd_keywords_default['pixel_pitch'], eperdn=self.emccd_keywords_default['e_per_dn'],
                              numel_gain_register=self.emccd_keywords_default['numel_gain_register'], nbits=self.emccd_keywords_default['nbits'], row_read_time=self.emccd_keywords_default['row_read_time'], 
-                             nonlin_path=self.emccd_keywords_default['nonlin_path'], flat_path=self.emccd_keywords_default['flat_path'])
+                             nonlin_path=self.emccd_keywords_default['nonlin_path'], flat_path=self.emccd_keywords_default['flat_path'], fast_gain_mode=self.emccd_keywords_default['fast_gain_mode'], gain_CIC_Q=self.emccd_keywords_default['gain_CIC_Q'])
         
         if self.emccd_keywords_default['use_traps']: 
             raise ValueError(f"The part to simulate CTI effects using trap models has not been implemented yet!")
