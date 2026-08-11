@@ -2,6 +2,30 @@
 import numpy as np
 from scipy import interpolate
 
+def jones_to_mueller_conversion(jones_matrix):
+    """
+    Applies the formula M = A(J⊗J*)A^-1 where A = [[1,0,0,1],[1,0,0,-1],[0,1,1,0],[0,i,-i,0]] and J is the input Jones matrix
+    to convert J to a Mueller matrix
+
+    Args:
+        jones_matrix (numpy.ndarray): 2x2 complex Jones matrix for conversion
+    Returns:
+        mueller_matrix: (numpy.ndarray): a 4x4 real-valued Mueller matrix
+    """
+
+    # apply the conversion
+    A = np.array([[1, 0, 0, 1],
+                  [1, 0, 0, -1],
+                  [0, 1, 1, 0],
+                  [0, 1j, -1j, 0]])
+    A_inv = np.linalg.inv(A)
+    j_conj = np.conj(jones_matrix)
+
+    # explicitly take the real part to ensure the mueller matrix is real-valued and remove any imaginary numerical residues    
+    mueller_matrix = np.real(A @ (np.kron(jones_matrix, j_conj)) @ A_inv)
+
+    return mueller_matrix
+
 def check_stokes_vector_validity(pol_state):
     """
     Check if the input stokes vector is of right length and magnitude
