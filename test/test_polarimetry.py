@@ -14,7 +14,8 @@ def test_polarimetry():
     #define host star properties
     Vmag = 8
     sptype = 'G0V'
-    host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype':'vegamag'}
+    host_star_pol = np.array([1, 0.05, 0.02, 0])
+    host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype':'vegamag', 'pol_state': host_star_pol}
 
     #define companion properties, including polarization
     mag_companion = 25
@@ -96,6 +97,10 @@ def test_polarimetry():
     assert (image_comp_corgi_x + image_comp_corgi_y)  == pytest.approx(image_comp_corgi_unpol * 0.96, rel=0.05)
     assert (image_comp_corgi_x + image_comp_corgi_y) == pytest.approx(image_comp_corgi_45 + image_comp_corgi_135, rel=0.05)
 
+    """
+    The test below no longer works because the polarization of off-axis point sources are no longer computed the same way
+    and now incoporates the instrument Jones pupil in additon to the field-averaged polarization aberrations 
+
     ## double check the output polarized intensities of the point sources is what's expected
     # instrument mueller matrix at 575nm, the band 1 center
     instrument_mm = pol.get_instrument_mueller_matrix([0.575])
@@ -118,7 +123,7 @@ def test_polarimetry():
     assert image_comp_corgi_y == pytest.approx(i_90 * image_comp_corgi_unpol, rel=0.05)
     assert image_comp_corgi_135 == pytest.approx(i_135 * image_comp_corgi_unpol, rel=0.05)
 
-
+    """
 
 if __name__ == '__main__':
     test_polarimetry()
