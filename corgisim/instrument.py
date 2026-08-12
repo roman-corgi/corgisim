@@ -645,7 +645,7 @@ class CorgiOptics():
         y_size, x_size = fields[0][0].shape
         focal_plane_jones_matrix = np.zeros(shape=[self.nlam, y_size, x_size, 2, 2], dtype=complex)
         # since the E-fields have a precomputed rotation of -45/45->x/y, we need to prepend a -45 degree rotation
-        # from x/y->-45/45 so an incoming Stokes vector is rotated into the right basis before being transformed
+        # from x/y->-45/45 so an incoming Jones vector is rotated into the right basis before being transformed
         # the results of the matrix multiplication with the -45 degree rotation matrix is explicitly written down for each component
         # note that the field corresponding to polaxis=-2 requires a sign flip for it to describe the -45 -> Y projection correctly
         # the factor of 0.5 out front comes from (1/sqrt(2))^2. One of which is from the change of basis, the other is for correct
@@ -655,7 +655,7 @@ class CorgiOptics():
         focal_plane_jones_matrix[:,:,:,1,0] = 0.5 * (-1 * fields[2] + fields[3])
         focal_plane_jones_matrix[:,:,:,1,1] = 0.5 * (fields[2] + fields[3])
 
-        # convert this jones matrix to an amplitude response matrix in order to work with intensities
+        # convert this jones matrix to a mueller matrix in order to work with intensities
         psf_mueller_matrix = pol.jones_to_mueller_conversion(focal_plane_jones_matrix)
 
         # obtain the mueller matrix corresponding to a CCW rotation from the sky RA/Dec frame to the instrument X/Y frame as defined by the roll angle
