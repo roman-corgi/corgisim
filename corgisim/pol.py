@@ -46,6 +46,8 @@ def check_stokes_vector_validity(pol_state):
     
     Raises:
         ValueError: If the provided stokes vector is not of length 4 or the polarized intensity magnitude exceeds the total intensity magnitude
+    Returns:
+        is_valid (boolean): Returns true if the stokes vector is valid and no errors are raised
     """
     #checks length
     if (len(pol_state) != 4): raise ValueError(f'Invalid stokes vector length of {len(pol_state)}. Valid stokes vector is of length 4')
@@ -53,6 +55,8 @@ def check_stokes_vector_validity(pol_state):
     #checks magnitude
     if (np.sqrt((pol_state[1] ** 2) + (pol_state[2] ** 2) + (pol_state[3] ** 2)) > pol_state[0]):
         raise ValueError(f'Invalid stokes parameters of {pol_state}. Please make sure sum of polarized intensity does not exceed that of total intensity')
+
+    return True
 
 def get_instrument_mueller_matrix(lam_band):
     """
@@ -229,7 +233,7 @@ def get_rotation_mueller_matrix(angle):
      cos = np.cos(theta)
      sin = np.sin(theta)
 
-     return np.array([1, 0, 0, 0],
+     return np.array([[1, 0, 0, 0],
                      [0, cos, sin, 0],
                      [0, -sin, cos, 0],
-                     [0, 0, 0, 1])
+                     [0, 0, 0, 1]])

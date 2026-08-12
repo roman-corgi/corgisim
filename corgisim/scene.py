@@ -104,7 +104,7 @@ class Scene():
             self._stellar_diam_mas = host_star_properties_internal['stellar_diam_mas']
 
             # stokes vector of the host star for polarimetric simulations
-            self.host_star_pol_state = host_star_properties_internal.get('pol_state', np.array([1,0,0,0]))
+            self._host_star_pol_state = host_star_properties_internal.get('pol_state', np.array([1,0,0,0]))
 
         #self._point_source_list = point_source_info
         # Extract V-band magnitude and magnitude type from point source info
@@ -195,7 +195,17 @@ class Scene():
         Returns:
             pol_state (numpy.ndarray): length-4 Stokes vector of the host star
         """
-        return self.host_star_pol_state
+        return self._host_star_pol_state
+
+    @host_star_pol_state.setter
+    def host_star_pol_state(self, value):
+        """
+        Setter for the host star Stokes vector
+        Args:
+            value (numpy.ndarray): length-4 Stokes vector of the host star
+        """
+        if pol.check_stokes_vector_validity(value):
+            self._host_star_pol_state = value
 
 
     @host_star_magtype.setter
