@@ -8,9 +8,11 @@ def jones_to_mueller_conversion(jones_matrix):
     to convert J to a Mueller matrix
 
     Args:
-        jones_matrix (numpy.ndarray): 2x2 complex Jones matrix for conversion
+        jones_matrix (numpy.ndarray): Array of complex Jones matrices for conversion. Can contain however many dimensions as long as 
+            the last two dimensions is of size 2x2 and correspond to a Jones matrix at a specific point in the higher dimensional space. 
     Returns:
-        mueller_matrix: (numpy.ndarray): a 4x4 real-valued Mueller matrix
+        mueller_matrix: (numpy.ndarray): A real-valued array with the same number of dimensions as the input Jones matrix, with the
+            last two dimensions being of 4x4 size and containing the converted Mueller matrices. 
     """
 
     # apply the conversion
@@ -20,9 +22,18 @@ def jones_to_mueller_conversion(jones_matrix):
                   [0, 1j, -1j, 0]])
     A_inv = np.linalg.inv(A)
     j_conj = np.conj(jones_matrix)
+    # compute the intermediate kronecker product
+    j_kron_shape = list(jones_matrix.shape)
+    j_kron_shape[-1] = 4 # last two dimensions gets expanded from 2x2 to 4x4 after product, update to reflect this
+    j_kron_shape[-2] = 4
+    j_kron = np.zeros(shape=j_kron_shape, dtype=complex)
+    j_kron[...,0:2,0:2] = jones_matrix[...,0:1,0:1] * j_conj
+    j_kron[...,0:2,2:4] = jones_matrix[...,0:1,1:2] * j_conj
+    j_kron[...,2:4,0:2] = jones_matrix[...,1:2,0:1] * j_conj
+    j_kron[...,2:4,2:4] = jones_matrix[...,1:2,1:2] * j_conj
 
     # explicitly take the real part to ensure the mueller matrix is real-valued and remove any imaginary numerical residues    
-    mueller_matrix = np.real(A @ (np.kron(jones_matrix, j_conj)) @ A_inv)
+    mueller_matrix = np.real(A @ j_kron @ A_inv)
 
     return mueller_matrix
 
@@ -203,3 +214,22 @@ def get_wollaston_mueller_matrix(angle):
                    [np.cos(theta), (np.cos(theta)) ** 2, (np.cos(theta)) * (np.sin(theta)), 0],
                    [np.sin(theta), (np.cos(theta)) * (np.sin(theta)), (np.sin(theta)) ** 2, 0],
                    [0, 0, 0, 0]])
+
+def get_rotation_mueller_matrix(angle):
+     """
+    Calculate the Mueller matrix response for a counterclockwise rotation of a given angle from one frame of reference to another
+
+    Args:
+        angle (float): The counterclockwise angle of rotation.
+
+    Returns:
+        The 4x4 Mueller matrix that transforms a Stokes vector into the rotated frame
+    """
+    theta = angle * (np.pi / 180) * 2
+    cos = np.cos(theta)
+    sin = np.sin(theta)
+
+    return np.array([1, 0, 0, 0],
+                    [0, cos, sin, 0],
+                    [0, -sin, cos, 0].
+                    [0, 0, 0, 1])
