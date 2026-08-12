@@ -540,22 +540,7 @@ class CorgiOptics():
                 source_stokes_vector = np.array([1,0,0,0])
             
             # Construct the temporary images array
-            images_tem = calculate_images_tem_for_pol0_or_pol45(N_offsets_counting_origin, delta_e_library, delta_e_keys, grid_dim_out_tem, fields, source_stokes_vector)
-            
-         """   
-        elif self.prism == 'POL45':
-            #45/135 case
-            # The four electric field components are:
-            # delta_E_m45in_45out
-            # delta_E_45in_45out
-            # delta_E_m45in_135out
-            # delta_E_45in_135out
-            # Set up a library of keys to identify these components:
-            delta_e_keys = {'1':'delta_E_m45in_45out','2':'delta_E_45in_45out','3':'delta_E_m45in_135out','4':'delta_E_45in_135out'}
-
-            # Construct the temporary images array                
-            images_tem = calculate_images_tem_for_pol0_or_pol45(N_offsets_counting_origin, delta_e_library, delta_e_keys, grid_dim_out_tem, fields)
-        """        
+            images_tem = calculate_images_tem_for_pol0_or_pol45(N_offsets_counting_origin, delta_e_library, delta_e_keys, grid_dim_out_tem, fields, source_stokes_vector)     
         elif self.optics_keywords['polaxis'] == -10:
             # if polaxis is set to -10, obtain full aberration model by individually summing intensities obtained from polaxis=-2, -1, 1, 2
             # The four electric field components are:
@@ -793,58 +778,7 @@ class CorgiOptics():
                     # Incorporating jitter or finite stellar diameter:
                     images_tem = self.construct_jittered_image_from_fields(fields, host_star_stokes_vector)   
                 image = self.construct_image_array(grid_dim_out_tem,images_tem,obs)
-            # old code delete
-            """
-            if self.prism == 'POL0':
-                #0/90 case
-                # models the polarization aberration of the speckle field
-                # polaxis=-1 and 1 gives -45->X and 45->X aberrations, incoherently
-                # averaging the two gives the x polarized intensity data.
-                # polaxis=-2 and 2 gives -45->Y and 45->Y aberrations, incoherently
-                # averaging the two gives the y polarized intensity data. 
-                polaxis_params = [-1, 1, -2, 2]
-                fields = []
-                optics_keywords_pol_xy = self.optics_keywords.copy()
-                for polaxis in polaxis_params:
-                    optics_keywords_pol_xy['polaxis'] = polaxis
-                    (field, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=optics_keywords_pol_xy,QUIET=self.quiet)
-                    fields.append(field)
-                #obtain 0/90 degree polarization intensities
-                # If not incorporating jitter or finite stellar diameter:
-                if ((hasattr(self,'stellar_diam_and_jitter_keywords') == False) or
-                   ((self.stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] == 0) and (self.stellar_diam_and_jitter_keywords['add_jitter'] == 0))):
-                    intensity_x = ((np.abs(fields[0]) ** 2) + (np.abs(fields[1]) ** 2)) / 2
-                    intensity_y = ((np.abs(fields[2]) ** 2) + (np.abs(fields[3]) ** 2)) / 2
-                    images_tem = [intensity_x, intensity_y]
-                elif  ((self.stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] == 1) or (self.stellar_diam_and_jitter_keywords['add_jitter'] == 1)):
-                    # Incorporating jitter or finite stellar diameter:
-                    images_tem = self.construct_jittered_image_from_fields(fields)                    
-                image = self.construct_image_array(grid_dim_out_tem,images_tem,obs)
-            elif self.prism == 'POL45':
-                #45/135 case
-                # models the polarization aberration of the speckle field
-                # polaxis=-3 and 3 gives -45->45 and 45->45 aberrations, incoherently
-                # averaging the two gives the 45 degree polarized intensity data.
-                # polaxis=-2 and 2 gives -45->-45 and 45->-45 aberrations, incoherently
-                # averaging the two gives the -45 degree polarized intensity data. 
-                polaxis_params = [-3, 3, -4, 4]
-                fields = []
-                optics_keywords_pol_45 = self.optics_keywords.copy()
-                for polaxis in polaxis_params:
-                    optics_keywords_pol_45['polaxis'] = polaxis
-                    (field, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=optics_keywords_pol_45,QUIET=self.quiet)
-                    fields.append(field)
-                #obtain 45/135 degree polarization intensities
-                if ((hasattr(self,'stellar_diam_and_jitter_keywords') == False) or
-                   ((self.stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] == 0) and (self.stellar_diam_and_jitter_keywords['add_jitter'] == 0))):
-                    intensity_45 = ((np.abs(fields[0]) ** 2) + (np.abs(fields[1]) ** 2)) / 2
-                    intensity_135 = ((np.abs(fields[2]) ** 2) + (np.abs(fields[3]) ** 2)) / 2
-                    images_tem = [intensity_45, intensity_135]
-                elif  ((self.stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] == 1) or (self.stellar_diam_and_jitter_keywords['add_jitter'] == 1)):
-                    # Incorporating jitter or finite stellar diameter:
-                    images_tem = self.construct_jittered_image_from_fields(fields)                    
-                image = self.construct_image_array(grid_dim_out_tem,images_tem,obs)
-            """
+                
             elif self.optics_keywords['polaxis'] == -10:
                 # if polaxis is set to -10, obtain full aberration model by individually summing intensities obtained from polaxis=-2, -1, 1, 2
                 optics_keywords_m10 = self.optics_keywords.copy()

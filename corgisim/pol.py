@@ -217,19 +217,19 @@ def get_wollaston_mueller_matrix(angle):
 
 def get_rotation_mueller_matrix(angle):
      """
-    Calculate the Mueller matrix response for a counterclockwise rotation of a given angle from one frame of reference to another
+     Calculate the Mueller matrix response for a counterclockwise rotation of a given angle from one frame of reference to another
 
-    Args:
-        angle (float): The counterclockwise angle of rotation.
+     Args:
+         angle (float): The counterclockwise angle of rotation.
 
-    Returns:
-        The 4x4 Mueller matrix that transforms a Stokes vector into the rotated frame
-    """
-    theta = angle * (np.pi / 180) * 2
-    cos = np.cos(theta)
-    sin = np.sin(theta)
+     Returns:
+         The 4x4 Mueller matrix that transforms a Stokes vector into the rotated frame
+     """ 
+     theta = angle * (np.pi / 180) * 2
+     cos = np.cos(theta)
+     sin = np.sin(theta)
 
-    return np.array([1, 0, 0, 0],
-                    [0, cos, sin, 0],
-                    [0, -sin, cos, 0].
-                    [0, 0, 0, 1])
+     return np.array([1, 0, 0, 0],
+                     [0, cos, sin, 0],
+                     [0, -sin, cos, 0],
+                     [0, 0, 0, 1])
