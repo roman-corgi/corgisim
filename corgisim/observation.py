@@ -7,7 +7,7 @@ from corgidrp import mocks
 
 import copy 
 
-def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, vistype = None, visit_id= None, save_as_fits= False, output_dir=None, full_frame= False, loc_x=None, loc_y=None):
+def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, vistype = 'CGIVST_TDD_OBS', visit_id= '0200001001001001001', save_as_fits= False, output_dir=None, full_frame= False, loc_x=None, loc_y=None):
     """
     Generates a sequence of simulated observations and places them on a detector.
 
