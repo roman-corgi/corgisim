@@ -1640,7 +1640,7 @@ class CorgiDetector():
             - full_well_serial (float, optional): full well for serial register; 90K is requirement, 100K is CBE
             - dark_rate (float, optional): Dark current rate, e-/pix/s; 1.0 is requirement, 0.00042/0.00056 is CBE for 0/5 years
             - cic_noise (float, optional): Clock-induced charge noise, e-/pix/frame; Defaults to 0.01.
-            - read_noise (float, optional): Read noise, e-/pix/frame; 125 is requirement, 100 is CBE
+            - read_noise (float, optional): Read noise, e-/pix/frame; 125 is requirement, 165 is CBE
             - bias (int, optional): Bias level (in digital numbers). Defaults to 1500.
             - qe (float): Quantum efficiency, set to 1 here, because already counted in counts
             - cr_rate (int, optional): Cosmic ray event rate, hits/cm^2/s (0 for none, 5 for L2) 
@@ -1669,7 +1669,7 @@ class CorgiDetector():
                                   'full_well_image': 90000.0,                 # image full well; 50K is requirement, 60K is CBE
                                   'dark_rate': 0.001,                  # e-/pix/s; 1.0 is requirement, 0.00042/0.00056 is CBE for 0/5 years
                                   'cic_noise': 0.0088,                    # e-/pix/frame; 0.1 is requirement, 0.01 is CBE
-                                  'read_noise': 165.0,                  # e-/pix/frame; 125 is requirement, 100 is CBE
+                                  'read_noise': 165.0,                  # e-/pix/frame; 125 is requirement, 165 is CBE
                                   'cr_rate': 5,                         # hits/cm^2/s (0 for none, 5 for L2) 
                                   'em_gain': 1000.0 ,                      # EM gain
                                   'bias': 1500,				# Bias offset (e-)
