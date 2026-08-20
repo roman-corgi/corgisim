@@ -418,7 +418,8 @@ class CorgiOptics():
                     # ares in unit of cm^2
                     # counts in unit of photos/s
                     # wollaston transmission is around 0.96%, divide by two to split between polarization
-                    counts = 0.48 * obs.countrate(area=self.area, waverange=[lam_um_l, lam_um_u])
+                    # fix: The wollaston Mueller matrix already accounts for the throughput loss, adding it again here would be double-counting
+                    counts = obs.countrate(area=self.area, waverange=[lam_um_l, lam_um_u])
     
                     images_1[i,:,:] = images_1[i,:,:] * counts
                     images_2[i,:,:] = images_2[i,:,:] * counts
@@ -454,13 +455,15 @@ class CorgiOptics():
                 
             return image
         
-    def construct_jittered_image_from_fields(self,fields):
+    def construct_jittered_image_from_fields(self, fields, source_stokes_vector=None):
         '''
         This function uses the onaxis electric field and the library of offset
         electric fields and their weights to determine the intensity that
         incorporates the effects of jitter and/or finite stellar diameter.
         Inputs:
                fields: onaxis electric fields as returned by proper
+               source_stokes_vector: For use in polarimetric simulations. Stokes vector describing the polarization state
+                of the source. Defaults to none.
         Outputs:
                images_temp: Temporary images
 
@@ -480,7 +483,7 @@ class CorgiOptics():
         # The specific calculations vary depending on the polarization case.
         # Because the syntax is essentially identical for POL0 and POL45, we can
         # define a function that works for both cases at the expense of a little clarity.
-        def calculate_images_tem_for_pol0_or_pol45(N_offsets_counting_origin,delta_e_library,delta_e_keys,grid_dim_out_tem,fields):
+        def calculate_images_tem_for_pol0_or_pol45(N_offsets_counting_origin,delta_e_library,delta_e_keys,grid_dim_out_tem,fields,stokes_vector):
             # For each offset, calculate E_offset = E_onaxis + deltaE.
             # Repeat for each electric field component.
             # Convert the electric field to an intensity.
@@ -501,8 +504,10 @@ class CorgiOptics():
                 E_offset_4 = delta_e_library[delta_e_keys['4']][i_offset,:,:,:] + fields[3]
                 
                 # Step 3: Obtain the two polarization intensities
-                intensity_1_temp = ((np.abs(E_offset_1) ** 2) + (np.abs(E_offset_2) ** 2)) / 2
-                intensity_2_temp = ((np.abs(E_offset_3) ** 2) + (np.abs(E_offset_4) ** 2)) / 2
+                intensity_1_temp, intensity_2_temp = self.obtain_polarized_intensities_from_fields(
+                    [E_offset_1, E_offset_2, E_offset_3, E_offset_4],
+                    stokes_vector
+                )
                 
                 # Step 4: Weight the intensitites
                 intensity_1_temp = intensity_1_temp * weights[i_offset]
@@ -520,8 +525,8 @@ class CorgiOptics():
             images_tem = [intensity_1, intensity_2]
             return images_tem
             
-        if self.prism == 'POL0':
-            # 0/90 deg polarization case
+        if self.prism == 'POL0' or self.prism == 'POL45':
+            # pol mode
             # The four electric field components are:
             # delta_E_m45in_xout
             # delta_E_45in_xout
@@ -529,24 +534,13 @@ class CorgiOptics():
             # delta_E_45in_yout
             # Set up a library of keys to identify these components:
             delta_e_keys = {'1':'delta_E_m45in_xout','2':'delta_E_45in_xout','3':'delta_E_m45in_yout','4':'delta_E_45in_yout'}
+
+            # assign default if nothing is passed in
+            if source_stokes_vector is None:
+                source_stokes_vector = np.array([1,0,0,0])
             
             # Construct the temporary images array
-            images_tem = calculate_images_tem_for_pol0_or_pol45(N_offsets_counting_origin, delta_e_library, delta_e_keys, grid_dim_out_tem, fields)
-            
-            
-        elif self.prism == 'POL45':
-            #45/135 case
-            # The four electric field components are:
-            # delta_E_m45in_45out
-            # delta_E_45in_45out
-            # delta_E_m45in_135out
-            # delta_E_45in_135out
-            # Set up a library of keys to identify these components:
-            delta_e_keys = {'1':'delta_E_m45in_45out','2':'delta_E_45in_45out','3':'delta_E_m45in_135out','4':'delta_E_45in_135out'}
-
-            # Construct the temporary images array                
-            images_tem = calculate_images_tem_for_pol0_or_pol45(N_offsets_counting_origin, delta_e_library, delta_e_keys, grid_dim_out_tem, fields)
-                    
+            images_tem = calculate_images_tem_for_pol0_or_pol45(N_offsets_counting_origin, delta_e_library, delta_e_keys, grid_dim_out_tem, fields, source_stokes_vector)     
         elif self.optics_keywords['polaxis'] == -10:
             # if polaxis is set to -10, obtain full aberration model by individually summing intensities obtained from polaxis=-2, -1, 1, 2
             # The four electric field components are:
@@ -631,6 +625,76 @@ class CorgiOptics():
             
         # Return the image(s)
         return images_tem
+    
+    def obtain_polarized_intensities_from_fields(self, fields, input_stokes_vector):
+        '''
+        Using the focal plane electric fields from proper, construct the polarized intensities
+        after being split by the wollaston prism
+        Inputs:
+               fields: list of the four on-axis electric fields as returned by proper, in the order of polxais=-1, 1, -2, and 2. This should
+                    correspond to the Roman Jones pupil propagated to the focal plane. Each individual field should be of shape (w,y,x) where
+                    w is the wavelength and y and x are spatial coordinates. 
+                input_stokes_vector: The Stokes vector describing the polarization state of the source as seen on sky.
+        Outputs:
+               images_temp: The focal plane intensities at each sampled wavelength, in pairs of either 0/90 degree linear polarization
+                    or 45/135 degree linear polarization. Will have shape of (2, w, y, x).
+
+        '''
+        # first reshape the fields into an (w, y, x, 2, 2) array where w is the wavelength, y and x are the spatial coordinates, and
+        # at each w, y, x there is a 2x2 Jones matrix
+        y_size, x_size = fields[0][0].shape
+        focal_plane_jones_matrix = np.zeros(shape=[self.nlam, y_size, x_size, 2, 2], dtype=complex)
+        # since the E-fields have a precomputed rotation of -45/45->x/y, we need to prepend a -45 degree rotation
+        # from x/y->-45/45 so an incoming Jones vector is rotated into the right basis before being transformed
+        # the results of the matrix multiplication with the -45 degree rotation matrix is explicitly written down for each component
+        # note that the field corresponding to polaxis=-2 requires a sign flip for it to describe the -45 -> Y projection correctly
+        # the factor of 0.5 out front comes from (1/sqrt(2))^2. One of which is from the change of basis, the other is for correct
+        # normalization of the Jones pupil
+        focal_plane_jones_matrix[:,:,:,0,0] = 0.5 * (fields[0] + fields[1])
+        focal_plane_jones_matrix[:,:,:,0,1] = 0.5 * (-1 * fields[0] + fields[1])
+        focal_plane_jones_matrix[:,:,:,1,0] = 0.5 * (-1 * fields[2] + fields[3])
+        focal_plane_jones_matrix[:,:,:,1,1] = 0.5 * (fields[2] + fields[3])
+
+        # convert this jones matrix to a mueller matrix in order to work with intensities
+        psf_mueller_matrix = pol.jones_to_mueller_conversion(focal_plane_jones_matrix)
+
+        # obtain the mueller matrix corresponding to a CCW rotation from the sky RA/Dec frame to the instrument X/Y frame as defined by the roll angle
+        roll_angle_mueller = pol.get_rotation_mueller_matrix(self.roll_angle)
+        # rotate the input stokes vector into the instrument frame
+        stokes_vector_ins = roll_angle_mueller @ input_stokes_vector
+
+        # obtain the mueller matrix corresponding to the wollaston prism analyzers
+        if self.prism == 'POL0':
+            wollaston_mueller_o = pol.get_wollaston_mueller_matrix(0)
+            wollaston_mueller_e = pol.get_wollaston_mueller_matrix(90)
+        else:
+            wollaston_mueller_o = pol.get_wollaston_mueller_matrix(45)
+            wollaston_mueller_e = pol.get_wollaston_mueller_matrix(135)
+
+        # process each sampled wavelength separately since the instrumental polarization is wavelength dependent
+        intensities_o = []
+        intensities_e = []
+        for w_idx in range(self.nlam):
+            psf_mueller_matrix_w = psf_mueller_matrix[w_idx,:,:,:,:]
+            # obtain the field-averaged instrument mueller matrix at this wavelength
+            wavelength = self.lam_um[w_idx]
+            ins_mueller = pol.get_instrument_mueller_matrix([wavelength])
+            # normalize the IP mueller matrix since throughput loss is already baked into propagation
+            ins_mueller_norm = ins_mueller / ins_mueller[0,0]
+            # obtain the total instrument response mueller matrix at this wavelength:
+            # wollason * field-averaged IP mueller matrix * field-dependent IP amplitude response matrix
+            total_ins_psf_mueller_o = wollaston_mueller_o @ ins_mueller_norm @ psf_mueller_matrix_w
+            total_ins_psf_mueller_e = wollaston_mueller_e @ ins_mueller_norm @ psf_mueller_matrix_w
+            # propagate stokes vector to output
+            stokes_out_o = total_ins_psf_mueller_o @ stokes_vector_ins
+            stokes_out_e = total_ins_psf_mueller_e @ stokes_vector_ins
+            # observed output polarized intensities is the stokes I of both beams
+            intensities_o.append(stokes_out_o[:,:,0])
+            intensities_e.append(stokes_out_e[:,:,0])
+        
+        # return the list of output intensities at each sampled wavelength
+        return np.array([intensities_o, intensities_e])
+
 
     def get_host_star_psf(self, input_scene, sim_scene=None, on_the_fly=False):
         '''
@@ -696,55 +760,27 @@ class CorgiOptics():
                         #TODO: Add option to use saved library
 
             #if polarimetry mode is enabled
-            if self.prism == 'POL0':
-                #0/90 case
-                # models the polarization aberration of the speckle field
-                # polaxis=-1 and 1 gives -45->X and 45->X aberrations, incoherently
-                # averaging the two gives the x polarized intensity data.
-                # polaxis=-2 and 2 gives -45->Y and 45->Y aberrations, incoherently
-                # averaging the two gives the y polarized intensity data. 
+            if self.prism == 'POL0' or self.prism == 'POL45':
+                # get the stokes vector of the host star
+                host_star_stokes_vector = input_scene._host_star_pol_state
+                # using polaxis parameters -1, 1, -2, 2, propagate the Roman Jones pupil to the focal plane
                 polaxis_params = [-1, 1, -2, 2]
                 fields = []
-                optics_keywords_pol_xy = self.optics_keywords.copy()
+                optics_keywords_pol = self.optics_keywords.copy()
+                # propagate each Jones pupil
                 for polaxis in polaxis_params:
-                    optics_keywords_pol_xy['polaxis'] = polaxis
-                    (field, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=optics_keywords_pol_xy,QUIET=self.quiet)
+                    optics_keywords_pol['polaxis'] = polaxis
+                    (field, sampling) = proper.prop_run_multi('roman_preflight', self.lam_um, 1024,PASSVALUE=optics_keywords_pol,QUIET=self.quiet)
                     fields.append(field)
-                #obtain 0/90 degree polarization intensities
                 # If not incorporating jitter or finite stellar diameter:
                 if ((hasattr(self,'stellar_diam_and_jitter_keywords') == False) or
                    ((self.stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] == 0) and (self.stellar_diam_and_jitter_keywords['add_jitter'] == 0))):
-                    intensity_x = ((np.abs(fields[0]) ** 2) + (np.abs(fields[1]) ** 2)) / 2
-                    intensity_y = ((np.abs(fields[2]) ** 2) + (np.abs(fields[3]) ** 2)) / 2
-                    images_tem = [intensity_x, intensity_y]
+                   images_tem = self.obtain_polarized_intensities_from_fields(fields, host_star_stokes_vector)
                 elif  ((self.stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] == 1) or (self.stellar_diam_and_jitter_keywords['add_jitter'] == 1)):
                     # Incorporating jitter or finite stellar diameter:
-                    images_tem = self.construct_jittered_image_from_fields(fields)                    
+                    images_tem = self.construct_jittered_image_from_fields(fields, host_star_stokes_vector)   
                 image = self.construct_image_array(grid_dim_out_tem,images_tem,obs)
-            elif self.prism == 'POL45':
-                #45/135 case
-                # models the polarization aberration of the speckle field
-                # polaxis=-3 and 3 gives -45->45 and 45->45 aberrations, incoherently
-                # averaging the two gives the 45 degree polarized intensity data.
-                # polaxis=-2 and 2 gives -45->-45 and 45->-45 aberrations, incoherently
-                # averaging the two gives the -45 degree polarized intensity data. 
-                polaxis_params = [-3, 3, -4, 4]
-                fields = []
-                optics_keywords_pol_45 = self.optics_keywords.copy()
-                for polaxis in polaxis_params:
-                    optics_keywords_pol_45['polaxis'] = polaxis
-                    (field, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=optics_keywords_pol_45,QUIET=self.quiet)
-                    fields.append(field)
-                #obtain 45/135 degree polarization intensities
-                if ((hasattr(self,'stellar_diam_and_jitter_keywords') == False) or
-                   ((self.stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] == 0) and (self.stellar_diam_and_jitter_keywords['add_jitter'] == 0))):
-                    intensity_45 = ((np.abs(fields[0]) ** 2) + (np.abs(fields[1]) ** 2)) / 2
-                    intensity_135 = ((np.abs(fields[2]) ** 2) + (np.abs(fields[3]) ** 2)) / 2
-                    images_tem = [intensity_45, intensity_135]
-                elif  ((self.stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] == 1) or (self.stellar_diam_and_jitter_keywords['add_jitter'] == 1)):
-                    # Incorporating jitter or finite stellar diameter:
-                    images_tem = self.construct_jittered_image_from_fields(fields)                    
-                image = self.construct_image_array(grid_dim_out_tem,images_tem,obs)
+
             elif self.optics_keywords['polaxis'] == -10:
                 # if polaxis is set to -10, obtain full aberration model by individually summing intensities obtained from polaxis=-2, -1, 1, 2
                 optics_keywords_m10 = self.optics_keywords.copy()
@@ -1077,7 +1113,7 @@ class CorgiOptics():
             
             point_source_image = []
             for j in range(len(point_source_spectra )):
-            
+                
                 self.optics_keywords_comp = self.optics_keywords.copy()
                 ## convert companion sky coord to exacam coord, using roll angle
                 point_source_dx, point_source_dy = skycoord_to_excamcoord(point_source_dra[j], point_source_ddec[j], self.roll_angle)
@@ -1086,61 +1122,32 @@ class CorgiOptics():
                                             'final_sampling_m': sampling_um_tem * 1e-6,
                                             'source_x_offset_mas': point_source_dx,
                                             'source_y_offset_mas': point_source_dy})
+
+                source_obs = obs_point_source[j]
                 
-                if self.optics_keywords['polaxis'] == -10:
+                # pol mode
+                if self.prism in ['POL0', 'POL45']:
+                    stokes_vector = point_source_pol[j]
+                    polaxis_params = [-1, 1, -2, 2]
+                    fields = []
+                    optics_keywords_comp_pol = self.optics_keywords_comp.copy()
+                    # propagate each Jones pupil
+                    for polaxis in polaxis_params:
+                        optics_keywords_comp_pol['polaxis'] = polaxis
+                        (field, sampling) = proper.prop_run_multi('roman_preflight', self.lam_um, 1024,PASSVALUE=optics_keywords_comp_pol,QUIET=self.quiet)
+                        fields.append(field)
+                    images_tem = self.obtain_polarized_intensities_from_fields(fields, stokes_vector)
+
+                elif self.optics_keywords['polaxis'] == -10:
                     optics_keywords_comp_m10 = self.optics_keywords_comp.copy()
                     images_tem = self.generate_full_aberration_psf(optics_keywords_comp_m10,is_offaxis_source=True)
                 else: 
                     (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE= self.optics_keywords_comp ,QUIET=True)
                     images_tem = np.abs(fields)**2
 
-                # Initialize the image array based on whether oversampling is returned
-                images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if self.return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
-                images = np.zeros(images_shape, dtype=float)
-                counts = np.zeros(self.nlam)
-
-                for i in range(images_tem.shape[0]):
-                    if self.return_oversample:
-                        ##return the oversampled PSF, default 7 grid per pixel
-                        images[i,:,:] +=  images_tem[i,:,:]
-                    else:
-                        ## integrate oversampled PSF back to one grid per pixel
-                        images[i,:,:] +=  images_tem[i,:,:].reshape((self.grid_dim_out,self.oversampling_factor,self.grid_dim_out,self.oversampling_factor)).mean(3).mean(1) * self.oversampling_factor**2
-
-                    dlam_um = self.lam_um[1]-self.lam_um[0]
-                    lam_um_l = (self.lam_um[i]- 0.5*dlam_um) * 1e4 ## unit of anstrom
-                    lam_um_u = (self.lam_um[i]+ 0.5*dlam_um) * 1e4 ## unit of anstrom
-                    # ares in unit of cm^2
-                    # counts in unit of photos/s
-                    counts[i] = self.polarizer_transmission * obs_point_source[j].countrate(area=self.area, waverange=[lam_um_l, lam_um_u]).value
-
-                # if wollaston is used, compute point source stokes vector and scale intensity accordingly
-                # multiply input point source stokes vector by instrument mueller matrix, renormalize, then
-                # multiply that by the 0/90/45/135 degree polarizer matrix of the CGI wollaston
-                if self.prism in ['POL0', 'POL45']:
-                    images_1 = np.zeros(images_shape, dtype=float)
-                    images_2 = np.zeros(images_shape, dtype=float)
-                    # transform point source stokes vector by instrument Mueller matrix
-                    # renormalize since instrument Mueller matrix decreases total intensity, and that should already
-                    # be accounted for in the proper model
-                    source_pol_after_instrument = np.matmul(pol.get_instrument_mueller_matrix(self.lam_um), point_source_pol[j])
-                    source_pol_after_instrument = source_pol_after_instrument / source_pol_after_instrument[0]
-                    if (self.prism == 'POL0'):
-                        source_pol_path_1 = np.matmul(pol.get_wollaston_mueller_matrix(0), source_pol_after_instrument)
-                        source_pol_path_2 = np.matmul(pol.get_wollaston_mueller_matrix(90), source_pol_after_instrument)
-                    else:
-                        source_pol_path_1 = np.matmul(pol.get_wollaston_mueller_matrix(45), source_pol_after_instrument)
-                        source_pol_path_2 = np.matmul(pol.get_wollaston_mueller_matrix(135), source_pol_after_instrument)
-                    counts_after_wollaston = [counts * source_pol_path_1[0], counts * source_pol_path_2[0]]
-                    images_1 = images * counts_after_wollaston[0][:, np.newaxis, np.newaxis]
-                    images_2 = images * counts_after_wollaston[1][:, np.newaxis, np.newaxis]
-                    # 3D datacube of point source by polarization state if wollaston is used
-                    point_source_image.append(np.array([np.sum(images_1, axis=0), np.sum(images_2, axis=0)]))
-                else:
-                    images *= counts[:, np.newaxis, np.newaxis]
-                    image = np.sum(images, axis=0)
-                    # singular unpolarized image if no wollaston
-                    point_source_image.append(image) 
+                # create the image array
+                image = self.construct_image_array(grid_dim_out_tem,images_tem, source_obs)
+                point_source_image.append(image) 
         elif self.cgi_mode == 'spec':
             
 

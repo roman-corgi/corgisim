@@ -40,6 +40,8 @@ class Scene():
             - "ref_flag" (boolean):optional, whether the input scene is a reference star (True) or a science target (False). Default is false
             - "stellar_diam_mas" (float): The stellar diameter of the host star in mas.
             - "target_name" (str): optional, the name of the target star, used for headers. Default is UNKNOWN.
+            - "pol_state" (float array): optional, vector of length 4 consisting of the I, Q, U and V components of the stokes parameter
+                describing how the source light is polarized, default is unpolarized or [1,0,0,0]
 
         point_sources_info (list): A list of dictionaries, each representing an off-axis point source in the scene. Each dictionary must contain:
             - "Vmag" (float): The apparent V-band magnitude of the source.
@@ -100,6 +102,9 @@ class Scene():
             if ('stellar_diam_mas' not in host_star_properties_internal.keys()):
                 host_star_properties_internal['stellar_diam_mas'] = None
             self._stellar_diam_mas = host_star_properties_internal['stellar_diam_mas']
+
+            # stokes vector of the host star for polarimetric simulations
+            self._host_star_pol_state = host_star_properties_internal.get('pol_state', np.array([1,0,0,0]))
 
         #self._point_source_list = point_source_info
         # Extract V-band magnitude and magnitude type from point source info
@@ -182,6 +187,25 @@ class Scene():
             magtype (str):  type of magnitude
         """
         return self._host_star_magtype
+
+    @property
+    def host_star_pol_state(self):
+        """
+        Getter for the host star Stokes vector
+        Returns:
+            pol_state (numpy.ndarray): length-4 Stokes vector of the host star
+        """
+        return self._host_star_pol_state
+
+    @host_star_pol_state.setter
+    def host_star_pol_state(self, value):
+        """
+        Setter for the host star Stokes vector
+        Args:
+            value (numpy.ndarray): length-4 Stokes vector of the host star
+        """
+        if pol.check_stokes_vector_validity(value):
+            self._host_star_pol_state = value
 
 
     @host_star_magtype.setter
