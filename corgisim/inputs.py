@@ -4,8 +4,11 @@ from  xml.etree.ElementTree import ParseError
 from astropy.io import fits
 from corgidrp import mocks
 import numpy as np
-import roman_preflight_proper as rp
+import proper
+import roman_preflight_proper
 import types
+
+MAS_PIX = 500E-9 * 360.0 * 3600.0 / (2 * np.pi * 2.363) * 1000 / 2
 class Input():
     """
     A class that holds all the information necessary for a simulation.
@@ -183,9 +186,9 @@ class Input():
             host_star_properties_default[key[1:]] = host_star_properties_default.pop(key)
 
         # Create mutable copies for internal use during initialization
-        self.__mutable_optics_keywords = optics_keywords_default.copy()
-        self.__mutable_emccd_keywords = emccd_keywords_default.copy()
-        self.__mutable_host_star_properties = host_star_properties_default.copy()
+        __mutable_optics_keywords = optics_keywords_default.copy()
+        __mutable_emccd_keywords = emccd_keywords_default.copy()
+        __mutable_host_star_properties = host_star_properties_default.copy()
 
         # Remaining Inputs for scene 
         self._point_source_info = None
@@ -210,7 +213,7 @@ class Input():
 
         if 'optics_keywords' in kwargs : 
             new_optics_keywords = kwargs['optics_keywords'].copy()
-            self.__mutable_optics_keywords.update(new_optics_keywords)
+            __mutable_optics_keywords.update(new_optics_keywords)
             # Put dictionary value into attributes
             for key in list(kwargs['optics_keywords']):
                 new_optics_keywords['_'+key] = new_optics_keywords.pop(key)    
@@ -220,7 +223,7 @@ class Input():
 
         if 'emccd_keywords' in kwargs : 
             new_emccd_keywords = kwargs['emccd_keywords'].copy()
-            self.__mutable_emccd_keywords.update(kwargs['emccd_keywords'])
+            __mutable_emccd_keywords.update(kwargs['emccd_keywords'])
             # Put dictionary value into attributes
             for key in list(kwargs['emccd_keywords']):
                 new_emccd_keywords['_'+key] = new_emccd_keywords.pop(key)    
@@ -230,7 +233,7 @@ class Input():
 
         if 'host_star_properties' in kwargs : 
             new_host_star_properties = kwargs['host_star_properties'].copy()
-            self.__mutable_host_star_properties.update(kwargs['host_star_properties'])
+            __mutable_host_star_properties.update(kwargs['host_star_properties'])
             # Put dictionary value into attributes
             for key in list(kwargs['host_star_properties']):
                 new_host_star_properties['_'+key] = new_host_star_properties.pop(key)    
@@ -244,17 +247,17 @@ class Input():
         
         # Make sure there are no discrepancies between dictionnaries and individual values
         for key, val in kwargs.items():
-            if key[1:] in self.__mutable_optics_keywords:
-                self.__mutable_optics_keywords[key[1:]] = val
-            elif key[1:] in self.__mutable_emccd_keywords:
-                self.__mutable_emccd_keywords[key[1:]] = val
-            elif key[1:] in self.__mutable_host_star_properties:
-                self.__mutable_host_star_properties[key[1:]] = val
+            if key[1:] in __mutable_optics_keywords:
+                __mutable_optics_keywords[key[1:]] = val
+            elif key[1:] in __mutable_emccd_keywords:
+                __mutable_emccd_keywords[key[1:]] = val
+            elif key[1:] in __mutable_host_star_properties:
+                __mutable_host_star_properties[key[1:]] = val
 
         # Now, create the immutable views of the dictionaries
-        self._optics_keywords = types.MappingProxyType(self.__mutable_optics_keywords)
-        self._emccd_keywords = types.MappingProxyType(self.__mutable_emccd_keywords)
-        self._host_star_properties = types.MappingProxyType(self.__mutable_host_star_properties)
+        self._optics_keywords = types.MappingProxyType(__mutable_optics_keywords)
+        self._emccd_keywords = types.MappingProxyType(__mutable_emccd_keywords)
+        self._host_star_properties = types.MappingProxyType(__mutable_host_star_properties)
 
         self._initialized = True
         
@@ -287,7 +290,7 @@ def create_variation_input(old_input, **kwargs):
         NameError: If an unknown keyword argument is provided that is not a
                     valid attribute of the Input class.
     """
-    old_input_dict_intern = {k[1:]: v for k, v in old_input.__dict__.items()}
+    old_input_dict_intern = {k[1:]: v for k, v in old_input.__dict__.items() if 'Input' not in k}
     old_input_dict_intern.pop('initialized', None)
     for key, value in kwargs.items():
         if key in old_input_dict_intern.keys():
@@ -305,18 +308,22 @@ def create_variation_input(old_input, **kwargs):
     new_input = Input(**old_input_dict_intern) 
     return new_input
 
-def load_cpgs_data(filepath, return_input=False):
+def load_cpgs_data(filepath, output_dim=201, polaxis=0, fast_gain_mode='auto', gain_CIC_Q = 'roman', return_input=False):
     """Creates a scene and optics based on the content of a CPGS file.
 
     This function parses the CPGS file to extract simulation parameters for
     target and, if present, reference stars, along with visit-specific details.
+    output_dim: dimension of the simulation output in pixels (before being placed on the detector)
 
     Args:
         filepath (str): Path to the input CPGS XML file.
         return_input (bool, optional): If True, an :py:class:`Input` object populated with CPGS data
             will be returned instead of the scene, optics, and detector objects.
             Defaults to False.
-
+        output_dim
+        polaxis
+        fast_gain_mode
+        gain_CIC_Q
     Returns:
         tuple or corgisim.inputs.Input:
             If "return_input" is False (default):
@@ -351,121 +358,165 @@ def load_cpgs_data(filepath, return_input=False):
     # # Create a host star and scene for each target
     target_v_mag = float(cpgs_input.find('target_v_mag').text)
     target_sptype =  cpgs_input.find('target_spec_type').text + cpgs_input.find('target_sub_type').text[:1] 
-    host_star_properties_target = {'Vmag': target_v_mag, 'spectral_type': target_sptype, 'magtype':"vegamag", 'ref_flag': False}
+    target_name = cpgs_input.find('target_name').text
+    host_star_properties_target = {'Vmag': target_v_mag, 'spectral_type': target_sptype, 'magtype':"vegamag", 'ref_flag': False, 'target_name': target_name}
     scene_target = scene.Scene(host_star_properties_target)
     reference_star_present = (cpgs_input.find('reference_name') != None)
 
     if reference_star_present:
         reference_v_mag = float(cpgs_input.find('reference_v_mag').text)
         reference_sptype =  cpgs_input.find('reference_spec_type').text + cpgs_input.find('reference_sub_type').text[:1] 
-        host_star_properties_reference = {'Vmag': reference_v_mag, 'spectral_type': reference_sptype, 'magtype':"vegamag", 'ref_flag': True}
+        reference_name = cpgs_input.find('reference_name').text
+        host_star_properties_reference = {'Vmag': reference_v_mag, 'spectral_type': reference_sptype, 'magtype':"vegamag", 'ref_flag': True, 'target_name': reference_name}
         scene_reference = scene.Scene(host_star_properties_reference)
 
     if (cpgs_input.find('target_autogain').text == '0'):
         photon_counting = (cpgs_input.find('target_pcounting').text=='1')
         em_gain = float(cpgs_input.find('target_gain').text)
-        # em_gain cannot be under 1 in emccd. Since it's possible to set it to less than 1 in CPGS for now, we overwrite it
-        if em_gain < 1 : 
-            em_gain = 1.0 
-        detector_target = instrument.CorgiDetector(emccd_keywords={'em_gain':em_gain}, photon_counting=photon_counting) 
+        detector_target = instrument.CorgiDetector(emccd_keywords={'em_gain':em_gain, 'fast_gain_mode': fast_gain_mode, 'gain_CIC_Q': gain_CIC_Q}, photon_counting=photon_counting) 
     elif (cpgs_input.find('target_autogain').text == '1'):
-        raise NotImplementedError("Autogain is not implemented.") 
-
+        #TO DO use eetc for better gain approximation
+        detector_target = instrument.CorgiDetector(emccd_keywords={'em_gain':1000, 'fast_gain_mode': fast_gain_mode, 'gain_CIC_Q': gain_CIC_Q}, photon_counting=True)        #TO DO: have a approximate autogain using eetc
     if reference_star_present :
         if (cpgs_input.find('reference_autogain').text == '0'):
             photon_counting = (cpgs_input.find('reference_pcounting').text=='1')
-            em_gain = float(cpgs_input.find('reference_gain').text)
-            # em_gain cannot be under 1 in emccd. Since it's possible to set it to less than 1 in CPGS for now, we overwrite it
-            if em_gain < 1 : 
-                em_gain = 1.0             
-            detector_reference = instrument.CorgiDetector(emccd_keywords={'em_gain':em_gain}, photon_counting=photon_counting) 
+            em_gain = float(cpgs_input.find('reference_gain').text)   
+            detector_reference = instrument.CorgiDetector(emccd_keywords={'em_gain':em_gain, 'fast_gain_mode': fast_gain_mode, 'gain_CIC_Q': gain_CIC_Q}, photon_counting=photon_counting) 
         elif (cpgs_input.find('reference_autogain').text == '1'):
-            detector_reference = instrument.CorgiDetector(emccd_keywords=None) 
+            detector_target = instrument.CorgiDetector(emccd_keywords={'em_gain':1000, 'fast_gain_mode': fast_gain_mode, 'gain_CIC_Q': gain_CIC_Q}, photon_counting=True)        #TO DO: have a approximate autogain using eetc
+            #TO DO: have a approximate autogain using eetc
 
+    #Color filter
+    bandpass = cpgs_input.find('howfsc_cfam_pos').text
+    if bandpass == 'NONE':
+        bandpass = cpgs_input.find('filter').text + 'F'
 
+    coronograph_mask = cpgs_input.find('coronagraph_mask').text
+    required_contrast = cpgs_input.find('initial_target_planet_star_flux_ratio').text
+
+    # CGI mode, cor_type and dm 
+    is_spectroscopy = (cpgs_input.find('is_spectroscopy').text == '1')
+    if is_spectroscopy :
+        cgi_mode = 'spec'
+        cor_type = 'spc-spec_band' +bandpass[0]
+        cases = [1E-9,2E-8,4E-9 ]
+        contrast = str(min(cases, key=lambda x: abs(x - float(required_contrast))))
+        # The operation inserts a 0 we need to get rid of
+        rootname = 'spc-spec_ni_' + contrast[:-2] + contrast[-1]
+
+        # Untested but available
+        if cpgs_input.find('howfsc_spam_pos').text == 'SPECROT' :
+            cor_type = cor_type + '_rotated'
+
+        slit = cpgs_input.find('fsam_pos_spec').text
+        slit_x_offset_mas_orientation_a = float(cpgs_input.find('fsam_dx_pix_a').text)*MAS_PIX
+        slit_y_offset_mas_orientation_a = float(cpgs_input.find('fsam_dy_pix_a').text)*MAS_PIX
+        slit_x_offset_mas_orientation_b = float(cpgs_input.find('fsam_dx_pix_b').text)*MAS_PIX
+        slit_y_offset_mas_orientation_b = float(cpgs_input.find('fsam_dy_pix_b').text)*MAS_PIX
+
+    else:
+        cgi_mode = 'excam'
+        if coronograph_mask == '1':
+            cor_type = 'hlc_band'+ bandpass[0]
+            cases = [2E-9,3E-8,5E-9 ]
+            contrast = str(min(cases, key=lambda x: abs(x - float(required_contrast))))
+            # The operation inserts a 0 we need to get rid of
+            rootname = 'hlc_ni_' + contrast[:-2] + contrast[-1]
+
+        elif coronograph_mask == '2':
+            cor_type = 'spc-wide_band'+ bandpass[0]
+            cases = [3E-9,5E-9 ]
+            contrast = str(min(cases, key=lambda x: abs(x - float(required_contrast))))
+            # The operation inserts a 0 we need to get rid of
+            rootname = 'spc-wide_ni_' + contrast[:-2] + contrast[-1]
+
+    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm1_v.fits' )
+    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm2_v.fits' )
+
+    # Satellite spots    
+    obtain_satspots = (cpgs_input.find('obtain_satspot_image_every_visit').text == '1')
+    satellite_dict_target = None
+    satellite_dict_reference = None
+    if obtain_satspots:
+        satellite_spot_conf = int(cpgs_input.find('satellite_spots_pair_id').text)
+        satellite_spots_gain_targ =  float(cpgs_input.find('satellite_spots_gain_targ').text)
+        satellite_spots_frame_time_targ =  float(cpgs_input.find('satellite_spots_exptime_targ').text)
+        satellite_spots_nframes_targ =  int(cpgs_input.find('satellite_spots_nframes_targ').text)
+        satellite_dict_target = {'satellite_spot_conf':satellite_spot_conf,
+                    'satellite_spots_gain':satellite_spots_gain_targ,
+                    'satellite_spots_frame_time':satellite_spots_frame_time_targ,
+                    'satellite_spots_number_of_frames':satellite_spots_nframes_targ} 
+        if reference_star_present: 
+            satellite_spots_gain_ref =  float(cpgs_input.find('satellite_spots_gain').text)
+            satellite_spots_frame_time_ref =  float(cpgs_input.find('satellite_spots_exptime').text)
+            satellite_spots_nframe_ref =  int(cpgs_input.find('satellite_spots_nframes').text)
+            satellite_dict_reference = {'satellite_spot_conf':satellite_spot_conf,
+                                  'satellite_spots_gain':satellite_spots_gain_ref,
+                                  'satellite_spots_frame_time':satellite_spots_frame_time_ref,
+                                  'satellite_spots_number_of_frames':satellite_spots_nframe_ref}
+    else:
+        satellite_dict = None    
     # Create visits
     visits = root.find('visit_list')
     visit_list = []
 
     for visit in visits.iter('cgi_visit'):
-        if (visit.find('cgi_visit_type').text == 'CGIVST_TDD_OBS') :
+        visit_type = visit.find('cgi_visit_type').text
+        if (visit_type in ['CGIVST_TDD_OBS','CGIVST_TDD_POL_OBS','CGIVST_TDD_OBS_HOWFSC', 'CGIVST_TDD_SETUP_HOWFSC' ]) :
             if reference_star_present :
                 isReference = (visit.find('fixed_target').find('reference_target').text == 'Y')
             else:
                 isReference = False
             excam = visit.find('cgi_excam')
             roll_angle = float(visit.find('position_angle').text)
-            visit_id = visit.attrib['number']
-            visit_type = visit.find('cgi_visit_type').text
+
+            visit_num = visit.attrib['number']
+            for i in range(0,3-len(visit_num)):
+                visit_num = '0'+visit_num
+            # Polarimetry
+            if (visit_type == 'CGIVST_TDD_POL_OBS'):
+                prism = visit.find('cgi_mechanisms').find('dpampos').text
+
+            elif is_spectroscopy:
+                prism = visit.find('cgi_mechanisms').find('dpampos_spec').text
+ 
+            else:
+                prism = 'None'
             if (excam.find('auto_gain').text == 'Y'):
                 #Only one frame, exp_time in hours
+                # TO DO : have a better approximation
                 number_of_frames = 1
                 exp_time = float(excam.find('exposure_duration').text)*3600
             else:
                 number_of_frames = int(excam.find('number_of_frames').text)
                 exp_time =  float(excam.find('frame_time').text)
 
-            visit_dict = {'number_of_frames': number_of_frames,'exp_time': exp_time, 'roll_angle':roll_angle, 'visit_id':visit_id, 'isReference':isReference}
+            visit_dict = {'number_of_frames': number_of_frames,
+            'exp_time': exp_time, 
+            'roll_angle':roll_angle, 
+            'visit_num':visit_num, 
+            'isReference':isReference,
+            'vistype': visit_type}
 
 
             visit_list.append(visit_dict)
 
-    # For now, filter can only take two values in cpgs:
-    #   1 <-> Band 1F (575 nm)
-    #   2 <-> Band 4F (825 nm)
-    filter_dict = {'1':'1F', '2':'4F'}
-    filt = cpgs_input.find('filter').text
-    bandpass = filter_dict[filt]
-    # For now, coronagraph_mask can only take one value in cpgs:
-    #   1 <-> hlc  
-    coronograph_mask = cpgs_input.find('coronagraph_mask').text
+              
 
-    match bandpass:
-        case '1F':
-            if coronograph_mask == '1':
-                cor_type = 'hlc_band1'
-            else:
-                raise NotImplementedError("HLC is the only implemented mode")
-        case '4F':
-            if coronograph_mask == '1':
-                cor_type = 'hlc_band4'
-            else:
-                raise NotImplementedError("HLC is the only implemented mode")                
-
-        case _:
-            raise NotImplementedError("Only Band 1 and Band 4 have been implemented.")                
-
-    # Polarization
-    # Polarimetry is not yet implemented, but the structure is left as to simplify future implementation
-    if cpgs_input.find('with_polarization').text == '1' : 
-        match cpgs_input.find('wollaston').text :
-         # 0/90 deg
-            case '1' :
-                #raise NotImplementedError("Only 0/90 deg and 45/135 deg are implemented")       
-                pass
-            # 45/135 deg
-            case '2' :
-                #raise NotImplementedError("Only 0/90 deg and 45/135 deg are implemented")       
-                pass
-            case _: 
-                raise NotImplementedError("Only 0/90 deg and 45/135 deg are implemented")
-    #else :
-    polaxis = 0         
-
-    # Only mode implemented for now
-    cgi_mode = 'excam'
-
-
-    optics_keywords ={'cor_type':cor_type, 'polaxis':polaxis, 'output_dim':201}
+    if is_spectroscopy: 
+        optics_keywords ={'cor_type':cor_type, 'polaxis':polaxis, 'output_dim':output_dim, 'slit':slit, 'slit_x_offset_mas':slit_x_offset_mas_orientation_a, 'slit_y_offset_mas':slit_y_offset_mas_orientation_a, 'prism':prism, 'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,}
+    else:
+        optics_keywords ={'cor_type':cor_type, 'polaxis':polaxis, 'output_dim':output_dim, 'prism':prism, 'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,}
+      
     optics = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords, if_quiet=True)
     if return_input == True :
         input = Input(cgi_mode=cgi_mode, bandpass=bandpass, optics_keywords=optics_keywords,host_star_properties=host_star_properties_target, cpgs_file = filepath) 
         return input
     else:
         if reference_star_present :
-            return scene_target, scene_reference, optics, detector_target, detector_reference, visit_list
+            return scene_target, scene_reference, optics, detector_target, detector_reference, visit_list, satellite_dict_target, satellite_dict_reference
         else:
-            return scene_target, optics, detector_target, visit_list
+            return scene_target, optics, detector_target, visit_list, satellite_dict_target
 
 
 
