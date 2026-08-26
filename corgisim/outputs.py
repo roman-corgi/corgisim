@@ -263,7 +263,7 @@ def save_hdu_to_fits( hdul, outdir=None, overwrite=False, write_as_L1=False, fil
             ftimeutc = overwrite_ext_keywords.get("FTIMEUTC", exthdr["FTIMEUTC"])
             new_time_in_name = isotime_to_yyyymmddThhmmsss(ftimeutc)
 
-            
+            visit_id = overwrite_pri_keywords.get("VISITID", prihdr["VISITID"])            
             if not isinstance(visit_id, str):
                     raise TypeError("VISITID must be a string.")
 
