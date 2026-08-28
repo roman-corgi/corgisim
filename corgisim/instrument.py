@@ -26,7 +26,7 @@ import corgisim.constants as constants
 import corgisim.convolution as conv
 
 from corgisim.scene import Scene, SimulatedImage
-from corgisim import outputs, spec, prf_simulation, constants
+from corgisim import outputs, spec, prf_simulation, constants, disk_countrate
 import corgisim.convolution as conv
 warnings.simplefilter('always', UserWarning)
 class CorgiOptics():
@@ -1409,14 +1409,12 @@ class CorgiOptics():
         Convolve 2D scene with a pre-computed off-axis PRF cube.
 
         This function reads a disk model from `input_scene.twoD_scene_info['disk_model_path']`,
-        normalizes it, and performs a field-dependent 2D convolution using a precomputed PRF cube
+        converts its pixel values to detector count rate, and performs a field-dependent 2D convolution using a precomputed PRF cube
         stored at `input_scene.twoD_scene_info['prf_path']`. The PRF sampling (radii in lambda/D and azimuthal angles)
         is reconstructed from the PRF cube metadata. The convolution can be done using either nearest-neighbor
         or interpolation between PRFs, controlled by the `interpolate_prfs` flag. 
 
-        After convolution, the result is scaled to a count rate integrated over the bandpass defined by 
-        `optics.bp` and `intput_scene.twoD_scene_spectrum`. The scaled convolved object is stored in 
-        `sim_scene.twoD_images` as an HDU with simulation metadata written as FITS COMMENT. 
+        The convolved object is stored in `sim_scene.twoD_image` as an HDU with simulation metadata written as FITS COMMENT.
 
         Parameters
         ----------
@@ -1434,7 +1432,7 @@ class CorgiOptics():
         Returns
         -------
         sim_scene : SimulatedImage
-            Output scene with `twoD_image` replaced by the convolved and scaled result.
+            Output scene with `twoD_image` containing the convolved count-rate result.
 
         Raises
         ------
@@ -1447,10 +1445,8 @@ class CorgiOptics():
         - The PRF cube is assumed to be normalised to unit input flux. Absolute flux
             scaling is applied in this function using the input scene spectrum and the
             optics bandpass.
-        - The disk model is normalised by its total flux prior to convolution.
-        - After convolution, the image is scaled using the integrated bandpass count
-            rate and converted to a per resolution element normalisation using an
-            estimate of the PSF FWHM area (pixels) and a thresholded disk region mask.
+        - The disk model is converted to count/s per pixel before convolution
+            and is not normalised by its total flux.
         - The output is intended to represent a count rate (photoelectrons per second),
             consistent with `Observation.countrate`.
         """
@@ -1468,7 +1464,19 @@ class CorgiOptics():
 
         # input disk model
         disk_model_data = fits.getdata(input_scene.twoD_scene_info['disk_model_path'])
-        disk_model_norm = disk_model_data/np.nansum(disk_model_data, axis=(0,1)) # normalisation of the disk
+        # Convert the input pixel values to detector count rate before convolution.
+        disk_model_countrate = disk_countrate.disk_to_countrate(
+            disk_image=disk_model_data,
+            surface_brightness_unit=input_scene.twoD_scene_info[
+                "surface_brightness_unit"
+            ],
+            bandpass=self.bp,
+            area_cm2=self.area,
+            pixel_scale_arcsec=constants.PIXEL_SCALE_ARCSEC,
+            wavelength_micron=self.lam0_um,
+            return_quantity=False,
+            input_scene=input_scene,
+        )
 
         prf_sim_info = prf_simulation._get_prf_sim_info(prf_cube_path) # Get the simulation information 
 
@@ -1499,7 +1507,7 @@ class CorgiOptics():
 
         # 3. Perform convolution
         conv2d = conv._convolve_with_prfs(
-            obj=disk_model_norm, 
+            obj=disk_model_countrate,
             prfs_array=prf_cube, 
             radii_lamD=radii_lamD , 
             azimuths_deg=azimuths_deg, 
@@ -1508,10 +1516,11 @@ class CorgiOptics():
             interpolate_prfs=interpolate_prfs
             )
 
-        # NOTE: An attempt to convert flux units to physical units after convolution
-        # NOTE: Should be remove in the future after we have a better way to track the units and perform the flux calibration in a more self-consistent way.
-        # 4. Flux calibration
-        flux_calibrated_conv2D = conv.flux_calibration_2D_scene(self, input_scene, conv2d)
+        # 4. Flux calibration (outdated, but still available in convolution.py)
+        # The legacy post-convolution flux_calibration_2D_scene function remains
+        # available in convolution.py, but it is not applied here because the disk
+        # model has already been converted to count/s before convolution.
+        # flux_calibrated_conv2D = conv.flux_calibration_2D_scene(self, input_scene, conv2d)
 
         if self.cgi_mode in ['spec', 'lowfs', 'excam_efield']:
             warnings.warn(f"This mode '{self.cgi_mode}' has not implmented yet!") # still allow the usage but warn the user about this
@@ -1519,7 +1528,7 @@ class CorgiOptics():
         sim_info = conv._set_2D_image_sim_info(self, input_scene)
 
         # Create the HDU object with the generated header information
-        sim_scene.twoD_image = outputs.create_hdu(flux_calibrated_conv2D, sim_info=sim_info)
+        sim_scene.twoD_image = outputs.create_hdu(conv2d, sim_info=sim_info)
 
         return sim_scene
 
