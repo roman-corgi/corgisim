@@ -1,4 +1,69 @@
+import numbers
 import numpy as np
+
+def add_custom_pattern_dm(dm_volts, pattern_volts, scale, sign="positive"):
+    """
+    Add an externally supplied DM pattern (in volts) to a Roman CGI DM solution (in volts).
+
+    This supports the "Alternate Probe" observing concept, in which externally
+    designed relative-DM probe commands (e.g., the Gaussian probes of
+    Delaye et al. 2026, delivered as ``dmrel_*.fits`` files) are applied through
+    the satellite-spot observing path instead of the analytically generated
+    cosine pattern (see add_cos_pattern_dm).
+
+    IMPORTANT -- amplitude scale provenance:
+        The applied pattern is ``(+/- scale) * pattern_volts``. The ``scale``
+        argument is deliberately REQUIRED (no default) because two conflicting
+        conventions exist and silently choosing one would change the probe
+        intensity by ~11x:
+          - scale = 1.0 applies the delivered array as-is. The Gaussian probe
+            delivery (filenames tagged ``ni5e-07``) was designed to produce a
+            probe contrast of 5e-7 in the dark hole at unity amplitude
+            (Delaye et al. 2026, "Enhanced wavefront sensing for the Roman
+            Coronagraph Instrument: Gaussian probes...").
+          - scale = 0.3 is the legacy HOWFSC probing default
+            (corgihowfsc/sensing/GettingProbes.py::get_dm_probes, applied as
+            dm1 = dm10 + scale*dmrel with scalelist [0.3]*n + [-0.3]*n), which
+            was a generic default of that function, not a property of the
+            delivered probe files.
+        Callers must choose explicitly and record the value used.
+
+    Parameters:
+        - dm_volts: 2D numpy array (original DM in volts)
+        - pattern_volts: 2D numpy array, relative DM pattern in volts. Must have
+          the same shape as dm_volts (48x48 for the Roman CGI DMs), in the same
+          orientation convention as the DM solution files (numpy [row, col] =
+          [y, x]).
+        - scale: real scalar number (e.g., int, float, or a NumPy real scalar
+          such as np.float32 or np.int64). Multiplicative amplitude applied to
+          the pattern (see scale provenance note above).
+        - sign: str. Either "positive" or "negative"; "negative" applies
+          ``-scale * pattern_volts``, forming the negative member of a
+          pairwise-probing pair.
+
+    Returns:
+        - dm_volts_with_pattern: 2D numpy array (in volts), updated DM map with
+          the scaled pattern added. The input array is not modified.
+    """
+    pattern = np.asarray(pattern_volts, dtype=float)
+
+    if pattern.ndim != 2 or pattern.shape != np.shape(dm_volts):
+        raise ValueError(
+            f"ERROR: custom pattern shape {pattern.shape} does not match DM shape {np.shape(dm_volts)}"
+        )
+    if not np.all(np.isfinite(pattern)):
+        raise ValueError("ERROR: custom pattern contains non-finite values")
+    if isinstance(scale, (bool, np.bool_)) or not isinstance(scale, numbers.Real):
+        raise TypeError(
+            "ERROR: scale must be a real scalar number (e.g., int, float, or a NumPy real scalar)"
+        )
+    if sign not in ("positive", "negative"):
+        raise ValueError(f"ERROR: sign must be 'positive' or 'negative', got '{sign}'")
+
+    signed_scale = scale if sign == "positive" else -scale
+
+    return dm_volts + signed_scale * pattern
+
 
 def add_cos_pattern_dm(dm_volts, num_pairs=2, sep_lamD=7, angle_deg=[0,90], contrast=1e-6, wavelength_m=0.575e-6, gain_nm_per_V=None, sign = "positive"):
     """
