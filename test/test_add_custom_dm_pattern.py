@@ -69,6 +69,20 @@ def test_add_custom_pattern_dm_validation():
     with pytest.raises(TypeError):
         add_custom_pattern_dm(dm, pattern, True)  # bool is not a valid scale
 
+    with pytest.raises(ValueError):
+        add_custom_pattern_dm(dm, pattern, float("nan"))  # non-finite scale (NaN)
+
+    with pytest.raises(ValueError):
+        add_custom_pattern_dm(dm, pattern, float("inf"))  # non-finite scale (+inf)
+
+    with pytest.raises(ValueError):
+        add_custom_pattern_dm(dm, pattern, float("-inf"))  # non-finite scale (-inf)
+
+    complex_pattern = pattern.astype(complex)
+    complex_pattern[0, 0] += 1j  # nonzero imaginary component
+    with pytest.raises(ValueError):
+        add_custom_pattern_dm(dm, complex_pattern, 1.0)  # complex pattern must not be silently coerced to real
+
 
 def test_add_custom_pattern_dm_scale_types():
     """Scale accepts real scalar numerics (incl. NumPy scalars); rejects non-real/non-scalar."""
