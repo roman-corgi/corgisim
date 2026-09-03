@@ -21,7 +21,13 @@ DRIVER_PATH = Path(__file__).resolve().parents[1] / 'examples' / 'alt_probe_gene
 
 
 def load_driver():
-    """Import the driver script (which lives in examples/, not the package)."""
+    """Import the driver script (which lives in examples/, not the package).
+
+    Returns
+    -------
+    module
+        The imported ``alt_probe_generate_L1_sims`` module object.
+    """
     spec = importlib.util.spec_from_file_location('alt_probe_driver', DRIVER_PATH)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -33,7 +39,22 @@ driver = load_driver()
 
 def write_probe(tmp_path, name='probe.fits', shape=(48, 48)):
     """Write a synthetic 48x48 Gaussian DM probe, so tests never depend on
-    delivered probe files outside this repository."""
+    delivered probe files outside this repository.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Directory the probe file is written into (pytest's tmp_path fixture).
+    name : str, optional
+        Filename of the probe file. Default is 'probe.fits'.
+    shape : tuple of int, optional
+        Shape of the probe array. Default is (48, 48), the Roman CGI DM size.
+
+    Returns
+    -------
+    str
+        Path to the written probe FITS file.
+    """
     ny, nx = shape
     y, x = np.indices((ny, nx))
     pattern = 0.8 * np.exp(-((x - 37) ** 2 + (y - 32) ** 2) / 2.0)
@@ -43,6 +64,25 @@ def write_probe(tmp_path, name='probe.fits', shape=(48, 48)):
 
 
 def campaign_kwargs(tmp_path, **overrides):
+    """Build a minimal valid run_campaign keyword set for validation tests.
+
+    Provides the required ``scale`` and ``probe_files`` arguments plus a
+    temporary output directory, so each test only has to specify the one
+    parameter it is exercising.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Temporary directory used for the synthetic probe and campaign output
+        (pytest's tmp_path fixture).
+    **overrides
+        Keyword arguments that replace the defaults built here.
+
+    Returns
+    -------
+    dict
+        Keyword arguments suitable for ``driver.run_campaign(**kwargs)``.
+    """
     kwargs = dict(
         scale=1.0,
         probe_files=[write_probe(tmp_path)],

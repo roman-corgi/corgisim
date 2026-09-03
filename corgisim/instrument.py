@@ -1297,16 +1297,24 @@ class CorgiOptics():
 
         In both modes the L1 header flag SATSPOTS is set to 1.
 
-        Parameters:
+        Parameters
         ----------
         satspot_keywords : dict
-            Dictionary specifying the parameters needed to define and inject 
+            Dictionary specifying the parameters needed to define and inject
             satellite spots (sep_lamD, angle_deg, contrast, wavelength_m, sign(options)),
             or a custom DM pattern (custom_pattern, scale, sign(optional), pattern_name(optional)).
 
-        Returns:
+        Returns
         -------
+        None
 
+        Raises
+        ------
+        KeyError
+            If 'use_dm1' is not set to 1 in optics_keywords; if analytical
+            satellite-spot keywords are combined with 'custom_pattern'; or if
+            'scale' is missing from a custom-pattern keyword set ('scale' is
+            required and has no default).
         """
         if satspot_keywords == None:
             self.SATSPOTS = int(0)
@@ -1386,12 +1394,16 @@ class CorgiOptics():
         """
         Remove satellite spots from deformable mirror (DM) settings.
 
-        Parameters:
+        Parameters
         ----------
         satspot_keywords : dict
-            Dictionary specifying the parameters needed to define and REMOVE 
+            Dictionary specifying the parameters needed to define and REMOVE
             satellite spots (sep_lamD, angle_deg, contrast, wavelength_m, sign(options)),
             or a custom DM pattern (custom_pattern, scale, sign(optional)).
+
+        Returns
+        -------
+        None
         """
         # Inverse the sign
         if "sign" not in satspot_keywords.keys() or satspot_keywords["sign"] == "positive":
