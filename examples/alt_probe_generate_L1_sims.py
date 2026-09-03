@@ -24,12 +24,7 @@ would materially change the simulated data. The correct value for a given
 probe delivery must be established by measuring the resulting probe normalized
 intensity against the probe's design target:
 
-  * ``scale = 1.0``: applies the delivered relative-DM array unmodified. The
-    Gaussian Alternate Probe arrays delivered as ``dmrel_..._ni5e-07_...``
-    are reported (Delaye et al., arXiv-2607.12805) to have been designed and
-    scaled to produce a probe normalized intensity of 5e-7 in the dark hole,
-    which implies the delivered arrays are already at their intended
-    amplitude.
+  * ``scale = 1.0``: applies the delivered relative-DM array unmodified.
   * ``scale = 0.3``: the legacy convention from
     ``corgihowfsc/corgihowfsc/sensing/GettingProbes.py::get_dm_probes``
     (``dm1 = dm10 + scale * dmrel``, default ``scale = +/-0.3``). That 0.3
@@ -98,8 +93,8 @@ HOST_STAR_PROPERTIES = {'Vmag': 5, 'spectral_type': 'G0V', 'magtype': 'vegamag'}
 # --- Coronagraph / optics -----------------------------------------------
 CGI_MODE = 'excam'
 COR_TYPE = 'hlc_band1'
-# '1B' = Band 1 central subband (the regime simulated in Delaye et al.,
-# arXiv-2607.12805); '1F' = full Band 1 imaging filter is the alternative.
+# '1B' = Band 1 central subband; '1F' = full Band 1 imaging filter is the
+# alternative.
 # UNCONFIRMED -- the correct choice for this observing template should be
 # confirmed before production runs.
 BANDPASS = '1B'
@@ -189,19 +184,11 @@ def build_visitid(prognum, execnum, campaign, segment, obsnum, visnum):
 
     Parameters
     ----------
-    prognum : str
-        Program number field (e.g., '0200').
-    execnum : str
-        Execution number field (e.g., '001').
-    campaign : str
-        Campaign field (e.g., '001').
-    segment : str
-        Segment field (e.g., '001').
+    prognum, execnum, campaign, segment, visnum : str
+        Fixed VISITID fields.
     obsnum : int
-        Observation number, zero-padded to three digits. Incremented once per
+        Observation number, zero-padded to three digits; incremented once per
         probe so each template execution gets its own VISITID.
-    visnum : str
-        Visit number field (e.g., '001').
 
     Returns
     -------
@@ -222,21 +209,12 @@ def build_visitid(prognum, execnum, campaign, segment, obsnum, visnum):
 def load_base_dm(dm_rootname=DM_ROOTNAME, dm1_path=None, dm2_path=None):
     """Load the DM1/DM2 base (unprobed) solution.
 
-    By default, loads the roman_preflight_proper HLC Band-1 example
-    identified by ``dm_rootname``. Pass ``dm1_path``/``dm2_path`` to load
-    arbitrary DM FITS files instead; when given, they take precedence over
-    ``dm_rootname``.
-
     Parameters
     ----------
     dm_rootname : str, optional
-        Rootname of a roman_preflight_proper example DM solution, used to
-        build ``<lib_dir>/examples/<rootname>_dm1_v.fits`` and the DM2
-        equivalent. Default is the module-level DM_ROOTNAME.
-    dm1_path : str or None, optional
-        Explicit path to a DM1 FITS file. Overrides ``dm_rootname``.
-    dm2_path : str or None, optional
-        Explicit path to a DM2 FITS file. Overrides ``dm_rootname``.
+        Rootname of a roman_preflight_proper example DM solution.
+    dm1_path, dm2_path : str or None, optional
+        Explicit DM FITS paths; when given, they override ``dm_rootname``.
 
     Returns
     -------
@@ -255,45 +233,19 @@ def load_base_dm(dm_rootname=DM_ROOTNAME, dm1_path=None, dm2_path=None):
 def load_probe_pattern(path):
     """Read a 48x48 relative-DM probe FITS array (volts).
 
-    Shape/finiteness/complex-ness/scale validation is performed by the
-    existing library check in sat_spots.add_custom_pattern_dm, which
-    run_campaign calls explicitly on every probe before any output is
-    written; this function only reads the raw array and does not duplicate
-    that validation.
-
-    Parameters
-    ----------
-    path : str
-        Path to a ``dmrel_*.fits`` relative-DM probe file.
-
-    Returns
-    -------
-    numpy.ndarray
-        The probe pattern as stored in the file, in volts.
+    Validation is left to sat_spots.add_custom_pattern_dm, which run_campaign
+    calls on every probe before any output is written.
     """
     return fits.getdata(path)
 
 
 def probe_label(path):
     """Return a short probe label (the filename stem) for ``pattern_name``
-    provenance, so the value fits intact in a FITS COMMENT card (72-character
-    content limit) alongside the ``satspot_pattern_name : `` prefix -- unlike
-    the full path or long filename, which can be truncated.
+    provenance, so the value fits intact in a FITS COMMENT card.
 
-    The stem is short and human-readable but is NOT inherently unique: two
-    probe files with the same basename in different directories produce the
-    same label. Probe executions are distinguished in the products by their
-    distinct VISITIDs, not by this label.
-
-    Parameters
-    ----------
-    path : str
-        Path to a probe FITS file.
-
-    Returns
-    -------
-    str
-        The filename stem (basename without extension).
+    The stem is not inherently unique: probe files sharing a basename in
+    different directories produce the same label. Probe executions are
+    distinguished in the products by their distinct VISITIDs.
     """
     return os.path.splitext(os.path.basename(path))[0]
 
@@ -301,21 +253,8 @@ def probe_label(path):
 def planned_l1_filename(visitid, ftimeutc):
     """Return the L1 filename outputs.save_hdu_to_fits will derive for this frame.
 
-    Mirrors the ``cgi_{VISITID}_{time}_l1_.fits`` construction in
-    outputs.save_hdu_to_fits, reusing the same timestamp formatter so the
-    prediction cannot drift from the writer.
-
-    Parameters
-    ----------
-    visitid : str
-        19-digit VISITID assigned to the frame.
-    ftimeutc : str
-        Frame start time as an ISO UTC string.
-
-    Returns
-    -------
-    str
-        The L1 filename (basename only) that the writer will produce.
+    Reuses that writer's timestamp formatter so the prediction cannot drift
+    from the writer.
     """
     return f"cgi_{visitid}_{outputs.isotime_to_yyyymmddThhmmsss(ftimeutc)}_l1_.fits"
 
@@ -324,36 +263,25 @@ def save_frame(sim_scene, detector, exptime, loc_x, loc_y, outdir, visitid, vist
                overwrite=False):
     """Propagate one exposure onto the detector as a full-frame L1 product and save it.
 
-    VISITID/VISTYPE/FTIMEUTC are overridden per frame via
-    overwrite_pri_keywords/overwrite_ext_keywords, independent of whatever was
-    baked into the CorgiOptics object at construction time. ``overwrite``
-    defaults to False so an existing file is never silently clobbered.
-
     Parameters
     ----------
     sim_scene : corgisim.scene.SimulatedScene
-        Noise-free simulated scene for the current DM state, as returned by
-        CorgiOptics.get_host_star_psf.
+        Noise-free scene for the current DM state.
     detector : corgisim.instrument.CorgiDetector
         Detector model used to generate the full-frame image.
     exptime : float
         Exposure time in seconds.
-    loc_x : int
-        Column of the stamp centre within the 1024x1024 science area.
-    loc_y : int
-        Row of the stamp centre within the 1024x1024 science area.
+    loc_x, loc_y : int
+        Column and row of the stamp centre within the 1024x1024 science area.
     outdir : str
         Directory the L1 file is written to.
-    visitid : str
-        19-digit VISITID written to the primary header.
-    vistype : str
-        VISTYPE value written to the primary header.
+    visitid, vistype : str
+        Primary-header values, overridden per frame.
     ftimeutc : str
-        Frame start time (ISO UTC) written to the extension header; also
-        determines the output filename.
+        Frame start time (ISO UTC); also determines the output filename.
     overwrite : bool, optional
-        If True, replace an existing output file. Default is False, which
-        makes the writer refuse to clobber existing products.
+        If True, replace an existing output file. Default False, so an
+        existing file is never silently clobbered.
 
     Returns
     -------
@@ -423,12 +351,12 @@ def run_campaign(
     Parameters
     ----------
     scale : numbers.Real
-        Probe amplitude scale factor. REQUIRED, with no default: see the
-        scale-provenance discussion in the module docstring (1.0 applies the
-        delivered probe as designed; 0.3 is the legacy HOWFSC convention).
+        Probe amplitude scale factor. REQUIRED, with no default, because the
+        convention for the delivered probe arrays is unresolved (see the
+        module docstring).
     probe_files : list of str
         Paths to 48x48 relative-DM probe FITS files. REQUIRED, with no
-        default, so no user-specific paths are embedded in this module. One
+        default, so no user-specific paths are embedded here. One
         satellite-spot template trio is executed per file.
     n_frames_per_state : int, optional
         Number of detector frames acquired in each of the three DM states.
@@ -444,10 +372,8 @@ def run_campaign(
         Column and row of the stamp centre within the 1024x1024 science area.
     bandpass : str, optional
         CGI bandpass name (UNCONFIRMED default; see the module docstring).
-    cor_type : str, optional
-        Coronagraph configuration passed to CorgiOptics.
-    cgi_mode : str, optional
-        CGI observing mode passed to CorgiOptics.
+    cor_type, cgi_mode : str, optional
+        Coronagraph configuration and observing mode passed to CorgiOptics.
     dm_rootname : str, optional
         roman_preflight_proper example DM rootname; ignored when
         ``dm1_path``/``dm2_path`` are given.
@@ -465,17 +391,18 @@ def run_campaign(
         least ``max(exptime, MIN_FRAME_TIME_STEP_S)``.
     campaign_start_time_utc : str, optional
         ISO UTC start time of the first frame of the campaign.
-    output_dir : str or None, optional
-        Directory the per-visit subdirectories are written into. If None, a
-        timestamped directory is created.
+    output_dir : str, pathlib.Path or None, optional
+        Directory the per-visit subdirectories are written into. If None,
+        ``<cwd>/alt_probe_l1_output`` is used.
     overwrite : bool, optional
         If True, replace existing L1 output files. Default is False, which
         aborts before writing if any planned output already exists.
 
     Returns
     -------
-    str
-        The output directory containing the per-visit subdirectories.
+    str or pathlib.Path
+        The output directory containing the per-visit subdirectories: the
+        ``output_dir`` value as passed in, or the default path when None.
 
     Raises
     ------
@@ -485,6 +412,9 @@ def run_campaign(
         frame spacing below ``max(exptime, MIN_FRAME_TIME_STEP_S)``, an
         invalid VISITID, or a collision between planned output filenames), or
         if a probe array fails the sat_spots.add_custom_pattern_dm checks.
+    TypeError
+        If ``scale`` is not a real scalar number
+        (from sat_spots.add_custom_pattern_dm).
     FileExistsError
         If a planned output file already exists and ``overwrite`` is False.
     """
@@ -609,18 +539,8 @@ def run_campaign(
     def capture(stamps, outdir, visitid):
         """Acquire and save the frames of the current DM state.
 
-        Parameters
-        ----------
-        stamps : list of str
-            Frame start times (ISO UTC) for this state, in acquisition order.
-        outdir : str
-            Directory the frames are written to.
-        visitid : str
-            19-digit VISITID of the probe execution being acquired.
-
-        Returns
-        -------
-        None
+        ``stamps`` holds the frame start times (ISO UTC) for this state, in
+        acquisition order.
         """
         # The noise-free scene is generated once per DM state and reused for
         # all frames in that state (matching
@@ -664,10 +584,6 @@ def run_campaign(
 
 def parse_args():
     """Build the command-line parser and parse ``sys.argv``.
-
-    ``--scale`` and ``--probe-files`` are required and have no defaults: the
-    scale convention is unresolved (see the module docstring) and embedding
-    user-specific probe paths here is deliberately avoided.
 
     Returns
     -------
@@ -722,12 +638,7 @@ def parse_args():
 
 
 def main():
-    """Command-line entry point: parse arguments and run one campaign.
-
-    Returns
-    -------
-    None
-    """
+    """Command-line entry point: parse arguments and run one campaign."""
     args = parse_args()
     run_campaign(
         scale=args.scale,

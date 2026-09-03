@@ -1287,9 +1287,9 @@ class CorgiOptics():
 
         2. Custom DM pattern (Alternate Probe support): `satspot_keywords`
            contains 'custom_pattern' (2D array, volts, same shape as dm1_v)
-           and 'scale' (required; see sat_spots.add_custom_pattern_dm for the
-           scale provenance -- 1.0 applies the delivered probe as designed,
-           0.3 is the legacy HOWFSC convention), plus optionally 'sign'
+           and 'scale' (required, with no default because the convention for
+           the delivered probe arrays is unresolved; see
+           sat_spots.add_custom_pattern_dm), plus optionally 'sign'
            ("positive"/"negative") and 'pattern_name' (string recorded in the
            simulation-info headers for provenance). The externally supplied
            pattern is applied by sat_spots.add_custom_pattern_dm. Analytical
@@ -1315,6 +1315,9 @@ class CorgiOptics():
             satellite-spot keywords are combined with 'custom_pattern'; or if
             'scale' is missing from a custom-pattern keyword set ('scale' is
             required and has no default).
+        ValueError, TypeError
+            Propagated from sat_spots.add_custom_pattern_dm when a custom
+            pattern or its scale fails validation.
         """
         if satspot_keywords == None:
             self.SATSPOTS = int(0)
@@ -1331,8 +1334,7 @@ class CorgiOptics():
             if 'scale' not in satspot_keywords:
                 raise KeyError(
                     "ERROR: 'scale' is required with 'custom_pattern' and has no default. "
-                    "Use 1.0 to apply the delivered probe amplitude as designed "
-                    "(e.g., ni5e-07 Gaussian probe delivery), or 0.3 for the legacy "
+                    "1.0 applies the delivered array unmodified; 0.3 is the legacy "
                     "HOWFSC convention. See sat_spots.add_custom_pattern_dm."
                 )
 
