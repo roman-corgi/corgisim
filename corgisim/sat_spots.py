@@ -33,10 +33,12 @@ def add_custom_pattern_dm(dm_volts, pattern_volts, scale, sign="positive"):
         - pattern_volts: 2D numpy array, relative DM pattern in volts. Must have
           the same shape as dm_volts (48x48 for the Roman CGI DMs), in the same
           orientation convention as the DM solution files (numpy [row, col] =
-          [y, x]).
-        - scale: real scalar number (e.g., int, float, or a NumPy real scalar
-          such as np.float32 or np.int64). Multiplicative amplitude applied to
-          the pattern (see scale provenance note above).
+          [y, x]). Must be real-valued (finite); a complex-valued array (nonzero
+          imaginary component) is rejected rather than silently discarded.
+        - scale: real, finite scalar number (e.g., int, float, or a NumPy real
+          scalar such as np.float32 or np.int64); NaN/+-inf are rejected.
+          Multiplicative amplitude applied to the pattern (see scale provenance
+          note above).
         - sign: str. Either "positive" or "negative"; "negative" applies
           ``-scale * pattern_volts``, forming the negative member of a
           pairwise-probing pair.
@@ -45,7 +47,14 @@ def add_custom_pattern_dm(dm_volts, pattern_volts, scale, sign="positive"):
         - dm_volts_with_pattern: 2D numpy array (in volts), updated DM map with
           the scaled pattern added. The input array is not modified.
     """
-    pattern = np.asarray(pattern_volts, dtype=float)
+    pattern = np.asarray(pattern_volts)
+
+    if np.iscomplexobj(pattern):
+        raise ValueError(
+            "ERROR: custom pattern must be real-valued; got a complex-valued array "
+            "(pattern_volts must not have a nonzero imaginary component)"
+        )
+    pattern = pattern.astype(float)
 
     if pattern.ndim != 2 or pattern.shape != np.shape(dm_volts):
         raise ValueError(
@@ -57,6 +66,8 @@ def add_custom_pattern_dm(dm_volts, pattern_volts, scale, sign="positive"):
         raise TypeError(
             "ERROR: scale must be a real scalar number (e.g., int, float, or a NumPy real scalar)"
         )
+    if not np.isfinite(scale):
+        raise ValueError(f"ERROR: scale must be finite, got {scale}")
     if sign not in ("positive", "negative"):
         raise ValueError(f"ERROR: sign must be 'positive' or 'negative', got '{sign}'")
 
