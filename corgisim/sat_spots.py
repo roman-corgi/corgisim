@@ -28,24 +28,40 @@ def add_custom_pattern_dm(dm_volts, pattern_volts, scale, sign="positive"):
             delivered probe files.
         Callers must choose explicitly and record the value used.
 
-    Parameters:
-        - dm_volts: 2D numpy array (original DM in volts)
-        - pattern_volts: 2D numpy array, relative DM pattern in volts. Must have
-          the same shape as dm_volts (48x48 for the Roman CGI DMs), in the same
-          orientation convention as the DM solution files (numpy [row, col] =
-          [y, x]). Must be real-valued (finite); a complex-valued array (nonzero
-          imaginary component) is rejected rather than silently discarded.
-        - scale: real, finite scalar number (e.g., int, float, or a NumPy real
-          scalar such as np.float32 or np.int64); NaN/+-inf are rejected.
-          Multiplicative amplitude applied to the pattern (see scale provenance
-          note above).
-        - sign: str. Either "positive" or "negative"; "negative" applies
-          ``-scale * pattern_volts``, forming the negative member of a
-          pairwise-probing pair.
+    Parameters
+    ----------
+    dm_volts : numpy.ndarray
+        2D array: the original DM solution, in volts.
+    pattern_volts : numpy.ndarray
+        2D array: relative DM pattern in volts. Must have the same shape as
+        ``dm_volts`` (48x48 for the Roman CGI DMs), in the same orientation
+        convention as the DM solution files (numpy [row, col] = [y, x]), and
+        must be real-valued and finite. A complex-valued array (nonzero
+        imaginary component) is rejected rather than silently discarded.
+    scale : numbers.Real
+        Real, finite scalar number (e.g., int, float, or a NumPy real scalar
+        such as np.float32 or np.int64); NaN and +/-inf are rejected, as are
+        booleans. Multiplicative amplitude applied to the pattern (see the
+        scale provenance note above).
+    sign : str, optional
+        Either "positive" or "negative". "negative" applies
+        ``-scale * pattern_volts``, forming the negative member of a
+        pairwise-probing pair. Default is "positive".
 
-    Returns:
-        - dm_volts_with_pattern: 2D numpy array (in volts), updated DM map with
-          the scaled pattern added. The input array is not modified.
+    Returns
+    -------
+    numpy.ndarray
+        2D array, in volts: the DM map with the scaled pattern added. The
+        input ``dm_volts`` array is not modified.
+
+    Raises
+    ------
+    ValueError
+        If ``pattern_volts`` is complex-valued, is not 2D, does not match the
+        shape of ``dm_volts``, or contains non-finite values; if ``scale`` is
+        not finite; or if ``sign`` is neither "positive" nor "negative".
+    TypeError
+        If ``scale`` is not a real scalar number.
     """
     pattern = np.asarray(pattern_volts)
 
