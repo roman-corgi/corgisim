@@ -13,28 +13,7 @@ def make_gaussian_probe(shape=(48, 48), x_act=13, y_act=8, sigma_act=1.0, peak_v
     a Gaussian bump of sigma = 1 actuator pitch, peaked at the center actuator
     (24, 24) offset by (x_act, y_act) in the numpy [row, col] = [y, x]
     convention, with peak amplitude in volts comparable to the delivery
-    (~0.76-0.84 V).
-
-    Parameters
-    ----------
-    shape : tuple of int, optional
-        Shape of the probe array. Default is (48, 48), the Roman CGI DM size.
-    x_act : int, optional
-        Offset of the Gaussian centre from the DM centre along columns, in
-        actuators.
-    y_act : int, optional
-        Offset of the Gaussian centre from the DM centre along rows, in
-        actuators.
-    sigma_act : float, optional
-        Gaussian standard deviation, in actuator pitches.
-    peak_volts : float, optional
-        Peak amplitude of the probe, in volts.
-
-    Returns
-    -------
-    numpy.ndarray
-        2D probe pattern in volts, in the numpy [row, col] = [y, x]
-        convention.
+    (~0.76-0.84 V). Returns the 2D pattern in volts.
     """
     ny, nx = shape
     y, x = np.indices((ny, nx))
