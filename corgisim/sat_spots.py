@@ -6,27 +6,16 @@ def add_custom_pattern_dm(dm_volts, pattern_volts, scale, sign="positive"):
     Add an externally supplied DM pattern (in volts) to a Roman CGI DM solution (in volts).
 
     This supports the "Alternate Probe" observing concept, in which externally
-    designed relative-DM probe commands (e.g., the Gaussian probes of
-    Delaye et al. 2026, delivered as ``dmrel_*.fits`` files) are applied through
-    the satellite-spot observing path instead of the analytically generated
-    cosine pattern (see add_cos_pattern_dm).
+    designed relative-DM probe commands (delivered as ``dmrel_*.fits`` files)
+    are applied through the satellite-spot observing path instead of the
+    analytically generated cosine pattern (see add_cos_pattern_dm).
 
-    IMPORTANT -- amplitude scale provenance:
-        The applied pattern is ``(+/- scale) * pattern_volts``. The ``scale``
-        argument is deliberately REQUIRED (no default) because two conflicting
-        conventions exist and silently choosing one would change the probe
-        intensity by ~11x:
-          - scale = 1.0 applies the delivered array as-is. The Gaussian probe
-            delivery (filenames tagged ``ni5e-07``) was designed to produce a
-            probe contrast of 5e-7 in the dark hole at unity amplitude
-            (Delaye et al. 2026, "Enhanced wavefront sensing for the Roman
-            Coronagraph Instrument: Gaussian probes...").
-          - scale = 0.3 is the legacy HOWFSC probing default
-            (corgihowfsc/sensing/GettingProbes.py::get_dm_probes, applied as
-            dm1 = dm10 + scale*dmrel with scalelist [0.3]*n + [-0.3]*n), which
-            was a generic default of that function, not a property of the
-            delivered probe files.
-        Callers must choose explicitly and record the value used.
+    The applied pattern is ``(+/- scale) * pattern_volts``. ``scale`` is
+    deliberately REQUIRED (no default) because the convention for the
+    delivered probe arrays is unresolved: candidate values of 1.0 and 0.3
+    differ in applied probe intensity by roughly a factor of 11, so silently
+    choosing one would materially change the simulated data. Callers must
+    choose explicitly and record the value used.
 
     Parameters
     ----------
@@ -39,10 +28,9 @@ def add_custom_pattern_dm(dm_volts, pattern_volts, scale, sign="positive"):
         must be real-valued and finite. A complex-valued array (nonzero
         imaginary component) is rejected rather than silently discarded.
     scale : numbers.Real
-        Real, finite scalar number (e.g., int, float, or a NumPy real scalar
-        such as np.float32 or np.int64); NaN and +/-inf are rejected, as are
-        booleans. Multiplicative amplitude applied to the pattern (see the
-        scale provenance note above).
+        Real, finite scalar (int, float, or a NumPy real scalar); NaN, +/-inf
+        and booleans are rejected. Multiplicative amplitude applied to the
+        pattern; required, with no default (see above).
     sign : str, optional
         Either "positive" or "negative". "negative" applies
         ``-scale * pattern_volts``, forming the negative member of a
