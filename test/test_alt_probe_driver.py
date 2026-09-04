@@ -1,9 +1,19 @@
-"""Fast, non-propagating checks of the Alternate Probe L1 campaign driver's
-timing constraint and output-filename planning.
+"""Fast, non-propagating checks of the Alternate Probe L1 campaign driver
+(``examples/alt_probe_generate_L1_sims.py``).
 
-These tests never run a PROPER propagation and never write an L1 product:
-they only exercise ``run_campaign``'s up-front validation and the pure
-filename-planning helper, so the whole module runs in seconds.
+Covers:
+
+- input and timing validation (``frame_time_step_s`` vs exposure time and the
+  whole-second SCTSRT floor);
+- output-filename planning and detection of sub-0.1 s filename collisions;
+- overwrite and filesystem safety (a rejected configuration must leave no
+  output directory and no copied PROPER prescription files);
+- VISITID/VISTYPE metadata consistency across successive probe executions.
+
+These tests never run a PROPER propagation and never write an L1 product: they
+exercise ``run_campaign``'s up-front validation, the pure filename-planning
+helper, and -- with the optics, detector, scene and frame writer stubbed -- the
+driver's visit-metadata contract. The whole module runs in seconds.
 """
 
 import importlib.util
