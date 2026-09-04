@@ -158,3 +158,69 @@ def test_existing_output_refused_without_overwrite_and_without_side_effects(tmp_
         driver.run_campaign(**kwargs)
 
     assert os.listdir(work_dir) == []
+
+
+def test_visit_metadata_tracks_each_probe_execution(tmp_path, monkeypatch):
+    """Each probe execution's visit metadata matches its own VISITID and the
+    configured VISTYPE.
+
+    One CorgiOptics object serves several probe executions, and it snapshots
+    visit_id/visit_type into the simulation-metadata block when the scene is
+    generated -- that block becomes the L1 primary header's visit_id/visit_type
+    COMMENT cards. Overriding only the VISITID keyword at write time would leave
+    the COMMENT provenance stale for every probe after the first.
+
+    Optics, detector, scene and frame writing are stubbed, so nothing propagates
+    and nothing is written; the assertions cover only the observable contract.
+    """
+    unset = object()
+    scenes = []  # (visit_id, visit_type) seen at each scene generation
+    frames = []  # (visitid, vistype) handed to the writer for each frame
+    vistype = 'CGIVST_CAL_BORESIGHT'
+
+    class StubOptics:
+        def __init__(self, cgi_mode, bandpass, optics_keywords=None, **kwargs):
+            # ``unset`` marks metadata the driver never supplied; the real class
+            # would silently substitute its own default.
+            self.visit_id = kwargs.get('visit_id', unset)
+            self.visit_type = kwargs.get('visit_type', unset)
+
+        def get_host_star_psf(self, input_scene, **kwargs):
+            scenes.append((self.visit_id, self.visit_type))
+            return object()
+
+        def add_satspot(self, satspot_keywords=None):
+            pass
+
+        def remove_satspot(self, satspot_keywords=None):
+            pass
+
+    def record_frame(sim_scene, detector, exptime, loc_x, loc_y, outdir, visitid,
+                     vistype_, ftimeutc, overwrite=False):
+        frames.append((visitid, vistype_))
+
+    monkeypatch.setattr(driver.instrument, 'CorgiOptics', StubOptics)
+    monkeypatch.setattr(driver.instrument, 'CorgiDetector', lambda *a, **k: object())
+    monkeypatch.setattr(driver.scene, 'Scene', lambda properties: object())
+    monkeypatch.setattr(driver.roman_preflight_proper, 'copy_here', lambda: None)
+    monkeypatch.setattr(driver, 'load_base_dm',
+                        lambda *a, **k: (np.zeros((48, 48)), np.zeros((48, 48))))
+    monkeypatch.setattr(driver, 'save_frame', record_frame)
+
+    driver.run_campaign(**campaign_kwargs(
+        tmp_path,
+        probe_files=[write_probe(tmp_path, name='probe_a.fits'),
+                     write_probe(tmp_path, name='probe_b.fits')],
+        vistype=vistype))
+
+    visitids = [driver.build_visitid(
+        driver.VISIT_PROGNUM, driver.VISIT_EXECNUM, driver.VISIT_CAMPAIGN,
+        driver.VISIT_SEGMENT, driver.VISIT_OBSNUM_START + i, driver.VISIT_VISNUM)
+        for i in range(2)]
+    assert visitids[0] != visitids[1]
+
+    # One scene and (at n_frames_per_state=1) one frame per DM state:
+    # unprobed, positive, negative for each probe, in that order.
+    expected = [(visitid, vistype) for visitid in visitids for _ in range(3)]
+    assert scenes == expected
+    assert frames == expected
