@@ -533,9 +533,8 @@ def run_campaign(
     base_scene = scene.Scene(HOST_STAR_PROPERTIES)
     # A single, persistent CorgiOptics/CorgiDetector pair is reused across all
     # probes and all trio states, exactly mirroring Satellite_spots_demo.ipynb.
-    # visit_type is passed so the simulation-metadata COMMENT block records the
-    # campaign's configured VISTYPE rather than the CorgiOptics default;
-    # visit_id is re-synchronized per probe execution in the loop below.
+    # visit_type is set here, visit_id per probe below, so the simulation-metadata
+    # COMMENT block matches the VISTYPE/VISITID written to each frame.
     optics = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords,
                                     if_quiet=True, visit_type=vistype)
     detector = instrument.CorgiDetector({'em_gain': em_gain}, photon_counting=photon_counting)
@@ -562,11 +561,8 @@ def run_campaign(
 
         print(f"[{probe_index + 1}/{len(plan)}] probe={pattern_name} VISITID={visitid} scale={scale}")
 
-        # One CorgiOptics object serves several probe executions, each with its own
-        # VISITID. save_hdu_to_fits overwrites the VISITID keyword per frame, but the
-        # simulation-metadata COMMENT block is built from optics.visit_id when the
-        # scene is generated, so it must be synchronized here; otherwise every frame
-        # would report the CorgiOptics default visit_id in its COMMENT provenance.
+        # The COMMENT block is snapshotted from optics.visit_id at scene generation,
+        # so it must track this probe execution's VISITID.
         optics.visit_id = visitid
 
         satspot_keywords = {'custom_pattern': pattern, 'scale': scale, 'pattern_name': pattern_name}
