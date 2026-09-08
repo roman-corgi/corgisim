@@ -241,7 +241,7 @@ def test_L1_product_fits_format():
     exptime = 3000
 
     detector = instrument.CorgiDetector( emccd_keywords, photon_counting = True)
-    sim_scene = detector.generate_detector_image(sim_scene, exptime,full_frame=True,loc_x=300, loc_y=300)
+    sim_scene = detector.generate_detector_image(sim_scene, exptime,full_frame=True,loc_x=200, loc_y=300)
     
     ### save the L1 product fits file to test/testdata folder
     local_path = corgisim.lib_dir
@@ -289,7 +289,7 @@ def test_L1_product_fits_format():
     assert exthdr['EMGAIN_A'] == gain, f"Expected data EMGAIN_A={gain}, but got {exthdr['EMGAIN_A']}"
     assert exthdr['ISPC'] == 1, f"Expected header ISPC=1, but got {exthdr['ISPC']}"
     assert exthdr['EACQ_ROW'] == 300, f"Expected header EACQ_ROW=300, but got {exthdr['EACQ_ROW']}"
-    assert exthdr['EACQ_COL'] == 300, f"Expected header EACQ_COL=300, but got {exthdr['EACQ_COL']}"
+    assert exthdr['EACQ_COL'] == 200, f"Expected header EACQ_COL=200, but got {exthdr['EACQ_COL']}"
 
     assert exthdr['DPAM_H'] == 8991.3, f"Expected data DPAM_H=8991.3, but got {exthdr['DPAM_H']}"
     assert exthdr['DPAM_V'] ==  1261.3, f"Expected data DPAM_V=1261.3, but got {exthdr['DPAM_V']}"

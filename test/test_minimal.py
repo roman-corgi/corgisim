@@ -97,7 +97,7 @@ def test_excam_mode():
     exptime = 3000
 
     detector = instrument.CorgiDetector( emccd_keywords)
-    sim_scene = detector.generate_detector_image(sim_scene, exptime,full_frame=True,loc_x=300, loc_y=300)
+    sim_scene = detector.generate_detector_image(sim_scene, exptime,full_frame=True,loc_x=300, loc_y=400)
 
     assert(isinstance(sim_scene.point_source_image, fits.hdu.image.PrimaryHDU)  )
     assert(isinstance(sim_scene.point_source_image.data, np.ndarray)  )
@@ -176,6 +176,8 @@ def test_excam_mode():
     assert exthdr['FSMPRFL'] == 'NFOV', f"Expected data FSMPRFL=NFOV, but got {exthdr['FSMPRFL']}"
     assert exthdr['FSMLOS'] == 1, f"Expected data FSMLOS=1, but got {exthdr['FSMLOS']}"
 
+    assert exthdr['EACQ_ROW'] == 400, f"Expected header EACQ_ROW=400, but got {exthdr['EACQ_ROW']}"
+    assert exthdr['EACQ_COL'] == 300, f"Expected header EACQ_COL=300, but got {exthdr['EACQ_COL']}"
     os.remove(f)
 
 def test_cpgs_obs():
