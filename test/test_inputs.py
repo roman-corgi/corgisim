@@ -10,42 +10,52 @@ def test_cpgs_loading():
     # Test error handling 
     filepath = 'wrong/file/path'
     with pytest.raises(FileNotFoundError) as excinfo:  
-        scene_target, scene_reference, optics, detector_target, detector_reference, visit_list = inputs.load_cpgs_data(filepath)  
+        scene_target, scene_reference, optics, detector_target, detector_reference, visit_list, satellite_dict_target, satellite_dict_reference = inputs.load_cpgs_data(filepath)  
     assert str(excinfo.value) == filepath +" does not exists." 
     
     filepath = 'test/test_data/cpgs_incorrect_type.txt'
     abs_path =  os.path.join(script_dir, '..', filepath)
 
     with pytest.raises(TypeError) as excinfo:  
-        sscene_target, scene_reference, optics, detector_target, detector_reference, visit_list = inputs.load_cpgs_data(abs_path)  
+        scene_target, scene_reference, optics, detector_target, detector_reference, visit_list, satellite_dict_target, satellite_dict_reference = inputs.load_cpgs_data(abs_path)  
     assert str(excinfo.value) == abs_path +" is not an xml file." 
 
-    # Test autogain not implemented
-    filepath = 'test/test_data/cpgs_default.xml'
+    # Test autogain default values
+    # # TO DO: give automatic gain through eetc
+    filepath = 'test/test_data/cpgs_autogain.xml'
     abs_path =  os.path.join(script_dir, '..', filepath)
 
-    with pytest.raises(NotImplementedError) as excinfo:  
-        scene_target, scene_reference, optics, detector_target, detector_reference, visit_list = inputs.load_cpgs_data(abs_path)  
-    assert str(excinfo.value) == "Autogain is not implemented." 
+    scene_target, optics, detector_target, visit_list, satellite_dict_target = inputs.load_cpgs_data(abs_path)  
+    assert detector_target.emccd_keywords['em_gain'] == 1000
 
-    # Test polarization not implemented
-    # TO DO Add a file without autogain with polarization to test the error handling 
     
     # Test object creation 
-    filepath = 'test/test_data/CPGS_MRT8_CGIPrime.xml'
+    filepath = 'test/test_data/cpgs_ref_pol_satspots.xml'
     abs_path =  os.path.join(script_dir, '..', filepath)
 
-    scene_target, scene_reference, optics, detector_target, detector_reference, visit_list = inputs.load_cpgs_data(abs_path)
+    scene_target, scene_reference, optics, detector_target, detector_reference, visit_list, satellite_dict_target, satellite_dict_reference = inputs.load_cpgs_data(abs_path, output_dim=51, fast_gain_mode = True, gain_CIC_Q=0.0)
     assert isinstance(scene_target, scene.Scene)
     assert isinstance(scene_reference, scene.Scene)
     assert isinstance(detector_target, instrument.CorgiDetector)
     assert isinstance(detector_reference, instrument.CorgiDetector)
     assert isinstance(optics, instrument.CorgiOptics)
     assert isinstance(visit_list, list)
+    assert isinstance(satellite_dict_reference, dict)
+    assert isinstance(satellite_dict_target, dict)
+
     assert len(visit_list) > 0
     assert detector_target.photon_counting == True
-    assert detector_reference.photon_counting == True
+    assert detector_reference.photon_counting == False
 
+    assert satellite_dict_target['satellite_spot_conf'] ==  0 
+    assert satellite_dict_target['satellite_spots_gain'] == 500.0
+    assert satellite_dict_target['satellite_spots_frame_time']== 5.0
+    assert satellite_dict_target['satellite_spots_number_of_frames']== 4
+    assert satellite_dict_reference['satellite_spot_conf'] ==  0 
+    assert satellite_dict_reference['satellite_spots_gain'] == 200.0
+    assert satellite_dict_reference['satellite_spots_frame_time']== 0.5
+    assert satellite_dict_reference['satellite_spots_number_of_frames']== 1
+    
     sim_scene_target  = optics.get_host_star_psf(scene_target)
     sim_scene_reference  = optics.get_host_star_psf(scene_reference)
 
@@ -136,7 +146,7 @@ def test_input():
 
         elif key[1:] in ['optics_keywords', 'emccd_keywords']:
             for keyword, value in input4.__dict__[key].items():
-                if keyword[1:] in ['cor_type', 'em_gain']:
+                if keyword[1:] in ['cor_type', 'em_gain'] or keyword in ['cor_type', 'em_gain']:
                     pass
                 #Comparing arrays
                 elif type(value).__module__ == 'numpy':
@@ -168,9 +178,9 @@ def test_input_from_cpgs():
     input = inputs.load_cpgs_data(abs_path, return_input=True)
     # Test create variation from cpgs
     emccd_keywords = {'em_gain': 100.0}
-    input2 = inputs.create_variation_input(input, cor_type='hlc_band4',cgi_mode= 'spec', emccd_keywords=emccd_keywords)
-    assert input2.cor_type == 'hlc_band4'
-    assert input2.optics_keywords['cor_type'] == 'hlc_band4'
+    input2 = inputs.create_variation_input(input, bandpass = '4', cor_type='spec_band4',cgi_mode= 'spec', emccd_keywords=emccd_keywords)
+    assert input2.cor_type == 'spec_band4'
+    assert input2.optics_keywords['cor_type'] == 'spec_band4'
     assert input2.cgi_mode == 'spec'
     assert input2.em_gain == 100.0
     assert input2.emccd_keywords['em_gain'] == 100.0
@@ -178,7 +188,7 @@ def test_input_from_cpgs():
     # Test that the correct file is used
     assert input.cpgs_file == abs_path
 
-    scene_target, scene_reference, optics, detector_target, detector_reference, visit_list = inputs.load_cpgs_data(abs_path)
+    scene_target, scene_reference, optics, detector_target, detector_reference, visit_list, satellite_dict_target, satellite_dict_reference = inputs.load_cpgs_data(abs_path)
 
     scene_input = scene.Scene(input.host_star_properties)
     optics_input =  instrument.CorgiOptics(input.cgi_mode, input.bandpass, optics_keywords=input.optics_keywords, if_quiet=True)
@@ -196,7 +206,11 @@ def test_input_from_cpgs():
             # For dictionnaries, we only check that the key that are presents have the same values 
             if key in ['optics_keywords', 'emccd_keywords', 'host_star_properties']:
                 for keyword in (optics.__dict__['optics_keywords'].keys() & optics_input.__dict__['optics_keywords'].keys()):
-                    assert optics.__dict__[key][keyword] == optics_input.__dict__[key][keyword]                                   
+                    #DM solutions are arrays
+                    if type(optics.__dict__[key][keyword]).__module__ == 'numpy':
+                        assert (optics.__dict__[key][keyword] == optics_input.__dict__[key][keyword]).all()                                   
+                    else:
+                        assert optics.__dict__[key][keyword] == optics_input.__dict__[key][keyword]                                   
             else:
                 assert optics_input.__dict__[key] == val
 
