@@ -526,7 +526,78 @@ def test_finite_diam_and_jitter_spec():
     # Check that the companion images are the same for both cases
     # (The jitter model has not been implemented for off-axis point sources.)
     assert((image_comp_basic == image_comp_slit_prism).all())   
+
+def test_generating_multiple_frames():
+    '''
+    This function tests that multiple frames can be generated without triggering
+    any errors. In particular, it tests generating multiple frames with header
+    overrides.
+    '''
     
+    # Step 1: Configure the astrophysical scene
+    target_name = 'beta Car'
+    Vmag = 1.69
+    sptype = 'A1V'
+    ref_flag = True
+    star_properties = {'Vmag':Vmag,'magtype':'vegamag','spectral_type':sptype,'ref_flag':ref_flag,'target_name':target_name}
+    
+    ref_scene = scene.Scene(star_properties)
+    
+    # Step 2: Set up the coronagraph optics
+    # Coronagraph mode, type, bandpass, DM solutions, polarization
+    cgi_mode = 'excam'
+    cor_type = 'spc-wide_band1'
+    bandpass = '1F'
+    cases = ['2e-8']
+    rootname = 'spc-wide_band1_ni_' + cases[0]
+    dm1 = proper.prop_fits_read(roman_preflight_proper.lib_dir + '/examples/' + rootname + '_dm1_v.fits')
+    dm2 = proper.prop_fits_read(roman_preflight_proper.lib_dir + '/examples/' + rootname + '_dm2_v.fits')
+    polaxis = 10
+    roll_angle = 15
+    
+    optics_keywords = {'cor_type':cor_type,'use_errors':1,'polaxis':polaxis,'output_dim':201,
+                       'use_dm1':1,'dm1_v':dm1,'use_dm2':1,'dm2_v':dm2,'use_fpm':1,
+                       'use_lyot_stop':1,'use_field_stop':1}
+    
+    optics = instrument.CorgiOptics(cgi_mode,bandpass,optics_keywords=optics_keywords,roll_angle=roll_angle,oversampling_factor=3,if_quiet=True)
+
+    # Step 3: Set up the detector, the exposure time, and the number of frames
+    
+    cr_rate = 5 # Assumed cosmic ray rate
+    Nframes = 3
+    exp_time = 23
+    em_gain = 995
+    emccd_keywords = {'em_gain':em_gain,'cr_rate':cr_rate,'bias':1500}
+    detector = instrument.CorgiDetector(emccd_keywords,photon_counting=False)
+    
+    # Step 4: Simulate and save the L1 data products
+    this_file_dir = os.path.dirname(__file__)
+    outdir = this_file_dir
+    
+    # Define the header overrides
+    visnum = '002'
+    header_overrides = {}
+    header_overrides['VISITID']='0200001001001001'+ visnum
+    
+    ext_header_overrides = {}
+    ext_header_overrides['FPAMNAME'] = 'SPC12_R2C1'
+    
+    # Generate the host star PSF 
+    sim_scene = optics.get_host_star_psf(ref_scene)
+    
+    # Generate the L1 data products
+    framelist = []
+    for iframe in range(Nframes):
+        # Simulate the image on the detector
+        sim_scene = detector.generate_detector_image(sim_scene, exp_time,full_frame = True,loc_x=300,loc_y=300)
+        framelist.append(sim_scene)
+        # Save the image
+        outputs.save_hdu_to_fits(sim_scene.image_on_detector,outdir=outdir, write_as_L1=True,
+                                 overwrite_pri_keywords=header_overrides,overwrite_ext_keywords=ext_header_overrides)
+        
+    
+    
+
     
 if __name__ == '__main__':
     test_excam_mode()
@@ -537,3 +608,4 @@ if __name__ == '__main__':
     test_pol_obs_with_finite_stellar_diam()
     test_pol_obs_with_finite_stellar_diam_and_jitter()
     test_finite_diam_and_jitter_spec()
+    test_generating_multiple_frames()
