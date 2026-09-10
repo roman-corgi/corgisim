@@ -28,6 +28,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install pytest
+        pip install pytest-cov
         pip install unzip
         if [ -f requirements.txt ]; then pip install -r requirements.txt .; fi
     - name: Download and install Proper
@@ -62,4 +63,4 @@ jobs:
 
     - name: Minimal test
       run: |
-        pytest ./test/test_minimal.py
+        pytest --cov=corgisim ./test/test_minimal.py 
