@@ -63,4 +63,4 @@ jobs:
 
     - name: Minimal test
       run: |
-        pytest --cov=corgisim ./test/test_minimal.py 
+        coverage run -m pytest ./test/test_minimal.py 
