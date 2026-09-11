@@ -63,4 +63,4 @@ jobs:
 
     - name: Minimal test
       run: |
-        pytest --cov=../* ./test/test_minimal.py 
+        pytest --cov=home/runner/work/corgisim/corgisim ./test/test_minimal.py 
