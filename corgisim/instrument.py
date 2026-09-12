@@ -7,7 +7,7 @@ from corgisim import scene
 from corgisim.sat_spots import add_cos_pattern_dm
 import cgisim
 import corgisim
-from synphot.models import BlackBodyNorm1D, Box1D,Empirical1D
+from synphot.models import BlackBodyNorm1D, Box1D, Empirical1D
 from synphot import units, SourceSpectrum, SpectralElement, Observation
 from synphot.units import validate_wave_unit, convert_flux, VEGAMAG
 import matplotlib.pyplot as plt
@@ -19,7 +19,15 @@ import os
 from scipy import interpolate
 from packaging.version import Version
 import math
+import time
+import sys
+import astropy.units as u
+import corgisim.constants as constants
+import corgisim.convolution as conv
 
+from corgisim.scene import Scene, SimulatedImage
+from corgisim import outputs, spec, prf_simulation, constants
+import corgisim.convolution as conv
 warnings.simplefilter('always', UserWarning)
 class CorgiOptics():
     '''
@@ -58,6 +66,7 @@ class CorgiOptics():
             **kwargs:
             Additional optional keyword arguments.Supported options include:
             - visit_type (str, optional): A string indicating the type of visit (e.g.CGIVST_CAL_TGTREF_PHOT) for populating header VISTYPE.
+            - visit_id (str, optional): A string indicating the visit ID for populating header VISITID.
             - if_quiet (bool, optional): If True, suppresses print statements during optics initialization. 
 
               
@@ -239,6 +248,7 @@ class CorgiOptics():
         self.sampling_lamref_div_D = mode_data['sampling_lamref_div_D'] 
         self.lamref_um = mode_data['lamref_um'] ## ref wavelength in micron
         self.owa_lamref = mode_data['owa_lamref'] ## out working angle
+
         
         if self.cgi_mode == 'spec':
             baseline_mode_data, _ = cgisim.cgisim_read_mode('excam', 'hlc_band1', '1', info_dir=info_dir)
@@ -258,6 +268,9 @@ class CorgiOptics():
         #self.area = (self.diam/2)**2 * np.pi - (self.diam/2*0.303)**2 * np.pi
         self.area =  35895.212    # primary effective area from cgisim cm^2 
         self.grid_dim_out = optics_keywords_internal['output_dim'] # number of grid in output image in one dimension
+
+        # resolution in mas (calculated at the central wavelength of the bandpass)
+        self.res_mas = (self.lam0_um*1e-6)/(self.diam/100) * constants.ARCSEC_PER_RAD * 1e3 
         
         optics_keywords_internal['lam0']=self.lam0_um
         if 'use_fpm' not in optics_keywords_internal:
@@ -318,6 +331,7 @@ class CorgiOptics():
 
         if 'if_quiet'in kwargs:self.quiet = kwargs.get("if_quiet")
         self.visit_type = kwargs.get("visit_type", "CGIVST_TDD_OBS")
+        self.visit_id = kwargs.get("visit_id", "0200001001001001001")
 
         ##self.SATSPOTS is the value to be populated to L1 header prihdr[SATSPOTS]
         # prihdr[SATSPOTS]= 0: No satellite spots present 
@@ -654,7 +668,6 @@ class CorgiOptics():
                                         HDU that contains a noiseless on-axis PSF.
 
         '''
-        
         if self.cgi_mode == 'excam':
             
             # Compute the observed stellar spectrum within the defined bandpass
@@ -904,6 +917,7 @@ class CorgiOptics():
                     'nd_filter':self.nd,
                     'target_name': input_scene.target_name,
                     'visit_type': self.visit_type,
+                    'visit_id': self.visit_id,
                     'RA':input_scene.RA,
                     'DEC':input_scene.DEC}
 
@@ -967,33 +981,6 @@ class CorgiOptics():
         bp = SpectralElement(Empirical1D, points=wave, lookup_table=throughput)
 
         return bp
-
-
-    def convolve_2D_scene(self, scene, on_the_fly=False):
-        '''
-        Function that simulates a 2D scene with the current configuration of CGI. 
-
-        It should take the image data from the HDU from scene.background_scene and convolve it with a 
-        set of off-axis PSFs (also known as PRFs in some circles), and return an updated scene object with the
-        background_scene attribute populated with an astropy HDU that contains the simulated scene and associated 
-        metadata in the header.
-
-        The off-axis PSFs should be either generated on the fly, or read in from a set of pre-generated PSFs. The 
-        convolution should be flux conserving. 
-
-        TODO: Figure out the default output units. Current candidate is photoelectrons/s.
-        TODO: If the input is a scene.Simulation_Scene instead, then just pull the Scene from the attribute
-                and put the output of this function into the twoD_image attribute
-
-        Arguments: 
-            - scene: A corgisim.scene.Scene object that contains the scene to be simulated.
-            - on_the_fly: A boolean that defines whether the PSFs should be generated on the fly.
-        
-        Returns: 
-            - corgisim.scene.Simulated_Scene: A scene object with the background_scene attribute populated with an astropy
-                                        HDU that contains the simulated scene.
-        '''
-        pass
 
     def inject_point_sources(self, input_scene, sim_scene=None, on_the_fly=False):
         '''
@@ -1419,6 +1406,126 @@ class CorgiOptics():
             self.slit_x_offset_mas, self.slit_y_offset_mas = skycoord_to_excamcoord(self.slit_ra_offset_mas, self.slit_dec_offset_mas, value)
 
 
+    def simulate_2d_scene(self, input_scene, prf_cube_path, sim_scene=None, interpolate_prfs=False):
+        """
+        Convolve 2D scene with a pre-computed off-axis PRF cube.
+
+        This function reads a disk model from `input_scene.twoD_scene_info['disk_model_path']`,
+        normalizes it, and performs a field-dependent 2D convolution using a precomputed PRF cube
+        stored at `input_scene.twoD_scene_info['prf_path']`. The PRF sampling (radii in lambda/D and azimuthal angles)
+        is reconstructed from the PRF cube metadata. The convolution can be done using either nearest-neighbor
+        or interpolation between PRFs, controlled by the `interpolate_prfs` flag. 
+
+        After convolution, the result is scaled to a count rate integrated over the bandpass defined by 
+        `optics.bp` and `intput_scene.twoD_scene_spectrum`. The scaled convolved object is stored in 
+        `sim_scene.twoD_images` as an HDU with simulation metadata written as FITS COMMENT. 
+
+        Parameters
+        ----------
+        optics: (corgisim.instrument.CorgiOptics): The optics object defining the
+                instrument configuration, including the telescope and coronagraph.
+        input_scene : Scene 
+            Scene object containing 2D image data to be convolved.
+        prf_cube_path: str
+            Path to the PRF cube to be used for convolution.
+        sim_scene: SimulatedImage, optional
+            If provided, the convolved image will be stored in this object.
+        interpolate_prfs: bool, optional
+            Whether to use interpolation between PRFs for convolution.
+
+        Returns
+        -------
+        sim_scene : SimulatedImage
+            Output scene with `twoD_image` replaced by the convolved and scaled result.
+
+        Raises
+        ------
+        ValueError
+            If `prf_cube_path` is None.
+
+        Notes
+        -----
+        - The PRF cube is assumed to be already centred in its arrays. 
+        - The PRF cube is assumed to be normalised to unit input flux. Absolute flux
+            scaling is applied in this function using the input scene spectrum and the
+            optics bandpass.
+        - The disk model is normalised by its total flux prior to convolution.
+        - After convolution, the image is scaled using the integrated bandpass count
+            rate and converted to a per resolution element normalisation using an
+            estimate of the PSF FWHM area (pixels) and a thresholded disk region mask.
+        - The output is intended to represent a count rate (photoelectrons per second),
+            consistent with `Observation.countrate`.
+        """
+        if prf_cube_path is None:
+            raise ValueError(f"No PRF cube path provided in the input: {prf_cube_path}")
+
+        if sim_scene is None:
+            # No output format was specified - create a new SimulatedImage object
+            sim_scene = SimulatedImage(input_scene)
+
+        # Check if roll angle is non-zero and raise NotImplementedError if so
+        # To be removed after implementing roll angle for the 2D scene. 
+        if self.roll_angle != 0:
+            raise NotImplementedError("Roll angle rotation is not implemented yet for 2D scene.")
+
+        # input disk model
+        disk_model_data = fits.getdata(input_scene.twoD_scene_info['disk_model_path'])
+        disk_model_norm = disk_model_data/np.nansum(disk_model_data, axis=(0,1)) # normalisation of the disk
+
+        prf_sim_info = prf_simulation._get_prf_sim_info(prf_cube_path) # Get the simulation information 
+
+        # Check if PRF cube needs centering
+        prf_info_is_centred = prf_sim_info.get('centred') # 'True' or 'False'
+        # Convert string to boolean
+        is_centred = (prf_info_is_centred == 'True') 
+
+        if not is_centred:
+            print("PRF cube is not centred. centring now...")
+            from corgisim.prf_simulation import centre_prf_cube
+            prf_cube = centre_prf_cube(fits.getdata(prf_cube_path), method='centroid')
+        else: 
+            prf_cube = fits.getdata(prf_cube_path)
+
+        # 1. Get the radii grids for convolution 
+        radii_lamD, _ = conv.build_radial_grid(
+            prf_sim_info['iwa'], 
+            prf_sim_info['owa'], 
+            prf_sim_info['inner_step'], 
+            prf_sim_info['mid_step'], 
+            prf_sim_info['outer_step'],
+            prf_sim_info['max_radius']
+        )
+
+        # 2. Get the azimuth grid for convolution
+        azimuths_deg, _ = conv.build_azimuth_grid(prf_sim_info['step_deg'])
+
+        # 3. Perform convolution
+        conv2d = conv._convolve_with_prfs(
+            obj=disk_model_norm, 
+            prfs_array=prf_cube, 
+            radii_lamD=radii_lamD , 
+            azimuths_deg=azimuths_deg, 
+            pix_scale_mas=constants.PIXEL_SCALE_ARCSEC * 1e3, 
+            res_mas=self.res_mas, 
+            interpolate_prfs=interpolate_prfs
+            )
+
+        # NOTE: An attempt to convert flux units to physical units after convolution
+        # NOTE: Should be remove in the future after we have a better way to track the units and perform the flux calibration in a more self-consistent way.
+        # 4. Flux calibration
+        flux_calibrated_conv2D = conv.flux_calibration_2D_scene(self, input_scene, conv2d)
+
+        if self.cgi_mode in ['spec', 'lowfs', 'excam_efield']:
+            warnings.warn(f"This mode '{self.cgi_mode}' has not implmented yet!") # still allow the usage but warn the user about this
+
+        sim_info = conv._set_2D_image_sim_info(self, input_scene)
+
+        # Create the HDU object with the generated header information
+        sim_scene.twoD_image = outputs.create_hdu(flux_calibrated_conv2D, sim_info=sim_info)
+
+        return sim_scene
+
+
 class CorgiDetector(): 
     
     def __init__(self ,emccd_keywords, photon_counting = False):
@@ -1464,7 +1571,7 @@ class CorgiDetector():
         components = [simulated_scene.host_star_image,
                       simulated_scene.point_source_image,
                       simulated_scene.twoD_image]
-        
+
         ###check witch components is not None, and combine exsiting simulated scene
         ### read comment header from components is not None to track sim_info
         for component in components:
@@ -1561,7 +1668,7 @@ class CorgiDetector():
                            'PHTCNT':self.photon_counting,'KGAINPAR':self.emccd_keywords_default['e_per_dn'],'cor_type':sim_info['cor_type'], 'bandpass':sim_info['bandpass'],
                            'cgi_mode': sim_info['cgi_mode'], 'polaxis':sim_info['polaxis'],'use_fpm':use_fpm,'nd_filter':sim_info['nd_filter'], 'polarization_basis': sim_info['polarization_basis'],'SATSPOTS':sim_info['SATSPOTS'],
                            'use_pupil_lens':use_pupil_lens,'use_lyot_stop':use_lyot_stop, 'use_field_stop':use_field_stop, 'PA_APER': float(sim_info['roll_angle']),
-                           'EACQ_ROW': loc_x, 'EACQ_COL': loc_y,'RN': self.emccd_keywords_default['read_noise'],'target_name': sim_info['target_name'],'VISTYPE': sim_info['visit_type'],'RA':sim_info['RA'],'DEC':sim_info['DEC']}
+                           'EACQ_ROW': loc_y, 'EACQ_COL': loc_x,'RN': self.emccd_keywords_default['read_noise'],'target_name': sim_info['target_name'],'VISTYPE': sim_info['visit_type'],'VISITID': sim_info['visit_id'],'RA':sim_info['RA'],'DEC':sim_info['DEC']}
             if 'fsm_x_offset_mas' in sim_info:
                 header_info['FSMX'] = float(sim_info['fsm_x_offset_mas'])
             if 'fsm_y_offset_mas' in sim_info:
@@ -1639,8 +1746,8 @@ class CorgiDetector():
             - full_well_serial (float, optional): full well for serial register; 90K is requirement, 100K is CBE
             - dark_rate (float, optional): Dark current rate, e-/pix/s; 1.0 is requirement, 0.00042/0.00056 is CBE for 0/5 years
             - cic_noise (float, optional): Clock-induced charge noise, e-/pix/frame; Defaults to 0.01.
-            - read_noise (float, optional): Read noise, e-/pix/frame; 125 is requirement, 100 is CBE
-            - bias (int, optional): Bias level (in digital numbers). Defaults to 0.
+            - read_noise (float, optional): Read noise, e-/pix/frame; 125 is requirement, 165 is CBE
+            - bias (int, optional): Bias level (in digital numbers). Defaults to 1500.
             - qe (float): Quantum efficiency, set to 1 here, because already counted in counts
             - cr_rate (int, optional): Cosmic ray event rate, hits/cm^2/s (0 for none, 5 for L2) 
             - pixel_pitch (float, optional): Pixel pitch (in meters). Defaults to 13e-6.
@@ -1652,7 +1759,11 @@ class CorgiDetector():
             - row_read_time (float, optional): Row read time in seconds, needed to simulate smearing. Defaults to 223.5e-6.  For no smearing, set this to 0.
             - nonlin_path (str, optional): Path to the nonlinearity file for simulating nonlinearity. Defaults to None (no nonlinearity simulated).
             - flat_path (str, optional): Path to the flat field file for simulating flat field nonuniformity. Defaults to None (no flat field nonuniformity simulated).
-
+            - fast_gain_mode : bool or 'auto' If True, a faster but less accurate method (uses Erlang/Gamma distribution for EM gain) of simulating the gain register is used.  
+            If False, a slower but more accurate method (marches each pixel through the gain register with binomial distribution) is used. The fast method is quite accurate 
+            for em_gain > 200 if the number of incoming particles to the gain register is n > 1.  If 'auto', both speed and accuracy are prioritized:the fast method is used 
+            if em_gain > 200 (and n>1) and 'roman' is used for gain_CIC_Q,and the slow method is used with gain_CIC_Q = 0 (since partial CIC is negligible for low gains) 
+            for em_gain <= 200 (or if n=1 for any gain). Defaults to 'auto'.
         Returns:
             - emccd (EMCCDDetectBase): A configured EMCCD detector object. If `use_traps` is True, the detector's CTI is updated using the corresponding trap model.
         
@@ -1664,10 +1775,10 @@ class CorgiDetector():
                                   'full_well_image': 90000.0,                 # image full well; 50K is requirement, 60K is CBE
                                   'dark_rate': 0.001,                  # e-/pix/s; 1.0 is requirement, 0.00042/0.00056 is CBE for 0/5 years
                                   'cic_noise': 0.0088,                    # e-/pix/frame; 0.1 is requirement, 0.01 is CBE
-                                  'read_noise': 165.0,                  # e-/pix/frame; 125 is requirement, 100 is CBE
+                                  'read_noise': 165.0,                  # e-/pix/frame; 125 is requirement, 165 is CBE
                                   'cr_rate': 5,                         # hits/cm^2/s (0 for none, 5 for L2) 
                                   'em_gain': 1000.0 ,                      # EM gain
-                                  'bias': 0,
+                                  'bias': 1500,				# Bias offset (e-)
                                   'pixel_pitch': 13e-6 ,                # detector pixel size in meters
                                   'apply_smear': True ,                 # (LOWFS only) Apply fast readout smear?  
                                   'e_per_dn':8.7  ,                    # post-multiplied electrons per data unit
@@ -1677,8 +1788,8 @@ class CorgiDetector():
                                   'date4traps': 2028.0,                  # decimal year of observation
                                   'row_read_time': 223.5e-6,              # in seconds (needed to simulate smearing)
                                   'nonlin_path': None,                  # path to file containing non-linearity map; if None, no input nonlinearity used
-                                  'flat_path': None}                    # path to file containing flat field map; if None, no flat field correction used
-
+                                  'flat_path': None,            # path to file containing flat field map; if None, no flat field correction used
+                                  'fast_gain_mode':'auto'}
         if emccd_keywords is not None:                    
             if 'qe' in emccd_keywords.keys():
                 raise Warning("Quantum efficiency has been added in the bandpass throughput; it must be enforced as 1 here.")
@@ -1687,7 +1798,9 @@ class CorgiDetector():
                 if key in self.emccd_keywords_default:
                     self.emccd_keywords_default[key] = value
 
-    
+        if (self.emccd_keywords_default['fast_gain_mode'] and self.emccd_keywords_default['em_gain'] < 200):
+            warnings.warn('Warning: Fast gain mode needs em_gain to be over 200 to be reasonably accurate')
+
         emccd = EMCCDDetect( em_gain=self.emccd_keywords_default['em_gain'], full_well_image=self.emccd_keywords_default['full_well_image'], full_well_serial=self.emccd_keywords_default['full_well_serial'],
                              dark_current=self.emccd_keywords_default['dark_rate'], cic=self.emccd_keywords_default['cic_noise'], read_noise=self.emccd_keywords_default['read_noise'], bias=self.emccd_keywords_default['bias'],
                              qe=1.0, cr_rate=self.emccd_keywords_default['cr_rate'], pixel_pitch=self.emccd_keywords_default['pixel_pitch'], eperdn=self.emccd_keywords_default['e_per_dn'],

@@ -1,0 +1,2 @@
+ARCSEC_PER_RAD = 206265
+PIXEL_SCALE_ARCSEC = 0.0218   # arcsec/pixel

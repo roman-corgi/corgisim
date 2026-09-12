@@ -21,11 +21,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - shard: heavy
+          - shard: jitterspecc
             pytest_args: >-
               ./test/test_jitter.py
-              ./test/test_L1_product_fits_format.py
               ./test/test_L1_product_fits_format_specmode.py
+          - shard: heavy
+            pytest_args: >-
+              ./test/test_L1_product_fits_format.py
               ./test/test_observation_sequence.py
           - shard: rest
             pytest_args: >-

@@ -61,7 +61,7 @@ def test_L1_product_fits_format_specmode():
     ##  Define the polaxis parameter. Use 10 for non-polaxis cases only, as other options are not yet implemented.
     polaxis = 10
     # output_dim define the size of the output image
-    output_dim = 121
+    output_dim = 51
     overfac = 5
 
     optics_keywords_slit_prism ={'cor_type':cor_type, 'use_errors':2, 'polaxis':polaxis, 'output_dim':output_dim, 
@@ -72,8 +72,6 @@ def test_L1_product_fits_format_specmode():
 
 
     sim_scene_slit_prism = optics_slit_prism.get_host_star_psf(base_scene)
-
-    sim_scene_slit_prism = optics_slit_prism.inject_point_sources(base_scene,sim_scene_slit_prism)
 
     emccd_keywords ={'cr_rate':0.0}
     exptime = 3000

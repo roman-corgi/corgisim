@@ -98,6 +98,14 @@ def test_L1_product_fits_format():
     assert prihdr['RA'] == 0.0, f"Expected header RA = 0.0, but got {prihr['RA']}"
     assert prihdr['DEC'] == 0.0, f"Expected header DEC = 0.0, but got {prihr['DEC']}"
  
+    assert prihr['VISITID'] == '0200001001001001001', f"Expected header VISITID = '0200001001001001001', but got {prihr['VISITID']}"
+    assert prihr['PROGNUM'] == '0200', f"Expected header PROGNUM = '0200', but got {prihr['PROGNUM']}"
+    assert prihr['EXECNUM'] == '001', f"Expected header EXECNUM = '001', but got {prihr['EXECNUM']}"
+    assert prihr['CAMPAIGN'] == '001', f"Expected header CAMPAIGN = '001', but got {prihr['CAMPAIGN']}"
+    assert prihr['SEGMENT'] == '001', f"Expected header SEGMENT = '001', but got {prihr['SEGMENT']}"
+    assert prihr['OBSNUM'] == '001', f"Expected header OBSNUM = '001', but got {prihr['OBSNUM']}"
+    assert prihr['VISNUM'] == '001', f"Expected header VISNUM = '001', but got {prihr['VISNUM']}"
+
     assert exthdr['SATSPOTS'] == 0, f"Expected data SATSPOTS=0, but got {exthdr['SATSPOTS']}"
     assert exthdr['KGAINPAR'] == 8.7, f"Expected data KGAINPAR=8.7, but got {exthdr['KGAINPAR']}"
     assert exthdr['EMGAIN_C'] == 1000, f"Expected data EMGAIN_C=1000, but got {exthdr['EMGAIN_C']}"
@@ -153,13 +161,15 @@ def test_L1_product_fits_format():
 
         ### Test overwrite_pri_hdr and overwrite_ext_hdr with non-default values including FTIMEUTC and MJDSRT
     outputs.save_hdu_to_fits(sim_scene.image_on_detector,outdir=outdir, write_as_L1=True,
-                             overwrite_pri_keywords={'TARGET':'HD 141569A'},
+                             overwrite_pri_keywords={'TARGET':'HD 141569A', 'VISITID': '2200006007008009001'},
                              overwrite_ext_keywords={'OPMODE': "Disco", 'FTIMEUTC': '2025-01-01T00:00:00'},
-                             )
+                             overwrite=True)
     #Open the file and check the new values in the headers
     # Find the most recently created file (filename uses current timestamp, not overridden FTIMEUTC)
     files = glob.glob(os.path.join(outdir, 'cgi_*_l1_.fits'))
     f = max(files, key=os.path.getmtime)
+    tem = outputs.isotime_to_yyyymmddThhmmsss('2025-01-01T00:00:00')
+    assert os.path.basename(f) == 'cgi_2200006007008009001_'+tem+'_l1_.fits', f"Expected filename, but got {os.path.basename(f)}" 
 
     with fits.open(f) as hdul:
         prihr = hdul[0].header
@@ -169,6 +179,14 @@ def test_L1_product_fits_format():
         assert exthr['OPMODE'] == "Disco", f"Expected header OPMODE=Disco, but got {exthr['OPMODE']}"
         # Check that MJDSRT was correctly calculated from the overridden FTIMEUTC (2025-01-01T00:00:00 = MJD 60676.0)
         assert exthr['MJDSRT'] == 60676.0, f"Expected header MJDSRT=60676.0 (from overridden FTIMEUTC), but got {exthr['MJDSRT']}"
+        assert prihdr['VISITID'] == '2200006007008009001', f"Expected header VISITID=2200006007008009001, but got {prihr['VISITID']}"
+        assert prihdr['PROGNUM'] == '2200', f"Expected header PROGNUM=2200, but got {prihr['PROGNUM']}"
+        assert prihdr['EXECNUM'] == '006', f"Expected header EXECNUM=006, but got {prihr['EXECNUM']}"
+        assert prihdr['CAMPAIGN'] == '007', f"Expected header CAMPAIGN=007, but got {prihr['CAMPAIGN']}"
+        assert prihdr['SEGMENT'] == '008', f"Expected header SEGMENT=008, but got {prihr['SEGMENT']}"
+        assert prihdr['OBSNUM'] == '009', f"Expected header OBSNUM=009, but got {prihr['OBSNUM']}"
+        assert prihdr['VISNUM'] == '001', f"Expected header VISNUM=001, but got {prihr['VISNUM']}"
+        assert prihdr['FILENAME'] == 'cgi_2200006007008009001_'+tem+'_l1_.fits', f"Expected filename, but got {prihr['FILENAME']}" 
 
     ### delete file after testing
     print('Deleted the FITS file after testing overwrite_pri_hdr and overwrite_ext_hdr with non-default values')
@@ -214,7 +232,8 @@ def test_L1_product_fits_format():
                 ##pass fsm_x_offset_mas and fsm_y_offset_mas for no zero value as test
 
     roll_angle=10.0 ##degree
-    optics = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords, if_quiet=True, roll_angle=roll_angle, visit_type='CGIVST_CAL_TGTREF_PHOT')
+    optics = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords, if_quiet=True, roll_angle=roll_angle, visit_type='CGIVST_CAL_TGTREF_PHOT'
+                                    , visit_id='0300002002002901002')
     sim_scene = optics.get_host_star_psf(base_scene)
 
     sim_scene = optics.inject_point_sources(base_scene,sim_scene)
@@ -225,7 +244,7 @@ def test_L1_product_fits_format():
     exptime = 3000
 
     detector = instrument.CorgiDetector( emccd_keywords, photon_counting = True)
-    sim_scene = detector.generate_detector_image(sim_scene, exptime,full_frame=True,loc_x=300, loc_y=300)
+    sim_scene = detector.generate_detector_image(sim_scene, exptime,full_frame=True,loc_x=200, loc_y=300)
     
     ### save the L1 product fits file to test/testdata folder
     local_path = corgisim.lib_dir
@@ -262,13 +281,20 @@ def test_L1_product_fits_format():
     assert prihr['VISTYPE'] == 'CGIVST_CAL_TGTREF_PHOT', f"Expected header VISTYPE = 'CGIVST_CAL_TGTREF_PHOT', but got {prihr['VISTYPE']}"
     assert prihdr['RA'] == 20.1, f"Expected header RA = 20.1, but got {prihr['RA']}"
     assert prihdr['DEC'] == 10.1, f"Expected header DEC = 10.1, but got {prihr['DEC']}"
+    assert prihr['VISITID'] == '0300002002002901002', f"Expected header VISITID = '0300002002002901002', but got {prihr['VISITID']}"
+    assert prihr['PROGNUM'] == '0300', f"Expected header PROGNUM = '0300', but got {prihr['PROGNUM']}"
+    assert prihr['EXECNUM'] == '002', f"Expected header EXECNUM = '002', but got {prihr['EXECNUM']}"
+    assert prihr['CAMPAIGN'] == '002', f"Expected header CAMPAIGN = '002', but got {prihr['CAMPAIGN']}"
+    assert prihr['SEGMENT'] == '002', f"Expected header SEGMENT = '002', but got {prihr['SEGMENT']}"
+    assert prihr['OBSNUM'] == '901', f"Expected header OBSNUM = '901', but got {prihr['OBSNUM']}"
+    assert prihr['VISNUM'] == '002', f"Expected header VISNUM = '002', but got {prihr['VISNUM']}"
 
     assert exthdr['KGAINPAR'] == e_per_dn, f"Expected data KGAINPAR={e_per_dn}, but got {exthdr['KGAINPAR']}"
     assert exthdr['EMGAIN_C'] == gain, f"Expected data EMGAIN_C={gain}, but got {exthdr['EMGAIN_C']}"
     assert exthdr['EMGAIN_A'] == gain, f"Expected data EMGAIN_A={gain}, but got {exthdr['EMGAIN_A']}"
     assert exthdr['ISPC'] == 1, f"Expected header ISPC=1, but got {exthdr['ISPC']}"
     assert exthdr['EACQ_ROW'] == 300, f"Expected header EACQ_ROW=300, but got {exthdr['EACQ_ROW']}"
-    assert exthdr['EACQ_COL'] == 300, f"Expected header EACQ_COL=300, but got {exthdr['EACQ_COL']}"
+    assert exthdr['EACQ_COL'] == 200, f"Expected header EACQ_COL=200, but got {exthdr['EACQ_COL']}"
 
     assert exthdr['DPAM_H'] == 8991.3, f"Expected data DPAM_H=8991.3, but got {exthdr['DPAM_H']}"
     assert exthdr['DPAM_V'] ==  1261.3, f"Expected data DPAM_V=1261.3, but got {exthdr['DPAM_V']}"
@@ -395,28 +421,32 @@ def test_L1_product_from_CPGS():
 
     script_dir = os.getcwd()
 
-    filepath = 'test/test_data/CPGS_MRT8_CGIPrime.xml'
+    filepath = 'test/test_data/cpgs_ref_wfov_satspots.xml'
     abs_path =  os.path.join(script_dir, filepath)
     local_path = corgisim.lib_dir
     outdir = os.path.join(local_path.split('corgisim')[0], 'corgisim/test/testdata/cpgs')
     
-    scene_target, scene_reference, optics, detector_target, detector_reference, visit_list = inputs.load_cpgs_data(abs_path)
-    simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, full_frame=True, loc_x=300, loc_y=300, save_as_fits=True, output_dir=outdir)
+    scene_target, scene_reference, optics, detector_target, detector_reference, visit_list, satellite_dict_target, satellite_dict_reference = inputs.load_cpgs_data(abs_path, output_dim=121, fast_gain_mode = True, gain_CIC_Q=0.0)
+    simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, full_frame=True, loc_x=300, loc_y=300, save_as_fits=True, save_as_list= True, output_dir=outdir, output_dim=121, fast_gain_mode = True, gain_CIC_Q=0.0)
 
     #Check that there are as many simulated images as files
-    assert len(simulatedImage_list) == len([name for name in os.listdir(outdir) if os.path.isfile(outdir+'/'+name)])
-
+    assert len(simulatedImage_list) == sum(len(files) for _, _, files in os.walk(outdir))
     #Check that the names are correct
     i = 0
     for visit in visit_list:
-        for _ in range(visit['number_of_frames']):
+        if visit['isReference']:
+            number_of_satellite_frame = satellite_dict_reference['satellite_spots_number_of_frames']*3
+        else:    
+            number_of_satellite_frame = satellite_dict_target['satellite_spots_number_of_frames']*3
+        
+        for _ in range(visit['number_of_frames']+number_of_satellite_frame):
 
             prihdr = simulatedImage_list[i].image_on_detector[0].header
             exthdr = simulatedImage_list[i].image_on_detector[1].header
             time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
             filename = f"cgi_{prihdr['VISITID']}_{time_in_name}_l1_.fits"
 
-            f = os.path.join( outdir , filename)
+            f = os.path.join( outdir ,'V'+ prihdr['VISITID'], filename)
             assert os.path.isfile(f)
             assert prihdr['PA_APER'] == visit["roll_angle"]
             i += 1
@@ -425,7 +455,7 @@ def test_L1_product_from_CPGS():
 
     # test at the observation sequence level
     # n_frames and exp_time values are not critical
-    n_frames = 100
+    n_frames = 10
     exp_time = 30
 
     simulatedImage_list_sequence = observation.generate_observation_sequence( scene_target, optics, detector_target, exp_time, n_frames, save_as_fits=True, output_dir=outdir, full_frame=True, loc_x=300, loc_y=300)
@@ -446,7 +476,8 @@ def test_L1_product_from_CPGS():
     # Delete the files 
     shutil.rmtree(outdir)
 
+
+
 if __name__ == '__main__':
-    #run_sim()
     test_L1_product_fits_format()
     test_L1_product_from_CPGS()

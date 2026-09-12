@@ -15,6 +15,7 @@ Corgisim Documentation
    polarimetry_demo.ipynb
    spc-wide_demo.ipynb
    spec_slit_prism_demo.ipynb
+   Satellite_spots_demo.ipynb
    finite_stellar_diam_tutorial.ipynb
    jitter_tutorial.ipynb
 
