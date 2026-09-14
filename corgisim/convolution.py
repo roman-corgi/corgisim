@@ -155,7 +155,13 @@ def nearest_id_map(r_lamD, theta_deg, radii_lamD, azimuths_deg):
     azimuth_ids = ((theta_deg / azimuth_step).astype(int) % len(azimuths_deg))
 
     # Flat PRF index: first varying radius, then azimuth
-    prf_ids = radial_ids * len(azimuths_deg) + azimuth_ids
+    # prf_ids = radial_ids * len(azimuths_deg) + azimuth_ids
+
+    prf_ids = np.where(
+        radial_ids == 0,
+        0,
+        1 + (radial_ids - 1) * len(azimuths_deg) + azimuth_ids,
+    )
 
     return prf_ids
 
