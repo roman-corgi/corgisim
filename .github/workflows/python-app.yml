@@ -82,4 +82,5 @@ jobs:
 
     - name: Test with pytest (${{ matrix.shard }})
       run: |
-        pytest --cov=corgisim ${{ matrix.pytest_args }}
+        coverage run -m pytest ${{ matrix.pytest_args }}
+        coverage report -m
