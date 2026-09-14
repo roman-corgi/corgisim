@@ -345,7 +345,7 @@ def fourier_shift(img, shift):
     phase = np.exp(-1j * 2*np.pi * (kx*dx + ky*dy))
     return np.real(ifft2(fft2(img) * phase))
 
-def centre_prf_cube(prf_cube, method='centroid'):
+def centre_prf_cube(prf_cube, method='source_position', positions=None, res_mas=None, pix_scale_mas=None):
     """
     Centre each PRF in a cube via Fourier shift.
     
@@ -353,7 +353,7 @@ def centre_prf_cube(prf_cube, method='centroid'):
     ----------
     prf_cube : ndarray, shape (N_prfs, height, width)
         Input PRF cube with off-axis PRFs
-    method : {'centroid', 'peak'}
+    method : {'centroid', 'peak', 'source_position'}, optional
         Method to determine PRF centre:
         - 'centroid': Intensity-weighted centroid (default)
         - 'peak': Location of maximum value
@@ -390,9 +390,23 @@ def centre_prf_cube(prf_cube, method='centroid'):
             # Peak location
             peak_idx = np.unravel_index(np.argmax(prf_cube[i]), prf_cube[i].shape)
             ref_y, ref_x = peak_idx
+
+        elif method == 'source_position': # default method for 2D scene simulation. This is the most robust method to centre the off-axis PSFs because we already know the offsets when creating the off-axis PSFs.
+            if positions is None or res_mas is None or pix_scale_mas is None:
+                raise ValueError("For method 'source_position', 'positions', 'res_mas', and 'pix_scale_mas' must be provided.")
+
+            radius_lamD, azimuth_angle = positions[i]
+            theta = azimuth_angle.to_value(u.rad)
+
+            dx_pix = (radius_lamD * res_mas / pix_scale_mas * np.cos(theta))
+            dy_pix = (radius_lamD * res_mas / pix_scale_mas * np.sin(theta))
+
+            # Known location of the injected source in the PRF array
+            ref_x = cent_x + dx_pix
+            ref_y = cent_y + dy_pix
             
         else:
-            raise ValueError(f"Unknown centering method: {method}. Use 'centroid' or 'peak'.")
+            raise ValueError(f"Unknown centering method: {method}. Use 'centroid' or 'peak' or 'source_position'.")
         
         # Calculate shift needed to move reference point to array center
         shift_y = cent_y - ref_y
