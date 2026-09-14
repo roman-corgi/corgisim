@@ -212,6 +212,7 @@ def bilinear_indices_weights(r_lamD, theta_deg, radii_lamD, azimuths_deg):
     -----
     - This function only computes the geometry-dependent PRF indices and weights. 
     - The PRF cube is assumed to contain only off axis PRFs. 
+    - The on-axis PRF is assumed to be at the first index (index 0).
     - When interpolation collapses to a single radial node (r_low == r_high),
        α is set to zero, corresponding to full weight on the lower PRF.
     """
