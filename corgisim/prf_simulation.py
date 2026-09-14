@@ -355,9 +355,16 @@ def centre_prf_cube(prf_cube, method='source_position', positions=None, res_mas=
         Input PRF cube with off-axis PRFs
     method : {'centroid', 'peak', 'source_position'}, optional
         Method to determine PRF centre:
-        - 'centroid': Intensity-weighted centroid (default)
+        - 'centroid': Intensity-weighted centroid
         - 'peak': Location of maximum value
-    
+        - 'source_position': Default method for centring off-axis PSFs. Location of the off-axis PSF based on known offset in polar coordinates (requires `positions`, `res_mas`, and `pix_scale_mas`).
+    positions : list of tuples, optional
+        List of (radius_lamD, azimuth_angle) tuples for each PRF, required if method='source_position'.
+    res_mas : float, optional
+        Resolution in milliarcseconds, required if method='source_position'.
+    pix_scale_mas : float, optional
+        Pixel scale in milliarcseconds, required if method='source_position'.
+
     Returns
     -------
     ndarray, shape (N_prfs, height, width)
@@ -374,7 +381,7 @@ def centre_prf_cube(prf_cube, method='source_position', positions=None, res_mas=
     
     for i in range(N_prfs):
         # Determine reference point based on method
-        if method == 'centroid':
+        if method == 'centroid': # sanity check to obtain the location of the core of the off-axis PSF. Avoid using this if we have non-coronagraphic PSFs.
             # Intensity-weighted centroid
             y, x = np.mgrid[:ph, :pw]
             total = prf_cube[i].sum()
@@ -387,7 +394,7 @@ def centre_prf_cube(prf_cube, method='source_position', positions=None, res_mas=
                 ref_y, ref_x = cent_y, cent_x
                 
         elif method == 'peak':
-            # Peak location
+            # Sanity check for the peak location. Avoid using this if we have coronagrpahic PSFs. 
             peak_idx = np.unravel_index(np.argmax(prf_cube[i]), prf_cube[i].shape)
             ref_y, ref_x = peak_idx
 
