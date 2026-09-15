@@ -590,7 +590,15 @@ def test_generating_multiple_frames():
         # Save the image
         outputs.save_hdu_to_fits(sim_scene.image_on_detector,outdir=outdir, write_as_L1=True,
                                  overwrite_pri_keywords=header_overrides,overwrite_ext_keywords=ext_header_overrides)
-        
+    
+    # Also test a subframe, which is a non-L1 data product.
+    # Note that non-L1 products cannot have header overrides. Including header overrides will prompt a ValueError in this case.
+    for iframe in range(Nframes):
+        # Simulate the image on the detector
+        sim_scene = detector.generate_detector_image(sim_scene, exp_time,full_frame = False,loc_x=300,loc_y=300)
+        # Save the image
+        filename = 'cgitest_deleteme_%d.fits' % iframe
+        outputs.save_hdu_to_fits(sim_scene.image_on_detector,outdir=outdir, write_as_L1=False,filename=filename)
     
     
 
