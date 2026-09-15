@@ -329,8 +329,9 @@ def save_hdu_to_fits( hdul, outdir=None, overwrite=False, write_as_L1=False, fil
         
         # Remove information in overwrite_pri_keywords that is no longer needed
         # and that can cause the code to crash for subsequent frames
-        if "FILENAME" in overwrite_pri_keywords.keys():
-            del overwrite_pri_keywords["FILENAME"]
+        if write_as_L1:
+            if "FILENAME" in overwrite_pri_keywords.keys():
+                del overwrite_pri_keywords["FILENAME"]
     
         return filepath
 
