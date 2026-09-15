@@ -82,5 +82,5 @@ jobs:
 
     - name: Test with pytest (${{ matrix.shard }})
       run: |
-        coverage run -m pytest ${{ matrix.pytest_args }}
+        coverage run -m -a pytest ${{ matrix.pytest_args }}
         coverage report -m
