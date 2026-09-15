@@ -1,0 +1,84 @@
+# This workflow will install Python dependencies, run tests and lint with a single version of Python
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+
+name: Python application
+
+on:
+  schedule:
+    - cron: "0 0 * * 6"
+  workflow_dispatch:
+permissions:
+  contents: read
+
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: jitterspecc
+            pytest_args: >-
+              ./test/test_jitter.py
+              ./test/test_L1_product_fits_format_specmode.py
+          - shard: heavy
+            pytest_args: >-
+              ./test/test_L1_product_fits_format.py
+              ./test/test_observation_sequence.py
+          - shard: rest
+            pytest_args: >-
+              ./test
+              --ignore=./test/test_jitter.py
+              --ignore=./test/test_L1_product_fits_format.py
+              --ignore=./test/test_L1_product_fits_format_specmode.py
+              --ignore=./test/test_observation_sequence.py
+
+    steps:
+    - uses: actions/checkout@v7
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v7
+      with:
+        python-version: "3.12"
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest
+        pip install pytest-cov
+        pip install unzip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt .; fi
+    - name: Download and install Proper
+      run: |
+        wget https://sourceforge.net/projects/proper-library/files/proper_v3.3.5_python.zip && unzip proper_v3.3.5_python.zip
+        cd proper_v3.3.5_python/
+        python -m pip install .
+        cd ..
+    - name: Download and install Roman preflight
+      run: |
+        git clone https://github.com/roman-corgi/cgisim_cpp
+        cd cgisim_cpp/
+        python -m pip install .
+        cd ..
+    - name: Download and install eetc
+      run: |
+        git clone https://github.com/nasa-jpl/cgi-eetc.git
+        cd cgi-eetc/
+        python -m pip install .
+        cd ..
+    - name: Download and install CGISim
+      run: |
+        wget https://sourceforge.net/projects/cgisim/files/cgisim_v4.1.zip && unzip cgisim_v4.1.zip
+        cd cgisim_v4.1/
+        python -m pip install .
+        cd ..
+
+    - name: Set Swap Space
+      uses: pierotofy/set-swap-space@master
+      with:
+        swap-size-gb: 10
+
+    - name: Test with pytest (${{ matrix.shard }})
+      run: |
+        coverage run -a -m pytest ${{ matrix.pytest_args }}
+        coverage report -m 
