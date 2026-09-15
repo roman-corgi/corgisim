@@ -584,11 +584,9 @@ def test_generating_multiple_frames():
     sim_scene = optics.get_host_star_psf(ref_scene)
     
     # Generate the L1 data products
-    framelist = []
     for iframe in range(Nframes):
         # Simulate the image on the detector
         sim_scene = detector.generate_detector_image(sim_scene, exp_time,full_frame = True,loc_x=300,loc_y=300)
-        framelist.append(sim_scene)
         # Save the image
         outputs.save_hdu_to_fits(sim_scene.image_on_detector,outdir=outdir, write_as_L1=True,
                                  overwrite_pri_keywords=header_overrides,overwrite_ext_keywords=ext_header_overrides)
