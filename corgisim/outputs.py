@@ -217,11 +217,11 @@ def save_hdu_to_fits( hdul, outdir=None, overwrite=False, write_as_L1=False, fil
             overwrite_pri_keywords = overwrite_pri_keywords or {}
             overwrite_ext_keywords = overwrite_ext_keywords or {}
 
-            visitid_keywords = {"PROGNUM", "EXECNUM", "SEGMENT", "OBSNUM", "VISNUM", "FILENAME"}
+            visitid_keywords = {"PROGNUM", "EXECNUM", "CAMPAIGN","SEGMENT", "OBSNUM", "VISNUM", "FILENAME"}
 
             if any(key in overwrite_pri_keywords for key in visitid_keywords):
                 # There are lines below that will update overwrite_pri_keys to
-                # include the PROGNUM, EXECNUM, SEGMENT, OBSNUM, VISNUM, and FILENAME
+                # include the PROGNUM, EXECNUM, CAMPAIGN, SEGMENT, OBSNUM, VISNUM, and FILENAME
                 # if the VISITID is included in the overwrite_pri_keywords.
                 # To prevent those lines from causing a simulation script from 
                 # crashing on a subsequent frame, check whether the specified 
@@ -229,7 +229,7 @@ def save_hdu_to_fits( hdul, outdir=None, overwrite=False, write_as_L1=False, fil
                 # and only raise the ValueError if there is an inconsistency.
                 raise_visitid_error = False
                 if "VISITID" not in overwrite_pri_keywords.keys():
-                    raise_visitid_error = True # Raise the error if the VISITID isn't specified but any of PROGNUM, EXECNUM, SEGMENT, OBSNUM, VISNUM, and FILENAME are
+                    raise_visitid_error = True # Raise the error if the VISITID isn't specified but any of PROGNUM, EXECNUM, CAMPAIGN, SEGMENT, OBSNUM, VISNUM, and FILENAME are
                 else:
                     visit_id = overwrite_pri_keywords.get("VISITID", prihdr["VISITID"])
                     
