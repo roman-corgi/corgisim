@@ -63,5 +63,23 @@ jobs:
 
     - name: Minimal test
       run: |
-        coverage run -m pytest ./test/test_minimal.py 
+        coverage run -m --data-file=.coverage_2D_convolution  pytest ./test/test_2D_convolution.py 
         coverage report -m
+        
+    - name: Upload artifact 2D
+      uses: actions/upload-artifact@v7
+      with:
+        name: coverage_2D_convolution      
+        path: coverage/ 
+        retention-days: 1  
+        
+    - name: test
+      run: |
+        coverage run -m --data-file=.coverage_coverage_bandpass  pytest ./test/test_bandpass.py 
+        
+    - name: Upload artifact Bandpass
+      uses: actions/upload-artifact@v7
+      with:
+        name: coverage_bandpass      
+        path: coverage/ 
+        retention-days: 1  
