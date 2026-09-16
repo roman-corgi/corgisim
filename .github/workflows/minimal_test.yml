@@ -73,6 +73,7 @@ jobs:
         
     - name: test
       run: |
+        pwd
         coverage run -m --data-file=coverage_bandpass  pytest ./test/test_bandpass.py 
         
     - name: Upload artifact Bandpass
