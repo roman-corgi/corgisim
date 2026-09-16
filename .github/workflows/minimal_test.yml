@@ -95,6 +95,7 @@ jobs:
 
     - name: Merge results
       run: |
+        pwd
         cd all-coverage
         coverage combine coverage_bandpass coverage_2D_convolution
         coverage report -m
