@@ -95,7 +95,8 @@ jobs:
 
     - name: Merge results
       run: |
-        pwd
+        python -m pip install --upgrade pip
+        pip install coverage
         cd all_coverage
         coverage combine coverage_bandpass coverage_2D_convolution
         coverage report -m
