@@ -75,6 +75,7 @@ jobs:
       run: |
         pwd
         coverage run -m --data-file=coverage_bandpass  pytest ./test/test_bandpass.py 
+        ls -l 
         
     - name: Upload artifact Bandpass
       uses: actions/upload-artifact@v7
@@ -87,6 +88,8 @@ jobs:
     needs: build 
     runs-on: ubuntu-24.04
     steps:
+    - uses: actions/checkout@v7
+
     - name: Download Artifact
       uses: actions/download-artifact@v8
       with: 
