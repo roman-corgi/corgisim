@@ -109,5 +109,5 @@ jobs:
         python -m pip install --upgrade pip
         pip install coverage
         cd all_coverage
-        coverage combine coverage_bandpass coverage_2D_convolution
+        coverage combine coverage_jitterspecc coverage_heavy coverage_rest
         coverage report -m
