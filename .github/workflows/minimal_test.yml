@@ -15,9 +15,7 @@ permissions:
 
 jobs:
   build:
-
     runs-on: ubuntu-24.04
-
     steps:
     - uses: actions/checkout@v7
     - name: Set up Python 3.12
@@ -83,3 +81,22 @@ jobs:
         name: coverage_bandpass      
         path: coverage_bandpass
         retention-days: 1  
+        
+  Download:
+    needs: build 
+    runs-on: ubuntu-24.04
+    steps:
+    - name: Download Artifact
+      uses: actions/download-artifact@v8
+      with: 
+        pattern: coverage_* 
+        path: all_coverage
+        merge-multiple: true 
+
+    - name: Merge results
+      run: |
+        cd all-coverage
+        coverage combine coverage_bandpass coverage_2D_convolution
+        coverage report -m
+      
+    
