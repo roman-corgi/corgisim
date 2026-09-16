@@ -63,7 +63,7 @@ jobs:
 
     - name: Minimal test
       run: |
-        coverage run -m --data-file=.coverage_2D_convolution  pytest ./test/test_2D_convolution.py 
+        coverage run -m --data-file=.coverage_2D_convolution  pytest ./test/test_2D_scene.py 
         coverage report -m
         
     - name: Upload artifact 2D
