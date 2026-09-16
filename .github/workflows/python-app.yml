@@ -82,5 +82,32 @@ jobs:
 
     - name: Test with pytest (${{ matrix.shard }})
       run: |
-        coverage run -m -a pytest ${{ matrix.pytest_args }}
+        coverage run -m --data-file=coverage_${{ matrix.shard }} pytest ${{ matrix.pytest_args }}
+
+    - name: Upload artifact ${{ matrix.shard }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: coverage_${{ matrix.shard }}      
+        path: coverage_${{ matrix.shard }}
+        retention-days: 1  
+        
+  Download:
+    needs: build 
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Download Artifact
+      uses: actions/download-artifact@v8
+      with: 
+        pattern: coverage_* 
+        path: all_coverage
+        merge-multiple: true 
+
+    - name: Merge results
+      run: |
+        python -m pip install --upgrade pip
+        pip install coverage
+        cd all_coverage
+        coverage combine coverage_bandpass coverage_2D_convolution
         coverage report -m
