@@ -1477,13 +1477,6 @@ class CorgiOptics():
         # Convert string to boolean
         is_centred = (prf_info_is_centred == 'True') 
 
-        if not is_centred:
-            print("PRF cube is not centred. centring now...")
-            from corgisim.prf_simulation import centre_prf_cube
-            prf_cube = centre_prf_cube(fits.getdata(prf_cube_path), method='centroid')
-        else: 
-            prf_cube = fits.getdata(prf_cube_path)
-
         # 1. Get the radii grids for convolution 
         radii_lamD, _ = conv.build_radial_grid(
             prf_sim_info['iwa'], 
@@ -1496,6 +1489,30 @@ class CorgiOptics():
 
         # 2. Get the azimuth grid for convolution
         azimuths_deg, _ = conv.build_azimuth_grid(prf_sim_info['step_deg'])
+
+        positions = conv.get_valid_polar_positions(
+            radii_lamD,
+            azimuths_deg,
+        )
+
+        # Load the cube once and verify that it follows the expected layout:
+        # one on-axis PRF followed by (N_radial - 1) × N_azimuth PRFs.
+        prf_cube = fits.getdata(prf_cube_path)
+
+        expected_n_prfs = len(positions)
+        actual_n_prfs = prf_cube.shape[0]
+
+        if actual_n_prfs != expected_n_prfs:
+            raise ValueError(
+                f"Expected {expected_n_prfs} PRFs, including one on-axis PRF, "
+                f"but found {actual_n_prfs}. Regenerate the cube or prepend "
+                "a matching on-axis PRF."
+            )
+
+        if not is_centred:
+            print("PRF cube is not centred. centring now...")
+            from corgisim.prf_simulation import centre_prf_cube
+            prf_cube = centre_prf_cube(prf_cube, method='source_position', positions=positions, res_mas=self.res_mas, pix_scale_mas=constants.PIXEL_SCALE_ARCSEC * 1e3)
 
         # 3. Perform convolution
         conv2d = conv._convolve_with_prfs(
