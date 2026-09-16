@@ -70,16 +70,16 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         name: coverage_2D_convolution      
-        path: coverage/ 
+        path: .coverage_2D_convolution 
         retention-days: 1  
         
     - name: test
       run: |
-        coverage run -m --data-file=.coverage_coverage_bandpass  pytest ./test/test_bandpass.py 
+        coverage run -m --data-file=.coverage_bandpass  pytest ./test/test_bandpass.py 
         
     - name: Upload artifact Bandpass
       uses: actions/upload-artifact@v7
       with:
         name: coverage_bandpass      
-        path: coverage/ 
+        path: .coverage_bandpass
         retention-days: 1  
