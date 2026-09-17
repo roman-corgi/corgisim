@@ -236,19 +236,19 @@ def save_hdu_to_fits( hdul, outdir=None, overwrite=False, write_as_L1=False, fil
                 # Check that the PROGNUM, EXECNUM, CAMPAIGN, SEGMENT, OBSNUM, and VISNUM have the correct format if specified
                 if ("PROGNUM" in overwrite_pri_keywords.keys()) and (overwrite_pri_keywords["PROGNUM"] != visit_id[0:4]):
                     raise_visitid_error = True
-                if ("EXECNUM" in overwrite_pri_keywords.keys()) and (overwrite_pri_keywords["EXECNUM"] != visit_id[4:7]):
+                elif ("EXECNUM" in overwrite_pri_keywords.keys()) and (overwrite_pri_keywords["EXECNUM"] != visit_id[4:7]):
                     raise_visitid_error = True
-                if ("CAMPAIGN" in overwrite_pri_keywords.keys()) and (overwrite_pri_keywords["CAMPAIGN"] != visit_id[7:10]):
+                elif ("CAMPAIGN" in overwrite_pri_keywords.keys()) and (overwrite_pri_keywords["CAMPAIGN"] != visit_id[7:10]):
                     raise_visitid_error = True
-                if ("SEGMENT" in overwrite_pri_keywords.keys()) and (overwrite_pri_keywords["SEGMENT"] != visit_id[10:13]):
+                elif ("SEGMENT" in overwrite_pri_keywords.keys()) and (overwrite_pri_keywords["SEGMENT"] != visit_id[10:13]):
                     raise_visitid_error = True
-                if ("OBSNUM" in overwrite_pri_keywords.keys()) and (overwrite_pri_keywords["OBSNUM"] != visit_id[13:16]):
+                elif ("OBSNUM" in overwrite_pri_keywords.keys()) and (overwrite_pri_keywords["OBSNUM"] != visit_id[13:16]):
                     raise_visitid_error = True
-                if ("VISNUM" in overwrite_pri_keywords.keys()) and (overwrite_pri_keywords["VISNUM"] != visit_id[16:19]):
+                elif ("VISNUM" in overwrite_pri_keywords.keys()) and (overwrite_pri_keywords["VISNUM"] != visit_id[16:19]):
                     raise_visitid_error = True
                 
                 # The filename should not be included in overwrite_pri_keywords at all
-                if "FILENAME" in overwrite_pri_keywords.keys():
+                elif "FILENAME" in overwrite_pri_keywords.keys():
                     raise_visitid_error = True
                     
                 # Raise the ValueError if any of the conditions above are met
