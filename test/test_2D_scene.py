@@ -112,18 +112,14 @@ def test_get_valid_positions():
     
     radii = [0.0, 1.0, 2.0]
     azimuths = [0.0, 90.0] * u.deg
+
     positions = get_valid_polar_positions(radii, azimuths)
     
-    # Should exclude ALL positions at r=0 (including (0, 0°))
-    # because at the exact center, angle is meaningless
-    # Only off-axis positions should be included: (1,0°), (1,90°), (2,0°), (2,90°)
-    assert len(positions) == 4  # 2 radii * 2 azimuths
-    
-    # Verify no r=0 positions are included
-    for r, theta in positions:
-        assert r > 0.0, f"Found invalid r=0 position: ({r}, {theta})"
-    
+    # 1+ on-axis position + 4 off-axis positions should be included: (1,0°), (1,90°), (2,0°), (2,90°)
+    assert len(positions) == 5  # 1 on-axis + 4 off-axis (2 radii * 2 azimuths)
+        
     # Verify expected positions are present
+    assert (0.0, 0.0 * u.deg) in positions
     assert (1.0, 0.0 * u.deg) in positions
     assert (1.0, 90.0 * u.deg) in positions
     assert (2.0, 0.0 * u.deg) in positions
@@ -301,29 +297,6 @@ def test_single_prf_edge_case():
     
     # Should preserve scene exactly (within floating point precision)
     assert np.allclose(result, scene, rtol=1e-12)
-
-def test_zero_radius_position_filtering():
-    """Test that ALL positions at r=0 are properly excluded."""
-    from corgisim.convolution import get_valid_polar_positions
-    
-    radii = [0.0, 1.0]
-    azimuths = [0.0, 90.0, 180.0] * u.deg
-    
-    positions = get_valid_polar_positions(radii, azimuths)
-    
-    # Should have: (1,0°), (1,90°), (1,180°) = 3 positions
-    # Should exclude: (0,0°), (0,90°), (0,180°) - all r=0 positions
-    # This is correct because at r=0, the angle is physically meaningless
-    assert len(positions) == 3
-    
-    # Verify NO positions at r=0 are included
-    zero_radius_positions = [(r, theta) for r, theta in positions if r == 0.0]
-    assert len(zero_radius_positions) == 0, "No r=0 positions should be included"
-    
-    # Verify only r>0 positions are present
-    assert (1.0, 0.0 * u.deg) in positions
-    assert (1.0, 90.0 * u.deg) in positions
-    assert (1.0, 180.0 * u.deg) in positions
 
 def test_simulate_2d_scene_missing_prf_path():
     from corgisim.instrument import CorgiOptics
