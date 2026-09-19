@@ -60,18 +60,18 @@ class Scene():
 
         twoD_scene_info (dict): A dictionary containing information about an extended 2D scene, such as a disk or other extended structure. Required keys are:
 
-            - "contrast" (float): The contrast of the 2D scene relative to the host star in magnitudes (dMag). This value is currently used to generate a spectrum for the 2D scene based on the host star's spectrum, but in the future we may want to allow users to directly input the 2D scene spectrum or flux instead of relying on contrast with the host star.
+            - "surface_brightness_unit" (str): Unit convention for the disk-model image pixel values. Supported values are:
+                - "mJy/arcsec^2"
+                - "W.m^-2.pixel^-1" for an MCFOST lambda * F_lambda image
+                - "contrast/pixel"
 
-            - "disk_model_path" (str): The absolute file path to a FITS file containing the 2D scene image. The image data are treated as a spatial brightness template and are normalised internally so that the total scene flux sums to 1 before convolution. 
+            - "disk_model_path" (str): The absolute file path to a FITS file containing the 2D scene image. The pixel values are converted to detector count rate before convolution.
 
                 Assumptions:
                 - The FITS image must already be sampled on the same pixel scale used for convolution, currently 0.0218 arcsec/pixel, but in the future we may want to allow users to input the pixel scale as well.
                 - The image should be centred
                 - The image should be oriented in the same reference frame as the point source coordinates (typically North-up, East-left).
                 - The current implementation does not resample the input image, or infer the pixel scale from the FITS header. 
-
-            Notes:
-            -  The 2D scene flux calibration is provisional. Future versions may allow users to provide an absolute flux or custom spectrum directly instead of deriving the scene spectrum from the host star and the contrast. 
 
 
     Raises:
@@ -146,7 +146,7 @@ class Scene():
         self.twoD_scene_spectrum = None
 
         # If a 2D scene is provided, generate its spectrum based on the host star's properties and the scene's contrast
-        if twoD_scene_info is not None:
+        if twoD_scene_info is not None and "contrast" in twoD_scene_info:
             self.twoD_scene_spectrum = self.get_stellar_spectrum(
                 self._host_star_sptype,
                 self._host_star_Vmag + twoD_scene_info['contrast'],
