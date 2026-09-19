@@ -95,6 +95,9 @@ def test_L1_product_fits_format():
     assert prihr['PA_APER'] == 0.0, f"Expected data PA_APER=0, but got {prihr['PA_APER']}"
     assert prihr['TARGET'] == 'UNKNOWN', f"Expected header TARGET = 'UNKNOWN', but got {prihr['TARGET']}"
     assert prihr['VISTYPE'] == 'CGIVST_TDD_OBS', f"Expected header VISTYPE = 'CGIVST_TDD_OBS', but got {prihr['VISTYPE']}"
+    assert prihdr['RA'] == 0.0, f"Expected header RA = 0.0, but got {prihr['RA']}"
+    assert prihdr['DEC'] == 0.0, f"Expected header DEC = 0.0, but got {prihr['DEC']}"
+ 
     assert prihr['VISITID'] == '0200001001001001001', f"Expected header VISITID = '0200001001001001001', but got {prihr['VISITID']}"
     assert prihr['PROGNUM'] == '0200', f"Expected header PROGNUM = '0200', but got {prihr['PROGNUM']}"
     assert prihr['EXECNUM'] == '001', f"Expected header EXECNUM = '001', but got {prihr['EXECNUM']}"
@@ -207,7 +210,7 @@ def test_L1_product_fits_format():
     info_dir = cgisim.lib_dir + '/cgisim_info_dir/'
 
     #Define the host star properties
-    host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype': 'vegamag','ref_flag':True,'target_name':'HD 141569A'}
+    host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype': 'vegamag','ref_flag':True,'target_name':'HD 141569A','RA':20.1,'DEC':10.1}
     point_source_info = [{'Vmag': mag_companion[0], 'magtype': 'vegamag','position_x':dx[0] , 'position_y':dy[0]},
                          {'Vmag': mag_companion[1], 'magtype': 'vegamag','position_x':dx[1] , 'position_y':dy[1]}]
 
@@ -276,6 +279,8 @@ def test_L1_product_fits_format():
     assert prihr['PA_APER'] == roll_angle, f"Expected data PA_APER={roll_angle}, but got {prihr['PA_APER']}"
     assert prihr['TARGET'] == 'HD 141569A', f"Expected header TARGET = 'HD 141569A', but got {prihr['TARGET']}"
     assert prihr['VISTYPE'] == 'CGIVST_CAL_TGTREF_PHOT', f"Expected header VISTYPE = 'CGIVST_CAL_TGTREF_PHOT', but got {prihr['VISTYPE']}"
+    assert prihdr['RA'] == 20.1, f"Expected header RA = 20.1, but got {prihr['RA']}"
+    assert prihdr['DEC'] == 10.1, f"Expected header DEC = 10.1, but got {prihr['DEC']}"
     assert prihr['VISITID'] == '0300002002002901002', f"Expected header VISITID = '0300002002002901002', but got {prihr['VISITID']}"
     assert prihr['PROGNUM'] == '0300', f"Expected header PROGNUM = '0300', but got {prihr['PROGNUM']}"
     assert prihr['EXECNUM'] == '002', f"Expected header EXECNUM = '002', but got {prihr['EXECNUM']}"
