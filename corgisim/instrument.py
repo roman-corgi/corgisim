@@ -375,17 +375,19 @@ class CorgiOptics():
         if resizing != True:
             return fields
         else:
-
-            # Initialize the image array based on whether oversampling is returned
-            images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if self.return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
-            images = np.zeros(images_shape, dtype=complex)
+            print("Resizing the fields to the final output dimension of {:d}x{:d}".format(self.grid_dim_out,self.grid_dim_out))
+            # # Initialize the image array based on whether oversampling is returned
+            # images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if self.return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
+            # images = np.zeros(images_shape, dtype=complex)
         
-            for i in range(fields.shape[0]):
-                ## integrate oversampled PSF back to one grid per pixel
-                images[i,:,:] +=  fields[i,:,:].reshape((self.grid_dim_out,self.oversampling_factor,self.grid_dim_out,self.oversampling_factor)).mean(3).mean(1) * self.oversampling_factor**2
-                ## update the optics_keywords['output_dim'] back to non_oversample size
+            # for i in range(fields.shape[0]):
+            #     ## integrate oversampled PSF back to one grid per pixel
+            #     images[i,:,:] +=  fields[i,:,:].reshape((self.grid_dim_out,self.oversampling_factor,self.grid_dim_out,self.oversampling_factor)).mean(3).mean(1) * self.oversampling_factor**2
+            #     ## update the optics_keywords['output_dim'] back to non_oversample size
+
+            n_out = self.grid_dim_out
             self.optics_keywords['output_dim'] = self.grid_dim_out
-    
+            images = np.array([fourier_downsample(field, n_out) for field in fields])
             return images
         
     def construct_image_array(self,grid_dim_out_tem,images_tem,obs):
@@ -1864,3 +1866,33 @@ def skycoord_to_excamcoord(dra, ddec, roll_angle):
     dx = x0 * np.cos(theta_comp) - y0 * np.sin(theta_comp)
     dy = x0 * np.sin(theta_comp) + y0 * np.cos(theta_comp)
     return dx, dy
+
+
+def fourier_downsample(E_in: np.ndarray, n_out_target: int) -> np.ndarray:
+    """
+    Downsampling of a complex focal plane E-field. 
+    Preserves continuous field normalization under the NumPy FFT convention.
+    """
+    n_in = E_in.shape[-1]
+
+    if E_in.shape[-2] != E_in.shape[-1]:
+        raise ValueError("E_in must be a square 2D grid.")
+    if n_out_target > n_in:
+        raise ValueError("n_out_target must be <= input size.")
+
+    # Transform to Fourier domain & center zero-frequency
+    F = np.fft.fftshift(np.fft.fft2(E_in))
+
+    # Crop high frequencies around the center
+    center = n_in // 2
+    half = n_out_target // 2
+    start = center - half
+    end = start + n_out_target
+
+    F_cropped = F[..., start:end, start:end]
+
+    # Transform back to spatial domain
+    E_out = np.fft.ifft2(np.fft.ifftshift(F_cropped))
+
+    # Rescale amplitude to preserve continuous field power/normalization
+    return E_out * (n_out_target / n_in) ** 2
