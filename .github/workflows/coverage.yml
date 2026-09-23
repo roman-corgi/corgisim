@@ -1,11 +1,7 @@
-# This workflow will install Python dependencies, run tests and lint with a single version of Python
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 
-name: Python application
+name: Coverage
 
 on:
-  push:
-    branches: ["main"]
   schedule:
     - cron: "0 0 * * 6"
   workflow_dispatch:
@@ -16,7 +12,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 330
+    timeout-minutes: 350
     strategy:
       fail-fast: false
       matrix:
@@ -47,6 +43,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install pytest
+        pip install coverage
         pip install unzip
         if [ -f requirements.txt ]; then pip install -r requirements.txt .; fi
     - name: Download and install Proper
@@ -79,6 +76,34 @@ jobs:
       with:
         swap-size-gb: 10
 
-    - name: Test with pytest (${{ matrix.shard }})
+    - name: Test with coverage (${{ matrix.shard }})
       run: |
-        pytest ${{ matrix.pytest_args }}
+        coverage run -m --data-file=coverage_${{ matrix.shard }} pytest ${{ matrix.pytest_args }}
+
+    - name: Upload artifact ${{ matrix.shard }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: coverage_${{ matrix.shard }}      
+        path: coverage_${{ matrix.shard }}
+        retention-days: 1  
+        
+  CoverageReport:
+    needs: build 
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Download Artifact
+      uses: actions/download-artifact@v8
+      with: 
+        pattern: coverage_* 
+        path: all_coverage
+        merge-multiple: true 
+
+    - name: Merge results
+      run: |
+        python -m pip install --upgrade pip
+        pip install coverage
+        cd all_coverage
+        coverage combine coverage_jitterspecc coverage_heavy coverage_rest
+        coverage report -m

@@ -15,13 +15,11 @@ permissions:
 
 jobs:
   build:
-
     runs-on: ubuntu-24.04
-
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Set up Python 3.12
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v7
       with:
         python-version: "3.12"
     - name: Install dependencies
@@ -32,8 +30,8 @@ jobs:
         if [ -f requirements.txt ]; then pip install -r requirements.txt .; fi
     - name: Download and install Proper
       run: |
-        wget https://sourceforge.net/projects/proper-library/files/proper_v3.3.5_python.zip && unzip proper_v3.3.5_python.zip
-        cd proper_v3.3.5_python/
+        wget https://sourceforge.net/projects/proper-library/files/proper_v3.3.7_python.zip && unzip proper_v3.3.7_python.zip
+        cd proper_v3.3.7_python/
         python -m pip install .
         cd ..        
     - name: Download and install Roman preflight
@@ -62,4 +60,4 @@ jobs:
 
     - name: Minimal test
       run: |
-        pytest ./test/test_minimal.py
+        pytest ./test/test_minimal.py 

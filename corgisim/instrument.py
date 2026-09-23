@@ -917,7 +917,9 @@ class CorgiOptics():
                     'nd_filter':self.nd,
                     'target_name': input_scene.target_name,
                     'visit_type': self.visit_type,
-                    'visit_id': self.visit_id}
+                    'visit_id': self.visit_id,
+                    'RA':input_scene.RA,
+                    'DEC':input_scene.DEC}
 
         # Define specific keys from self.optics_keywords to include in the header            
         keys_to_include_in_header = ['use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
@@ -1477,13 +1479,6 @@ class CorgiOptics():
         # Convert string to boolean
         is_centred = (prf_info_is_centred == 'True') 
 
-        if not is_centred:
-            print("PRF cube is not centred. centring now...")
-            from corgisim.prf_simulation import centre_prf_cube
-            prf_cube = centre_prf_cube(fits.getdata(prf_cube_path), method='centroid')
-        else: 
-            prf_cube = fits.getdata(prf_cube_path)
-
         # 1. Get the radii grids for convolution 
         radii_lamD, _ = conv.build_radial_grid(
             prf_sim_info['iwa'], 
@@ -1496,6 +1491,30 @@ class CorgiOptics():
 
         # 2. Get the azimuth grid for convolution
         azimuths_deg, _ = conv.build_azimuth_grid(prf_sim_info['step_deg'])
+
+        positions = conv.get_valid_polar_positions(
+            radii_lamD,
+            azimuths_deg,
+        )
+
+        # Load the cube once and verify that it follows the expected layout:
+        # one on-axis PRF followed by (N_radial - 1) × N_azimuth PRFs.
+        prf_cube = fits.getdata(prf_cube_path)
+
+        expected_n_prfs = len(positions)
+        actual_n_prfs = prf_cube.shape[0]
+
+        if actual_n_prfs != expected_n_prfs:
+            raise ValueError(
+                f"Expected {expected_n_prfs} PRFs, including one on-axis PRF, "
+                f"but found {actual_n_prfs}. Regenerate the cube or prepend "
+                "a matching on-axis PRF."
+            )
+
+        if not is_centred:
+            print("PRF cube is not centred. centring now...")
+            from corgisim.prf_simulation import centre_prf_cube
+            prf_cube = centre_prf_cube(prf_cube, method='source_position', positions=positions, res_mas=self.res_mas, pix_scale_mas=constants.PIXEL_SCALE_ARCSEC * 1e3)
 
         # 3. Perform convolution
         conv2d = conv._convolve_with_prfs(
@@ -1666,7 +1685,7 @@ class CorgiDetector():
                            'PHTCNT':self.photon_counting,'KGAINPAR':self.emccd_keywords_default['e_per_dn'],'cor_type':sim_info['cor_type'], 'bandpass':sim_info['bandpass'],
                            'cgi_mode': sim_info['cgi_mode'], 'polaxis':sim_info['polaxis'],'use_fpm':use_fpm,'nd_filter':sim_info['nd_filter'], 'polarization_basis': sim_info['polarization_basis'],'SATSPOTS':sim_info['SATSPOTS'],
                            'use_pupil_lens':use_pupil_lens,'use_lyot_stop':use_lyot_stop, 'use_field_stop':use_field_stop, 'PA_APER': float(sim_info['roll_angle']),
-                           'EACQ_ROW': loc_x, 'EACQ_COL': loc_y,'RN': self.emccd_keywords_default['read_noise'],'target_name': sim_info['target_name'],'VISTYPE': sim_info['visit_type'],'VISITID': sim_info['visit_id']}
+                           'EACQ_ROW': loc_y, 'EACQ_COL': loc_x,'RN': self.emccd_keywords_default['read_noise'],'target_name': sim_info['target_name'],'VISTYPE': sim_info['visit_type'],'VISITID': sim_info['visit_id'],'RA':sim_info['RA'],'DEC':sim_info['DEC']}
             if 'fsm_x_offset_mas' in sim_info:
                 header_info['FSMX'] = float(sim_info['fsm_x_offset_mas'])
             if 'fsm_y_offset_mas' in sim_info:
