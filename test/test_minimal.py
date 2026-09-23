@@ -97,88 +97,139 @@ def test_excam_mode():
     exptime = 3000
 
     detector = instrument.CorgiDetector( emccd_keywords)
-    sim_scene = detector.generate_detector_image(sim_scene, exptime,full_frame=True,loc_x=300, loc_y=400)
-
-    assert(isinstance(sim_scene.point_source_image, fits.hdu.image.PrimaryHDU)  )
-    assert(isinstance(sim_scene.point_source_image.data, np.ndarray)  )
-    assert np.any(sim_scene.point_source_image.data > 0)
-    assert np.any(sim_scene.host_star_image.data != sim_scene.point_source_image.data)
-    ### save the L1 product fits file to test/testdata folder
     local_path = corgisim.lib_dir
     outdir = os.path.join(local_path.split('corgisim')[0], 'corgisim/test/testdata')
-    outputs.save_hdu_to_fits(sim_scene.image_on_detector,outdir=outdir, write_as_L1=True)
-    ### read the L1 product fits file
-    prihdr = sim_scene.image_on_detector[0].header
-    exthdr = sim_scene.image_on_detector[1].header
-    time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
-    filename = f"cgi_{prihdr['VISITID']}_{time_in_name}_l1_.fits"
+    
+    # Test the generation of sequential frames with no header overrides
+    Nframes = 2
+    
+    for iframe in range(Nframes):
+        sim_scene = detector.generate_detector_image(sim_scene, exptime,full_frame=True,loc_x=300, loc_y=300)
 
-    assert filename.islower()
+        assert(isinstance(sim_scene.point_source_image, fits.hdu.image.PrimaryHDU)  )
+        assert(isinstance(sim_scene.point_source_image.data, np.ndarray)  )
+        assert np.any(sim_scene.point_source_image.data > 0)
+        assert np.any(sim_scene.host_star_image.data != sim_scene.point_source_image.data)
+        ### save the L1 product fits file to test/testdata folder
+        outputs.save_hdu_to_fits(sim_scene.image_on_detector,outdir=outdir, write_as_L1=True)
+        ### read the L1 product fits file
+        prihdr = sim_scene.image_on_detector[0].header
+        exthdr = sim_scene.image_on_detector[1].header
+        time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
+        filename = f"cgi_{prihdr['VISITID']}_{time_in_name}_l1_.fits"
 
-    f = os.path.join( outdir , filename)
+        assert filename.islower()
+        
+        f = os.path.join( outdir , filename)
  
-    with fits.open(f) as hdul:
-        data = hdul[1].data
-        prihr = hdul[0].header
-        exthr = hdul[1].header
+        with fits.open(f) as hdul:
+            data = hdul[1].data
+            prihr = hdul[0].header
+            exthr = hdul[1].header
 
-    assert data.dtype == np.uint16, f"Expected np.uint16, but got {data.dtype}"
-    assert exthr['BITPIX'] == 16, f"Expected BITPIX=16, but got {exthr['BITPIX']}"
-    assert data.shape[0] == 1200, f"Expected data shape[0]=2200, but got {data.shape[0]}"
-    assert data.shape[1] == 2200, f"Expected data shape[1]=1200, but got {data.shape[1]}"
-    assert exthr['FSMX'] == 0.0, f"Expected data FSMX=10, but got {exthr['FSMX']}" 
-    assert exthr['FSMY'] == 0.0, f"Expected data FSMY=10, but got {exthr['FSMY']}"
-    assert prihr['PSFREF'] == False, f"Expected data PSFREF=False, but got {prihr['PSFREF']}"
-    assert prihr['PHTCNT'] == False, f"Expected data PHTCNT=False, but got {prihr['PHTCNT']}"
+        assert data.dtype == np.uint16, f"Expected np.uint16, but got {data.dtype}"
+        assert exthr['BITPIX'] == 16, f"Expected BITPIX=16, but got {exthr['BITPIX']}"
+        assert data.shape[0] == 1200, f"Expected data shape[0]=2200, but got {data.shape[0]}"
+        assert data.shape[1] == 2200, f"Expected data shape[1]=1200, but got {data.shape[1]}"
+        assert exthr['FSMX'] == 0.0, f"Expected data FSMX=10, but got {exthr['FSMX']}" 
+        assert exthr['FSMY'] == 0.0, f"Expected data FSMY=10, but got {exthr['FSMY']}"
+        assert prihr['PSFREF'] == False, f"Expected data PSFREF=False, but got {prihr['PSFREF']}"
+        assert prihr['PHTCNT'] == False, f"Expected data PHTCNT=False, but got {prihr['PHTCNT']}"
 
-    assert exthdr['SATSPOTS'] == 0, f"Expected data SATSPOTS=0, but got {exthdr['SATSPOTS']}"
-    assert exthdr['RN'] == 165.0, f"Expected data RN=165.0, but got {exthdr['RN']}"
-    assert exthdr['KGAINPAR'] == 8.7, f"Expected data KGAINPAR=8.7, but got {exthdr['KGAINPAR']}"
-    assert exthdr['EMGAIN_C'] == 1000, f"Expected data EMGAIN_C=1000, but got {exthdr['EMGAIN_C']}"
-    assert exthdr['EMGAIN_A'] == 1000, f"Expected data EMGAIN_A=1000, but got {exthdr['EMGAIN_A']}"
-    assert exthdr['ISPC'] == 0, f"Expected header ISPC=0, but got {exthdr['ISPC']}"
+        assert exthdr['SATSPOTS'] == 0, f"Expected data SATSPOTS=0, but got {exthdr['SATSPOTS']}"
+        assert exthdr['RN'] == 165.0, f"Expected data RN=165.0, but got {exthdr['RN']}"
+        assert exthdr['KGAINPAR'] == 8.7, f"Expected data KGAINPAR=8.7, but got {exthdr['KGAINPAR']}"
+        assert exthdr['EMGAIN_C'] == 1000, f"Expected data EMGAIN_C=1000, but got {exthdr['EMGAIN_C']}"
+        assert exthdr['EMGAIN_A'] == 1000, f"Expected data EMGAIN_A=1000, but got {exthdr['EMGAIN_A']}"
+        assert exthdr['ISPC'] == 0, f"Expected header ISPC=0, but got {exthdr['ISPC']}"
 
-    assert exthdr['SPAM_H'] ==  1001.3, f"Expected data SPAM_H=1001.3, but got {exthdr['SPAM_H']}"
-    assert exthdr['SPAM_V']== 16627,  f"Expected data SPAM_V = 16627, but got {exthdr['SPAM_V']}"
-    assert exthdr['SPAMNAME'] =='OPEN' , f"Expected data SPAMNAME ='OPEN', but got {exthdr['SPAMNAME']}"
-    assert exthdr['SPAMSP_H']== 1001.3, f"Expected data SPAMSP_H=1001.3, but got {exthdr['SPAMSP_H']}"
-    assert exthdr['SPAMSP_V'] == 16627, f"Expected data SPAMSP_V=16627, but got {exthdr['SPAMSP_V']}"
+        assert exthdr['SPAM_H'] ==  1001.3, f"Expected data SPAM_H=1001.3, but got {exthdr['SPAM_H']}"
+        assert exthdr['SPAM_V']== 16627,  f"Expected data SPAM_V = 16627, but got {exthdr['SPAM_V']}"
+        assert exthdr['SPAMNAME'] =='OPEN' , f"Expected data SPAMNAME ='OPEN', but got {exthdr['SPAMNAME']}"
+        assert exthdr['SPAMSP_H']== 1001.3, f"Expected data SPAMSP_H=1001.3, but got {exthdr['SPAMSP_H']}"
+        assert exthdr['SPAMSP_V'] == 16627, f"Expected data SPAMSP_V=16627, but got {exthdr['SPAMSP_V']}"
+        
+        assert exthdr['LSAM_H'] ==  36898.7, f"Expected data LSAM_H=36898.7, but got {exthdr['LSAM_H']}"
+        assert exthdr['LSAM_V']== 4636.2,  f"Expected data LSAM_V = 4636.2, but got {exthdr['LSAM_V']}"
+        assert exthdr['LSAMNAME'] =='NFOV' , f"Expected data LSAMNAME ='NFOV', but got {exthdr['LSAMNAME']}"
+        assert exthdr['LSAMSP_H']== 36898.7, f"Expected data LSAMSP_H=36898.7, but got {exthdr['LSAMSP_H']}"
+        assert exthdr['LSAMSP_V'] == 4636.2, f"Expected data LSAMSP_V=4636.2, but got {exthdr['LSAMSP_V']}"
 
-    assert exthdr['LSAM_H'] ==  36898.7, f"Expected data LSAM_H=36898.7, but got {exthdr['LSAM_H']}"
-    assert exthdr['LSAM_V']== 4636.2,  f"Expected data LSAM_V = 4636.2, but got {exthdr['LSAM_V']}"
-    assert exthdr['LSAMNAME'] =='NFOV' , f"Expected data LSAMNAME ='NFOV', but got {exthdr['LSAMNAME']}"
-    assert exthdr['LSAMSP_H']== 36898.7, f"Expected data LSAMSP_H=36898.7, but got {exthdr['LSAMSP_H']}"
-    assert exthdr['LSAMSP_V'] == 4636.2, f"Expected data LSAMSP_V=4636.2, but got {exthdr['LSAMSP_V']}"
+        assert exthdr['CFAM_H'] == 55829.2, f"Expected data CFAM_H=55829.2, but got {exthdr['CFAM_H']}"
+        assert exthdr['CFAM_V'] == 10002.7, f"Expected data CFAM_V=10002.7, but got {exthdr['CFAM_V']}"
+        assert exthdr['CFAMNAME'] == '1F', f"Expected data CFAMNAME='1F', but got {exthdr['CFAMNAME']}"
+        assert exthdr['CFAMSP_H'] == 55829.2, f"Expected data CFAMSP_H=55829.2, but got {exthdr['CFAMSP_H']}"
+        assert exthdr['CFAMSP_V'] == 10002.7, f"Expected data CFAMSP_V=10002.7, but got {exthdr['CFAMSP_V']}"
 
-    assert exthdr['CFAM_H'] == 55829.2, f"Expected data CFAM_H=55829.2, but got {exthdr['CFAM_H']}"
-    assert exthdr['CFAM_V'] == 10002.7, f"Expected data CFAM_V=10002.7, but got {exthdr['CFAM_V']}"
-    assert exthdr['CFAMNAME'] == '1F', f"Expected data CFAMNAME='1F', but got {exthdr['CFAMNAME']}"
-    assert exthdr['CFAMSP_H'] == 55829.2, f"Expected data CFAMSP_H=55829.2, but got {exthdr['CFAMSP_H']}"
-    assert exthdr['CFAMSP_V'] == 10002.7, f"Expected data CFAMSP_V=10002.7, but got {exthdr['CFAMSP_V']}"
+        assert exthdr['DPAM_H'] == 38917.1, f"Expected data DPAM_H=38917.1, but got {exthdr['DPAM_H']}"
+        assert exthdr['DPAM_V'] == 26016.9, f"Expected data DPAM_V=26016.9, but got {exthdr['DPAM_V']}"
+        assert exthdr['DPAMNAME'] == 'IMAGING', f"Expected data DPAMNAME='IMAGING', but got {exthdr['DPAMNAME']}"
+        assert exthdr['DPAMSP_H'] == 38917.1, f"Expected data DPAMSP_H=38917.1, but got {exthdr['DPAMSP_H']}"
+        assert exthdr['DPAMSP_V'] == 26016.9, f"Expected data DPAMSP_V=26016.9, but got {exthdr['DPAMSP_V']}"
 
-    assert exthdr['DPAM_H'] == 38917.1, f"Expected data DPAM_H=38917.1, but got {exthdr['DPAM_H']}"
-    assert exthdr['DPAM_V'] == 26016.9, f"Expected data DPAM_V=26016.9, but got {exthdr['DPAM_V']}"
-    assert exthdr['DPAMNAME'] == 'IMAGING', f"Expected data DPAMNAME='IMAGING', but got {exthdr['DPAMNAME']}"
-    assert exthdr['DPAMSP_H'] == 38917.1, f"Expected data DPAMSP_H=38917.1, but got {exthdr['DPAMSP_H']}"
-    assert exthdr['DPAMSP_V'] == 26016.9, f"Expected data DPAMSP_V=26016.9, but got {exthdr['DPAMSP_V']}"
+        assert exthdr['FPAM_H'] ==  6776, f"Expected data FPAM_H= 6776, but got {exthdr['FPAM_H']}"
+        assert exthdr['FPAM_V'] == 27653.3, f"Expected data FPAM_V=27653.3, but got {exthdr['FPAM_V']}"
+        assert exthdr['FPAMNAME'] == 'HLC12_C2R5', f"Expected data FPAMNAME='HLC12_C2R5', but got {exthdr['FPAMNAME']}"
+        assert exthdr['FPAMSP_H'] ==  6776, f"Expected data FPAMSP_H= 6776, but got {exthdr['FPAMSP_H']}"
+        assert exthdr['FPAMSP_V'] == 27653.3, f"Expected data FPAMSP_V=27653.3, but got {exthdr['FPAMSP_V']}"
 
-    assert exthdr['FPAM_H'] ==  6776, f"Expected data FPAM_H= 6776, but got {exthdr['FPAM_H']}"
-    assert exthdr['FPAM_V'] == 27653.3, f"Expected data FPAM_V=27653.3, but got {exthdr['FPAM_V']}"
-    assert exthdr['FPAMNAME'] == 'HLC12_C2R5', f"Expected data FPAMNAME='HLC12_C2R5', but got {exthdr['FPAMNAME']}"
-    assert exthdr['FPAMSP_H'] ==  6776, f"Expected data FPAMSP_H= 6776, but got {exthdr['FPAMSP_H']}"
-    assert exthdr['FPAMSP_V'] == 27653.3, f"Expected data FPAMSP_V=27653.3, but got {exthdr['FPAMSP_V']}"
+        assert exthdr['FSAM_H'] ==  29387, f"Expected data FSAM_H=29387, but got {exthdr['FSAM_H']}"
+        assert exthdr['FSAM_V'] == 12238, f"Expected data FSAM_V=12238, but got {exthdr['FSAM_V']}"
+        assert exthdr['FSAMNAME'] == 'R1C1', f"Expected data FSAMNAME='R1C1', but got {exthdr['FSAMNAME']}"
+        assert exthdr['FSAMSP_H'] ==  29387, f"Expected data FSAMSP_H=29387, but got {exthdr['FSAMSP_H']}"
+        assert exthdr['FSAMSP_V'] == 12238, f"Expected data FSAMSP_V=12238, but got {exthdr['FSAMSP_V']}"
+        assert exthdr['FSMPRFL'] == 'NFOV', f"Expected data FSMPRFL=NFOV, but got {exthdr['FSMPRFL']}"
+        assert exthdr['FSMLOS'] == 1, f"Expected data FSMLOS=1, but got {exthdr['FSMLOS']}"
 
-    assert exthdr['FSAM_H'] ==  29387, f"Expected data FSAM_H=29387, but got {exthdr['FSAM_H']}"
-    assert exthdr['FSAM_V'] == 12238, f"Expected data FSAM_V=12238, but got {exthdr['FSAM_V']}"
-    assert exthdr['FSAMNAME'] == 'R1C1', f"Expected data FSAMNAME='R1C1', but got {exthdr['FSAMNAME']}"
-    assert exthdr['FSAMSP_H'] ==  29387, f"Expected data FSAMSP_H=29387, but got {exthdr['FSAMSP_H']}"
-    assert exthdr['FSAMSP_V'] == 12238, f"Expected data FSAMSP_V=12238, but got {exthdr['FSAMSP_V']}"
-    assert exthdr['FSMPRFL'] == 'NFOV', f"Expected data FSMPRFL=NFOV, but got {exthdr['FSMPRFL']}"
-    assert exthdr['FSMLOS'] == 1, f"Expected data FSMLOS=1, but got {exthdr['FSMLOS']}"
+        os.remove(f)
+        
+    # Test the generation of sequential frames with header overrides
+    visnum = '002'
+    header_overrides = {}
+    header_overrides['VISITID']='0200001001001001'+ visnum
+    
+    for iframe in range(Nframes):
+        sim_scene = detector.generate_detector_image(sim_scene, exptime,full_frame = True,loc_x=300,loc_y=300)
+        # Save the L1 product fits file to test/testdata folder
+        outputs.save_hdu_to_fits(sim_scene.image_on_detector,outdir=outdir, write_as_L1=True,
+                                 overwrite_pri_keywords=header_overrides)
+        # Check that the header changed appropriately
+        prihdr = sim_scene.image_on_detector[0].header
+        exthdr = sim_scene.image_on_detector[1].header
+        time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
+        filename = f"cgi_{prihdr['VISITID']}_{time_in_name}_l1_.fits"
 
-    assert exthdr['EACQ_ROW'] == 400, f"Expected header EACQ_ROW=400, but got {exthdr['EACQ_ROW']}"
-    assert exthdr['EACQ_COL'] == 300, f"Expected header EACQ_COL=300, but got {exthdr['EACQ_COL']}"
-    os.remove(f)
+        assert filename.islower()
+
+        f = os.path.join( outdir , filename)
+ 
+        with fits.open(f) as hdul:
+            data = hdul[1].data
+            prihr = hdul[0].header
+            exthr = hdul[1].header
+            
+        assert prihdr['VISITID'] == header_overrides['VISITID'], f"Expected VISITID={header_overrides['VISITID']} but got {prihdr['VISITID']}"
+        assert prihdr['PROGNUM'] == header_overrides['VISITID'][0:4], f"Expected PROGNUM={header_overrides['VISITID'][0:4]} but got {prihdr['PROGNUM']}"
+        assert prihdr['EXECNUM'] == header_overrides['VISITID'][4:7], f"Expected EXECNUM={header_overrides['VISITID'][4:7]} but got {prihdr['EXECNUM']}"
+        assert prihdr['CAMPAIGN'] == header_overrides['VISITID'][7:10], f"Expected CAMPAIGN=={header_overrides['VISITID'][7:10]} but got {prihdr['CAMPAIGN']}"
+        assert prihdr['SEGMENT'] == header_overrides['VISITID'][10:13], f"Expected SEGMENT=={header_overrides['VISITID'][10:13]} but got {prihdr['SEGMENT']}"
+        assert prihdr['OBSNUM'] == header_overrides['VISITID'][13:16], f"Expected OBSNUM=={header_overrides['VISITID'][13:16]} but got {prihdr['OBSNUM']}"
+        assert prihdr['VISNUM'] == header_overrides['VISITID'][16:19], f"Expected VISNUM=={header_overrides['VISITID'][16:19]} but got {prihdr['VISNUM']}"
+        
+        os.remove(f)
+        
+    # Test the generation of subframes
+    # Note that non-L1 products cannot have header overrides.
+    for iframe in range(Nframes):
+        sim_scene = detector.generate_detector_image(sim_scene, exptime,full_frame = False,loc_x=300,loc_y=300)
+        # Save the subframe
+        filename = 'subframe_test_%d.fits' % iframe
+        outputs.save_hdu_to_fits(sim_scene.image_on_detector,outdir=outdir, write_as_L1=False,
+                                 filename=filename)
+        
+        f = os.path.join(outdir,filename)
+        os.remove(f)
+
 
 def test_cpgs_obs():
 
@@ -526,7 +577,7 @@ def test_finite_diam_and_jitter_spec():
     # Check that the companion images are the same for both cases
     # (The jitter model has not been implemented for off-axis point sources.)
     assert((image_comp_basic == image_comp_slit_prism).all())   
-    
+
     
 if __name__ == '__main__':
     test_excam_mode()
