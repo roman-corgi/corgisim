@@ -8,7 +8,7 @@ from corgidrp import mocks
 import copy 
 
 def generate_observation_sequence ( scene, optics, detector, exp_time, n_frames, 
-                                    satspots_present = False, satspots_detector = None, satspots_exptime = None, satspots_number_of_frames = None, satspot_keywords = None,
+                                    satspots_are_present = False, satspots_detector = None, satspots_exptime = None, satspots_number_of_frames = None, satspot_keywords = None,
                                     vistype = 'CGIVST_TDD_OBS', visit_id= '0200001001001001001', save_as_fits= False, output_dir=None, full_frame= False, loc_x=None, loc_y=None):
     """
     Generates a sequence of simulated observations and places them on a detector.
@@ -57,7 +57,7 @@ def generate_observation_sequence ( scene, optics, detector, exp_time, n_frames,
         sim_scene = optics.inject_point_sources(scene,sim_scene)
     
     simulatedImage_list = []
-    if satspots_present and (satspots_detector is None or satspots_exptime is None or satspots_number_of_frames is None): 
+    if satspots_are_present and (satspots_detector is None or satspots_exptime is None or satspots_number_of_frames is None): 
             raise ValueError('Satellite spots are presents but arguments are missing. Please specify satspot keywords, detector, exposure time and number of frames' )
 
     if full_frame == False : # if full_frame is false, we can't save as L1
@@ -95,7 +95,7 @@ def generate_observation_sequence ( scene, optics, detector, exp_time, n_frames,
             # Background 
             optics.SATSPOTS = 1
             for i in range(0, satspots_number_of_frames):
-                sim_image = detector.generate_detector_image(sim_scene,satspots_exptime)
+                sim_image = detector.generate_detector_image(sim_scene,satspots_exptime,full_frame=True,loc_x=loc_x, loc_y=loc_y)
                 simulatedImage_list.append(copy.deepcopy(sim_image))
                 if save_as_fits:
                     outputs.save_hdu_to_fits(sim_image.image_on_detector,outdir=outdir ,write_as_L1=True)
@@ -104,7 +104,7 @@ def generate_observation_sequence ( scene, optics, detector, exp_time, n_frames,
                 satspot_keywords["sign"] = sign
                 optics.add_satspot(satspot_keywords=satspot_keywords)
                 for i in range(0, satspots_number_of_frames):
-                    sim_image = detector.generate_detector_image(sim_scene,satspots_exptime)
+                    sim_image = detector.generate_detector_image(sim_scene,satspots_exptime, full_frame=True,loc_x=loc_x, loc_y=loc_y)
                     simulatedImage_list.append(copy.deepcopy(sim_image))
                     optics.remove_satspot(satspot_keywords=satspot_keywords)
                     if save_as_fits:
