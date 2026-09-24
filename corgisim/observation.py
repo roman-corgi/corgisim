@@ -52,8 +52,13 @@ def generate_observation_sequence ( scene, optics, detector, exp_time, n_frames,
     """
     optics.visit_id = visit_id
     optics.visit_type = vistype
+    if satspots_are_present:
+        optics.SATSPOTS = 1
     sim_scene = optics.get_host_star_psf(scene)
+    point_source_present = False
+
     if hasattr(scene, 'point_source_dra') or hasattr(scene, 'point_source_ddec'):
+        point_source_present = True
         sim_scene = optics.inject_point_sources(scene,sim_scene)
     
     simulatedImage_list = []
@@ -64,17 +69,23 @@ def generate_observation_sequence ( scene, optics, detector, exp_time, n_frames,
         if satspots_are_present:
             # For each frame, we take background (no satellite spots), positive and negative
             # Background 
-            optics.SATSPOTS = 1
             for i in range(0, satspots_number_of_frames):
-                sim_image = detector.generate_detector_image(sim_scene,satspots_exptime)
+                sim_image = satspots_detector.generate_detector_image(sim_scene,satspots_exptime)
                 simulatedImage_list.append(copy.deepcopy(sim_image))
+
             for sign in ["positive", "negative"]:
                 satspot_keywords["sign"] = sign
                 optics.add_satspot(satspot_keywords=satspot_keywords)
+                #Get the new PSF with point source if present
+                sim_scene = optics.get_host_star_psf(scene)
+                if point_source_present:
+                    sim_scene = optics.inject_point_sources(scene,sim_scene)
+
                 for i in range(0, satspots_number_of_frames):
-                    sim_image = detector.generate_detector_image(sim_scene,satspots_exptime)
+                    sim_image = satspots_detector.generate_detector_image(sim_scene,satspots_exptime)
                     simulatedImage_list.append(copy.deepcopy(sim_image))
-                    optics.remove_satspot(satspot_keywords=satspot_keywords)
+                
+                optics.remove_satspot(satspot_keywords=satspot_keywords)
 
         for i in range(0, n_frames):
             sim_image = detector.generate_detector_image(sim_scene,exp_time)
@@ -93,9 +104,8 @@ def generate_observation_sequence ( scene, optics, detector, exp_time, n_frames,
         if satspots_are_present:
             # For each frame, we take background (no satellite spots), positive and negative
             # Background 
-            optics.SATSPOTS = 1
             for i in range(0, satspots_number_of_frames):
-                sim_image = detector.generate_detector_image(sim_scene,satspots_exptime,full_frame=True,loc_x=loc_x, loc_y=loc_y)
+                sim_image = satspots_detector.generate_detector_image(sim_scene,satspots_exptime,full_frame=True,loc_x=loc_x, loc_y=loc_y)
                 simulatedImage_list.append(copy.deepcopy(sim_image))
                 if save_as_fits:
                     outputs.save_hdu_to_fits(sim_image.image_on_detector,outdir=outdir ,write_as_L1=True)
@@ -103,14 +113,19 @@ def generate_observation_sequence ( scene, optics, detector, exp_time, n_frames,
             for sign in ["positive", "negative"]:
                 satspot_keywords["sign"] = sign
                 optics.add_satspot(satspot_keywords=satspot_keywords)
+                #Get the new PSF with point source if present
+                sim_scene = optics.get_host_star_psf(scene)
+                if point_source_present:
+                    sim_scene = optics.inject_point_sources(scene,sim_scene)
+
                 for i in range(0, satspots_number_of_frames):
-                    sim_image = detector.generate_detector_image(sim_scene,satspots_exptime, full_frame=True,loc_x=loc_x, loc_y=loc_y)
+                    sim_image = satspots_detector.generate_detector_image(sim_scene,satspots_exptime, full_frame=True,loc_x=loc_x, loc_y=loc_y)
                     simulatedImage_list.append(copy.deepcopy(sim_image))
                     optics.remove_satspot(satspot_keywords=satspot_keywords)
                     if save_as_fits:
                         outputs.save_hdu_to_fits(sim_image.image_on_detector,outdir=outdir ,write_as_L1=True)
+                        
         for i in range(0, n_frames):
-            
             sim_image = detector.generate_detector_image(sim_scene,exp_time,full_frame=True,loc_x=loc_x, loc_y=loc_y)
             simulatedImage_list.append(copy.deepcopy(sim_image))
 
