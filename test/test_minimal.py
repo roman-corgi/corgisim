@@ -97,7 +97,7 @@ def test_excam_mode():
     exptime = 3000
 
     detector = instrument.CorgiDetector( emccd_keywords)
-    sim_scene = detector.generate_detector_image(sim_scene, exptime,full_frame=True,loc_x=300, loc_y=300)
+    sim_scene = detector.generate_detector_image(sim_scene, exptime,full_frame=True,loc_x=300, loc_y=400)
 
     assert(isinstance(sim_scene.point_source_image, fits.hdu.image.PrimaryHDU)  )
     assert(isinstance(sim_scene.point_source_image.data, np.ndarray)  )
@@ -176,6 +176,8 @@ def test_excam_mode():
     assert exthdr['FSMPRFL'] == 'NFOV', f"Expected data FSMPRFL=NFOV, but got {exthdr['FSMPRFL']}"
     assert exthdr['FSMLOS'] == 1, f"Expected data FSMLOS=1, but got {exthdr['FSMLOS']}"
 
+    assert exthdr['EACQ_ROW'] == 400, f"Expected header EACQ_ROW=400, but got {exthdr['EACQ_ROW']}"
+    assert exthdr['EACQ_COL'] == 300, f"Expected header EACQ_COL=300, but got {exthdr['EACQ_COL']}"
     os.remove(f)
 
 def test_cpgs_obs():
@@ -183,18 +185,18 @@ def test_cpgs_obs():
     script_dir = Path(__file__).resolve().parent
 
     #Test with target and reference
-    filepath = 'test_data/cpgs_mock.xml'
+    filepath = 'test_data/cpgs_short_sequence.xml'
     abs_path =  os.path.join(script_dir, filepath)
 
-    scene_target, scene_reference, optics, detector_target, detector_reference, visit_list = inputs.load_cpgs_data(abs_path)
+    scene_target, optics, detector_target, visit_list, satellite_dict_target = inputs.load_cpgs_data(abs_path, output_dim=51, fast_gain_mode = True, gain_CIC_Q=0.0)
 
     assert detector_target.photon_counting == True
     
     len_list = 0 
     for visit in visit_list:
         len_list += visit['number_of_frames']
-
-    simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path)
+        len_list+=(satellite_dict_target['satellite_spots_number_of_frames']*3)
+    simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, output_dim=51, fast_gain_mode = True, gain_CIC_Q=0.0)
     assert isinstance(simulatedImage_list, list)
     assert len(simulatedImage_list) == len_list
     assert isinstance(simulatedImage_list[0], SimulatedImage)
@@ -204,11 +206,11 @@ def test_cpgs_obs():
     dx= [3*49.3]
     dy= [3*49.3]
     point_source_info = [{'Vmag': mag_companion[0], 'magtype': 'vegamag','position_x':dx[0] , 'position_y':dy[0]}]
-    simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, point_source_info=point_source_info)
+    simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, point_source_info=point_source_info, output_dim=51, fast_gain_mode = True, gain_CIC_Q=0.0)
 
     i=0
     for visit in visit_list:
-        for _ in range(visit['number_of_frames']):        
+        for _ in range(visit['number_of_frames']+satellite_dict_target['satellite_spots_number_of_frames']*3):
         #Check that the target has a point source and the target doesn't  
             if simulatedImage_list[i].input_scene.ref_flag :
                 assert '_point_source_Vmag' not in simulatedImage_list[i].input_scene.__dict__
