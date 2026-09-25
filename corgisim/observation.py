@@ -28,13 +28,16 @@ def generate_observation_sequence ( scene, optics, detector, exp_time, n_frames,
         detector (corgisim.instrument.CorgiDetector): The detector object defining
             the detector characteristics and noise properties.
         exp_time (float): The exposure time for each individual frame in seconds.
-        n_frames (int): The total number of frames to generate in this observation sequence.
+        n_frames (int): The number of frames to generate in this observation sequence, satellite spots frames not included.
         satspots_present (bool): If yes, the sequence will generate 3xsatspots_number_of_frames satellite spots frames 
-        satspots_detector
-        satspots_exptime
-        satspots_number_of_frames
-        sasatspot_keywords
+        satspots_detector(corgisim.instrument.CorgiDetector): The detector object defining
+            the detector characteristics and noise properties used for satellite spots
+        satspots_exptime (float): The exposure time for each individual satspots frame in seconds.
+        satspots_number_of_frames (int): The number of satellite spots frames OF EACH TYPE (backgroup, positive, negative) to generate; The sequence will contain 3*satspots_number_of_frames
+        satspot_keywords:  A dictionary with the keywords that are used to add satellite spots. See instruments. py add_satspot for the keywords.
         save_as_fits (bool): wether or not to save the generated images as fits file
+        vistype (str): A string indicating the type of visit  for populating header VISTYPE.
+        visit_id (str): A string indicating the visit ID for populating header VISITID.
         output_dir: if saving as fits file, where to save them 
         full_frame (bool, optional): If True, a full-frame detector image will be generated.
             If False (default), a sub-array image is generated.
@@ -124,7 +127,7 @@ def generate_observation_sequence ( scene, optics, detector, exp_time, n_frames,
                     optics.remove_satspot(satspot_keywords=satspot_keywords)
                     if save_as_fits:
                         outputs.save_hdu_to_fits(sim_image.image_on_detector,outdir=outdir ,write_as_L1=True)
-                        
+
         for i in range(0, n_frames):
             sim_image = detector.generate_detector_image(sim_scene,exp_time,full_frame=True,loc_x=loc_x, loc_y=loc_y)
             simulatedImage_list.append(copy.deepcopy(sim_image))
