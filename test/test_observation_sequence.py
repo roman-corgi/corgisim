@@ -23,13 +23,13 @@ def test_generate_observation_sequence():
     optics_keywords ={'cor_type':cor_type, 'use_errors':2, 'polaxis':10, 'output_dim':201,\
                     'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
     gain =1000
-    emccd_keywords ={'em_gain':gain}
+    emccd_keywords ={'em_gain':gain, }
 
     base_scene = scene.Scene(host_star_properties)
     optics =  instrument.CorgiOptics(cgi_mode, bandpass_corgisim, optics_keywords=optics_keywords, if_quiet=True)
-    detector = instrument.CorgiDetector( emccd_keywords)
+    detector = instrument.CorgiDetector( emccd_keywords, photon_counting=True)
     
-    exp_time = 2000
+    exp_time = 20
     n_frames = 1
     
     # Test a single frame 
@@ -57,6 +57,48 @@ def test_generate_observation_sequence():
     assert simulatedImage_list_fullframe[n_frames-1].image_on_detector[0].header['PHTCNT'] == detector.photon_counting
     assert simulatedImage_list_fullframe[n_frames-1].image_on_detector[0].header['OPGAIN'] == gain
     assert simulatedImage_list_fullframe[n_frames-1].image_on_detector[0].header['FRAMET'] == exp_time
+
+    # Test satellite spots generation 
+    satellite_spots_frame_time = 10
+    satellite_spots_number_of_frames = 2
+    satellite_spots_gain = 500
+    detector_satspots = instrument.CorgiDetector( {'em_gain':satellite_spots_gain})
+
+    satspot_keywords = {'num_pairs':2, 'sep_lamD': 7, 'angle_deg': [0,90], 'contrast': 1e-5}
+
+    simulatedImage_list_fullframe = observation.generate_observation_sequence(base_scene, optics, detector, exp_time, n_frames,
+                                                                              satspots_are_present = True, satspots_detector = detector_satspots, satspots_exptime = satellite_spots_frame_time, satspots_number_of_frames = satellite_spots_number_of_frames, satspot_keywords = satspot_keywords,
+                                                                              full_frame= True,loc_x=300, loc_y=300 )
+
+
+    assert isinstance(simulatedImage_list_fullframe, list)
+    assert len(simulatedImage_list_fullframe) == n_frames + 3*satellite_spots_number_of_frames
+    assert isinstance(simulatedImage_list_fullframe[n_frames-1], SimulatedImage)
+    assert isinstance(simulatedImage_list_fullframe[n_frames-1].image_on_detector, fits.hdu.hdulist.HDUList)
+
+    assert len(simulatedImage_list_fullframe[n_frames-1].image_on_detector) == 2 # Primary and Image HDU
+    assert isinstance(simulatedImage_list_fullframe[n_frames-1].image_on_detector[1].data, np.ndarray)
+    
+    for i in range(0,3*satellite_spots_number_of_frames - 1):
+        prihdr = simulatedImage_list_fullframe[i].image_on_detector[0]
+        exthdr = simulatedImage_list_fullframe[i].image_on_detector[1]
+
+        assert exthdr.header['EMGAIN_C'] == satellite_spots_gain
+        assert exthdr.header['EXPTIME'] == satellite_spots_frame_time
+        assert exthdr.header['SATSPOTS'] == 1
+        assert exthdr.header['ISPC'] == False
+
+        assert prihdr.header['PHTCNT'] == False
+        assert prihdr.header['OPGAIN'] == satellite_spots_gain
+        assert prihdr.header['FRAMET'] == satellite_spots_frame_time
+
+    assert simulatedImage_list_fullframe[-1].image_on_detector[1].header['EXPTIME'] == exp_time
+    assert simulatedImage_list_fullframe[-1].image_on_detector[1].header['EMGAIN_C'] == gain
+
+    assert simulatedImage_list_fullframe[-1].image_on_detector[0].header['PHTCNT'] == detector.photon_counting
+    assert simulatedImage_list_fullframe[-1].image_on_detector[0].header['OPGAIN'] == gain
+    assert simulatedImage_list_fullframe[-1].image_on_detector[0].header['FRAMET'] == exp_time
+    
     # Test several frames
 
     n_frames = 10
