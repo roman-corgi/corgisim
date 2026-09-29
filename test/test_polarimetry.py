@@ -15,14 +15,14 @@ def test_polarimetry():
     Vmag = 8
     sptype = 'G0V'
     host_star_pol = np.array([1, 0.05, 0.02, 0])
-    host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype':'vegamag', 'pol_state': host_star_pol}
+    host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype':'vegamag', 'stokes_vector': host_star_pol}
 
     #define companion properties, including polarization
     mag_companion = 25
     companion_x_pos = 148
     companion_y_pos = 148
     companion_pol = np.array([1, 0.3, 0.1, 0])
-    point_source_info = [{'Vmag': mag_companion, 'magtype': 'vegamag','position_x':companion_x_pos , 'position_y':companion_y_pos, 'pol_state': companion_pol}]
+    point_source_info = [{'Vmag': mag_companion, 'magtype': 'vegamag','position_x':companion_x_pos , 'position_y':companion_y_pos, 'stokes_vector': companion_pol}]
 
     base_scene = scene.Scene(host_star_properties, point_source_info)
 
@@ -98,9 +98,11 @@ def test_polarimetry():
     assert (image_comp_corgi_x + image_comp_corgi_y)  == pytest.approx(image_comp_corgi_unpol * 0.96, rel=0.05)
     assert (image_comp_corgi_x + image_comp_corgi_y) == pytest.approx(image_comp_corgi_45 + image_comp_corgi_135, rel=0.05)
 
-    # check that the output polarization of the companion matches what is expected
+    # check that the output polarization of the the speckle field and companion matches what is expected
     # since the companion input is a point source, we sum the flux over the entire focal plane for both the difference and sum images
     # to obtain normalized scalar values for the Q and U output of corgisim
+    star_q_flux_normalized = np.sum(image_star_corgi_x - image_star_corgi_y) / np.sum(image_star_corgi_x + image_star_corgi_y)
+    star_u_flux_normalized = np.sum(image_star_corgi_45 - image_star_corgi_135) / np.sum(image_star_corgi_45 + image_star_corgi_135)
     comp_q_flux_normalized = np.sum(image_comp_corgi_x - image_comp_corgi_y) / np.sum(image_comp_corgi_x + image_comp_corgi_y)
     comp_u_flux_normalized = np.sum(image_comp_corgi_45 - image_comp_corgi_135) / np.sum(image_comp_corgi_45 + image_comp_corgi_135)
     # next check that the corgisim Q and U output is the same as the companion stokes vector transformed by the predefined IP
@@ -109,8 +111,11 @@ def test_polarimetry():
     # normalize
     instrument_pol_mm = instrument_pol_mm / instrument_pol_mm[0, 0]
     # transform to obtain expected output
+    star_stokes_output = instrument_pol_mm @ telescope_roll_mm @ host_star_pol
     comp_stokes_output = instrument_pol_mm @ telescope_roll_mm @ companion_pol
     # check the two match
+    assert star_q_flux_normalized == pytest.approx(star_stokes_output[1], rel=0.05)
+    assert star_u_flux_normalized == pytest.approx(star_stokes_output[2], rel=0.05)
     assert comp_q_flux_normalized == pytest.approx(comp_stokes_output[1], rel=0.05)
     assert comp_u_flux_normalized == pytest.approx(comp_stokes_output[2], rel=0.05)
 
