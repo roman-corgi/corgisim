@@ -39,8 +39,9 @@ class Scene():
             - "ref_flag" (boolean):optional, whether the input scene is a reference star (True) or a science target (False). Default is false
             - "stellar_diam_mas" (float): The stellar diameter of the host star in mas.
             - "target_name" (str): optional, the name of the target star, used for headers. Default is UNKNOWN.
-            - "pol_state" (float array): optional, vector of length 4 consisting of the I, Q, U and V components of the stokes parameter
-                describing how the source light is polarized, default is unpolarized or [1,0,0,0]
+            - "stokes_vector" (float array): optional, vector of length 4 consisting of the I, Q, U and V components of the stokes parameter
+                describing how the source light is polarized, default is unpolarized or [1,0,0,0]. Should be normalized so that the first
+                element Stokes I is 1. 
             - "RA" (float): optional, the ra of  star in degree. Default is 0.0
             - "DEC" (float): optional, the dec of  star in degree. Default is 0.0
 
@@ -55,8 +56,9 @@ class Scene():
                 A custom spectrum for the source. If provided, this spectrum will override the default spectrum generated based on Vmag.
             - "Rescale_Custom_Spectrum" (bool, optional):
                 Define if the custom spectrum needs to be rescaled. If set to True, the custom spectrum will be rescaled to match the provided Vmag. If False, the custom spectrum will be used as-is without scaling. Default is False.
-            - "pol_state" (float array): optional, vector of length 4 consisting of the I, Q, U and V components of the stokes parameter
-                describing how the source light is polarized, default is unpolarized or [1,0,0,0]
+            - "stokes_vector" (float array): optional, vector of length 4 consisting of the I, Q, U and V components of the stokes parameter
+                describing how the source light is polarized, default is unpolarized or [1,0,0,0]. Should be normalized so that the first
+                element Stokes I is 1. 
             Notes:
                 - The coordinates should be provided in the same reference frame and orientation as the background scene (typically North-up, East-left).
                 - All magnitudes must be consistent with their respective magnitude type.
@@ -119,7 +121,7 @@ class Scene():
             self._stellar_diam_mas = host_star_properties_internal['stellar_diam_mas']
 
             # stokes vector of the host star for polarimetric simulations
-            self._host_star_pol_state = host_star_properties_internal.get('pol_state', np.array([1,0,0,0]))
+            self._host_star_stokes_vector = host_star_properties_internal.get('stokes_vector', np.array([1,0,0,0]))
 
         #self._point_source_list = point_source_info
         # Extract V-band magnitude and magnitude type from point source info
@@ -143,12 +145,12 @@ class Scene():
                                                                               rescale_spectrum=self.point_source_rescale_spectrum)
 
             #Set the polarization state of sources, default to [1,0,0,0] if none provided
-            self.point_source_pol_state = [source.get('pol_state', np.array([1,0,0,0])) for source in point_source_info]
+            self.point_source_stokes_vector = [source.get('stokes_vector', np.array([1,0,0,0])) for source in point_source_info]
 
             #check validity of source stoke vector and normalizes it
             for source in range(n_off_axis_source):
-                pol.check_stokes_vector_validity(self.point_source_pol_state[source])
-                self.point_source_pol_state[source] = np.divide(self.point_source_pol_state[source], self.point_source_pol_state[source][0])
+                pol.check_stokes_vector_validity(self.point_source_stokes_vector[source])
+                self.point_source_stokes_vector[source] = np.divide(self.point_source_stokes_vector[source], self.point_source_stokes_vector[source][0])
 
         # setting up the 2D scene
         self.twoD_scene_info = twoD_scene_info
@@ -214,23 +216,23 @@ class Scene():
         return self._host_star_magtype
 
     @property
-    def host_star_pol_state(self):
+    def host_star_stokes_vector(self):
         """
         Getter for the host star Stokes vector
         Returns:
-            pol_state (numpy.ndarray): length-4 Stokes vector of the host star
+            stokes_vector (numpy.ndarray): length-4 Stokes vector of the host star
         """
-        return self._host_star_pol_state
+        return self._host_star_stokes_vector
 
-    @host_star_pol_state.setter
-    def host_star_pol_state(self, value):
+    @host_star_stokes_vector.setter
+    def host_star_stokes_vector(self, value):
         """
         Setter for the host star Stokes vector
         Args:
             value (numpy.ndarray): length-4 Stokes vector of the host star
         """
         if pol.check_stokes_vector_validity(value):
-            self._host_star_pol_state = value
+            self._host_star_stokes_vector = value
 
 
     @host_star_magtype.setter

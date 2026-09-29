@@ -294,7 +294,7 @@ def test_pol_mode():
     companion_pol = np.array([1, 0.3, 0.1, 0])
 
     host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype':'vegamag'}
-    point_source_info = [{'Vmag': mag_companion, 'magtype': 'vegamag','position_x':companion_x_pos , 'position_y':companion_y_pos, 'pol_state': companion_pol}]
+    point_source_info = [{'Vmag': mag_companion, 'magtype': 'vegamag','position_x':companion_x_pos , 'position_y':companion_y_pos, 'stokes_vector': companion_pol}]
     base_scene = scene.Scene(host_star_properties, point_source_info)
 
     ##define instrument parameters

@@ -37,12 +37,12 @@ def jones_to_mueller_conversion(jones_matrix):
 
     return mueller_matrix
 
-def check_stokes_vector_validity(pol_state):
+def check_stokes_vector_validity(stokes_vector):
     """
     Check if the input stokes vector is of right length and magnitude
 
     Args: 
-        pol_state (float array): Stokes vector describing the polarization state of a source
+        stokes_vector (float array): Stokes vector describing the polarization state of a source
     
     Raises:
         ValueError: If the provided stokes vector is not of length 4 or the polarized intensity magnitude exceeds the total intensity magnitude
@@ -50,11 +50,11 @@ def check_stokes_vector_validity(pol_state):
         is_valid (boolean): Returns true if the stokes vector is valid and no errors are raised
     """
     #checks length
-    if (len(pol_state) != 4): raise ValueError(f'Invalid stokes vector length of {len(pol_state)}. Valid stokes vector is of length 4')
+    if (len(stokes_vector) != 4): raise ValueError(f'Invalid stokes vector length of {len(stokes_vector)}. Valid stokes vector is of length 4')
 
     #checks magnitude
-    if (np.sqrt((pol_state[1] ** 2) + (pol_state[2] ** 2) + (pol_state[3] ** 2)) > pol_state[0]):
-        raise ValueError(f'Invalid stokes parameters of {pol_state}. Please make sure sum of polarized intensity does not exceed that of total intensity')
+    if (np.sqrt((stokes_vector[1] ** 2) + (stokes_vector[2] ** 2) + (stokes_vector[3] ** 2)) > stokes_vector[0]):
+        raise ValueError(f'Invalid stokes parameters of {stokes_vector}. Please make sure sum of polarized intensity does not exceed that of total intensity')
 
     return True
 

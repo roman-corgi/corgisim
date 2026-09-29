@@ -773,7 +773,7 @@ class CorgiOptics():
             #if polarimetry mode is enabled
             if self.prism == 'POL0' or self.prism == 'POL45':
                 # get the stokes vector of the host star
-                host_star_stokes_vector = input_scene._host_star_pol_state
+                host_star_stokes_vector = input_scene._host_star_stokes_vector
                 # using polaxis parameters -1, 1, -2, 2, propagate the Roman Jones pupil to the focal plane
                 polaxis_params = [-1, 1, -2, 2]
                 fields = []
@@ -1048,7 +1048,7 @@ class CorgiOptics():
         point_source_spectra = input_scene.off_axis_source_spectrum
         point_source_dra = input_scene.point_source_dra
         point_source_ddec = input_scene.point_source_ddec
-        point_source_pol = input_scene.point_source_pol_state
+        point_source_pol = input_scene.point_source_stokes_vector
 
         # Ensure all inputs are lists for uniform processing
         if not isinstance(point_source_spectra, list):
