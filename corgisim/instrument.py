@@ -215,7 +215,17 @@ class CorgiOptics():
                     UserWarning,
                 )
 
-                
+            # The rotated SPC masks are mirrored in x in roman_preflight_proper <= 2.0.3, so the model
+            # x axis runs opposite to EXCAM x. Offsets passed to PROPER carry the reversed sign, while
+            # self.fsm_x_offset_mas keeps the EXCAM value requested by the user.
+            if (self.cor_type in ['spc-spec_rotated', 'spc-spec_band2_rotated', 'spc-spec_band3_rotated'] and
+                Version(roman_preflight_proper.__version__) <= Version('2.0.3')):
+                self.model_x_sign = -1
+            else:
+                self.model_x_sign = 1
+            if self.model_x_sign == -1 and self.fsm_x_offset_mas != 0.0:
+                optics_keywords_internal['fsm_x_offset_mas'] = -self.fsm_x_offset_mas
+
             if self.prism != 'None':
                 prism_param_fname = os.path.join(ref_data_dir, 'TVAC_{:s}_dispersion_profile.npz'.format(self.prism))
                 if not os.path.exists(prism_param_fname):
@@ -847,11 +857,14 @@ class CorgiOptics():
 
                 mas_pix = 500E-9 * 360.0 * 3600.0 / (2 * np.pi * 2.363) * 1000 / 2
                 (frame_loc_x, frame_loc_y) = (512, 512)
+                # In the delivered frame, after the np.fliplr below, because the FSM offset passed to
+                # PROPER already carries the mirrored sign for the rotated SPC.
                 image_centx = self.grid_dim_out // 2 + self.fsm_x_offset_mas / mas_pix
                 image_centy = self.grid_dim_out // 2 + self.fsm_y_offset_mas / mas_pix
                 print("source location (x, y) without prism = {:.3f}, {:.3f}".format(image_centx, image_centy))
-                self.optics_keywords['dispersed_image_centx'] = image_centx + disp_shift_lam0_x / self.oversampling_factor 
-                self.optics_keywords['dispersed_image_centy'] = image_centy + disp_shift_lam0_y / self.oversampling_factor 
+                # apply_prism works in the model frame, which the np.fliplr below reverses in x.
+                self.optics_keywords['dispersed_image_centx'] = image_centx + self.model_x_sign * disp_shift_lam0_x / self.oversampling_factor
+                self.optics_keywords['dispersed_image_centy'] = image_centy + disp_shift_lam0_y / self.oversampling_factor
                 print("source location (x, y) with prism = {:.3f}, {:.3f}".format(self.optics_keywords['dispersed_image_centx'], 
                                                                                   self.optics_keywords['dispersed_image_centy']))
                 self.optics_keywords['dispersed_fullframe_centx'] = frame_loc_x + 1088 + (self.optics_keywords['dispersed_image_centx'] - self.grid_dim_out // 2)
@@ -883,7 +896,7 @@ class CorgiOptics():
             image = np.sum(images, axis=0)
             ## Left-right image flip to compensate for the flipped SPECROT mask
             if (self.cor_type in ['spc-spec_rotated', 'spc-spec_band2_rotated', 'spc-spec_band3_rotated'] and 
-                Version(roman_preflight_proper.__version__) <= Version('2.0.2')):
+                Version(roman_preflight_proper.__version__) <= Version('2.0.3')):
                 image = np.fliplr(image)
 
         if self.cgi_mode in ['lowfs', 'excam_efield']:
@@ -929,8 +942,11 @@ class CorgiOptics():
                             'dispersed_fullframe_centx','dispersed_fullframe_centy']  # Specify keys to include
         subset = {key: self.optics_keywords[key] for key in keys_to_include_in_header if key in self.optics_keywords}
         sim_info.update(subset)
-        
-        # add sattelite spots info 
+        if self.cgi_mode == 'spec' and 'fsm_x_offset_mas' in subset:
+            # Report the EXCAM-frame offset; optics_keywords may hold the mirrored sign (see __init__).
+            sim_info['fsm_x_offset_mas'] = self.fsm_x_offset_mas
+
+        # add sattelite spots info
         sim_info['SATSPOTS'] = self.SATSPOTS
         sim_info['includ_dectector_noise'] = 'False'
         
@@ -1149,10 +1165,10 @@ class CorgiOptics():
                 self.optics_keywords_comp = self.optics_keywords.copy()
                 ## convert companion sky coord to exacam coord, using roll angle
                 point_source_dx, point_source_dy = skycoord_to_excamcoord(point_source_dra[j], point_source_ddec[j], self.roll_angle)
-                ## If using the SPECROT mask and the roman_preflight_proper version <= 2.0.2, 
+                ## If using the SPECROT mask and the roman_preflight_proper version <= 2.0.3,
                 ## then the sign of dx must be reversed to compensate for the flipped mask orientation.
                 if (self.cor_type in ['spc-spec_rotated', 'spc-spec_band2_rotated', 'spc-spec_band3_rotated'] and 
-                    Version(roman_preflight_proper.__version__) <= Version('2.0.2')):
+                    Version(roman_preflight_proper.__version__) <= Version('2.0.3')):
                     point_source_dx = -point_source_dx
 
                 self.optics_keywords_comp.update({'output_dim': grid_dim_out_tem,
@@ -1207,7 +1223,7 @@ class CorgiOptics():
                 image = np.sum(images, axis=0)
                 ## Left-right image flip to compensate for the flipped SPECROT mask
                 if (self.cor_type in ['spc-spec_rotated', 'spc-spec_band2_rotated', 'spc-spec_band3_rotated'] and 
-                    Version(roman_preflight_proper.__version__) <= Version('2.0.2')):
+                    Version(roman_preflight_proper.__version__) <= Version('2.0.3')):
                     point_source_image.append(np.fliplr(image))
                 else:
                     point_source_image.append(image)
@@ -1253,6 +1269,9 @@ class CorgiOptics():
                             'slit_x_offset_mas','slit_y_offset_mas','use_pupil_lens', 'use_lyot_stop', 'use_field_stop']  # Specify keys to include
         subset = {key: self.optics_keywords[key] for key in keys_to_include_in_header if key in self.optics_keywords}
         sim_info.update(subset)
+        if self.cgi_mode == 'spec' and 'fsm_x_offset_mas' in subset:
+            # Report the EXCAM-frame offset; optics_keywords may hold the mirrored sign (see __init__).
+            sim_info['fsm_x_offset_mas'] = self.fsm_x_offset_mas
 
         ## add sattelite spots info
         sim_info['SATSPOTS'] = self.SATSPOTS

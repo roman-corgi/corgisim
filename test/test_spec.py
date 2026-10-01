@@ -174,5 +174,34 @@ def test_apply_prism():
         # Assert that the longest wavelength is dispersed to a lower row number
         assert longest_wave_row < shortest_wave_row, "Longer wavelengths should be shifted to lower row numbers"
 
+@pytest.mark.parametrize("cor_type, bandpass, mirrored", [('spc-spec_band3', '3F', False),
+                                                          ('spc-spec_band2', '2F', False),
+                                                          ('spc-spec_band3_rotated', '3F', True),
+                                                          ('spc-spec_band2_rotated', '2F', True)])
+def test_specrot_fsm_x_sign(cor_type, bandpass, mirrored):
+    """The FSM x offset passed to PROPER is mirrored for the rotated SPC, the attribute is not."""
+    from packaging.version import Version
+    import roman_preflight_proper
+    from corgisim import instrument
+
+    # The compensation only applies while the rotated SPC masks are mirrored in the model.
+    expected_sign = -1 if (mirrored and Version(roman_preflight_proper.__version__) <= Version('2.0.3')) else 1
+    prism = 'PRISM2' if bandpass == '2F' else 'PRISM3'
+    optics_keywords = {'cor_type': cor_type, 'polaxis': 0, 'output_dim': 51, 'prism': prism,
+                       'fsm_x_offset_mas': 50.0, 'fsm_y_offset_mas': 20.0}
+    optics = instrument.CorgiOptics('spec', bandpass, optics_keywords=optics_keywords, if_quiet=True)
+
+    assert optics.model_x_sign == expected_sign
+    assert optics.optics_keywords['fsm_x_offset_mas'] == expected_sign * 50.0, \
+        "FSM x offset handed to PROPER does not match the model x orientation"
+    assert optics.fsm_x_offset_mas == 50.0, "The attribute must keep the EXCAM-frame value"
+    assert optics.optics_keywords['fsm_y_offset_mas'] == 20.0, "FSM y offset must not be touched"
+
+    # An offset that was never requested must not appear in the keywords handed to PROPER.
+    optics_keywords.pop('fsm_x_offset_mas')
+    optics = instrument.CorgiOptics('spec', bandpass, optics_keywords=optics_keywords, if_quiet=True)
+    assert 'fsm_x_offset_mas' not in optics.optics_keywords
+    assert optics.fsm_x_offset_mas == 0.0
+
 if __name__ == '__main__':
     pytest.main([__file__])
