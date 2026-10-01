@@ -104,7 +104,7 @@ def get_slit_mask(optics, dx_fsam_um=10.0, hires_dim_um=800, binfac=50):
         hires_slit = ((np.abs(XXs) < slit_height_hires / 2) & 
                       (np.abs(YYs) < slit_width_hires / 2))
     if (optics.cor_type in ['spc-spec_rotated', 'spc-spec_band2_rotated', 'spc-spec_band3_rotated'] and 
-        Version(roman_preflight_proper.__version__) <= Version('2.0.2')):
+        Version(roman_preflight_proper.__version__) <= Version('2.0.3')):
         hires_slit = np.fliplr(hires_slit) # Left-right flip to compensate for mask orientation in roman_preflight_proper
     # Bin the high-res array to the specified spatial sampling
     binned_slit = hires_slit.reshape(hires_dimy // binfac, binfac, 
@@ -129,6 +129,7 @@ def apply_prism(optics, image_cube):
             - lamref_um (float): Reference wavelength in microns for the observing mode
             - sampling_um (float): Image spatial sampling in microns of the CorgiOptics configuration
             - oversampling_factor (int): Spatial oversampling factor of the CorgiOptics configuration
+            - model_x_sign (int): 1, or -1 when the model x axis is mirrored with respect to EXCAM x
         image_cube (ndarray): Input multi-wavelength intensity cube from Proper simulation,
                               shape (n_wavelengths, n_y, n_x)
 
@@ -186,9 +187,11 @@ def apply_prism(optics, image_cube):
     cube_interp_func = scipy.interpolate.RegularGridInterpolator(cube_grid, image_cube)
     image_cube_interp = cube_interp_func(cube_interp_grid).reshape(xpts_grid.shape)
 
-    # Calculate the shifts for all wavelengths at once
+    # Calculate the shifts for all wavelengths at once. The clocking angle is calibrated in EXCAM
+    # coordinates, so its x component is mirrored to disperse in the model frame of the rotated SPC,
+    # the same convention applied to the FSAM slit mask (see CorgiOptics.__init__ for model_x_sign).
     shifts_y = dispers_shift_modelpix * np.sin(np.deg2rad(theta))
-    shifts_x = dispers_shift_modelpix * np.cos(np.deg2rad(theta))
+    shifts_x = optics.model_x_sign * dispers_shift_modelpix * np.cos(np.deg2rad(theta))
 
     # Apply the shifts to a coordinate grid
     y, x = np.indices(image_cube_interp.shape[1:])
@@ -207,7 +210,7 @@ def apply_prism(optics, image_cube):
     lam0_shift_mm = dispersion_polyfunc(delta_wavelen_lam0 / prism_lamref_um)
     lam0_shift_modelpix = lam0_shift_mm / model_sampling_mm 
     lam0_shift_y = lam0_shift_modelpix * np.sin(np.deg2rad(theta))
-    lam0_shift_x = lam0_shift_modelpix * np.cos(np.deg2rad(theta))
+    lam0_shift_x = optics.model_x_sign * lam0_shift_modelpix * np.cos(np.deg2rad(theta))
 
     return dispersed_cube, interp_wavs_bandpass, lam0_shift_x, lam0_shift_y
 
