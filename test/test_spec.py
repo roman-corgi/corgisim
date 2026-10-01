@@ -124,6 +124,7 @@ def test_apply_prism():
         lamref_um = 0.73
         sampling_um = 13.0
         oversampling_factor = 5
+        model_x_sign = 1  # nominal SPC: model x runs the same way as EXCAM x
     class Band2PrismMockConfig:
         with resources.path('corgisim.data', 'TVAC_PRISM2_dispersion_profile.npz') as data_path:
             prism_param_fname = data_path
@@ -132,6 +133,7 @@ def test_apply_prism():
         lamref_um = 0.65
         sampling_um = 13.0
         oversampling_factor = 5
+        model_x_sign = 1  # nominal SPC: model x runs the same way as EXCAM x
 
     prism3_config = Band3PrismMockConfig()
     prism2_config = Band2PrismMockConfig()
@@ -173,6 +175,47 @@ def test_apply_prism():
         
         # Assert that the longest wavelength is dispersed to a lower row number
         assert longest_wave_row < shortest_wave_row, "Longer wavelengths should be shifted to lower row numbers"
+
+def test_apply_prism_mirrored_x():
+    """The dispersion x component reverses when the model x axis is mirrored (rotated SPC).
+
+    The clocking angle is calibrated in EXCAM coordinates, so the trace must be built mirrored in
+    the model frame for the left-right image flip applied downstream to restore it.
+    """
+    class Band3PrismMockConfig:
+        with resources.path('corgisim.data', 'TVAC_PRISM3_dispersion_profile.npz') as data_path:
+            prism_param_fname = data_path
+        lam_um = np.linspace(0.675, 0.785, 5)
+        wav_step_um = 0.002
+        lamref_um = 0.73
+        sampling_um = 13.0
+        oversampling_factor = 5
+        model_x_sign = 1
+
+    mock_imwidth, hwbox = 250, 3
+    centre = mock_imwidth // 2
+    image_cube = np.zeros((len(Band3PrismMockConfig.lam_um), mock_imwidth, mock_imwidth))
+    image_cube[:, centre-hwbox:centre+hwbox, centre-hwbox:centre+hwbox] = 1
+
+    def trace_x_drift(cube):
+        """x centroid of the reddest slice minus that of the bluest."""
+        xs = np.arange(cube.shape[2])
+        cx = [(slice_2d.sum(axis=0) * xs).sum() / slice_2d.sum() for slice_2d in (cube[0], cube[-1])]
+        return cx[1] - cx[0]
+
+    config = Band3PrismMockConfig()
+    config.model_x_sign = 1
+    cube_nom, _, lam0_x_nom, lam0_y_nom = spec.apply_prism(config, image_cube)
+    config.model_x_sign = -1
+    cube_mir, _, lam0_x_mir, lam0_y_mir = spec.apply_prism(config, image_cube)
+
+    assert lam0_x_mir == -lam0_x_nom, "The lam0 x shift must reverse when the model x axis is mirrored"
+    assert lam0_y_mir == lam0_y_nom, "The y dispersion must not change: the flip is in x only"
+    assert lam0_x_nom != 0, "PRISM3 has a non-zero x dispersion component to reverse"
+
+    drift_nom, drift_mir = trace_x_drift(cube_nom), trace_x_drift(cube_mir)
+    assert drift_nom * drift_mir < 0, "The trace must drift the opposite way in x when mirrored"
+    assert drift_mir == pytest.approx(-drift_nom, rel=1E-6), "Mirroring must preserve the magnitude"
 
 @pytest.mark.parametrize("cor_type, bandpass, mirrored", [('spc-spec_band3', '3F', False),
                                                           ('spc-spec_band2', '2F', False),

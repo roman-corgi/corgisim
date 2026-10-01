@@ -862,7 +862,8 @@ class CorgiOptics():
                 image_centx = self.grid_dim_out // 2 + self.fsm_x_offset_mas / mas_pix
                 image_centy = self.grid_dim_out // 2 + self.fsm_y_offset_mas / mas_pix
                 print("source location (x, y) without prism = {:.3f}, {:.3f}".format(image_centx, image_centy))
-                # apply_prism works in the model frame, which the np.fliplr below reverses in x.
+                # apply_prism mirrors the x dispersion to work in the model frame, so undo that here:
+                # the recorded position is in the delivered frame, after the np.fliplr below.
                 self.optics_keywords['dispersed_image_centx'] = image_centx + self.model_x_sign * disp_shift_lam0_x / self.oversampling_factor
                 self.optics_keywords['dispersed_image_centy'] = image_centy + disp_shift_lam0_y / self.oversampling_factor
                 print("source location (x, y) with prism = {:.3f}, {:.3f}".format(self.optics_keywords['dispersed_image_centx'], 
