@@ -25,6 +25,9 @@ jobs:
             pytest_args: >-
               ./test/test_L1_product_fits_format.py
               ./test/test_observation_sequence.py
+          - shard: minimal
+            pytest_args: >-
+              ./test/test_minimal.py
           - shard: rest
             pytest_args: >-
               ./test
@@ -32,6 +35,7 @@ jobs:
               --ignore=./test/test_L1_product_fits_format.py
               --ignore=./test/test_L1_product_fits_format_specmode.py
               --ignore=./test/test_observation_sequence.py
+              --ignore=./test/test_minimal.py
 
     steps:
     - uses: actions/checkout@v7
@@ -105,5 +109,5 @@ jobs:
         python -m pip install --upgrade pip
         pip install coverage
         cd all_coverage
-        coverage combine coverage_jitterspecc coverage_heavy coverage_rest
+        coverage combine coverage_jitterspecc coverage_heavy coverage_minimal coverage_rest 
         coverage report -m
