@@ -389,11 +389,11 @@ class Scene():
                 # if not any(sptype.endswith(cls) for cls in ['I', 'II', 'III', 'IV', 'V','VI','VII','VIII']):
                 sptype += 'V'  # assume main sequence if no class specified
 
+        filename = sptype+'.txt'
         if sptype in sptype_list:
             # print('aaa',sptype)
             # v0, v1, v2 = sptype_teff_mapping[sptype]
             teff, metallicity, logg = sptype_teff_mapping[sptype]
-            filename = sptype+'.txt'
         else:
             # Interpolate values for undefined sptype
 
