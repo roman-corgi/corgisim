@@ -313,19 +313,85 @@ def test_simulate_2d_scene_missing_prf_path():
     with pytest.raises(ValueError, match=r"No PRF cube path provided in the input:"):
         CorgiOptics.simulate_2d_scene(mock_optics, mock_scene, prf_cube_path=None)
 
-def test_roll_angle_not_implemented():
+def _run_2d_scene(disk, roll_angle):
+
+    """Run simulate_2d_scene on `disk`, return the array passed to the convolution.
+    """
     from corgisim.instrument import CorgiOptics
-    """Test that NotImplementedError is raised for non-zero roll angle."""
-    mock_scene = Mock()
-    mock_scene.twoD_scene_info = {
-        "disk_model_path": "/fake/path/to/disk_model.fits",
-        "prf_cube_path": "/fake/path/to/prf_cube.fits"
+
+
+    # there is no real prf cube, so providing dict
+    prf_sim_info = {
+        'centred': 'True',
+        'iwa': 2.0, 'owa': 8.0,
+        'inner_step': 0.5, 'mid_step': 1.0, 'outer_step': 2.0,
+        'max_radius': 10.0, 'step_deg': 90.0,
     }
-
+ 
+    mock_scene = Mock()
+    mock_scene.twoD_scene_info = {"disk_model_path": "/fake/path/to/disk_model.fits"}
+ 
     mock_optics = Mock()
-    mock_optics.res_mas = 1.0
-    mock_optics.cgi_mode = "excam_efield"
-    mock_optics.roll_angle = 10  # Non-zero roll angle
+    mock_optics.res_mas = 100.0
+    mock_optics.cgi_mode = "excam"
+    mock_optics.roll_angle = roll_angle
+ 
+    with patch('corgisim.instrument.fits.getdata', return_value=disk), \
+         patch('corgisim.prf_simulation._get_prf_sim_info', return_value=prf_sim_info), \
+         patch('corgisim.convolution._convolve_with_prfs') as mock_conv, \
+         patch('corgisim.convolution.flux_calibration_2D_scene',
+               side_effect=lambda optics, scene, conv2d: conv2d), \
+         patch('corgisim.convolution._set_2D_image_sim_info', return_value={}), \
+         patch('corgisim.outputs.create_hdu', side_effect=lambda data, sim_info: data):
+ 
+        mock_conv.side_effect = lambda obj, **kwargs: obj
+        CorgiOptics.simulate_2d_scene(mock_optics, mock_scene,
+                                      prf_cube_path="/fake/path/to/prf_cube.fits")
+ 
+    return mock_conv.call_args.kwargs['obj']
 
-    with pytest.raises(NotImplementedError, match=r"Roll angle rotation is not implemented yet for 2D scene."):
-        CorgiOptics.simulate_2d_scene(mock_optics, mock_scene, prf_cube_path=mock_scene.twoD_scene_info["prf_cube_path"])
+def test_roll_angle_rotates_disk_model():
+
+    """A 90 deg roll turns a purely row-offset feature into a purely column-offset one.
+ 
+    roll_angle == 0 should not rotate the feature at all.
+ 
+    """
+    disk = np.zeros((9, 9))
+    disk[6, 4] = 1.0  # ypix=6 and xpix=4 is assigned a value of 1
+ 
+    # roll the disk with a roll angle=0 
+    unrotated = _run_2d_scene(disk, roll_angle=0.0)
+    # check that the ypix=6 and xpix=4 is same - the disk is not rotated
+    assert np.unravel_index(np.argmax(unrotated), unrotated.shape) == (6, 4)
+
+    # roll the disk with a roll angle=90 
+    rotated = _run_2d_scene(disk, roll_angle=90.0)
+    # check the disk shape
+    assert rotated.shape == disk.shape, (
+        f"rotation changed the array size: {rotated.shape} vs {disk.shape} "
+        "- the padded array was probably not cropped back"
+    )
+    # find the row and column of the max value
+    row, col = np.unravel_index(np.argmax(rotated), rotated.shape)
+ 
+    assert (row, col) != (6, 4), "disk model was not rotated"
+    assert row == 4, f"rotation left the row axis: peak at ({row}, {col})"
+    assert col in (2, 6), f"peak is not 2 px from the centre: ({row}, {col})"
+
+
+@pytest.mark.parametrize("roll_angle", [0.0, 30.0, -30.0, 45.0, -45.0])
+def test_disk_model_is_normalised_after_rotation(roll_angle):
+    """The normalized disk flux before the convolution sums to 1 at every roll angle. checking to see if there are nans or inf from the rolling
+    """
+    ring = np.random.default_rng(42)
+    #disk with random values
+    disk = ring.random((21, 21))
+
+    #rolls the disk using the function
+    rolled_disk = _run_2d_scene(disk, roll_angle)
+
+    # check if any of the value is nan, inf in the rolled disk
+    assert np.isfinite(rolled_disk).all()
+    # fails if normalization is done before rolling or normalization is not handled correctly
+    assert np.isclose(np.sum(rolled_disk), 1.0, rtol=1e-5)

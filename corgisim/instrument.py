@@ -24,6 +24,7 @@ import sys
 import astropy.units as u
 import corgisim.constants as constants
 import corgisim.convolution as conv
+from scipy.ndimage import rotate
 
 from corgisim.scene import Scene, SimulatedImage
 from corgisim import outputs, spec, prf_simulation, constants
@@ -1463,14 +1464,34 @@ class CorgiOptics():
             # No output format was specified - create a new SimulatedImage object
             sim_scene = SimulatedImage(input_scene)
 
-        # Check if roll angle is non-zero and raise NotImplementedError if so
-        # To be removed after implementing roll angle for the 2D scene. 
-        if self.roll_angle != 0:
-            raise NotImplementedError("Roll angle rotation is not implemented yet for 2D scene.")
-
+        
+        
         # input disk model
         disk_model_data = fits.getdata(input_scene.twoD_scene_info['disk_model_path'])
-        disk_model_norm = disk_model_data/np.nansum(disk_model_data, axis=(0,1)) # normalisation of the disk
+
+        # raise a warning if the disk data dimension is not square 
+        if disk_model_data.ndim != 2 or disk_model_data.shape[0] != disk_model_data.shape[1]:
+            raise ValueError(f"Disk model must be a square 2D array, got shape {disk_model_data.shape}")
+
+        disk_model_data = np.nan_to_num(disk_model_data, nan=0.0, posinf=0.0, neginf=0.0)
+        roll_angle = getattr(self, 'roll_angle', 0.0)
+        
+
+        if roll_angle != 0:
+            #pad zeros for the scipy rotate function - the padding assumes that the disk model data is a square array
+            ny, nx = disk_model_data.shape
+            pad = int(np.ceil((np.hypot(ny, nx) - min(ny, nx)) / 2))
+            padded_disk = np.pad(disk_model_data, pad, mode='constant', constant_values=0.0)
+            # any kind of interpolation here produces negative values: order =3 has preserved the total flux and peak value
+            rotated_disk = rotate(padded_disk, angle=roll_angle, reshape=False, order=3, mode='constant', cval=0.0)
+            # resize the disk data to its original size
+            disk_model_data = rotated_disk[pad:pad + ny, pad:pad + nx]
+        total_flux = np.nansum(disk_model_data)
+        if not np.isfinite(total_flux) or total_flux <= 0:
+            raise ValueError(f"Disk model has non-positive total flux ({total_flux}); ""cannot normalise."  )
+        #normalize the disk
+        disk_model_norm = disk_model_data / total_flux
+        
 
         prf_sim_info = prf_simulation._get_prf_sim_info(prf_cube_path) # Get the simulation information 
 
