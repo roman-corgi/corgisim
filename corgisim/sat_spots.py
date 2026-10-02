@@ -1,4 +1,84 @@
+import numbers
 import numpy as np
+
+def add_custom_pattern_dm(dm_volts, pattern_volts, scale, sign="positive"):
+    """
+    Add an externally supplied DM pattern (in volts) to a Roman CGI DM solution (in volts).
+
+    This supports the "Alternate Probe" observing concept, in which externally
+    designed relative-DM probe commands (delivered as ``dmrel_*.fits`` files)
+    are applied through the satellite-spot observing path instead of the
+    analytically generated cosine pattern (see add_cos_pattern_dm).
+
+    The applied pattern is ``(+/- scale) * pattern_volts``. ``scale`` is
+    deliberately REQUIRED (no default) because the convention for the
+    delivered probe arrays is unresolved: candidate values of 1.0 and 0.3
+    differ in applied probe intensity by roughly a factor of 11, so silently
+    choosing one would materially change the simulated data. Callers must
+    choose explicitly and record the value used.
+
+    Parameters
+    ----------
+    dm_volts : numpy.ndarray
+        2D array: the original DM solution, in volts.
+    pattern_volts : numpy.ndarray
+        2D array: relative DM pattern in volts. Must have the same shape as
+        ``dm_volts`` (48x48 for the Roman CGI DMs), in the same orientation
+        convention as the DM solution files (numpy [row, col] = [y, x]), and
+        must be real-valued and finite. A complex-valued array (nonzero
+        imaginary component) is rejected rather than silently discarded.
+    scale : numbers.Real
+        Real, finite scalar (int, float, or a NumPy real scalar); NaN, +/-inf
+        and booleans are rejected. Multiplicative amplitude applied to the
+        pattern; required, with no default (see above).
+    sign : str, optional
+        Either "positive" or "negative". "negative" applies
+        ``-scale * pattern_volts``, forming the negative member of a
+        pairwise-probing pair. Default is "positive".
+
+    Returns
+    -------
+    numpy.ndarray
+        2D array, in volts: the DM map with the scaled pattern added. The
+        input ``dm_volts`` array is not modified.
+
+    Raises
+    ------
+    ValueError
+        If ``pattern_volts`` is complex-valued, is not 2D, does not match the
+        shape of ``dm_volts``, or contains non-finite values; if ``scale`` is
+        not finite; or if ``sign`` is neither "positive" nor "negative".
+    TypeError
+        If ``scale`` is not a real scalar number.
+    """
+    pattern = np.asarray(pattern_volts)
+
+    if np.iscomplexobj(pattern):
+        raise ValueError(
+            "ERROR: custom pattern must be real-valued; got a complex-valued array "
+            "(pattern_volts must not have a nonzero imaginary component)"
+        )
+    pattern = pattern.astype(float)
+
+    if pattern.ndim != 2 or pattern.shape != np.shape(dm_volts):
+        raise ValueError(
+            f"ERROR: custom pattern shape {pattern.shape} does not match DM shape {np.shape(dm_volts)}"
+        )
+    if not np.all(np.isfinite(pattern)):
+        raise ValueError("ERROR: custom pattern contains non-finite values")
+    if isinstance(scale, (bool, np.bool_)) or not isinstance(scale, numbers.Real):
+        raise TypeError(
+            "ERROR: scale must be a real scalar number (e.g., int, float, or a NumPy real scalar)"
+        )
+    if not np.isfinite(scale):
+        raise ValueError(f"ERROR: scale must be finite, got {scale}")
+    if sign not in ("positive", "negative"):
+        raise ValueError(f"ERROR: sign must be 'positive' or 'negative', got '{sign}'")
+
+    signed_scale = scale if sign == "positive" else -scale
+
+    return dm_volts + signed_scale * pattern
+
 
 def add_cos_pattern_dm(dm_volts, num_pairs=2, sep_lamD=7, angle_deg=[0,90], contrast=1e-6, wavelength_m=0.575e-6, gain_nm_per_V=None, sign = "positive"):
     """
