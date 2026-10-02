@@ -13,3 +13,4 @@ jobs:
           exempt-protected-branches: true
           ignore-unknown-authors: true
           default-recipient: "helloWorlds0"
+          ignore-branches-with-open-prs: true
