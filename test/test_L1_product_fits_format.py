@@ -95,6 +95,9 @@ def test_L1_product_fits_format():
     assert prihr['PA_APER'] == 0.0, f"Expected data PA_APER=0, but got {prihr['PA_APER']}"
     assert prihr['TARGET'] == 'UNKNOWN', f"Expected header TARGET = 'UNKNOWN', but got {prihr['TARGET']}"
     assert prihr['VISTYPE'] == 'CGIVST_TDD_OBS', f"Expected header VISTYPE = 'CGIVST_TDD_OBS', but got {prihr['VISTYPE']}"
+    assert prihdr['RA'] == 0.0, f"Expected header RA = 0.0, but got {prihr['RA']}"
+    assert prihdr['DEC'] == 0.0, f"Expected header DEC = 0.0, but got {prihr['DEC']}"
+ 
     assert prihr['VISITID'] == '0200001001001001001', f"Expected header VISITID = '0200001001001001001', but got {prihr['VISITID']}"
     assert prihr['PROGNUM'] == '0200', f"Expected header PROGNUM = '0200', but got {prihr['PROGNUM']}"
     assert prihr['EXECNUM'] == '001', f"Expected header EXECNUM = '001', but got {prihr['EXECNUM']}"
@@ -207,7 +210,7 @@ def test_L1_product_fits_format():
     info_dir = cgisim.lib_dir + '/cgisim_info_dir/'
 
     #Define the host star properties
-    host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype': 'vegamag','ref_flag':True,'target_name':'HD 141569A'}
+    host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype': 'vegamag','ref_flag':True,'target_name':'HD 141569A','RA':20.1,'DEC':10.1}
     point_source_info = [{'Vmag': mag_companion[0], 'magtype': 'vegamag','position_x':dx[0] , 'position_y':dy[0]},
                          {'Vmag': mag_companion[1], 'magtype': 'vegamag','position_x':dx[1] , 'position_y':dy[1]}]
 
@@ -241,7 +244,7 @@ def test_L1_product_fits_format():
     exptime = 3000
 
     detector = instrument.CorgiDetector( emccd_keywords, photon_counting = True)
-    sim_scene = detector.generate_detector_image(sim_scene, exptime,full_frame=True,loc_x=300, loc_y=300)
+    sim_scene = detector.generate_detector_image(sim_scene, exptime,full_frame=True,loc_x=200, loc_y=300)
     
     ### save the L1 product fits file to test/testdata folder
     local_path = corgisim.lib_dir
@@ -276,6 +279,8 @@ def test_L1_product_fits_format():
     assert prihr['PA_APER'] == roll_angle, f"Expected data PA_APER={roll_angle}, but got {prihr['PA_APER']}"
     assert prihr['TARGET'] == 'HD 141569A', f"Expected header TARGET = 'HD 141569A', but got {prihr['TARGET']}"
     assert prihr['VISTYPE'] == 'CGIVST_CAL_TGTREF_PHOT', f"Expected header VISTYPE = 'CGIVST_CAL_TGTREF_PHOT', but got {prihr['VISTYPE']}"
+    assert prihdr['RA'] == 20.1, f"Expected header RA = 20.1, but got {prihr['RA']}"
+    assert prihdr['DEC'] == 10.1, f"Expected header DEC = 10.1, but got {prihr['DEC']}"
     assert prihr['VISITID'] == '0300002002002901002', f"Expected header VISITID = '0300002002002901002', but got {prihr['VISITID']}"
     assert prihr['PROGNUM'] == '0300', f"Expected header PROGNUM = '0300', but got {prihr['PROGNUM']}"
     assert prihr['EXECNUM'] == '002', f"Expected header EXECNUM = '002', but got {prihr['EXECNUM']}"
@@ -289,7 +294,7 @@ def test_L1_product_fits_format():
     assert exthdr['EMGAIN_A'] == gain, f"Expected data EMGAIN_A={gain}, but got {exthdr['EMGAIN_A']}"
     assert exthdr['ISPC'] == 1, f"Expected header ISPC=1, but got {exthdr['ISPC']}"
     assert exthdr['EACQ_ROW'] == 300, f"Expected header EACQ_ROW=300, but got {exthdr['EACQ_ROW']}"
-    assert exthdr['EACQ_COL'] == 300, f"Expected header EACQ_COL=300, but got {exthdr['EACQ_COL']}"
+    assert exthdr['EACQ_COL'] == 200, f"Expected header EACQ_COL=200, but got {exthdr['EACQ_COL']}"
 
     assert exthdr['DPAM_H'] == 8991.3, f"Expected data DPAM_H=8991.3, but got {exthdr['DPAM_H']}"
     assert exthdr['DPAM_V'] ==  1261.3, f"Expected data DPAM_V=1261.3, but got {exthdr['DPAM_V']}"
@@ -416,28 +421,32 @@ def test_L1_product_from_CPGS():
 
     script_dir = os.getcwd()
 
-    filepath = 'test/test_data/CPGS_MRT8_CGIPrime.xml'
+    filepath = 'test/test_data/cpgs_ref_wfov_satspots.xml'
     abs_path =  os.path.join(script_dir, filepath)
     local_path = corgisim.lib_dir
     outdir = os.path.join(local_path.split('corgisim')[0], 'corgisim/test/testdata/cpgs')
     
-    scene_target, scene_reference, optics, detector_target, detector_reference, visit_list = inputs.load_cpgs_data(abs_path)
-    simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, full_frame=True, loc_x=300, loc_y=300, save_as_fits=True, output_dir=outdir)
+    scene_target, scene_reference, optics, detector_target, detector_reference, visit_list, satellite_dict_target, satellite_dict_reference = inputs.load_cpgs_data(abs_path, output_dim=121, fast_gain_mode = True, gain_CIC_Q=0.0)
+    simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, full_frame=True, loc_x=300, loc_y=300, save_as_fits=True, save_as_list= True, output_dir=outdir, output_dim=121, fast_gain_mode = True, gain_CIC_Q=0.0)
 
     #Check that there are as many simulated images as files
-    assert len(simulatedImage_list) == len([name for name in os.listdir(outdir) if os.path.isfile(outdir+'/'+name)])
-
+    assert len(simulatedImage_list) == sum(len(files) for _, _, files in os.walk(outdir))
     #Check that the names are correct
     i = 0
     for visit in visit_list:
-        for _ in range(visit['number_of_frames']):
+        if visit['isReference']:
+            number_of_satellite_frame = satellite_dict_reference['satellite_spots_number_of_frames']*3
+        else:    
+            number_of_satellite_frame = satellite_dict_target['satellite_spots_number_of_frames']*3
+        
+        for _ in range(visit['number_of_frames']+number_of_satellite_frame):
 
             prihdr = simulatedImage_list[i].image_on_detector[0].header
             exthdr = simulatedImage_list[i].image_on_detector[1].header
             time_in_name = outputs.isotime_to_yyyymmddThhmmsss(exthdr['FTIMEUTC'])
             filename = f"cgi_{prihdr['VISITID']}_{time_in_name}_l1_.fits"
 
-            f = os.path.join( outdir , filename)
+            f = os.path.join( outdir ,'V'+ prihdr['VISITID'], filename)
             assert os.path.isfile(f)
             assert prihdr['PA_APER'] == visit["roll_angle"]
             i += 1
@@ -470,6 +479,5 @@ def test_L1_product_from_CPGS():
 
 
 if __name__ == '__main__':
-    #run_sim()
     test_L1_product_fits_format()
     test_L1_product_from_CPGS()

@@ -6,7 +6,7 @@
       <label>CPGS_MRT_8_CGIPrime</label>
       <observer_firstname>Jim</observer_firstname>
       <observer_lastname>Ingalls</observer_lastname>
-      <cpgs_filename>1785331966.xml</cpgs_filename>
+      <cpgs_filename>1785333714.xml</cpgs_filename>
    </observation_information>
    <target_list>
       <target>
@@ -47,16 +47,16 @@
          <!--Visit is of type "Technology Demonstration Setup + HOWFSC + 1st Reference".-->
          <cgi_visit_type>CGIVST_TDD_SETUP_HOWFSC</cgi_visit_type>
          <observation_type>CGI_HOWFSC</observation_type>
-         <!--If visit starts at 2027-09-17T12:00:00 it will end on 2027-09-17T17:09:00.-->
-         <!--Est. visit duration: 5.1501 hr-->
+         <!--If visit starts at 2027-09-17T12:00:00 it will end on 2027-09-17T17:11:19.-->
+         <!--Est. visit duration: 5.1888 hr-->
          <!--Initial visit overhead duration (includes slew, settle, and WFI element wheel moves) (s)-->
          <initial_overhead_duration>1236.9900</initial_overhead_duration>
          <!--Science instrument time: estimated CGI data collection time, plus acquisition and internal overheads (s).-->
-         <science_duration>17303.2759</science_duration>
+         <science_duration>17442.6431</science_duration>
          <!--CGI maximum possible target acquisition + data collection time + command overheads (s) (mainly relevant to HOWFSC/GITL)-->
-         <science_maximum_duration>17303.2759</science_maximum_duration>
-         <!--Approximate data volume (Bytes) (981.90 MB)-->
-         <data_volume>1029600000</data_volume>
+         <science_maximum_duration>17442.6431</science_maximum_duration>
+         <!--Approximate data volume (Bytes) (1138.00 MB)-->
+         <data_volume>1193280000</data_volume>
          <realtime>Y</realtime>
          <!--Number of seconds after slew completion for realtime portion to start-->
          <realtime_start_offset>5298</realtime_start_offset>
@@ -92,18 +92,27 @@
          <cgi_excam>
             <!--Use parameters/telemetry to set the gain/frame_time/photon_counting?-->
             <auto_gain>N</auto_gain>
-            <gain>15.000</gain>
+            <gain>300.000</gain>
             <!--Per-frame exposure time (s)-->
-            <frame_time>15.000</frame_time>
+            <frame_time>5.000</frame_time>
             <!--Process using photon-counting mode?-->
-            <photon_counting>Y</photon_counting>
+            <photon_counting>N</photon_counting>
             <!--Number of frames per exposure/raster (approximate)-->
-            <number_of_frames>1</number_of_frames>
+            <number_of_frames>29</number_of_frames>
             <!--Total EXCAM (non-acq, non-satellite spots) exposure duration for the visit (s).-->
             <!--(For continuous frame observations this affects commanding.  Otherwise this is purely informational.)-->
             <!--Timed Obs Duration (EXCAM Continuous frame measurements):-->
-            <exposure_duration>24.63</exposure_duration>
-            <observe_satellite_spots>N</observe_satellite_spots>
+            <exposure_duration>155.00</exposure_duration>
+            <observe_satellite_spots>Y</observe_satellite_spots>
+            <!--Satellite Spot Pair ID for slot "TDD_SATELLITE_SPOTS_SLOT0"-->
+            <satellite_spots_pair_id>0</satellite_spots_pair_id>
+            <satellite_spots_gain>200.000</satellite_spots_gain>
+            <!--Satellite spots per-frame exposure time (s)-->
+            <satellite_spots_frame_time>0.500</satellite_spots_frame_time>
+            <!--Number of frames per satellite spot exposure (commanded)-->
+            <satellite_spots_number_of_frames>1</satellite_spots_number_of_frames>
+            <!--Total EXCAM satellite spot exposure duration for the visit (s)-->
+            <satellite_spots_exposure_duration>9.0000</satellite_spots_exposure_duration>
             <!--Time to wait prior to kicking off the exposure (s)-->
             <kickoff_time>16.0</kickoff_time>
          </cgi_excam>
@@ -160,17 +169,17 @@
          </cgi_align_fsam>
       </cgi_visit>
       <cgi_visit number="2">
-         <!--Visit is of type "Technology Demonstration Observation Block".-->
-         <cgi_visit_type>CGIVST_TDD_OBS</cgi_visit_type>
+         <!--Visit is of type "Polarimetric Technology Demonstration Observation Block".-->
+         <cgi_visit_type>CGIVST_TDD_POL_OBS</cgi_visit_type>
          <observation_type>CGI_OBSERVE</observation_type>
-         <!--If visit starts at 2027-09-17T17:09:00 it will end on 2027-09-17T17:33:33.-->
-         <!--Est. visit duration: 0.4094 hr-->
+         <!--If visit starts at 2027-09-17T17:11:19 it will end on 2027-09-17T17:40:26.-->
+         <!--Est. visit duration: 0.4855 hr-->
          <!--Initial visit overhead duration (includes slew, settle, and WFI element wheel moves) (s)-->
          <initial_overhead_duration>857.3955</initial_overhead_duration>
          <!--Science instrument time: estimated CGI data collection time, plus acquisition and internal overheads (s).-->
-         <science_duration>616.3962</science_duration>
-         <!--Approximate data volume (Bytes) (70.50 MB)-->
-         <data_volume>73920000</data_volume>
+         <science_duration>890.3499</science_duration>
+         <!--Approximate data volume (Bytes) (130.92 MB)-->
+         <data_volume>137280000</data_volume>
          <realtime>N</realtime>
          <required>N</required>
          <parallels_allowed>Y</parallels_allowed>
@@ -179,7 +188,7 @@
          <!--Mid-visit roll Angle: -2.00 degrees-->
          <!--End of visit roll Angle: -1.99 degrees-->
          <!--Absolute position angle for visit (deg):-->
-         <position_angle>87.82</position_angle>
+         <position_angle>87.83</position_angle>
          <!--Is this the first in a series of visits to the same target?-->
          <first_visit>Y</first_visit>
          <coronagraph_configuration>NFOV</coronagraph_configuration>
@@ -194,9 +203,9 @@
          <cgi_excam>
             <!--Use parameters/telemetry to set the gain/frame_time/photon_counting?-->
             <auto_gain>N</auto_gain>
-            <gain>10.000</gain>
+            <gain>3500.000</gain>
             <!--Per-frame exposure time (s)-->
-            <frame_time>20.000</frame_time>
+            <frame_time>12.000</frame_time>
             <!--Process using photon-counting mode?-->
             <photon_counting>Y</photon_counting>
             <!--Number of frames per exposure/raster (approximate)-->
@@ -204,8 +213,17 @@
             <!--Total EXCAM (non-acq, non-satellite spots) exposure duration for the visit (s).-->
             <!--(For continuous frame observations this affects commanding.  Otherwise this is purely informational.)-->
             <!--Timed Obs Duration (EXCAM Continuous frame measurements):-->
-            <exposure_duration>288.75</exposure_duration>
-            <observe_satellite_spots>N</observe_satellite_spots>
+            <exposure_duration>180.83</exposure_duration>
+            <observe_satellite_spots>Y</observe_satellite_spots>
+            <!--Satellite Spot Pair ID for slot "TDD_SATELLITE_SPOTS_SLOT0"-->
+            <satellite_spots_pair_id>0</satellite_spots_pair_id>
+            <satellite_spots_gain>500.000</satellite_spots_gain>
+            <!--Satellite spots per-frame exposure time (s)-->
+            <satellite_spots_frame_time>5.000</satellite_spots_frame_time>
+            <!--Number of frames per satellite spot exposure (commanded)-->
+            <satellite_spots_number_of_frames>4</satellite_spots_number_of_frames>
+            <!--Total EXCAM satellite spot exposure duration for the visit (s)-->
+            <satellite_spots_exposure_duration>63.2345</satellite_spots_exposure_duration>
             <!--Time to wait prior to kicking off the exposure (s)-->
             <kickoff_time>16.0</kickoff_time>
          </cgi_excam>
@@ -216,21 +234,24 @@
             <close_focus>N</close_focus>
             <close_zernike>N</close_zernike>
          </cgi_locam>
+         <cgi_mechanisms>
+            <dpampos>POL0</dpampos>
+         </cgi_mechanisms>
          <!--Estimated acquisition time: 232.6900s-->
          <is_spectroscopy>N</is_spectroscopy>
       </cgi_visit>
       <cgi_visit number="3">
-         <!--Visit is of type "Technology Demonstration Observation Block".-->
-         <cgi_visit_type>CGIVST_TDD_OBS</cgi_visit_type>
+         <!--Visit is of type "Polarimetric Technology Demonstration Observation Block".-->
+         <cgi_visit_type>CGIVST_TDD_POL_OBS</cgi_visit_type>
          <observation_type>CGI_OBSERVE</observation_type>
-         <!--If visit starts at 2027-09-17T17:33:33 it will end on 2027-09-17T17:50:45.-->
-         <!--Est. visit duration: 0.2869 hr-->
+         <!--If visit starts at 2027-09-17T17:40:26 it will end on 2027-09-17T18:02:12.-->
+         <!--Est. visit duration: 0.3630 hr-->
          <!--Initial visit overhead duration (includes slew, settle, and WFI element wheel moves) (s)-->
          <initial_overhead_duration>416.2724</initial_overhead_duration>
          <!--Science instrument time: estimated CGI data collection time, plus acquisition and internal overheads (s).-->
-         <science_duration>616.3962</science_duration>
-         <!--Approximate data volume (Bytes) (70.50 MB)-->
-         <data_volume>73920000</data_volume>
+         <science_duration>890.3499</science_duration>
+         <!--Approximate data volume (Bytes) (130.92 MB)-->
+         <data_volume>137280000</data_volume>
          <realtime>N</realtime>
          <required>N</required>
          <parallels_allowed>Y</parallels_allowed>
@@ -254,9 +275,9 @@
          <cgi_excam>
             <!--Use parameters/telemetry to set the gain/frame_time/photon_counting?-->
             <auto_gain>N</auto_gain>
-            <gain>10.000</gain>
+            <gain>3500.000</gain>
             <!--Per-frame exposure time (s)-->
-            <frame_time>20.000</frame_time>
+            <frame_time>12.000</frame_time>
             <!--Process using photon-counting mode?-->
             <photon_counting>Y</photon_counting>
             <!--Number of frames per exposure/raster (approximate)-->
@@ -264,8 +285,17 @@
             <!--Total EXCAM (non-acq, non-satellite spots) exposure duration for the visit (s).-->
             <!--(For continuous frame observations this affects commanding.  Otherwise this is purely informational.)-->
             <!--Timed Obs Duration (EXCAM Continuous frame measurements):-->
-            <exposure_duration>288.75</exposure_duration>
-            <observe_satellite_spots>N</observe_satellite_spots>
+            <exposure_duration>180.83</exposure_duration>
+            <observe_satellite_spots>Y</observe_satellite_spots>
+            <!--Satellite Spot Pair ID for slot "TDD_SATELLITE_SPOTS_SLOT0"-->
+            <satellite_spots_pair_id>0</satellite_spots_pair_id>
+            <satellite_spots_gain>500.000</satellite_spots_gain>
+            <!--Satellite spots per-frame exposure time (s)-->
+            <satellite_spots_frame_time>5.000</satellite_spots_frame_time>
+            <!--Number of frames per satellite spot exposure (commanded)-->
+            <satellite_spots_number_of_frames>4</satellite_spots_number_of_frames>
+            <!--Total EXCAM satellite spot exposure duration for the visit (s)-->
+            <satellite_spots_exposure_duration>63.2345</satellite_spots_exposure_duration>
             <!--Time to wait prior to kicking off the exposure (s)-->
             <kickoff_time>16.0</kickoff_time>
          </cgi_excam>
@@ -276,21 +306,24 @@
             <close_focus>N</close_focus>
             <close_zernike>N</close_zernike>
          </cgi_locam>
+         <cgi_mechanisms>
+            <dpampos>POL45</dpampos>
+         </cgi_mechanisms>
          <!--Estimated acquisition time: 232.6900s-->
          <is_spectroscopy>N</is_spectroscopy>
       </cgi_visit>
       <cgi_visit number="4">
-         <!--Visit is of type "Technology Demonstration Observation Block".-->
-         <cgi_visit_type>CGIVST_TDD_OBS</cgi_visit_type>
+         <!--Visit is of type "Polarimetric Technology Demonstration Observation Block".-->
+         <cgi_visit_type>CGIVST_TDD_POL_OBS</cgi_visit_type>
          <observation_type>CGI_OBSERVE</observation_type>
-         <!--If visit starts at 2027-09-17T17:50:45 it will end on 2027-09-17T18:10:54.-->
-         <!--Est. visit duration: 0.3360 hr-->
+         <!--If visit starts at 2027-09-17T18:02:12 it will end on 2027-09-17T18:25:17.-->
+         <!--Est. visit duration: 0.3850 hr-->
          <!--Initial visit overhead duration (includes slew, settle, and WFI element wheel moves) (s)-->
          <initial_overhead_duration>857.3955</initial_overhead_duration>
          <!--Science instrument time: estimated CGI data collection time, plus acquisition and internal overheads (s).-->
-         <science_duration>352.2828</science_duration>
-         <!--Approximate data volume (Bytes) (5.04 MB)-->
-         <data_volume>5280000</data_volume>
+         <science_duration>528.4769</science_duration>
+         <!--Approximate data volume (Bytes) (40.28 MB)-->
+         <data_volume>42240000</data_volume>
          <realtime>N</realtime>
          <required>N</required>
          <parallels_allowed>Y</parallels_allowed>
@@ -299,7 +332,7 @@
          <!--Mid-visit roll Angle: 2.00 degrees-->
          <!--End of visit roll Angle: 2.01 degrees-->
          <!--Absolute position angle for visit (deg):-->
-         <position_angle>59.73</position_angle>
+         <position_angle>59.74</position_angle>
          <!--Is this the first in a series of visits to the same target?-->
          <first_visit>N</first_visit>
          <coronagraph_configuration>NFOV</coronagraph_configuration>
@@ -314,18 +347,27 @@
          <cgi_excam>
             <!--Use parameters/telemetry to set the gain/frame_time/photon_counting?-->
             <auto_gain>N</auto_gain>
-            <gain>15.000</gain>
+            <gain>300.000</gain>
             <!--Per-frame exposure time (s)-->
-            <frame_time>15.000</frame_time>
+            <frame_time>5.000</frame_time>
             <!--Process using photon-counting mode?-->
-            <photon_counting>Y</photon_counting>
+            <photon_counting>N</photon_counting>
             <!--Number of frames per exposure/raster (approximate)-->
-            <number_of_frames>1</number_of_frames>
+            <number_of_frames>5</number_of_frames>
             <!--Total EXCAM (non-acq, non-satellite spots) exposure duration for the visit (s).-->
             <!--(For continuous frame observations this affects commanding.  Otherwise this is purely informational.)-->
             <!--Timed Obs Duration (EXCAM Continuous frame measurements):-->
-            <exposure_duration>24.63</exposure_duration>
-            <observe_satellite_spots>N</observe_satellite_spots>
+            <exposure_duration>27.01</exposure_duration>
+            <observe_satellite_spots>Y</observe_satellite_spots>
+            <!--Satellite Spot Pair ID for slot "TDD_SATELLITE_SPOTS_SLOT0"-->
+            <satellite_spots_pair_id>0</satellite_spots_pair_id>
+            <satellite_spots_gain>200.000</satellite_spots_gain>
+            <!--Satellite spots per-frame exposure time (s)-->
+            <satellite_spots_frame_time>0.500</satellite_spots_frame_time>
+            <!--Number of frames per satellite spot exposure (commanded)-->
+            <satellite_spots_number_of_frames>1</satellite_spots_number_of_frames>
+            <!--Total EXCAM satellite spot exposure duration for the visit (s)-->
+            <satellite_spots_exposure_duration>9.0000</satellite_spots_exposure_duration>
             <!--Time to wait prior to kicking off the exposure (s)-->
             <kickoff_time>16.0</kickoff_time>
          </cgi_excam>
@@ -336,21 +378,24 @@
             <close_focus>N</close_focus>
             <close_zernike>N</close_zernike>
          </cgi_locam>
+         <cgi_mechanisms>
+            <dpampos>POL0</dpampos>
+         </cgi_mechanisms>
          <!--Estimated acquisition time: 232.6900s-->
          <is_spectroscopy>N</is_spectroscopy>
       </cgi_visit>
       <cgi_visit number="5">
-         <!--Visit is of type "Technology Demonstration Observation Block".-->
-         <cgi_visit_type>CGIVST_TDD_OBS</cgi_visit_type>
+         <!--Visit is of type "Polarimetric Technology Demonstration Observation Block".-->
+         <cgi_visit_type>CGIVST_TDD_POL_OBS</cgi_visit_type>
          <observation_type>CGI_OBSERVE</observation_type>
-         <!--If visit starts at 2027-09-17T18:10:54 it will end on 2027-09-17T18:35:27.-->
-         <!--Est. visit duration: 0.4094 hr-->
+         <!--If visit starts at 2027-09-17T18:25:17 it will end on 2027-09-17T18:54:24.-->
+         <!--Est. visit duration: 0.4855 hr-->
          <!--Initial visit overhead duration (includes slew, settle, and WFI element wheel moves) (s)-->
          <initial_overhead_duration>857.3955</initial_overhead_duration>
          <!--Science instrument time: estimated CGI data collection time, plus acquisition and internal overheads (s).-->
-         <science_duration>616.3962</science_duration>
-         <!--Approximate data volume (Bytes) (70.50 MB)-->
-         <data_volume>73920000</data_volume>
+         <science_duration>890.3499</science_duration>
+         <!--Approximate data volume (Bytes) (130.92 MB)-->
+         <data_volume>137280000</data_volume>
          <realtime>N</realtime>
          <required>N</required>
          <parallels_allowed>Y</parallels_allowed>
@@ -359,7 +404,7 @@
          <!--Mid-visit roll Angle: 2.00 degrees-->
          <!--End of visit roll Angle: 2.01 degrees-->
          <!--Absolute position angle for visit (deg):-->
-         <position_angle>83.86</position_angle>
+         <position_angle>83.87</position_angle>
          <!--Is this the first in a series of visits to the same target?-->
          <first_visit>N</first_visit>
          <coronagraph_configuration>NFOV</coronagraph_configuration>
@@ -374,9 +419,9 @@
          <cgi_excam>
             <!--Use parameters/telemetry to set the gain/frame_time/photon_counting?-->
             <auto_gain>N</auto_gain>
-            <gain>10.000</gain>
+            <gain>3500.000</gain>
             <!--Per-frame exposure time (s)-->
-            <frame_time>20.000</frame_time>
+            <frame_time>12.000</frame_time>
             <!--Process using photon-counting mode?-->
             <photon_counting>Y</photon_counting>
             <!--Number of frames per exposure/raster (approximate)-->
@@ -384,8 +429,17 @@
             <!--Total EXCAM (non-acq, non-satellite spots) exposure duration for the visit (s).-->
             <!--(For continuous frame observations this affects commanding.  Otherwise this is purely informational.)-->
             <!--Timed Obs Duration (EXCAM Continuous frame measurements):-->
-            <exposure_duration>288.75</exposure_duration>
-            <observe_satellite_spots>N</observe_satellite_spots>
+            <exposure_duration>180.83</exposure_duration>
+            <observe_satellite_spots>Y</observe_satellite_spots>
+            <!--Satellite Spot Pair ID for slot "TDD_SATELLITE_SPOTS_SLOT0"-->
+            <satellite_spots_pair_id>0</satellite_spots_pair_id>
+            <satellite_spots_gain>500.000</satellite_spots_gain>
+            <!--Satellite spots per-frame exposure time (s)-->
+            <satellite_spots_frame_time>5.000</satellite_spots_frame_time>
+            <!--Number of frames per satellite spot exposure (commanded)-->
+            <satellite_spots_number_of_frames>4</satellite_spots_number_of_frames>
+            <!--Total EXCAM satellite spot exposure duration for the visit (s)-->
+            <satellite_spots_exposure_duration>63.2345</satellite_spots_exposure_duration>
             <!--Time to wait prior to kicking off the exposure (s)-->
             <kickoff_time>16.0</kickoff_time>
          </cgi_excam>
@@ -396,21 +450,24 @@
             <close_focus>N</close_focus>
             <close_zernike>N</close_zernike>
          </cgi_locam>
+         <cgi_mechanisms>
+            <dpampos>POL45</dpampos>
+         </cgi_mechanisms>
          <!--Estimated acquisition time: 232.6900s-->
          <is_spectroscopy>N</is_spectroscopy>
       </cgi_visit>
       <cgi_visit number="6">
-         <!--Visit is of type "Technology Demonstration Observation Block".-->
-         <cgi_visit_type>CGIVST_TDD_OBS</cgi_visit_type>
+         <!--Visit is of type "Polarimetric Technology Demonstration Observation Block".-->
+         <cgi_visit_type>CGIVST_TDD_POL_OBS</cgi_visit_type>
          <observation_type>CGI_OBSERVE</observation_type>
-         <!--If visit starts at 2027-09-17T18:35:27 it will end on 2027-09-17T18:52:39.-->
-         <!--Est. visit duration: 0.2869 hr-->
+         <!--If visit starts at 2027-09-17T18:54:24 it will end on 2027-09-17T19:16:10.-->
+         <!--Est. visit duration: 0.3630 hr-->
          <!--Initial visit overhead duration (includes slew, settle, and WFI element wheel moves) (s)-->
          <initial_overhead_duration>416.2724</initial_overhead_duration>
          <!--Science instrument time: estimated CGI data collection time, plus acquisition and internal overheads (s).-->
-         <science_duration>616.3962</science_duration>
-         <!--Approximate data volume (Bytes) (70.50 MB)-->
-         <data_volume>73920000</data_volume>
+         <science_duration>890.3499</science_duration>
+         <!--Approximate data volume (Bytes) (130.92 MB)-->
+         <data_volume>137280000</data_volume>
          <realtime>N</realtime>
          <required>N</required>
          <parallels_allowed>Y</parallels_allowed>
@@ -419,7 +476,7 @@
          <!--Mid-visit roll Angle: -2.00 degrees-->
          <!--End of visit roll Angle: -1.99 degrees-->
          <!--Absolute position angle for visit (deg):-->
-         <position_angle>87.88</position_angle>
+         <position_angle>87.89</position_angle>
          <!--Is this the first in a series of visits to the same target?-->
          <first_visit>N</first_visit>
          <coronagraph_configuration>NFOV</coronagraph_configuration>
@@ -434,9 +491,9 @@
          <cgi_excam>
             <!--Use parameters/telemetry to set the gain/frame_time/photon_counting?-->
             <auto_gain>N</auto_gain>
-            <gain>10.000</gain>
+            <gain>3500.000</gain>
             <!--Per-frame exposure time (s)-->
-            <frame_time>20.000</frame_time>
+            <frame_time>12.000</frame_time>
             <!--Process using photon-counting mode?-->
             <photon_counting>Y</photon_counting>
             <!--Number of frames per exposure/raster (approximate)-->
@@ -444,8 +501,17 @@
             <!--Total EXCAM (non-acq, non-satellite spots) exposure duration for the visit (s).-->
             <!--(For continuous frame observations this affects commanding.  Otherwise this is purely informational.)-->
             <!--Timed Obs Duration (EXCAM Continuous frame measurements):-->
-            <exposure_duration>288.75</exposure_duration>
-            <observe_satellite_spots>N</observe_satellite_spots>
+            <exposure_duration>180.83</exposure_duration>
+            <observe_satellite_spots>Y</observe_satellite_spots>
+            <!--Satellite Spot Pair ID for slot "TDD_SATELLITE_SPOTS_SLOT0"-->
+            <satellite_spots_pair_id>0</satellite_spots_pair_id>
+            <satellite_spots_gain>500.000</satellite_spots_gain>
+            <!--Satellite spots per-frame exposure time (s)-->
+            <satellite_spots_frame_time>5.000</satellite_spots_frame_time>
+            <!--Number of frames per satellite spot exposure (commanded)-->
+            <satellite_spots_number_of_frames>4</satellite_spots_number_of_frames>
+            <!--Total EXCAM satellite spot exposure duration for the visit (s)-->
+            <satellite_spots_exposure_duration>63.2345</satellite_spots_exposure_duration>
             <!--Time to wait prior to kicking off the exposure (s)-->
             <kickoff_time>16.0</kickoff_time>
          </cgi_excam>
@@ -456,21 +522,24 @@
             <close_focus>N</close_focus>
             <close_zernike>N</close_zernike>
          </cgi_locam>
+         <cgi_mechanisms>
+            <dpampos>POL0</dpampos>
+         </cgi_mechanisms>
          <!--Estimated acquisition time: 232.6900s-->
          <is_spectroscopy>N</is_spectroscopy>
       </cgi_visit>
       <cgi_visit number="7">
-         <!--Visit is of type "Technology Demonstration Observation Block".-->
-         <cgi_visit_type>CGIVST_TDD_OBS</cgi_visit_type>
+         <!--Visit is of type "Polarimetric Technology Demonstration Observation Block".-->
+         <cgi_visit_type>CGIVST_TDD_POL_OBS</cgi_visit_type>
          <observation_type>CGI_OBSERVE</observation_type>
-         <!--If visit starts at 2027-09-17T18:52:39 it will end on 2027-09-17T19:12:48.-->
-         <!--Est. visit duration: 0.3360 hr-->
+         <!--If visit starts at 2027-09-17T19:16:10 it will end on 2027-09-17T19:39:15.-->
+         <!--Est. visit duration: 0.3850 hr-->
          <!--Initial visit overhead duration (includes slew, settle, and WFI element wheel moves) (s)-->
          <initial_overhead_duration>857.3955</initial_overhead_duration>
          <!--Science instrument time: estimated CGI data collection time, plus acquisition and internal overheads (s).-->
-         <science_duration>352.2828</science_duration>
-         <!--Approximate data volume (Bytes) (5.04 MB)-->
-         <data_volume>5280000</data_volume>
+         <science_duration>528.4769</science_duration>
+         <!--Approximate data volume (Bytes) (40.28 MB)-->
+         <data_volume>42240000</data_volume>
          <realtime>N</realtime>
          <required>N</required>
          <parallels_allowed>Y</parallels_allowed>
@@ -479,7 +548,7 @@
          <!--Mid-visit roll Angle: -2.00 degrees-->
          <!--End of visit roll Angle: -1.99 degrees-->
          <!--Absolute position angle for visit (deg):-->
-         <position_angle>63.78</position_angle>
+         <position_angle>63.80</position_angle>
          <!--Is this the first in a series of visits to the same target?-->
          <first_visit>N</first_visit>
          <coronagraph_configuration>NFOV</coronagraph_configuration>
@@ -494,18 +563,27 @@
          <cgi_excam>
             <!--Use parameters/telemetry to set the gain/frame_time/photon_counting?-->
             <auto_gain>N</auto_gain>
-            <gain>15.000</gain>
+            <gain>300.000</gain>
             <!--Per-frame exposure time (s)-->
-            <frame_time>15.000</frame_time>
+            <frame_time>5.000</frame_time>
             <!--Process using photon-counting mode?-->
-            <photon_counting>Y</photon_counting>
+            <photon_counting>N</photon_counting>
             <!--Number of frames per exposure/raster (approximate)-->
-            <number_of_frames>1</number_of_frames>
+            <number_of_frames>5</number_of_frames>
             <!--Total EXCAM (non-acq, non-satellite spots) exposure duration for the visit (s).-->
             <!--(For continuous frame observations this affects commanding.  Otherwise this is purely informational.)-->
             <!--Timed Obs Duration (EXCAM Continuous frame measurements):-->
-            <exposure_duration>24.63</exposure_duration>
-            <observe_satellite_spots>N</observe_satellite_spots>
+            <exposure_duration>27.01</exposure_duration>
+            <observe_satellite_spots>Y</observe_satellite_spots>
+            <!--Satellite Spot Pair ID for slot "TDD_SATELLITE_SPOTS_SLOT0"-->
+            <satellite_spots_pair_id>0</satellite_spots_pair_id>
+            <satellite_spots_gain>200.000</satellite_spots_gain>
+            <!--Satellite spots per-frame exposure time (s)-->
+            <satellite_spots_frame_time>0.500</satellite_spots_frame_time>
+            <!--Number of frames per satellite spot exposure (commanded)-->
+            <satellite_spots_number_of_frames>1</satellite_spots_number_of_frames>
+            <!--Total EXCAM satellite spot exposure duration for the visit (s)-->
+            <satellite_spots_exposure_duration>9.0000</satellite_spots_exposure_duration>
             <!--Time to wait prior to kicking off the exposure (s)-->
             <kickoff_time>16.0</kickoff_time>
          </cgi_excam>
@@ -516,12 +594,15 @@
             <close_focus>N</close_focus>
             <close_zernike>N</close_zernike>
          </cgi_locam>
+         <cgi_mechanisms>
+            <dpampos>POL45</dpampos>
+         </cgi_mechanisms>
          <!--Estimated acquisition time: 232.6900s-->
          <is_spectroscopy>N</is_spectroscopy>
       </cgi_visit>
    </visit_list>
    <cpgs_input>
-      <filename>/local2/rails/vmromancpgs1/releases/20260709063825/public/cpgs/1785331966.json</filename>
+      <filename>/local2/rails/vmromancpgs1/releases/20260709063825/public/cpgs/1785333714.json</filename>
       <observation_label>CPGS_MRT_8_CGIPrime</observation_label>
       <observation_number>1</observation_number>
       <observer_firstname>Jim</observer_firstname>
@@ -549,7 +630,8 @@
       <reference_sub_type>4.0</reference_sub_type>
       <coronagraph_mask>1</coronagraph_mask>
       <filter>1</filter>
-      <with_polarization>0</with_polarization>
+      <with_polarization>1</with_polarization>
+      <wollaston>1</wollaston>
       <dig_dark_hole>1</dig_dark_hole>
       <touchup_only>0</touchup_only>
       <initial_threshold_planet_star_flux_ratio>5e-07</initial_threshold_planet_star_flux_ratio>
@@ -572,16 +654,16 @@
       <n_sub_seq>2</n_sub_seq>
       <number_target_visits>2</number_target_visits>
       <ratio_of_ref_to_tgt_duration>0.1</ratio_of_ref_to_tgt_duration>
-      <obtain_satspot_image_every_visit>0</obtain_satspot_image_every_visit>
+      <obtain_satspot_image_every_visit>1</obtain_satspot_image_every_visit>
       <number_of_pairs>0</number_of_pairs>
       <target_autogain>0</target_autogain>
-      <target_gain>10.0</target_gain>
-      <target_exptime>20.0</target_exptime>
+      <target_gain>3500.0</target_gain>
+      <target_exptime>12.0</target_exptime>
       <target_pcounting>1</target_pcounting>
       <reference_autogain>0</reference_autogain>
-      <reference_gain>15.0</reference_gain>
-      <reference_exptime>15.0</reference_exptime>
-      <reference_pcounting>1</reference_pcounting>
+      <reference_gain>300.0</reference_gain>
+      <reference_exptime>5.0</reference_exptime>
+      <reference_pcounting>0</reference_pcounting>
       <requested_start>2027-09-17T12:00:00</requested_start>
       <howfsc_fsm_raster>NFOV</howfsc_fsm_raster>
       <howfsc_fsam_do_fine_alignment>1</howfsc_fsam_do_fine_alignment>
@@ -614,12 +696,12 @@
       <locam_gain>1.0</locam_gain>
       <locam_nframes>1</locam_nframes>
       <locam_nframes_targ>1</locam_nframes_targ>
-      <satellite_spots_gain>500.0</satellite_spots_gain>
+      <satellite_spots_gain>200.0</satellite_spots_gain>
       <satellite_spots_exptime>0.5</satellite_spots_exptime>
       <satellite_spots_nframes>1</satellite_spots_nframes>
       <satellite_spots_gain_targ>500.0</satellite_spots_gain_targ>
-      <satellite_spots_exptime_targ>0.5</satellite_spots_exptime_targ>
-      <satellite_spots_nframes_targ>1</satellite_spots_nframes_targ>
+      <satellite_spots_exptime_targ>5.0</satellite_spots_exptime_targ>
+      <satellite_spots_nframes_targ>4</satellite_spots_nframes_targ>
       <satellite_spots_pair_id>0</satellite_spots_pair_id>
       <satellite_spots_redefine>0</satellite_spots_redefine>
       <kickoff_time>16.0</kickoff_time>
@@ -762,12 +844,12 @@
    </cpgs_input>
    <cpgs_output>
       <number_of_sequences>1</number_of_sequences>
-      <target_exposure_time>0.33861</target_exposure_time>
-      <reference_exposure_time>0.03386</reference_exposure_time>
+      <target_exposure_time>0.43741</target_exposure_time>
+      <reference_exposure_time>0.09529</reference_exposure_time>
       <slew_duration>1.52753</slew_duration>
       <WFC_max_duration>5.0</WFC_max_duration>
-      <satellite_spot_duration>0.0</satellite_spot_duration>
-      <total_duration>7.21333</total_duration>
+      <satellite_spot_duration>0.07776</satellite_spot_duration>
+      <total_duration>7.65417</total_duration>
       <error>false</error>
       <RDI_only>false</RDI_only>
       <ADI_only>false</ADI_only>
@@ -775,7 +857,7 @@
       <target_name>Beta Pictoris</target_name>
       <reference_name>Zeta Pup</reference_name>
       <initial_target_planet_star_flux_ratio>7e-08</initial_target_planet_star_flux_ratio>
-      <SchedMessage>SUCCESS. Your targets are visible within the following windows. Your requested start time (2027-09-17T12:00:00) puts your observation (of duration 0.30 days) within the 1st window. Approximate end of observation: 2027-09-17T19:12:48.</SchedMessage>
+      <SchedMessage>SUCCESS. Your targets are visible within the following windows. Your requested start time (2027-09-17T12:00:00) puts your observation (of duration 0.32 days) within the 1st window. Approximate end of observation: 2027-09-17T19:39:15.</SchedMessage>
       <ObsWindows>Field of regard intervals (#intervals = 1)
         START                   END            
 ---------------------------------------------------------
@@ -786,8 +868,8 @@ For this observation:
 Constant Roll Angles: (-2.00,2.00)
  Name         PA @Start        PA @End (of observation)
 -------------------------------------------------------
-Zeta Pup   ( 63.59, 59.59)  ( 63.78, 59.78)
-Beta Pictoris ( 87.71, 83.71)  ( 87.89, 83.89)
+Zeta Pup   ( 63.59, 59.59)  ( 63.80, 59.80)
+Beta Pictoris ( 87.72, 83.72)  ( 87.90, 83.90)
 </ObsWindows>
    </cpgs_output>
 </obs_specification>
