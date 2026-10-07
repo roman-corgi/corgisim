@@ -422,7 +422,7 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, fast_gain_mode='auto', g
             cases = [2E-9,3E-8,5E-9 ]
             contrast = str(min(cases, key=lambda x: abs(x - float(required_contrast))))
             # The operation inserts a 0 we need to get rid of
-            rootname = 'hlc_ni_' + contrast[:-2] + contrast[-1]
+            rootname = 'hlc_nfov_band1_ni_' + contrast[:-2] + contrast[-1]
 
         elif coronograph_mask == '2':
             cor_type = 'spc-wide_band'+ bandpass[0]

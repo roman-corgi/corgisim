@@ -15,7 +15,7 @@ def test_generate_observation_sequence():
     bandpass_corgisim = '1F'
     cor_type = 'hlc_band1'
     cases = ['3e-8']       
-    rootname = 'hlc_ni_' + cases[0]
+    rootname = 'hlc_nfov_band1_ni_' + cases[0]
     host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype': 'vegamag'}
     dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm1_v.fits' )
     dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm2_v.fits' )

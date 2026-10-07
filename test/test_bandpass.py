@@ -27,7 +27,7 @@ def test_bandpass():
     cor_type = 'hlc'
     bandpass = '1A'
     cases = ['3e-8']       
-    rootname = 'hlc_ni_' + cases[0]
+    rootname = 'hlc_nfov_band1_ni_' + cases[0]
     dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm1_v.fits' )
     dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm2_v.fits' )
 
@@ -45,7 +45,7 @@ def test_nd_filter_FPM_conflicts():
     cor_type = 'hlc'
     bandpass = '1A'
     cases = ['3e-8']       
-    rootname = 'hlc_ni_' + cases[0]
+    rootname = 'hlc_nfov_band1_ni_' + cases[0]
     dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm1_v.fits' )
     dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm2_v.fits' )
 
