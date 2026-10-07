@@ -34,7 +34,7 @@ def test_roll_imaging():
     #Create a Scene object that holds all this information
     base_scene = scene.Scene(host_star_properties, point_source_info)
     ####setup the wavelength for the simulation, nlam=1 for monochromatic image, nlam>1 for broadband image 
-    cases = ['2e-8']       
+    cases = ['1e-8']       
     rootname = 'hlc_nfov_band1_ni_' + cases[0]
     dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm1_v.fits' )
     dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm2_v.fits' )
@@ -90,9 +90,9 @@ def test_roll_spec():
     #Create a Scene object that holds all this information
     base_scene = scene.Scene(host_star_properties, point_source_info)
     ####setup the wavelength for the simulation, nlam=1 for monochromatic image, nlam>1 for broadband image 
-    cases = ['2e-8']      
+    cases = ['3e-8']      
     # cases = ['1e-9']      
-    rootname = 'spc-spec_ni_' + cases[0]
+    rootname = 'spc_spec_band3_ni_' + cases[0]
     dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm1_v.fits' )
     dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm2_v.fits' )
     
@@ -169,5 +169,5 @@ def test_roll_spec():
  
 
 if __name__ == '__main__':
-    #test_roll_imaging()
+    test_roll_imaging()
     test_roll_spec()

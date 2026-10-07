@@ -400,7 +400,7 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, fast_gain_mode='auto', g
     if is_spectroscopy :
         cgi_mode = 'spec'
         cor_type = 'spc-spec_band' +bandpass[0]
-        cases = [1E-9,2E-8,4E-9 ]
+        cases = [1E-7,1E-8,1E-9,3E-8,5E-9]
         contrast = str(min(cases, key=lambda x: abs(x - float(required_contrast))))
         # The operation inserts a 0 we need to get rid of
         rootname = 'spc_spec_band'+bandpass[0]+'_ni_' + contrast[:-2] + contrast[-1]
@@ -408,6 +408,12 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, fast_gain_mode='auto', g
         # Untested but available
         if cpgs_input.find('howfsc_spam_pos').text == 'SPECROT' :
             cor_type = cor_type + '_rotated'
+            cases = [1E-7,1E-8,3E-8,5E-9]
+            if bandpass[0] =="2":
+                cases.apppend(2E-9)
+            if bandpass[0] =="3":
+                cases.apppend(1E-9)
+            contrast = str(min(cases, key=lambda x: abs(x - float(required_contrast))))
             rootname = 'spc_spec_rot_band'+ bandpass[0] +'_ni_' + contrast[:-2] + contrast[-1]
 
         slit = cpgs_input.find('fsam_pos_spec').text
@@ -420,14 +426,18 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, fast_gain_mode='auto', g
         cgi_mode = 'excam'
         if coronograph_mask == '1':
             cor_type = 'hlc_band'+ bandpass[0]
-            cases = [2E-9,3E-8,5E-9 ]
+            cases = [1E-7,1E-8,3E-8,5E-9,8E-9]
             contrast = str(min(cases, key=lambda x: abs(x - float(required_contrast))))
             # The operation inserts a 0 we need to get rid of
             rootname = 'hlc_nfov_band1_ni_' + contrast[:-2] + contrast[-1]
 
         elif coronograph_mask == '2':
             cor_type = 'spc-wide_band'+ bandpass[0]
-            cases = [3E-9,5E-9 ]
+            cases = [1E-7,1E-8,3E-8]
+            if bandpass[0] =="1":
+                cases.apppend(6E-9)
+            if bandpass[0] =="4":
+                cases.apppend(4E-9)                
             contrast = str(min(cases, key=lambda x: abs(x - float(required_contrast))))
             # The operation inserts a 0 we need to get rid of
             rootname = 'spc_wfov_band'+ bandpass[0] +'_ni_' + contrast[:-2] + contrast[-1]

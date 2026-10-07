@@ -236,8 +236,8 @@ def test_spec_mode():
     cgi_mode = 'spec'
     cor_type = 'spc-spec_band3'
     bandpass = '3F'
-    cases = ['2e-8']      
-    rootname = 'spc-spec_ni_' + cases[0]
+    cases = ['3e-8']      
+    rootname = 'spc_spec_band3_ni_' + cases[0]
     dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm1_v.fits' )
     dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm2_v.fits' )
 
@@ -266,8 +266,8 @@ def test_spc_mode():
     bandpass_corgisim = '4F'
     bandpass_cgisim = '4'
     cor_type = 'spc-wide'
-    cases = ['2e-8']       
-    rootname = 'spc-wide_ni_' + cases[0]
+    cases = ['3e-8']       
+    rootname = 'spc_wfov_band4_ni_' + cases[0]
     dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm1_v.fits' )
     dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm2_v.fits' )
     optics_keywords = {'cor_type':cor_type, 'use_errors':2, 'polaxis':10, 'output_dim':201,\
@@ -462,7 +462,7 @@ def test_finite_diam_and_jitter_spec():
     cor_type = 'spc-spec_band3'
     bandpass = '3F'
     cases = ['2e-8']
-    rootname = 'spc-spec_ni_' + cases[0]
+    rootname = 'spc_spec_band3_ni_' + cases[0]
     dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm1_v.fits' )
     dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm2_v.fits' )
     polaxis = 10
