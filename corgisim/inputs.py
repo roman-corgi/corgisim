@@ -376,6 +376,7 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, fast_gain_mode='auto', g
         detector_target = instrument.CorgiDetector(emccd_keywords={'em_gain':em_gain, 'fast_gain_mode': fast_gain_mode, 'gain_CIC_Q': gain_CIC_Q}, photon_counting=photon_counting) 
     elif (cpgs_input.find('target_autogain').text == '1'):
         #TO DO use eetc for better gain approximation
+        
         detector_target = instrument.CorgiDetector(emccd_keywords={'em_gain':1000, 'fast_gain_mode': fast_gain_mode, 'gain_CIC_Q': gain_CIC_Q}, photon_counting=True)        #TO DO: have a approximate autogain using eetc
     if reference_star_present :
         if (cpgs_input.find('reference_autogain').text == '0'):
@@ -430,8 +431,8 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, fast_gain_mode='auto', g
             # The operation inserts a 0 we need to get rid of
             rootname = 'spc-wide_ni_' + contrast[:-2] + contrast[-1]
 
-    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm1_v.fits' )
-    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm2_v.fits' )
+    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions'+rootname+'_dm1_v.fits' )
+    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions'+rootname+'_dm2_v.fits' )
 
     # Satellite spots    
     obtain_satspots = (cpgs_input.find('obtain_satspot_image_every_visit').text == '1')

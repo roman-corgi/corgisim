@@ -28,8 +28,8 @@ def test_add_satellite_spots():
     bandpass = '1'
     cases = ['3e-8']       
     rootname = 'hlc_ni_' + cases[0]
-    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm1_v.fits' )
-    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm2_v.fits' )
+    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions'+rootname+'_dm1_v.fits' )
+    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions'+rootname+'_dm2_v.fits' )
 
     ##  Define the polaxis parameter. Use 10 for non-polaxis cases only, as other options are not yet implemented.
     polaxis = 10
@@ -133,8 +133,8 @@ def test_add_remove_satellite_spots(coro_type, sep_lamD, angle_deg, band):
     cor_type = coro_type
     bandpass = band
     rootname = cor_type+'_ni_5e-9'
-    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm1_v.fits' )
-    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm2_v.fits' )
+    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions'+rootname+'_dm1_v.fits' )
+    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions'+rootname+'_dm2_v.fits' )
 
     ##  Define the polaxis parameter. Use 10 for non-polaxis cases only, as other options are not yet implemented.
     polaxis = 10
@@ -198,8 +198,8 @@ def test_measure_offset(coro_type, sep_lamD, angle_deg, band,wavelength):
     cor_type = coro_type
     bandpass = band
     rootname = cor_type+'_ni_5e-9'
-    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm1_v.fits' )
-    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm2_v.fits' )
+    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions'+rootname+'_dm1_v.fits' )
+    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions'+rootname+'_dm2_v.fits' )
 
     ##  Define the polaxis parameter. Use 10 for non-polaxis cases only, as other options are not yet implemented.
     polaxis = 10

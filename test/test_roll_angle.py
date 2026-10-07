@@ -36,8 +36,8 @@ def test_roll_imaging():
     ####setup the wavelength for the simulation, nlam=1 for monochromatic image, nlam>1 for broadband image 
     cases = ['2e-8']       
     rootname = 'spc-wide_ni_' + cases[0]
-    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm1_v.fits' )
-    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm2_v.fits' )
+    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions'+rootname+'_dm1_v.fits' )
+    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions'+rootname+'_dm2_v.fits' )
 
     optics_keywords = {'cor_type':cor_type, 'use_errors':2, 'polaxis':10, 'output_dim':51,\
                        'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1}
@@ -93,8 +93,8 @@ def test_roll_spec():
     cases = ['2e-8']      
     # cases = ['1e-9']      
     rootname = 'spc-spec_ni_' + cases[0]
-    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm1_v.fits' )
-    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm2_v.fits' )
+    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions'+rootname+'_dm1_v.fits' )
+    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions'+rootname+'_dm2_v.fits' )
     
     mas_per_lamD = 63.72 # Band 3
     source_x_offset, source_y_offset = 6.0, 6.0 #lam/D
