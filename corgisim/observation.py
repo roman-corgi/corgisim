@@ -2,12 +2,52 @@
 ## This will likely contain functions simmilar to the functionality in Jorge's corgisims_obs 
 import corgisim
 import os
-from corgisim import scene, instrument, inputs, observation, outputs
+from corgisim import scene, instrument, inputs, outputs
 from corgidrp import mocks
 
 import copy 
 
-def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, vistype = 'CGIVST_TDD_OBS', visit_id= '0200001001001001001', save_as_fits= False, output_dir=None, full_frame= False, loc_x=None, loc_y=None):
+def _generate_one_frame(scene, cgi_mode, bandpass_header, base_optics_keywords, roll_angle, detector, exp_time, full_frame, loc_x, loc_y, zindex, zval_m_i):
+    """_summary_
+
+    Args:
+        scene (_type_): _description_
+        cgi_mode (_type_): _description_
+        bandpass_header (_type_): _description_
+        base_optics_keywords (_type_): _description_
+        roll_angle (_type_): _description_
+        detector (_type_): _description_
+        exp_time (_type_): _description_
+        full_frame (_type_): _description_
+        loc_x (_type_): _description_
+        loc_y (_type_): _description_
+        zindex (_type_): _description_
+        zval_m_i (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
+
+    optics_keywords = base_optics_keywords.copy()
+    if zindex is not None:
+        optics_keywords.update({'zindex': zindex, 'zval_m': zval_m_i})
+    
+    # Rebuild the optics with the updated keywords
+    optics = instrument.CorgiOptics(cgi_mode, bandpass_header,
+                                    optics_keywords=optics_keywords,
+                                    roll_angle=roll_angle)
+    sim_scene = optics.get_host_star_psf(scene)
+    if hasattr(scene, 'point_source_dra') or hasattr(scene, 'point_source_ddec'):
+        sim_scene = optics.inject_point_sources(scene, sim_scene)
+
+    if full_frame:
+        sim_image = detector.generate_detector_image(sim_scene, exp_time, full_frame=True, loc_x=loc_x, loc_y=loc_y)
+    else:
+        sim_image = detector.generate_detector_image(sim_scene, exp_time)
+
+    return sim_image.image_on_detector
+
+def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, vistype = 'CGIVST_TDD_OBS', visit_id= '0200001001001001001', save_as_fits= False, output_dir=None, full_frame= False, loc_x=None, loc_y=None, zindex=None, zval_m_i=None):
     """
     Generates a sequence of simulated observations and places them on a detector.
 
@@ -43,35 +83,33 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, v
         where each object represents a single generated observation frame with its image data
         and associated FITS header information.
     """
+    cgi_mode = optics.cgi_mode
+    bandpass_header = optics.bandpass
+    base_optics_keywords = optics.optics_keywords.copy()
+    roll_angle = optics.roll_angle
     optics.visit_id = visit_id
     optics.visit_type = vistype
-    sim_scene = optics.get_host_star_psf(scene)
-    if hasattr(scene, 'point_source_dra') or hasattr(scene, 'point_source_ddec'):
-        sim_scene = optics.inject_point_sources(scene,sim_scene)
-    
+
     simulatedImage_list = []
-    
-    if full_frame == False :
-        for i in range(0, n_frames):
-            sim_image = detector.generate_detector_image(sim_scene,exp_time)
-            simulatedImage_list.append(copy.deepcopy(sim_image))
-    else:
-        if save_as_fits:
-            # Save the images as fits in output_dir if specified, in corgisim/test/testdata if not
-            # Simulation needs to be full frame to be written as L1
-            if output_dir == None:
-                local_path = corgisim.lib_dir
-                outdir = os.path.join(local_path.split('corgisim')[0], 'corgisim/test/testdata')
-                print("No output directory specified. FITS files saved in ", outdir)
-            else:
-                outdir = output_dir
 
-        for i in range(0, n_frames):
-            sim_image = detector.generate_detector_image(sim_scene,exp_time,full_frame=True,loc_x=loc_x, loc_y=loc_y)
-            simulatedImage_list.append(copy.deepcopy(sim_image))
+    for i in range(n_frames):
+        if zval_m_i is not None:
+            zval = zval_m_i[i]
 
-            if save_as_fits:
-                outputs.save_hdu_to_fits(sim_image.image_on_detector,outdir=outdir ,write_as_L1=True)
+        # Rebuild the optics with the updated keywords
+        # Here already determine whether to generate a full frame or sub-array image based on the `full_frame` parameter
+        simulatedImage_list.append(_generate_one_frame(scene, cgi_mode, bandpass_header, base_optics_keywords, roll_angle, detector, exp_time, full_frame, loc_x, loc_y, zindex, zval))
+
+    if save_as_fits:
+        outdir = output_dir
+
+        if outdir is None:
+            local_path = corgisim.lib_dir
+            outdir = os.path.join(local_path.split('corgisim')[0], 'corgisim/test/testdata')
+            print("No output directory specified. FITS files saved in ", outdir)
+        
+        for sim_image in simulatedImage_list:
+            outputs.save_hdu_to_fits(sim_image.image_on_detector, outdir=outdir, write_as_L1=True)
 
     return simulatedImage_list
 
