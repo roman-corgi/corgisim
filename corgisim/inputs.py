@@ -403,11 +403,12 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, fast_gain_mode='auto', g
         cases = [1E-9,2E-8,4E-9 ]
         contrast = str(min(cases, key=lambda x: abs(x - float(required_contrast))))
         # The operation inserts a 0 we need to get rid of
-        rootname = 'spc-spec_ni_' + contrast[:-2] + contrast[-1]
+        rootname = 'spc_spec_band'+bandpass[0]+'_ni_' + contrast[:-2] + contrast[-1]
 
         # Untested but available
         if cpgs_input.find('howfsc_spam_pos').text == 'SPECROT' :
             cor_type = cor_type + '_rotated'
+            rootname = 'spc_spec_rot_band'+ bandpass[0] +'_ni_' + contrast[:-2] + contrast[-1]
 
         slit = cpgs_input.find('fsam_pos_spec').text
         slit_x_offset_mas_orientation_a = float(cpgs_input.find('fsam_dx_pix_a').text)*MAS_PIX
@@ -429,7 +430,7 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, fast_gain_mode='auto', g
             cases = [3E-9,5E-9 ]
             contrast = str(min(cases, key=lambda x: abs(x - float(required_contrast))))
             # The operation inserts a 0 we need to get rid of
-            rootname = 'spc-wide_ni_' + contrast[:-2] + contrast[-1]
+            rootname = 'spc_wfov_band'+ bandpass[0] +'_ni_' + contrast[:-2] + contrast[-1]
 
     dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm1_v.fits' )
     dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm2_v.fits' )
