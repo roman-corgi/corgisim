@@ -54,7 +54,7 @@ def test_L1_product_fits_format_specmode():
     bandpass = '3F'
     cases = ['3e-8']      
     # cases = ['1e-9']      
-    rootname = 'spc_spec-band3_ni_' + cases[0]
+    rootname = 'spc_spec_band3_ni_' + cases[0]
     dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm1_v.fits' )
     dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm2_v.fits' )
 
