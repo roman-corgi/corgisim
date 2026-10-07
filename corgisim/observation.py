@@ -7,7 +7,7 @@ from corgidrp import mocks
 
 import copy 
 
-def _generate_one_frame(scene, cgi_mode, bandpass_header, base_optics_keywords, roll_angle, detector, exp_time, full_frame, loc_x, loc_y, zindex, zval_m_i):
+def _generate_one_frame(scene, cgi_mode, bandpass_header, base_optics_keywords, roll_angle, visit_id, vistype, detector, exp_time, full_frame, loc_x, loc_y, zindex, zval_m_i):
     """_summary_
 
     Args:
@@ -16,6 +16,8 @@ def _generate_one_frame(scene, cgi_mode, bandpass_header, base_optics_keywords, 
         bandpass_header (_type_): _description_
         base_optics_keywords (_type_): _description_
         roll_angle (_type_): _description_
+        visit_id (_type_): _description_
+        vistype (_type_): _description_
         detector (_type_): _description_
         exp_time (_type_): _description_
         full_frame (_type_): _description_
@@ -31,11 +33,13 @@ def _generate_one_frame(scene, cgi_mode, bandpass_header, base_optics_keywords, 
     optics_keywords = base_optics_keywords.copy()
     if zindex is not None:
         optics_keywords.update({'zindex': zindex, 'zval_m': zval_m_i})
-    
+
     # Rebuild the optics with the updated keywords
     optics = instrument.CorgiOptics(cgi_mode, bandpass_header,
                                     optics_keywords=optics_keywords,
-                                    roll_angle=roll_angle)
+                                    roll_angle=roll_angle,
+                                    visit_id=visit_id,
+                                    visit_type=vistype)
     sim_scene = optics.get_host_star_psf(scene)
     if hasattr(scene, 'point_source_dra') or hasattr(scene, 'point_source_ddec'):
         sim_scene = optics.inject_point_sources(scene, sim_scene)
@@ -87,18 +91,15 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, v
     bandpass_header = optics.bandpass
     base_optics_keywords = optics.optics_keywords.copy()
     roll_angle = optics.roll_angle
-    optics.visit_id = visit_id
-    optics.visit_type = vistype
 
     simulatedImage_list = []
 
     for i in range(n_frames):
-        if zval_m_i is not None:
-            zval = zval_m_i[i]
+        zval = zval_m_i[i] if zval_m_i is not None else None
 
         # Rebuild the optics with the updated keywords
         # Here already determine whether to generate a full frame or sub-array image based on the `full_frame` parameter
-        simulatedImage_list.append(_generate_one_frame(scene, cgi_mode, bandpass_header, base_optics_keywords, roll_angle, detector, exp_time, full_frame, loc_x, loc_y, zindex, zval))
+        simulatedImage_list.append(_generate_one_frame(scene, cgi_mode, bandpass_header, base_optics_keywords, roll_angle, visit_id, vistype, detector, exp_time, full_frame, loc_x, loc_y, zindex, zval))
 
     if save_as_fits:
         outdir = output_dir
