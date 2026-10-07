@@ -431,8 +431,8 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, fast_gain_mode='auto', g
             # The operation inserts a 0 we need to get rid of
             rootname = 'spc-wide_ni_' + contrast[:-2] + contrast[-1]
 
-    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions'+rootname+'_dm1_v.fits' )
-    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions'+rootname+'_dm2_v.fits' )
+    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm1_v.fits' )
+    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm2_v.fits' )
 
     # Satellite spots    
     obtain_satspots = (cpgs_input.find('obtain_satspot_image_every_visit').text == '1')

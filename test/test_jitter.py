@@ -343,8 +343,8 @@ def test_obs_with_finite_stellar_diam():
     cor_type = 'hlc_band1'
     cases = ['3e-8']       
     rootname = 'hlc_ni_' + cases[0]
-    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions'+rootname+'_dm1_v.fits' )
-    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions'+rootname+'_dm2_v.fits' )
+    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm1_v.fits' )
+    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm2_v.fits' )
 
     optics_keywords ={'cor_type':cor_type, 'use_errors':1, 'polaxis':10, 'output_dim':201,\
                     'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
@@ -408,8 +408,8 @@ def test_all_pol_obs_with_finite_stellar_diam():
     cases = ['3e-8']       
     rootname = 'hlc_ni_' + cases[0]
     host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype': 'vegamag','stellar_diam_mas':stellar_diam_mas}
-    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions'+rootname+'_dm1_v.fits' )
-    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions'+rootname+'_dm2_v.fits' )
+    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm1_v.fits' )
+    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm2_v.fits' )
     
     # emccd keywords
     gain =1000
@@ -558,8 +558,8 @@ def test_obs_with_jitter():
     cor_type = 'hlc_band1'
     cases = ['3e-8']       
     rootname = 'hlc_ni_' + cases[0]
-    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions'+rootname+'_dm1_v.fits' )
-    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions'+rootname+'_dm2_v.fits' )
+    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm1_v.fits' )
+    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm2_v.fits' )
 
     optics_keywords ={'cor_type':cor_type, 'use_errors':1, 'polaxis':10, 'output_dim':201,\
                     'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
@@ -624,8 +624,8 @@ def test_pol_obs_with_finite_stellar_diam_and_jitter():
     cases = ['3e-8']       
     rootname = 'hlc_ni_' + cases[0]
     host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype': 'vegamag','stellar_diam_mas':stellar_diam_mas}
-    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions'+rootname+'_dm1_v.fits' )
-    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions'+rootname+'_dm2_v.fits' )
+    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm1_v.fits' )
+    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm2_v.fits' )
     
     # jitter and finite stellar diameter keywords
     # need a clean set for each polarization
