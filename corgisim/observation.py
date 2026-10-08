@@ -7,7 +7,9 @@ from corgidrp import mocks
 
 import copy 
 
-def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, vistype = 'CGIVST_TDD_OBS', visit_id= '0200001001001001001', save_as_fits= False, output_dir=None, full_frame= False, loc_x=None, loc_y=None):
+def generate_observation_sequence ( scene, optics, detector, exp_time, n_frames, 
+                                    satspots_are_present = False, satspots_detector = None, satspots_exptime = None, satspots_number_of_frames = None, satspot_keywords = None,
+                                    vistype = 'CGIVST_TDD_OBS', visit_id= '0200001001001001001', save_as_fits= False, output_dir=None, full_frame= False, loc_x=None, loc_y=None):
     """
     Generates a sequence of simulated observations and places them on a detector.
 
@@ -26,8 +28,16 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, v
         detector (corgisim.instrument.CorgiDetector): The detector object defining
             the detector characteristics and noise properties.
         exp_time (float): The exposure time for each individual frame in seconds.
-        n_frames (int): The total number of frames to generate in this observation sequence.
+        n_frames (int): The number of frames to generate in this observation sequence, satellite spots frames not included.
+        satspots_present (bool): If yes, the sequence will generate 3xsatspots_number_of_frames satellite spots frames 
+        satspots_detector(corgisim.instrument.CorgiDetector): The detector object defining
+            the detector characteristics and noise properties used for satellite spots
+        satspots_exptime (float): The exposure time for each individual satspots frame in seconds.
+        satspots_number_of_frames (int): The number of satellite spots frames OF EACH TYPE (backgroup, positive, negative) to generate; The sequence will contain 3*satspots_number_of_frames
+        satspot_keywords:  A dictionary with the keywords that are used to add satellite spots. See instruments. py add_satspot for the keywords.
         save_as_fits (bool): wether or not to save the generated images as fits file
+        vistype (str): A string indicating the type of visit  for populating header VISTYPE.
+        visit_id (str): A string indicating the visit ID for populating header VISITID.
         output_dir: if saving as fits file, where to save them 
         full_frame (bool, optional): If True, a full-frame detector image will be generated.
             If False (default), a sub-array image is generated.
@@ -45,13 +55,41 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, v
     """
     optics.visit_id = visit_id
     optics.visit_type = vistype
+    if satspots_are_present:
+        optics.SATSPOTS = 1
     sim_scene = optics.get_host_star_psf(scene)
+    point_source_present = False
+
     if hasattr(scene, 'point_source_dra') or hasattr(scene, 'point_source_ddec'):
+        point_source_present = True
         sim_scene = optics.inject_point_sources(scene,sim_scene)
     
     simulatedImage_list = []
-    
-    if full_frame == False :
+    if satspots_are_present and (satspots_detector is None or satspots_exptime is None or satspots_number_of_frames is None): 
+            raise ValueError('Satellite spots are presents but arguments are missing. Please specify satspot keywords, detector, exposure time and number of frames' )
+
+    if full_frame == False : # if full_frame is false, we can't save as L1
+        if satspots_are_present:
+            # For each frame, we take background (no satellite spots), positive and negative
+            # Background 
+            for i in range(0, satspots_number_of_frames):
+                sim_image = satspots_detector.generate_detector_image(sim_scene,satspots_exptime)
+                simulatedImage_list.append(copy.deepcopy(sim_image))
+
+            for sign in ["positive", "negative"]:
+                satspot_keywords["sign"] = sign
+                optics.add_satspot(satspot_keywords=satspot_keywords)
+                #Get the new PSF with point source if present
+                sim_scene = optics.get_host_star_psf(scene)
+                if point_source_present:
+                    sim_scene = optics.inject_point_sources(scene,sim_scene)
+
+                for i in range(0, satspots_number_of_frames):
+                    sim_image = satspots_detector.generate_detector_image(sim_scene,satspots_exptime)
+                    simulatedImage_list.append(copy.deepcopy(sim_image))
+                
+                optics.remove_satspot(satspot_keywords=satspot_keywords)
+
         for i in range(0, n_frames):
             sim_image = detector.generate_detector_image(sim_scene,exp_time)
             simulatedImage_list.append(copy.deepcopy(sim_image))
@@ -65,6 +103,30 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, v
                 print("No output directory specified. FITS files saved in ", outdir)
             else:
                 outdir = output_dir
+
+        if satspots_are_present:
+            # For each frame, we take background (no satellite spots), positive and negative
+            # Background 
+            for i in range(0, satspots_number_of_frames):
+                sim_image = satspots_detector.generate_detector_image(sim_scene,satspots_exptime,full_frame=True,loc_x=loc_x, loc_y=loc_y)
+                simulatedImage_list.append(copy.deepcopy(sim_image))
+                if save_as_fits:
+                    outputs.save_hdu_to_fits(sim_image.image_on_detector,outdir=outdir ,write_as_L1=True)
+
+            for sign in ["positive", "negative"]:
+                satspot_keywords["sign"] = sign
+                optics.add_satspot(satspot_keywords=satspot_keywords)
+                #Get the new PSF with point source if present
+                sim_scene = optics.get_host_star_psf(scene)
+                if point_source_present:
+                    sim_scene = optics.inject_point_sources(scene,sim_scene)
+
+                for i in range(0, satspots_number_of_frames):
+                    sim_image = satspots_detector.generate_detector_image(sim_scene,satspots_exptime, full_frame=True,loc_x=loc_x, loc_y=loc_y)
+                    simulatedImage_list.append(copy.deepcopy(sim_image))
+                    optics.remove_satspot(satspot_keywords=satspot_keywords)
+                    if save_as_fits:
+                        outputs.save_hdu_to_fits(sim_image.image_on_detector,outdir=outdir ,write_as_L1=True)
 
         for i in range(0, n_frames):
             sim_image = detector.generate_detector_image(sim_scene,exp_time,full_frame=True,loc_x=loc_x, loc_y=loc_y)
@@ -99,7 +161,7 @@ def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, save_
     simulatedImage_list = []
     # Try to get target and reference
     try:
-        scene_target, scene_reference, optics, detector_target, detector_reference, visit_list,satellite_dict_target, satellite_dict_reference, = inputs.load_cpgs_data(filepath,output_dim=output_dim, polaxis=polaxis, fast_gain_mode=fast_gain_mode, gain_CIC_Q=gain_CIC_Q)
+        scene_target, scene_reference, optics, detector_target, detector_reference, visit_list,satellite_dict_target, satellite_dict_reference = inputs.load_cpgs_data(filepath,output_dim=output_dim, polaxis=polaxis, fast_gain_mode=fast_gain_mode, gain_CIC_Q=gain_CIC_Q)
     # If error, only get the target        
     except ValueError:
         scene_target, optics, detector_target, visit_list, satellite_dict_target = inputs.load_cpgs_data(filepath,output_dim=output_dim, polaxis=polaxis, fast_gain_mode=fast_gain_mode, gain_CIC_Q=gain_CIC_Q)
@@ -110,7 +172,7 @@ def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, save_
 
     #Satellit spot configuration
     satspots_are_present = (satellite_dict_target is not None) 
-    if satellite_dict_target is not None:
+    if satspots_are_present:
         contrast1 = 1e-7
         contrast2 = 1e-5
         sep1 = 6.25
@@ -153,7 +215,6 @@ def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, save_
 
         satspot_keywords = {'num_pairs':2, 'sep_lamD': sep_lamD, 'angle_deg': angle_deg, 'contrast': contrast}
 
-    if satspots_are_present: 
         detector_satspots_target = instrument.CorgiDetector(emccd_keywords={'em_gain':satellite_dict_target['satellite_spots_gain']}, photon_counting=False) 
         if 'satellite_dict_reference' in locals():
             detector_satspots_reference = instrument.CorgiDetector(emccd_keywords={'em_gain':satellite_dict_reference['satellite_spots_gain']}, photon_counting=False) 
@@ -171,43 +232,17 @@ def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, save_
         optics.roll_angle = visit['roll_angle']
         simulatedImage_visit = []
         if visit['isReference']:
-             # Generate satellite spot images, if any
-            if satspots_are_present:
-                # For each frame, we take background (no satellite spots), positive and negative
-                # Background 
-                optics.SATSPOTS = 1
-                simulatedImage_visit_satspots = generate_observation_sequence(scene_reference, optics,detector_satspots_reference, satellite_dict_reference['satellite_spots_frame_time'], satellite_dict_reference['satellite_spots_number_of_frames'], visit_id= visit_id, vistype= visit['vistype'], save_as_fits= save_as_fits, output_dir=subfolder_path, full_frame= full_frame,loc_x=loc_x, loc_y=loc_y )
-                simulatedImage_visit.extend(simulatedImage_visit_satspots)
+            simulatedImage_visit = generate_observation_sequence(scene_reference, optics, detector_reference,  visit['exp_time'], visit['number_of_frames'], 
+                                                                satspots_are_present = satspots_are_present, satspots_detector = detector_satspots_reference, satspots_exptime = satellite_dict_reference['satellite_spots_frame_time'], satspots_number_of_frames = satellite_dict_reference['satellite_spots_number_of_frames'], satspot_keywords = satspot_keywords,
+                                                                visit_id= visit_id, vistype= visit['vistype'], save_as_fits= save_as_fits, output_dir=subfolder_path, full_frame= full_frame,loc_x=loc_x, loc_y=loc_y )
 
-                for sign in ["positive", "negative"]:
-                    satspot_keywords["sign"] = sign
-                    optics.add_satspot(satspot_keywords=satspot_keywords)
-                    simulatedImage_visit_satspots = generate_observation_sequence(scene_reference, optics,detector_satspots_reference, satellite_dict_reference['satellite_spots_frame_time'], satellite_dict_reference['satellite_spots_number_of_frames'], visit_id= visit_id, vistype= visit['vistype'], save_as_fits= save_as_fits, output_dir=subfolder_path, full_frame= full_frame,loc_x=loc_x, loc_y=loc_y )
-                    simulatedImage_visit.extend(simulatedImage_visit_satspots)
-                    optics.remove_satspot(satspot_keywords=satspot_keywords)
-
-            simulatedImage_visit_sci = generate_observation_sequence(scene_reference, optics, detector_reference, visit['exp_time'], visit['number_of_frames'], visit_id= visit_id, vistype= visit['vistype'], save_as_fits= save_as_fits, output_dir=subfolder_path, full_frame= full_frame,loc_x=loc_x, loc_y=loc_y )
-            simulatedImage_visit.extend(simulatedImage_visit_sci)
         else:
-            # Generate satellite spot images, if any
-            if satspots_are_present:
-                # For each frame, we take background (no satellite spots), positive and negative
-                # Background 
-                optics.SATSPOTS = 1
-                simulatedImage_visit_satspots = generate_observation_sequence(scene_target, optics,detector_satspots_target, satellite_dict_target['satellite_spots_frame_time'], satellite_dict_target['satellite_spots_number_of_frames'], visit_id= visit_id, vistype= visit['vistype'], save_as_fits= save_as_fits, output_dir=subfolder_path, full_frame= full_frame,loc_x=loc_x, loc_y=loc_y )
-                simulatedImage_visit.extend(simulatedImage_visit_satspots)
+            simulatedImage_visit = generate_observation_sequence(scene_target, optics, detector_target,  visit['exp_time'], visit['number_of_frames'], 
+                                                                satspots_are_present = satspots_are_present, satspots_detector = detector_satspots_target, satspots_exptime = satellite_dict_target['satellite_spots_frame_time'], satspots_number_of_frames = satellite_dict_target['satellite_spots_number_of_frames'], satspot_keywords = satspot_keywords,
+                                                                visit_id= visit_id, vistype= visit['vistype'], save_as_fits= save_as_fits, output_dir=subfolder_path, full_frame= full_frame,loc_x=loc_x, loc_y=loc_y )
 
-                for sign in ["positive", "negative"]:
-                    satspot_keywords["sign"] = sign
-                    optics.add_satspot(satspot_keywords=satspot_keywords)
-                    simulatedImage_visit_satspots = generate_observation_sequence(scene_target, optics,detector_satspots_target, satellite_dict_target['satellite_spots_frame_time'], satellite_dict_target['satellite_spots_number_of_frames'], visit_id= visit_id, vistype= visit['vistype'], save_as_fits= save_as_fits, output_dir=subfolder_path, full_frame= full_frame,loc_x=loc_x, loc_y=loc_y )
-                    simulatedImage_visit.extend(simulatedImage_visit_satspots)
-                    optics.remove_satspot(satspot_keywords=satspot_keywords)
 
-            simulatedImage_visit_sci = generate_observation_sequence(scene_target, optics, detector_target, visit['exp_time'], visit['number_of_frames'], visit_id= visit_id, vistype= visit['vistype'], save_as_fits= save_as_fits, output_dir=subfolder_path, full_frame= full_frame,loc_x=loc_x, loc_y=loc_y  )
-            simulatedImage_visit.extend(simulatedImage_visit_sci)
-
-        if not save_as_fits or (save_as_fits and save_as_list): # If we are writing the files, we are not storing the images
+        if not save_as_fits or (save_as_fits and save_as_list): # If we are writing the files, we are not storing the images unless explicitly told to do so
             simulatedImage_list.extend(simulatedImage_visit)
 
     return simulatedImage_list
