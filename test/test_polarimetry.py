@@ -8,6 +8,7 @@ import pytest
 Test file to check that polarized images are generated correctly
 '''
 
+
 def test_polarimetry():
     print('This test checks that the images from polarimetry mode is generated correctly')
 
@@ -119,5 +120,96 @@ def test_polarimetry():
     assert comp_q_flux_normalized == pytest.approx(comp_stokes_output[1], rel=0.05)
     assert comp_u_flux_normalized == pytest.approx(comp_stokes_output[2], rel=0.05)
 
+def test_simulation_method():
+    """
+    Test that the updated polarimetric simulations for the speckle field match up with the old simulation method
+    """
+    # Unpolarized host star and sim parameters
+    Vmag = 8
+    sptype = 'G0V'
+    unpol_stokes = np.array([1.0, 0.0, 0.0, 0.0])
+    host_star_properties = {
+        'Vmag': Vmag,
+        'spectral_type': sptype,
+        'magtype': 'vegamag',
+        'stokes_vector': unpol_stokes,
+    }
+    base_scene = scene.Scene(host_star_properties)
+
+    
+    cgi_mode    = 'excam'
+    bandpass    = '1B'
+    cor_type    = 'hlc'
+    output_dim  = 101
+    oversample  = 7
+    roll_angle  = 0.0
+
+    rootname = 'hlc_ni_3e-8'
+    dm1 = proper.prop_fits_read(roman_preflight_proper.lib_dir + f'/examples/{rootname}_dm1_v.fits')
+    dm2 = proper.prop_fits_read(roman_preflight_proper.lib_dir + f'/examples/{rootname}_dm2_v.fits')
+
+    base_optics_kw = {
+        'cor_type': cor_type,
+        'use_errors': 2,
+        'output_dim': output_dim,
+        'use_dm1': 1, 'dm1_v': dm1,
+        'use_dm2': 1, 'dm2_v': dm2,
+        'use_fpm': 1,
+        'use_lyot_stop': 1,
+        'use_field_stop': 1,
+    }
+
+    # get polarized outputs using the new method
+    new_imgs = []
+    for prism in ['POL0', 'POL45']:
+        kw = {**base_optics_kw, 'polaxis': -10, 'prism': prism}
+        optics = instrument.CorgiOptics(cgi_mode, bandpass,
+                                     optics_keywords=kw,
+                                     oversampling_factor=oversample,
+                                     if_quiet=True,
+                                     roll_angle=roll_angle)
+        new_imgs.append(optics.get_host_star_psf(base_scene).host_star_image.data)
+    new_pol0 = new_imgs[0][0]
+    new_pol90 = new_imgs[0][1]
+    new_pol45 = new_imgs[1][0]
+    new_pol135 = new_imgs[1][1]
+
+    # get polarized outputs using the old method of combining polaxis
+    old_imgs = []
+    for polaxis in [-1, 1, -2, 2, -3, 3, -4, 4]:
+        kw = {**base_optics_kw, 'polaxis': polaxis}
+        optics = instrument.CorgiOptics(cgi_mode, bandpass,
+                                     optics_keywords=kw,
+                                     oversampling_factor=oversample,
+                                     if_quiet=True,
+                                     roll_angle=roll_angle)
+        old_imgs.append(optics.get_host_star_psf(base_scene).host_star_image.data)
+    # combine polaxis values to get polarized intensities
+    old_pol0 = 0.5 * (old_imgs[0] + old_imgs[1])
+    old_pol90 = 0.5 * (old_imgs[2] + old_imgs[3])
+    old_pol45 = 0.5 * (old_imgs[4] + old_imgs[5])
+    old_pol135 = 0.5 * (old_imgs[6] + old_imgs[7])
+
+    # since the new simulations include the field-averaged polarizations in the form of a mueller matrix
+    # we need to subtract off the average power in each polarized image to only compare the spatial structure
+    # note that since the field-averaged mueller matrix swaps horizontal and vertical polarization (negative m22 value), 
+    # we need to compare old_pol0 with new_pol90 and old_pol90 with new pol_0
+    new_pol0 -= new_pol0.mean()
+    new_pol90 -= new_pol90.mean()
+    new_pol45 -= new_pol45.mean()
+    new_pol135 -= new_pol135.mean()
+    old_pol0 -= old_pol0.mean()
+    old_pol90 -= old_pol90.mean()
+    old_pol45 -= old_pol45.mean()
+    old_pol135 -= old_pol135.mean()
+
+    # compare the mean-subtracted power in each wollaston channel (keeping into account the channel swap)
+    # both rtol and atol are used to account for near-zero values in the array
+    assert new_pol0 == pytest.approx(old_pol90, rel=0.02, abs=1e-5)
+    assert new_pol90 == pytest.approx(old_pol0, rel=0.02, abs=1e-5)
+    assert new_pol45 == pytest.approx(old_pol45, rel=0.02, abs=1e-5)
+    assert new_pol135 == pytest.approx(old_pol135, rel=0.02, abs=1e-5)
+
 if __name__ == '__main__':
     test_polarimetry()
+    test_simulation_method()
