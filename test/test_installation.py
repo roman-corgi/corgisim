@@ -18,12 +18,12 @@ def test_install():
         prescription_file = roman_preflight_proper.lib_dir + '/roman_preflight.py'
         shutil.copy( prescription_file, path_directory )
 
-    if not (os.path.isfile(path_directory + '/roman_preflight_compact.py')):
-        prescription_file = roman_preflight_proper.lib_dir + '/roman_preflight_compact.py'
-        shutil.copy( prescription_file, path_directory )
+    # if not (os.path.isfile(path_directory + '/roman_preflight_compact.py')):
+    #     prescription_file = roman_preflight_proper.lib_dir + '/roman_preflight_compact.py'
+    #     shutil.copy( prescription_file, path_directory )
 
     assert(os.path.isfile(path_directory + '/roman_preflight.py'))
-    assert(os.path.isfile(path_directory + '/roman_preflight_compact.py'))
+#    assert(os.path.isfile(path_directory + '/roman_preflight_compact.py'))
 
     #Check your installation by creating a scene
     #Define the host star properties

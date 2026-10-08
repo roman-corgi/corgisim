@@ -435,7 +435,7 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, fast_gain_mode='auto', g
             cor_type = 'spc-wide_band'+ bandpass[0]
             cases = [1E-7,1E-8,3E-8]
             if bandpass[0] =="1":
-                cases.apppend(6E-9)
+                cases.append(6E-9)
             if bandpass[0] =="4":
                 cases.apppend(4E-9)                
             contrast = str(min(cases, key=lambda x: abs(x - float(required_contrast))))

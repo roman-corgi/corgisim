@@ -135,7 +135,7 @@ def test_add_remove_satellite_spots(coro_type, sep_lamD, angle_deg, band):
     if cor_type == "hlc":
         rootname = 'hlc_nfov_band1_ni_5e-9'
     if cor_type == "spc-wide":
-        rootname = 'spc_wfov_band4_ni_5e-9'        
+        rootname = 'spc_wfov_band4_ni_4e-9'        
     dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm1_v.fits' )
     dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm2_v.fits' )
 
@@ -200,7 +200,10 @@ def test_measure_offset(coro_type, sep_lamD, angle_deg, band,wavelength):
     cgi_mode = 'excam'
     cor_type = coro_type
     bandpass = band
-    rootname = cor_type+'_ni_5e-9'
+    if cor_type == "hlc":
+        rootname = 'hlc_nfov_band1_ni_5e-9'
+    if cor_type == "spc-wide":
+        rootname = 'spc_wfov_band4_ni_4e-9'    
     dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm1_v.fits' )
     dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm2_v.fits' )
 

@@ -30,8 +30,8 @@ def test_polarimetry():
     bandpass_corgisim = '1F'
     cor_type = 'hlc'
     output_dim = 51
-    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/hlc_nfov_band1_ni_3e-8_dm1_v.fits' )
-    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/hlc_nfov_band1_ni_3e-8_dm2_v.fits' )
+    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/hlc_nfov_band1_ni_3e-8_dm1_v.fits' )
+    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/hlc_nfov_band1_ni_3e-8_dm2_v.fits' )
     
 
     #Generate 0/90 image pair
