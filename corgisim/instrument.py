@@ -1476,6 +1476,8 @@ class CorgiOptics():
         
 
         if roll_angle != 0:
+            #estimate sum of disk flux before roll
+            disk_sum_before_roll = np.nansum(disk_model_data)
             #pad zeros for the scipy rotate function - the padding assumes that the disk model data is a square array
             ny, nx = disk_model_data.shape
             pad = int(np.ceil((np.hypot(ny, nx) - min(ny, nx)) / 2))
@@ -1484,6 +1486,9 @@ class CorgiOptics():
             rotated_disk = rotate(padded_disk, angle=roll_angle, reshape=False, order=3, mode='constant', cval=0.0)
             # resize the disk data to its original size
             disk_model_data = rotated_disk[pad:pad + ny, pad:pad + nx]
+            #estimate sum of disk flux after roll
+            disk_sum_after_roll = np.nansum(disk_model_data) 
+            disk_model_data *= disk_sum_before_roll / disk_sum_after_roll 
         total_flux = np.nansum(disk_model_data)
         if not np.isfinite(total_flux) or total_flux <= 0:
             raise ValueError(f"Disk model has non-positive total flux ({total_flux}); ""cannot normalise."  )
