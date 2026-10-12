@@ -9,6 +9,8 @@ from corgisim.scene import Scene, SimulatedImage
 import pytest
 import numpy as np
 from unittest.mock import patch
+from scipy.ndimage import rotate as scipy_rotate
+ 
 
 # TODO - we need to change the tests in here due to the change of definitions
 @pytest.fixture
@@ -313,19 +315,153 @@ def test_simulate_2d_scene_missing_prf_path():
     with pytest.raises(ValueError, match=r"No PRF cube path provided in the input:"):
         CorgiOptics.simulate_2d_scene(mock_optics, mock_scene, prf_cube_path=None)
 
-def test_roll_angle_not_implemented():
+def _simulate_2d_scene_disk_roll_before_convolution(disk, roll_angle):
+    
+    """Run simulate_2d_scene_disk_roll on disk and return the disk array it passes to convolution.
+ 
+    simulate_2d_scene loads a disk model from a FITS file, optionally rotates it by
+    the telescope roll angle, normalises the total flux, and then passes the results to
+    to _convolve_with_prfs as the ``obj`` keyword argument.
+    
+    Args:
+        disk (np.ndarray): 2-D disk brightness array in the sky frame, before
+            any roll-angle rotation is applied.
+        roll_angle (float): Telescope roll angle in degrees.  
+ 
+    Returns:
+        np.ndarray: The 2-D ``obj`` array that simulate_2d_scene passed to
+        _convolve_with_prfs — the disk after roll-angle rotation and flux
+        normalisation, ready for convolution with the PRF cube.
+    """
+
     from corgisim.instrument import CorgiOptics
-    """Test that NotImplementedError is raised for non-zero roll angle."""
-    mock_scene = Mock()
-    mock_scene.twoD_scene_info = {
-        "disk_model_path": "/fake/path/to/disk_model.fits",
-        "prf_cube_path": "/fake/path/to/prf_cube.fits"
+
+    # providing dict for prf sim info
+    prf_sim_info = {
+    'centred': 'True',
+    'iwa': 2.0, 'owa': 8.0,
+    'inner_step': 0.5, 'mid_step': 1.0, 'outer_step': 2.0,
+    'max_radius': 10.0, 'step_deg': 90.0,
     }
 
-    mock_optics = Mock()
-    mock_optics.res_mas = 1.0
-    mock_optics.cgi_mode = "excam_efield"
-    mock_optics.roll_angle = 10  # Non-zero roll angle
+    mock_scene = Mock()
+    mock_scene.twoD_scene_info = {"disk_model_path": "/fake/path/to/disk_model.fits"}
 
-    with pytest.raises(NotImplementedError, match=r"Roll angle rotation is not implemented yet for 2D scene."):
-        CorgiOptics.simulate_2d_scene(mock_optics, mock_scene, prf_cube_path=mock_scene.twoD_scene_info["prf_cube_path"])
+    mock_optics = Mock()
+    mock_optics.res_mas = 100.0
+    mock_optics.cgi_mode = "excam"
+    mock_optics.roll_angle = roll_angle
+
+    with patch('corgisim.instrument.fits.getdata', return_value=disk), \
+         patch('corgisim.prf_simulation._get_prf_sim_info', return_value=prf_sim_info), \
+         patch('corgisim.convolution._convolve_with_prfs') as mock_conv, \
+         patch('corgisim.convolution.flux_calibration_2D_scene',
+         side_effect=lambda optics, scene, conv2d: conv2d), \
+         patch('corgisim.convolution._set_2D_image_sim_info', return_value={}), \
+         patch('corgisim.outputs.create_hdu', side_effect=lambda data, sim_info: data):
+
+        mock_conv.side_effect = lambda obj, **kwargs: obj
+        CorgiOptics.simulate_2d_scene(mock_optics, mock_scene,
+                  prf_cube_path="/fake/path/to/prf_cube.fits")
+    return mock_conv.call_args.kwargs['obj']
+
+def test_disk_and_point_source_rotate_in_same_direction():
+    """checking disk rotation in _simulate_2d_scene_disk_roll_before_convolution agrees in direction with skycoord_to_excamcoord.
+ 
+    generates a disk with a single bright pixel purely to the right of centre in the disk image
+    (dRA < 0, dDec = 0 in sky coordinates), then finds using skycoord_to_excamcoord where
+    a point source at the same sky position would land on the detector after a 90 deg
+    roll.  The disk peak after __simulate_2d_scene_disk_roll_before_convolution
+    must land at the same pixel.
+    """
+    from corgisim.instrument import skycoord_to_excamcoord
+ 
+    N = 11
+    cy = cx = N // 2  # centre pixel: (5, 5)
+    dcol = 3          # feature is 3 pixels to the right of centre
+ 
+    disk = np.zeros((N, N))
+    disk[cy, cx + dcol] = 1.0  # bright pixel at (5, 8)
+ 
+    # Sky position of that pixel (pixel units stand in for mas here)
+    dra  = -float(dcol)  # +col = -RA
+    ddec =  0.0
+ 
+    roll_angle = 90.0
+ 
+    # skycoord_to_excamcoord predict this sky position
+    excam_dx, excam_dy = skycoord_to_excamcoord(dra, ddec, roll_angle)
+    expected_col = round(cx + excam_dx)
+    expected_row = round(cy + excam_dy)  
+ 
+    #simulate_2d_scene disk peak location
+    rolled_disk = _simulate_2d_scene_disk_roll_before_convolution(disk, roll_angle)
+    peak_row, peak_col = np.unravel_index(np.argmax(rolled_disk), rolled_disk.shape)
+
+    # assert if the disk roll and skycoord_to_excamcoord peak pixel location are matching
+    assert (peak_row, peak_col) == (expected_row, expected_col), (
+        f"Disk peak at ({peak_row}, {peak_col}) but skycoord_to_excamcoord "
+        f"predicts ({expected_row}, {expected_col}). "
+    )
+
+def test_roll_angle_rotates_disk_model():
+
+    """Roll angle moves a disk feature off its original axis in the expected way.
+ 
+    Three sub-cases are checked:
+ 
+    roll_angle == 0
+        The disk must not rotate. The bright pixel must still be at the same location after the 0 rotation.
+ 
+    roll_angle == +90
+        CW rotation in the detector frame moves the feature that was above centre to the right: expected peak (4, 6). 
+ 
+    roll_angle == -90
+       CCW rotation moves the feature to the left: expected peak (4, 2).
+    """
+
+    disk = np.zeros((9, 9))
+    disk[6, 4] = 1.0  # bright pixel 2 rows below centre (centre is row=4, col=4)
+
+    # ------------------------------------------------------------------ roll=0
+    unrotated = _simulate_2d_scene_disk_roll_before_convolution(disk, roll_angle=0.0)
+    assert np.unravel_index(np.argmax(unrotated), unrotated.shape) == (6, 4), (
+    "roll_angle=0 should leave the disk unchanged"
+)
+
+    # ----------------------------------------------------------------- roll=+90
+    rotated_90_pos = _simulate_2d_scene_disk_roll_before_convolution(disk, roll_angle=90.0)
+    assert rotated_90_pos.shape == disk.shape, (
+        f"rotation changed the array size: {rotated_90_pos.shape} vs {disk.shape} "
+        "- the padded array was probably not cropped back"
+    )
+    row_pos, col_pos = np.unravel_index(np.argmax(rotated_90_pos), rotated_90_pos.shape)
+
+    assert (row_pos, col_pos) == (4, 6)
+
+    # ----------------------------------------------------------------- roll=-90
+    rotated_90_neg = _simulate_2d_scene_disk_roll_before_convolution(disk, roll_angle=-90.0)
+    assert rotated_90_neg.shape == disk.shape, (
+        f"rotation changed the array size: {rotated_90_neg.shape} vs {disk.shape}"
+    )
+    row_neg, col_neg = np.unravel_index(np.argmax(rotated_90_neg), rotated_90_neg.shape)
+
+    assert (row_neg, col_neg) == (4, 2)
+
+# testing the normalization
+@pytest.mark.parametrize("roll_angle", [0.0, 30.0, -30.0, 45.0, -45.0])
+def test_disk_model_is_normalised_after_rotation(roll_angle):
+    """The normalized disk flux before the convolution sums to 1 at every roll angle. 
+    checking to see if there are nans or inf from the rolling
+    """
+    ring = np.random.default_rng(42)
+    #disk with random values
+    disk = ring.random((21, 21))
+ 
+    #rolls the disk using the function
+    rolled_disk = _simulate_2d_scene_disk_roll_before_convolution(disk, roll_angle)
+ 
+    # check if any of the value is nan, inf in the rolled disk
+    assert np.isfinite(rolled_disk).all()
+    # fails if normalization is done before rolling or normalization is not handled correctly
+    assert np.isclose(np.sum(rolled_disk), 1.0, rtol=1e-5)
