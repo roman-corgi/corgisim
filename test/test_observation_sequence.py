@@ -94,10 +94,12 @@ def test_generate_observation_sequence():
 
     assert simulatedImage_list_fullframe[-1].image_on_detector[1].header['EXPTIME'] == exp_time
     assert simulatedImage_list_fullframe[-1].image_on_detector[1].header['EMGAIN_C'] == gain
+    assert simulatedImage_list_fullframe[-1].image_on_detector[1].header['SATSPOTS'] == 0
 
     assert simulatedImage_list_fullframe[-1].image_on_detector[0].header['PHTCNT'] == detector.photon_counting
     assert simulatedImage_list_fullframe[-1].image_on_detector[0].header['OPGAIN'] == gain
     assert simulatedImage_list_fullframe[-1].image_on_detector[0].header['FRAMET'] == exp_time
+
     
     # Test several frames
 
