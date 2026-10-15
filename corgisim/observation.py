@@ -114,6 +114,15 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, v
     generating either a sub-array or a full-frame image for each exposure.
     Each observation sequence corresponds to a single visit at a specific roll angle.
 
+    A `CorgiOptics` instance is one fixed optics state (DM settings, zernike/drift
+    value, etc.) -- a different state usually requires a new instance. So frames
+    either all share one state (`zindex is None`: the PSF is identical for
+    every frame, computed once) or each needs its own
+    (`zindex is not None`: a distinct `zval_m_i[i]` per frame). In both cases
+    the frames are generated in parallel by `frame_runner`, collected, and
+    (if `save_as_fits`) written to disk before this function returns, so a
+    caller looping over visits only holds one visit's frames at a time.
+
     Args:
         scene (corgisim.scene.Scene): The scene object containing information about
             the host star and any specified point sources.
@@ -140,7 +149,16 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, v
             x-coordinate of the full frame's origin (top-left pixel). Required if `full_frame` is True.
         loc_y (int, optional): The y-coordinate for the center of the sub-array in pixels
             if `full_frame` is False. If `full_frame` is True, this specifies the
-            y-coordinate of the full frame's origin (top-left pixel). Required if `full_frame` is True.        
+            y-coordinate of the full frame's origin (top-left pixel). Required if `full_frame` is True.
+        zindex (list of int, optional): Zernike Noll indices as `zindex` in the
+            optics keywords. Default None (all frames share the input optics keywords).
+        zval_m_i (array, optional): Zernike values in meters, one row per frame
+            (shape n_frames x len(zindex)), passed as `zval_m`. Required if `zindex` is given.
+        frame_runner (callable, optional): frame_runner(frame_func, args_list) runs the frame
+            tasks and returns the frames in order. Default None runs them one after another
+            in this process (serial). For n local worker processes pass
+            functools.partial(corgisim.parallel_executor.run_parallel, n_jobs=n, allow_nesting=True);
+            for MPI pass functools.partial(corgisim.mpi_runtime.run_tasks_mpi, comm).
 
     Returns:
         list[corgisim.scene.SimulatedImage]: A list of :py:class:`corgisim.scene.SimulatedImage` objects,
