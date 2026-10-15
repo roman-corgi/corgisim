@@ -149,7 +149,7 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, v
         frame_runner (callable, optional): frame_runner(frame_func, args_list) runs the frame
             tasks and returns the frames in order. Default None runs them one after another
             in this process (serial). For n local worker processes pass
-            functools.partial(corgisim.parallel_executor.run_parallel, n_jobs=n, allow_nesting=True);
+            functools.partial(corgisim.parallel_executor.run_parallel, n_jobs=n);
             for MPI pass functools.partial(corgisim.mpi_runtime.run_tasks_mpi, comm).
 
     Returns:
@@ -158,7 +158,7 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames, v
         and associated FITS header information.
     """
     if frame_runner is None:
-        # Serial frame generation in this process, no parallel processing. 
+        # Serial frame generation in this process, no parallel processing.
         frame_runner = _run_frames_local
 
     # Prepare the per-frame tasks (function + args) for this visit's frames, then run them in parallel and collect the results.
