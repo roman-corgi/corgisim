@@ -1808,7 +1808,7 @@ class CorgiDetector():
                                   'nonlin_path': None,                  # path to file containing non-linearity map; if None, no input nonlinearity used
                                   'flat_path': None,            # path to file containing flat field map; if None, no flat field correction used
                                   'fast_gain_mode':'auto',
-                                  'gain_CIC_Q':'Roman'}                 # gain of the CIC in the EM register; set to 0 to disable it to have faster simulation}
+                                  'gain_CIC_Q':'roman'}                 # gain of the CIC in the EM register; set to 0 to disable it to have faster simulation}
         if emccd_keywords is not None:                    
             if 'qe' in emccd_keywords.keys():
                 raise Warning("Quantum efficiency has been added in the bandpass throughput; it must be enforced as 1 here.")
