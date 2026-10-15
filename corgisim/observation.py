@@ -172,7 +172,7 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames,
         frame_runner (callable, optional): frame_runner(frame_func, args_list) runs the frame
             tasks and returns the frames in order. Default None runs them one after another
             in this process (serial). For n local worker processes pass
-            functools.partial(corgisim.parallel_executor.run_parallel, n_jobs=n, allow_nesting=True);
+            functools.partial(corgisim.parallel_executor.run_parallel, n_jobs=n);
             for MPI pass functools.partial(corgisim.mpi_runtime.run_tasks_mpi, comm).
 
     Returns:
@@ -190,7 +190,7 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames,
         raise ValueError('Satellite spots are presents but arguments are missing. Please specify satspot keywords, detector, exposure time and number of frames' )
 
     if frame_runner is None:
-        # Serial frame generation in this process, no parallel processing. 
+        # Serial frame generation in this process, no parallel processing.
         frame_runner = _run_frames_local
 
     def run_segment(seg_detector, seg_exp_time, seg_n_frames):
