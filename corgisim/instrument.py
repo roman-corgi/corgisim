@@ -1776,7 +1776,7 @@ class CorgiDetector():
             - row_read_time (float, optional): Row read time in seconds, needed to simulate smearing. Defaults to 223.5e-6.  For no smearing, set this to 0.
             - nonlin_path (str, optional): Path to the nonlinearity file for simulating nonlinearity. Defaults to None (no nonlinearity simulated).
             - flat_path (str, optional): Path to the flat field file for simulating flat field nonuniformity. Defaults to None (no flat field nonuniformity simulated).
-            - fast_gain_mode : bool or 'auto' If True, a faster but less accurate method (uses Erlang/Gamma distribution for EM gain) of simulating the gain register is used.  
+            - fast_gain_mode : (bool or 'auto',optional): If True, a faster but less accurate method (uses Erlang/Gamma distribution for EM gain) of simulating the gain register is used.  
             If False, a slower but more accurate method (marches each pixel through the gain register with binomial distribution) is used. The fast method is quite accurate 
             for em_gain > 200 if the number of incoming particles to the gain register is n > 1.  If 'auto', both speed and accuracy are prioritized:the fast method is used 
             if em_gain > 200 (and n>1) and 'roman' is used for gain_CIC_Q,and the slow method is used with gain_CIC_Q = 0 (since partial CIC is negligible for low gains) 
