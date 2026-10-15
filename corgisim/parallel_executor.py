@@ -2,7 +2,7 @@ import multiprocessing as mp
 import multiprocessing.pool as mpp
 
 
-class NoDaemonProcess(mp.Process):
+class NoDaemonProcess(mp.get_context("spawn").Process):
     """
     A Process subclass that is never daemonic.
 
@@ -28,11 +28,15 @@ class NoDaemonProcess(mp.Process):
         pass
 
 
-class NoDaemonContext(type(mp.get_context())):
+class NoDaemonContext(type(mp.get_context("spawn"))):
     """
     A multiprocessing context that uses NoDaemonProcess instead of the
     default Process class. Passed to NestablePool so all workers are
     spawned as non-daemonic processes.
+
+    Always 'spawn', never the 'fork': forked workers inherit
+    the parent's numpy RNG state, so frames drawn in different workers would
+    get identical detector noise (same random seed for emccd.detect)
     """
     Process = NoDaemonProcess
 
