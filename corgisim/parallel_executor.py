@@ -67,9 +67,7 @@ class NestablePool(mpp.Pool):
         super().__init__(*args, **kwargs)
 
 
-def run_parallel(
-        func, args_list, n_jobs=1, allow_nesting=False,
-        start_method="spawn"):
+def run_parallel(func, args_list, n_jobs=1, allow_nesting=True, start_method="spawn"):
     """
     Run func over args_list in parallel using multiprocessing.Pool.
     Blocks until all jobs finish (barrier).
@@ -78,9 +76,10 @@ def run_parallel(
         func:          top-level picklable callable
         args_list:     list of tuples, each unpacked as func(*args)
         n_jobs:        number of worker processes.
-                       on the cluster — never hardcode or use cpu_count()
-        allow_nesting: if True, use NestablePool so workers can spawn
-                       their own child processes (e.g. PROPER multirun).
+                       On the cluster — never hardcode or use cpu_count()
+        allow_nesting: if True (default), use NestablePool so workers can
+                       spawn their own child processes (e.g. PROPER multirun,
+                       which corgisim frames with their own optics state run).
         start_method:  process start method. 'spawn' is safest for
                        nested/process-heavy workloads.
 
