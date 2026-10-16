@@ -89,7 +89,7 @@ def test_on_axis_star_on_detector_subframe():
     # Add test teh setting of fastgain_mode to True and False
     #############################################################################################################
     emccd_keywords ={'em_gain':1000}
-    exptime = 3000
+    
  
     detector = instrument.CorgiDetector( emccd_keywords)
     
@@ -101,7 +101,7 @@ def test_on_axis_star_on_detector_subframe():
 
     #############################################################################################################
     emccd_keywords ={'em_gain':100}
-    exptime = 3000
+   
 
     detector = instrument.CorgiDetector( emccd_keywords)
     
@@ -114,7 +114,7 @@ def test_on_axis_star_on_detector_subframe():
     #############################################################################################################
 
     emccd_keywords ={'em_gain':1000, 'gain_CIC_Q':0}
-    exptime = 3000
+   
     
     with pytest.warns(UserWarning, match='gain_CIC_Q is set by default'):
         detector = instrument.CorgiDetector(emccd_keywords)
@@ -129,7 +129,7 @@ def test_on_axis_star_on_detector_subframe():
     
     #############################################################################################################
     emccd_keywords ={'em_gain':100, 'gain_CIC_Q':0}
-    exptime = 3000
+    
 
     with pytest.warns(UserWarning, match='gain_CIC_Q is set by default'):
         detector = instrument.CorgiDetector(emccd_keywords)
@@ -144,7 +144,7 @@ def test_on_axis_star_on_detector_subframe():
     #############################################################################################################
 
     emccd_keywords ={'em_gain':1000, 'fast_gain_mode':True, 'gain_CIC_Q':0}
-    exptime = 3000
+    
 
     detector = instrument.CorgiDetector( emccd_keywords)
     
