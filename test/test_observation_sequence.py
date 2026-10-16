@@ -32,8 +32,9 @@ def test_generate_observation_sequence():
     exp_time = 20
     n_frames = 1
     
-    # Test a single frame 
-    simulatedImage_list = observation.generate_observation_sequence(base_scene, optics, detector, exp_time, n_frames)
+    # Test a single frame
+    with pytest.warns(UserWarning): 
+        simulatedImage_list = observation.generate_observation_sequence(base_scene, optics, detector, exp_time, n_frames)
     
     assert isinstance(simulatedImage_list, list)
     assert len(simulatedImage_list) == n_frames
