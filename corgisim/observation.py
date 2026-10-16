@@ -4,7 +4,7 @@ import corgisim
 import os
 from corgisim import scene, instrument, inputs, observation, outputs
 from corgidrp import mocks
-
+import warnings
 import copy 
 
 def generate_observation_sequence ( scene, optics, detector, exp_time, n_frames, 
