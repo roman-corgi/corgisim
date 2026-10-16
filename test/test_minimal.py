@@ -459,10 +459,10 @@ def test_finite_diam_and_jitter_spec():
     
     # Set up the optics
     cgi_mode = 'spec'
-    cor_type = 'spc-spec_band2'
-    bandpass = '2F'
+    cor_type = 'spc-spec_band3_rotated'#'spc-spec_band2'
+    bandpass = '3F'
     cases = ['5e-9']
-    rootname = 'spc_spec_band2_ni_' + cases[0]
+    rootname = 'spc_spec_rot_band3_ni_' + cases[0]
     dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm1_v.fits' )
     dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm2_v.fits' )
     polaxis = 10
@@ -472,8 +472,8 @@ def test_finite_diam_and_jitter_spec():
     optics_keywords_slit_prism = {'cor_type':cor_type,'use_errors':2,'polaxis':polaxis,
                                   'output_dim':output_dim,'use_dm1':1,'dm1_v':dm1,
                                   'use_dm2':1,'dm2_v':dm2,'use_fpm':1,'use_lyot_stop':1,
-                                  'slit':'R6C5','slit_y_offset_mas':base_scene.point_source_ddec[0],
-                                  'prism':'PRISM3','wav_step_um':2e-3}
+                                  'slit':'R2C2','slit_y_offset_mas':base_scene.point_source_ddec[0],
+                                  'prism':'PRISM2','wav_step_um':2e-3}
     
     stellar_diam_and_jitter_keywords = jitter.load_predefined_jitter_and_stellar_diam_params(mintest=True,stellar_diam_mas=stellar_diam_mas)
     # modify the dictionary so that jitter will be included
