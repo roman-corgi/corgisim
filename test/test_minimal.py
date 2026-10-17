@@ -10,12 +10,14 @@ from corgisim.scene import SimulatedImage
 import roman_preflight_proper
 from astropy.io import fits
 from synphot.models import BlackBodyNorm1D
-from synphot import SourceSpectrum
+from synphot import SourceSpectrum, SpectralElement
+from synphot.units import VEGAMAG
 import cgisim
+import eetc
 
 def test_excam_mode():
     Vmag = 8
-    sptype = 'G0V'
+    sptype = 'B9V'#'G0V' Use a spectral type not in the list in lines ~306-381 of scene.py to check that BGPS files not in this list can still be used
     cgi_mode = 'excam'
     bandpass = '1F'
     cor_type = 'hlc_band1'
@@ -38,6 +40,21 @@ def test_excam_mode():
 
     #Create a Scene object that holds all this information
     base_scene = scene.Scene(host_star_properties, point_source_info)
+    
+    # Check that the correct BGPS file was used instead of a blackbody model.
+    # Step 1: Create a synphot.spectrum.SourceSpectrum object by manually loading the BGPS file
+    eetc_path = os.path.dirname(os.path.abspath(eetc.__file__))
+    atlas_dir = Path(os.path.join(eetc_path, 'flux_grid_generation', 'bpgs_atlas_csv'))
+    spectrum_file = os.path.join(atlas_dir,sptype+'.txt')
+    sp=base_scene.load_bpgs_spectrum(spectrum_file)
+    # Step 2: Scale the spectrum based on magnitude
+    v_band = SpectralElement.from_filter('johnson_v')
+    vega_spec = SourceSpectrum.from_vega()
+    sp_scale = sp.normalize(renorm_val=Vmag * VEGAMAG, band=v_band, vegaspec=vega_spec)
+    # Step 3: Check that the manually created spectrum matches the one in base_scene
+    wave=sp.waveset
+    sp_scale_fcn = base_scene.get_stellar_spectrum(sptype,Vmag)
+    assert np.max(np.abs(sp_scale_fcn(wave)-sp_scale(wave)==0))
 
     ####setup the wavelength for the simulation, nlam=1 for monochromatic image, nlam>1 for broadband image 
     cases = ['3e-8']       
