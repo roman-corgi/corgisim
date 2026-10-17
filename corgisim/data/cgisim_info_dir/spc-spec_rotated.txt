@@ -1,0 +1,19 @@
+# SPC 20200628
+
+name
+spc__20200628
+
+owa (lam0/D)
+9.4  
+
+bandpasses
+3
+3_spec
+3a
+3b
+3c
+3d
+3e
+3g
+lowfs
+none

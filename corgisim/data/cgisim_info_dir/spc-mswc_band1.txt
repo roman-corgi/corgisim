@@ -1,0 +1,11 @@
+# SPC 20200623
+
+name
+spc_20200623
+
+owa (lam0/D)
+20.4      
+
+bandpasses
+*
+
