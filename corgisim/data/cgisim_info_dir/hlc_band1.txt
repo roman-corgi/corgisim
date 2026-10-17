@@ -1,0 +1,16 @@
+# HLC 20190210b
+
+name
+hlc_20190210b
+
+owa (lam0/D)
+9.7 
+
+bandpasses
+1
+1a
+1b
+1c
+1_all
+lowfs
+none
