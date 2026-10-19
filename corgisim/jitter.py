@@ -772,7 +772,6 @@ def build_delta_e_field_library(stellar_diam_and_jitter_keywords,optics,input_sc
     # The specific electric field components calculated will vary depending on
     # the polarization case.
     if optics.prism in ('POL0', 'POL45'):
-        # 0/90 deg polarization case
         # models the polarization aberration of the speckle field
         # polaxis=-1 and 1 gives -45->X and 45->X aberrations, incoherently
         # averaging the two gives the x polarized intensity data.
@@ -806,7 +805,6 @@ def build_delta_e_field_library(stellar_diam_and_jitter_keywords,optics,input_sc
     # The specific library calculations will vary depending on the polarization
     # case.
     if optics.prism in ('POL0', 'POL45'):
-        #0/90 case
         # models the polarization aberration of the speckle field
         # Four electric field components were calculated.
         # polaxis=-1 and 1 gives -45->X and 45->X aberrations, incoherently
