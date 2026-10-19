@@ -771,7 +771,7 @@ def build_delta_e_field_library(stellar_diam_and_jitter_keywords,optics,input_sc
     # Step 3: Calculate the onaxis electric field 
     # The specific electric field components calculated will vary depending on
     # the polarization case.
-    if optics.prism == 'POL0':
+    if optics.prism in ('POL0', 'POL45'):
         # 0/90 deg polarization case
         # models the polarization aberration of the speckle field
         # polaxis=-1 and 1 gives -45->X and 45->X aberrations, incoherently
@@ -784,20 +784,6 @@ def build_delta_e_field_library(stellar_diam_and_jitter_keywords,optics,input_sc
         for polaxis in polaxis_params:
             optics_keywords_pol_xy['polaxis'] = polaxis
             (E0, sampling) = proper.prop_run_multi('roman_preflight',  optics.lam_um, 1024,PASSVALUE=optics_keywords_pol_xy,QUIET=optics.quiet)
-            E0_components.append(E0)
-    elif optics.prism == 'POL45':
-        # 45/135 deg polarization case
-        # models the polarization aberration of the speckle field
-        # polaxis=-3 and 3 gives -45->45 and 45->45 aberrations, incoherently
-        # averaging the two gives the 45 degree polarized intensity data.
-        # polaxis=-2 and 2 gives -45->-45 and 45->-45 aberrations, incoherently
-        # averaging the two gives the -45 degree polarized intensity data. 
-        polaxis_params = [-3, 3, -4, 4]
-        E0_components = [] # There will be four calculated fields
-        optics_keywords_pol_45 = optics.optics_keywords.copy()
-        for polaxis in polaxis_params:
-            optics_keywords_pol_45['polaxis'] = polaxis
-            (E0, sampling) = proper.prop_run_multi('roman_preflight',  optics.lam_um, 1024,PASSVALUE=optics_keywords_pol_45,QUIET=optics.quiet)
             E0_components.append(E0)
     elif optics.optics_keywords['polaxis'] == -10:
         # if polaxis is set to -10, obtain full aberration model by individually summing intensities obtained from polaxis=-2, -1, 1, 2
@@ -819,7 +805,7 @@ def build_delta_e_field_library(stellar_diam_and_jitter_keywords,optics,input_sc
     # Step 4: Build the library of delta electric fields
     # The specific library calculations will vary depending on the polarization
     # case.
-    if optics.prism == 'POL0':
+    if optics.prism in ('POL0', 'POL45'):
         #0/90 case
         # models the polarization aberration of the speckle field
         # Four electric field components were calculated.
@@ -854,43 +840,7 @@ def build_delta_e_field_library(stellar_diam_and_jitter_keywords,optics,input_sc
             delta_e_fields['delta_E_45in_xout'][i_offset,:,:,:] = offset_E_components[1] - E0_components[1]
             delta_e_fields['delta_E_m45in_yout'][i_offset,:,:,:] = offset_E_components[2] - E0_components[2]
             delta_e_fields['delta_E_45in_yout'][i_offset,:,:,:] = offset_E_components[3] - E0_components[3]
-         
-    elif optics.prism == 'POL45':
-         #45/135 case
-         # models the polarization aberration of the speckle field
-         # Four electric field components were calculated.
-         # polaxis=-3 and 3 gives -45->45 and 45->45 aberrations, incoherently
-         # averaging the two gives the 45 degree polarized intensity data.
-         # polaxis=-2 and 2 gives -45->-45 and 45->-45 aberrations, incoherently
-         # averaging the two gives the -45 degree polarized intensity data. 
-         
-         # Initialize the dictionary that will store the electric fields
-         field_shape = E0_components[0].shape
-         delta_e_fields = {'delta_E_m45in_45out':np.zeros((N_offsets,field_shape[0],field_shape[1],field_shape[2]),dtype=complex),
-                           'delta_E_45in_45out':np.zeros((N_offsets,field_shape[0],field_shape[1],field_shape[2]),dtype=complex),
-                           'delta_E_m45in_135out':np.zeros((N_offsets,field_shape[0],field_shape[1],field_shape[2]),dtype=complex),
-                           'delta_E_45in_135out':np.zeros((N_offsets,field_shape[0],field_shape[1],field_shape[2]),dtype=complex)}
-         
-         # Iterate over each offset
-         for i_offset in np.arange(N_offsets):
-             
-             # Change the x and y offset sent to the proper model
-             optics_keywords_pol_45['source_x_offset_mas'] = x_offsets_list[i_offset]
-             optics_keywords_pol_45['source_y_offset_mas'] = y_offsets_list[i_offset]
-             
-             # Calculate the offset electric field for each polarization component
-             offset_E_components = []
-             for polaxis in polaxis_params:
-                 optics_keywords_pol_45['polaxis'] = polaxis
-                 (Eoff, sampling) = proper.prop_run_multi('roman_preflight',  optics.lam_um, 1024,PASSVALUE=optics_keywords_pol_45,QUIET=optics.quiet)
-                 offset_E_components.append(Eoff)
-                 
-             # Calculate the delta electric fields and save
-             delta_e_fields['delta_E_m45in_45out'][i_offset,:,:,:] = offset_E_components[0] - E0_components[0]
-             delta_e_fields['delta_E_45in_45out'][i_offset,:,:,:] = offset_E_components[1] - E0_components[1]
-             delta_e_fields['delta_E_m45in_135out'][i_offset,:,:,:] = offset_E_components[2] - E0_components[2]
-             delta_e_fields['delta_E_45in_135out'][i_offset,:,:,:] = offset_E_components[3] - E0_components[3]
-            
+
     elif optics.optics_keywords['polaxis'] == -10:
          # if polaxis is set to -10, obtain full aberration model by individually summing intensities obtained from polaxis=-2, -1, 1, 2
          # Four electric field components were calculated.
