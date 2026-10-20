@@ -1487,7 +1487,7 @@ class CorgiOptics():
             disk_model_data *= disk_sum_before_roll / disk_sum_after_roll 
         total_flux = np.nansum(disk_model_data)
         if not np.isfinite(total_flux) or total_flux <= 0:
-            raise ValueError(f"Disk model has non-positive total flux ({total_flux}); ""cannot normalise."  
+            raise ValueError(f"Disk model has non-positive total flux ({total_flux}); ""cannot normalise.")
         
         # Convert the input pixel values to detector count rate before convolution.
         disk_model_countrate = disk_countrate.disk_to_countrate(
@@ -1500,7 +1500,7 @@ class CorgiOptics():
             pixel_scale_arcsec=constants.PIXEL_SCALE_ARCSEC,
             wavelength_micron=self.lam0_um,
             return_quantity=False,
-            input_scene=input_scene,
+            input_scene=input_scene,)
 
         prf_sim_info = prf_simulation._get_prf_sim_info(prf_cube_path) # Get the simulation information 
 
@@ -1548,7 +1548,7 @@ class CorgiOptics():
 
         # 3. Perform convolution
         conv2d = conv._convolve_with_prfs(
-            obj=disk_model_countrate,
+            obj=disk_model_data, 
             prfs_array=prf_cube, 
             radii_lamD=radii_lamD , 
             azimuths_deg=azimuths_deg, 

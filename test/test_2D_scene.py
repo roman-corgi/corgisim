@@ -354,6 +354,12 @@ def _simulate_2d_scene_disk_roll_before_convolution(disk, roll_angle):
     mock_optics.cgi_mode = "excam"
     mock_optics.roll_angle = roll_angle
 
+    def mock_getdata(path, *args, **kwargs):
+        """Return disk for disk-model loads; a valid-shaped PRF cube otherwise."""
+        if 'disk' in str(path).lower():
+            return disk
+        return np.zeros((45, disk.shape[0], disk.shape[1]))
+
     with patch('corgisim.instrument.fits.getdata', return_value=disk), \
          patch('corgisim.prf_simulation._get_prf_sim_info', return_value=prf_sim_info), \
          patch('corgisim.convolution._convolve_with_prfs') as mock_conv, \
@@ -370,7 +376,7 @@ def _simulate_2d_scene_disk_roll_before_convolution(disk, roll_angle):
 def test_disk_and_point_source_rotate_in_same_direction():
     """checking disk rotation in _simulate_2d_scene_disk_roll_before_convolution agrees in direction with skycoord_to_excamcoord.
  
-    generates a disk with a single bright pixel purely to the right of centre in the disk image
+    generates a disk with a single bright pixel to the right of centre (3 pixel to the right) in the disk image
     (dRA < 0, dDec = 0 in sky coordinates), then finds using skycoord_to_excamcoord where
     a point source at the same sky position would land on the detector after a 90 deg
     roll.  The disk peak after __simulate_2d_scene_disk_roll_before_convolution
