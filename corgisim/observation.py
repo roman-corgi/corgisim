@@ -12,6 +12,13 @@ def generate_observation_sequence ( scene, optics, detector, exp_time, n_frames,
                                     vistype = 'CGIVST_TDD_OBS', visit_id= '0200001001001001001', save_as_fits= False, output_dir=None, full_frame= False, loc_x=512, loc_y=512, write_as_L1=True ):
     optics.visit_id = visit_id
     optics.visit_type = vistype
+    if save_as_fits == False: 
+        warnings.warn(
+                    "save_as_fits is set to False, so files are not automatically written to the disk. "
+                    "If you want to re-use these files later, save them using outputs.save_hdu_to_fits ",
+                    UserWarning,
+                )   
+    optics.visit_id
     if satspots_are_present:
         optics.SATSPOTS = 1
     sim_scene = optics.get_host_star_psf(scene)
