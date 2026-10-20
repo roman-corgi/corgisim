@@ -345,7 +345,7 @@ def fourier_shift(img, shift):
     phase = np.exp(-1j * 2*np.pi * (kx*dx + ky*dy))
     return np.real(ifft2(fft2(img) * phase))
 
-def centre_prf_cube(prf_cube, method='centroid'):
+def centre_prf_cube(prf_cube, method='source_position', positions=None, res_mas=None, pix_scale_mas=None):
     """
     Centre each PRF in a cube via Fourier shift.
     
@@ -353,11 +353,18 @@ def centre_prf_cube(prf_cube, method='centroid'):
     ----------
     prf_cube : ndarray, shape (N_prfs, height, width)
         Input PRF cube with off-axis PRFs
-    method : {'centroid', 'peak'}
+    method : {'centroid', 'peak', 'source_position'}, optional
         Method to determine PRF centre:
-        - 'centroid': Intensity-weighted centroid (default)
+        - 'centroid': Intensity-weighted centroid
         - 'peak': Location of maximum value
-    
+        - 'source_position': Default method for centring off-axis PSFs. Location of the off-axis PSF based on known offset in polar coordinates (requires `positions`, `res_mas`, and `pix_scale_mas`).
+    positions : list of tuples, optional
+        List of (radius_lamD, azimuth_angle) tuples for each PRF, required if method='source_position'.
+    res_mas : float, optional
+        Resolution in milliarcseconds, required if method='source_position'.
+    pix_scale_mas : float, optional
+        Pixel scale in milliarcseconds, required if method='source_position'.
+
     Returns
     -------
     ndarray, shape (N_prfs, height, width)
@@ -374,7 +381,7 @@ def centre_prf_cube(prf_cube, method='centroid'):
     
     for i in range(N_prfs):
         # Determine reference point based on method
-        if method == 'centroid':
+        if method == 'centroid': # sanity check to obtain the location of the core of the off-axis PSF. Avoid using this if we have non-coronagraphic PSFs.
             # Intensity-weighted centroid
             y, x = np.mgrid[:ph, :pw]
             total = prf_cube[i].sum()
@@ -387,12 +394,26 @@ def centre_prf_cube(prf_cube, method='centroid'):
                 ref_y, ref_x = cent_y, cent_x
                 
         elif method == 'peak':
-            # Peak location
+            # Sanity check for the peak location. Avoid using this if we have coronagrpahic PSFs. 
             peak_idx = np.unravel_index(np.argmax(prf_cube[i]), prf_cube[i].shape)
             ref_y, ref_x = peak_idx
+
+        elif method == 'source_position': # default method for 2D scene simulation. This is the most robust method to centre the off-axis PSFs because we already know the offsets when creating the off-axis PSFs.
+            if positions is None or res_mas is None or pix_scale_mas is None:
+                raise ValueError("For method 'source_position', 'positions', 'res_mas', and 'pix_scale_mas' must be provided.")
+
+            radius_lamD, azimuth_angle = positions[i]
+            theta = azimuth_angle.to_value(u.rad)
+
+            dx_pix = (radius_lamD * res_mas / pix_scale_mas * np.cos(theta))
+            dy_pix = (radius_lamD * res_mas / pix_scale_mas * np.sin(theta))
+
+            # Known location of the injected source in the PRF array
+            ref_x = cent_x + dx_pix
+            ref_y = cent_y + dy_pix
             
         else:
-            raise ValueError(f"Unknown centering method: {method}. Use 'centroid' or 'peak'.")
+            raise ValueError(f"Unknown centering method: {method}. Use 'centroid' or 'peak' or 'source_position'.")
         
         # Calculate shift needed to move reference point to array center
         shift_y = cent_y - ref_y

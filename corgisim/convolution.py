@@ -117,9 +117,9 @@ def get_valid_polar_positions(radii_lamD, azimuths_deg):
     """
     azimuths_deg = u.Quantity(azimuths_deg, u.deg)
     radius_grid, azimuth_grid = np.meshgrid(radii_lamD, azimuths_deg, indexing="ij")
-    
-    # Filter out invalid positions: radius=0 with non-zero angle and (0,0)
-    valid_mask = radius_grid > 0.0
+
+    # Have one on-axis PRF at radius=0, angle=0, and exclude all other angles at radius=0, the rest of the grid is valid
+    valid_mask = (radius_grid > 0) | ((radius_grid == 0) & (azimuth_grid == azimuths_deg[0]))    
     valid_radii = radius_grid.ravel()[valid_mask.ravel()]
     valid_azimuths = azimuth_grid.ravel()[valid_mask.ravel()]
     
@@ -155,7 +155,13 @@ def nearest_id_map(r_lamD, theta_deg, radii_lamD, azimuths_deg):
     azimuth_ids = ((theta_deg / azimuth_step).astype(int) % len(azimuths_deg))
 
     # Flat PRF index: first varying radius, then azimuth
-    prf_ids = radial_ids * len(azimuths_deg) + azimuth_ids
+    # prf_ids = radial_ids * len(azimuths_deg) + azimuth_ids
+
+    prf_ids = np.where(
+        radial_ids == 0,
+        0,
+        1 + (radial_ids - 1) * len(azimuths_deg) + azimuth_ids,
+    )
 
     return prf_ids
 
@@ -206,6 +212,7 @@ def bilinear_indices_weights(r_lamD, theta_deg, radii_lamD, azimuths_deg):
     -----
     - This function only computes the geometry-dependent PRF indices and weights. 
     - The PRF cube is assumed to contain only off axis PRFs. 
+    - The on-axis PRF is assumed to be at the first index (index 0).
     - When interpolation collapses to a single radial node (r_low == r_high),
        α is set to zero, corresponding to full weight on the lower PRF.
     """
@@ -226,7 +233,8 @@ def bilinear_indices_weights(r_lamD, theta_deg, radii_lamD, azimuths_deg):
     # Identify the two neighbouring radial grid points by binning. 
     # Indices are clipped to avoid the excluded on-axis PRF. 
     radial_id_high = np.digitize(r_lamD, radii_lamD).clip(1, len(radii_lamD) - 1)
-    radial_id_low  = (radial_id_high - 1).clip(1, len(radii_lamD) - 1)
+    # Allow the lower radial index to be zero (on-axis PRF) but clip the upper index to avoid exceeding the grid.
+    radial_id_low  = (radial_id_high - 1).clip(0, len(radii_lamD) - 1)
 
     # Radial spacing between the two neighbouring grid points 
     dr     = radii_lamD[radial_id_high] - radii_lamD[radial_id_low]
@@ -238,9 +246,14 @@ def bilinear_indices_weights(r_lamD, theta_deg, radii_lamD, azimuths_deg):
     alpha = np.clip(alpha, 0.0, 1.0)
 
     # --- Mapping from (r, θ) grid indices to flat PRF cube indices --
-    # on-axis PRF is excluded. 
+    # The first slice corresponds to the on-axis PRF, and the remaining slices are ordered by increasing radius and then azimuth.
     def grid_to_flat_index(r_idx, theta_idx):
-        return (r_idx - 1) * n_azimuth + theta_idx
+        # return (r_idx - 1) * n_azimuth + theta_idx
+        return np.where(
+        r_idx == 0,
+        0,
+        1 + (r_idx - 1) * n_azimuth + theta_idx,
+    )
 
     # --- Four interpolation corners ---- 
     # (radial_id_low/high, theta_id_low/high)

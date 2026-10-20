@@ -1,0 +1,113 @@
+
+name: Coverage
+
+on:
+  schedule:
+    - cron: "0 0 * * 6"
+  workflow_dispatch:
+permissions:
+  contents: read
+
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: jitterspecc
+            pytest_args: >-
+              ./test/test_jitter.py
+              ./test/test_L1_product_fits_format_specmode.py
+          - shard: heavy
+            pytest_args: >-
+              ./test/test_L1_product_fits_format.py
+              ./test/test_observation_sequence.py
+          - shard: minimal
+            pytest_args: >-
+              ./test/test_minimal.py
+          - shard: rest
+            pytest_args: >-
+              ./test
+              --ignore=./test/test_jitter.py
+              --ignore=./test/test_L1_product_fits_format.py
+              --ignore=./test/test_L1_product_fits_format_specmode.py
+              --ignore=./test/test_observation_sequence.py
+              --ignore=./test/test_minimal.py
+
+    steps:
+    - uses: actions/checkout@v7
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v7
+      with:
+        python-version: "3.12"
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest
+        pip install coverage
+        pip install unzip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt .; fi
+    - name: Download and install Proper
+      run: |
+        wget https://sourceforge.net/projects/proper-library/files/proper_v3.3.7_python.zip && unzip proper_v3.3.7_python.zip
+        cd proper_v3.3.7_python/
+        python -m pip install .
+        cd ..
+    - name: Download and install Roman preflight
+      run: |
+        git clone https://github.com/roman-corgi/cgisim_cpp
+        cd cgisim_cpp/
+        python -m pip install .
+        cd ..
+    - name: Download and install eetc
+      run: |
+        git clone https://github.com/nasa-jpl/cgi-eetc.git
+        cd cgi-eetc/
+        python -m pip install .
+        cd ..
+    - name: Download and install CGISim
+      run: |
+        wget https://sourceforge.net/projects/cgisim/files/cgisim_v4.1.zip && unzip cgisim_v4.1.zip
+        cd cgisim_v4.1/
+        python -m pip install .
+        cd ..
+
+    - name: Set Swap Space
+      uses: pierotofy/set-swap-space@master
+      with:
+        swap-size-gb: 10
+
+    - name: Test with coverage (${{ matrix.shard }})
+      run: |
+        coverage run -m --data-file=coverage_${{ matrix.shard }} pytest ${{ matrix.pytest_args }}
+
+    - name: Upload artifact ${{ matrix.shard }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: coverage_${{ matrix.shard }}      
+        path: coverage_${{ matrix.shard }}
+        retention-days: 1  
+        
+  CoverageReport:
+    needs: build 
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Download Artifact
+      uses: actions/download-artifact@v8
+      with: 
+        pattern: coverage_* 
+        path: all_coverage
+        merge-multiple: true 
+
+    - name: Merge results
+      run: |
+        python -m pip install --upgrade pip
+        pip install coverage
+        cd all_coverage
+        coverage combine coverage_jitterspecc coverage_heavy coverage_minimal coverage_rest 
+        coverage report -m

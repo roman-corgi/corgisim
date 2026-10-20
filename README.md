@@ -64,7 +64,7 @@ Enter the directory that contains setup.py and run the following:
 ```
 python -m pip install .
 ```
-Go to the [CGISim website](https://sourceforge.net/projects/cgisim/) and download cgisim 
+Go to the [CGISim website](https://sourceforge.net/projects/cgisim/) and download cgisim: `cgisim_V4.1.zip` -> it might not show up on the initial list to see, in which case you have to click on the tab "Files" to be able to see it.  
 Unzip it in your working directory. Enter the directory that contains setup.py and run the following: 
 ```
 python -m pip install .

@@ -27,7 +27,7 @@ import corgisim.convolution as conv
 from scipy.ndimage import rotate
 
 from corgisim.scene import Scene, SimulatedImage
-from corgisim import outputs, spec, prf_simulation, constants
+from corgisim import outputs, spec, prf_simulation, constants, disk_countrate
 import corgisim.convolution as conv
 warnings.simplefilter('always', UserWarning)
 class CorgiOptics():
@@ -918,7 +918,9 @@ class CorgiOptics():
                     'nd_filter':self.nd,
                     'target_name': input_scene.target_name,
                     'visit_type': self.visit_type,
-                    'visit_id': self.visit_id}
+                    'visit_id': self.visit_id,
+                    'RA':input_scene.RA,
+                    'DEC':input_scene.DEC}
 
         # Define specific keys from self.optics_keywords to include in the header            
         keys_to_include_in_header = ['use_errors','polaxis','final_sampling_m', 'use_dm1','use_dm2','use_fpm',
@@ -1410,14 +1412,12 @@ class CorgiOptics():
         Convolve 2D scene with a pre-computed off-axis PRF cube.
 
         This function reads a disk model from `input_scene.twoD_scene_info['disk_model_path']`,
-        normalizes it, and performs a field-dependent 2D convolution using a precomputed PRF cube
+        converts its pixel values to detector count rate, and performs a field-dependent 2D convolution using a precomputed PRF cube
         stored at `input_scene.twoD_scene_info['prf_path']`. The PRF sampling (radii in lambda/D and azimuthal angles)
         is reconstructed from the PRF cube metadata. The convolution can be done using either nearest-neighbor
         or interpolation between PRFs, controlled by the `interpolate_prfs` flag. 
 
-        After convolution, the result is scaled to a count rate integrated over the bandpass defined by 
-        `optics.bp` and `intput_scene.twoD_scene_spectrum`. The scaled convolved object is stored in 
-        `sim_scene.twoD_images` as an HDU with simulation metadata written as FITS COMMENT. 
+        The convolved object is stored in `sim_scene.twoD_image` as an HDU with simulation metadata written as FITS COMMENT.
 
         Parameters
         ----------
@@ -1435,7 +1435,7 @@ class CorgiOptics():
         Returns
         -------
         sim_scene : SimulatedImage
-            Output scene with `twoD_image` replaced by the convolved and scaled result.
+            Output scene with `twoD_image` containing the convolved count-rate result.
 
         Raises
         ------
@@ -1448,10 +1448,8 @@ class CorgiOptics():
         - The PRF cube is assumed to be normalised to unit input flux. Absolute flux
             scaling is applied in this function using the input scene spectrum and the
             optics bandpass.
-        - The disk model is normalised by its total flux prior to convolution.
-        - After convolution, the image is scaled using the integrated bandpass count
-            rate and converted to a per resolution element normalisation using an
-            estimate of the PSF FWHM area (pixels) and a thresholded disk region mask.
+        - The disk model is converted to count/s per pixel before convolution
+            and is not normalised by its total flux.
         - The output is intended to represent a count rate (photoelectrons per second),
             consistent with `Observation.countrate`.
         """
@@ -1461,8 +1459,6 @@ class CorgiOptics():
         if sim_scene is None:
             # No output format was specified - create a new SimulatedImage object
             sim_scene = SimulatedImage(input_scene)
-
-        
         
         # input disk model
         disk_model_data = fits.getdata(input_scene.twoD_scene_info['disk_model_path'])
@@ -1491,10 +1487,20 @@ class CorgiOptics():
             disk_model_data *= disk_sum_before_roll / disk_sum_after_roll 
         total_flux = np.nansum(disk_model_data)
         if not np.isfinite(total_flux) or total_flux <= 0:
-            raise ValueError(f"Disk model has non-positive total flux ({total_flux}); ""cannot normalise."  )
-        #normalize the disk
-        disk_model_norm = disk_model_data / total_flux
+            raise ValueError(f"Disk model has non-positive total flux ({total_flux}); ""cannot normalise."  
         
+        # Convert the input pixel values to detector count rate before convolution.
+        disk_model_countrate = disk_countrate.disk_to_countrate(
+            disk_image=disk_model_data,
+            surface_brightness_unit=input_scene.twoD_scene_info[
+                "surface_brightness_unit"
+            ],
+            bandpass=self.bp,
+            area_cm2=self.area,
+            pixel_scale_arcsec=constants.PIXEL_SCALE_ARCSEC,
+            wavelength_micron=self.lam0_um,
+            return_quantity=False,
+            input_scene=input_scene,
 
         prf_sim_info = prf_simulation._get_prf_sim_info(prf_cube_path) # Get the simulation information 
 
@@ -1502,13 +1508,6 @@ class CorgiOptics():
         prf_info_is_centred = prf_sim_info.get('centred') # 'True' or 'False'
         # Convert string to boolean
         is_centred = (prf_info_is_centred == 'True') 
-
-        if not is_centred:
-            print("PRF cube is not centred. centring now...")
-            from corgisim.prf_simulation import centre_prf_cube
-            prf_cube = centre_prf_cube(fits.getdata(prf_cube_path), method='centroid')
-        else: 
-            prf_cube = fits.getdata(prf_cube_path)
 
         # 1. Get the radii grids for convolution 
         radii_lamD, _ = conv.build_radial_grid(
@@ -1523,9 +1522,33 @@ class CorgiOptics():
         # 2. Get the azimuth grid for convolution
         azimuths_deg, _ = conv.build_azimuth_grid(prf_sim_info['step_deg'])
 
+        positions = conv.get_valid_polar_positions(
+            radii_lamD,
+            azimuths_deg,
+        )
+
+        # Load the cube once and verify that it follows the expected layout:
+        # one on-axis PRF followed by (N_radial - 1) × N_azimuth PRFs.
+        prf_cube = fits.getdata(prf_cube_path)
+
+        expected_n_prfs = len(positions)
+        actual_n_prfs = prf_cube.shape[0]
+
+        if actual_n_prfs != expected_n_prfs:
+            raise ValueError(
+                f"Expected {expected_n_prfs} PRFs, including one on-axis PRF, "
+                f"but found {actual_n_prfs}. Regenerate the cube or prepend "
+                "a matching on-axis PRF."
+            )
+
+        if not is_centred:
+            print("PRF cube is not centred. centring now...")
+            from corgisim.prf_simulation import centre_prf_cube
+            prf_cube = centre_prf_cube(prf_cube, method='source_position', positions=positions, res_mas=self.res_mas, pix_scale_mas=constants.PIXEL_SCALE_ARCSEC * 1e3)
+
         # 3. Perform convolution
         conv2d = conv._convolve_with_prfs(
-            obj=disk_model_norm, 
+            obj=disk_model_countrate,
             prfs_array=prf_cube, 
             radii_lamD=radii_lamD , 
             azimuths_deg=azimuths_deg, 
@@ -1534,10 +1557,11 @@ class CorgiOptics():
             interpolate_prfs=interpolate_prfs
             )
 
-        # NOTE: An attempt to convert flux units to physical units after convolution
-        # NOTE: Should be remove in the future after we have a better way to track the units and perform the flux calibration in a more self-consistent way.
-        # 4. Flux calibration
-        flux_calibrated_conv2D = conv.flux_calibration_2D_scene(self, input_scene, conv2d)
+        # 4. Flux calibration (outdated, but still available in convolution.py)
+        # The legacy post-convolution flux_calibration_2D_scene function remains
+        # available in convolution.py, but it is not applied here because the disk
+        # model has already been converted to count/s before convolution.
+        # flux_calibrated_conv2D = conv.flux_calibration_2D_scene(self, input_scene, conv2d)
 
         if self.cgi_mode in ['spec', 'lowfs', 'excam_efield']:
             warnings.warn(f"This mode '{self.cgi_mode}' has not implmented yet!") # still allow the usage but warn the user about this
@@ -1545,7 +1569,7 @@ class CorgiOptics():
         sim_info = conv._set_2D_image_sim_info(self, input_scene)
 
         # Create the HDU object with the generated header information
-        sim_scene.twoD_image = outputs.create_hdu(flux_calibrated_conv2D, sim_info=sim_info)
+        sim_scene.twoD_image = outputs.create_hdu(conv2d, sim_info=sim_info)
 
         return sim_scene
 
@@ -1692,7 +1716,7 @@ class CorgiDetector():
                            'PHTCNT':self.photon_counting,'KGAINPAR':self.emccd_keywords_default['e_per_dn'],'cor_type':sim_info['cor_type'], 'bandpass':sim_info['bandpass'],
                            'cgi_mode': sim_info['cgi_mode'], 'polaxis':sim_info['polaxis'],'use_fpm':use_fpm,'nd_filter':sim_info['nd_filter'], 'polarization_basis': sim_info['polarization_basis'],'SATSPOTS':sim_info['SATSPOTS'],
                            'use_pupil_lens':use_pupil_lens,'use_lyot_stop':use_lyot_stop, 'use_field_stop':use_field_stop, 'PA_APER': float(sim_info['roll_angle']),
-                           'EACQ_ROW': loc_y, 'EACQ_COL': loc_x,'RN': self.emccd_keywords_default['read_noise'],'target_name': sim_info['target_name'],'VISTYPE': sim_info['visit_type'],'VISITID': sim_info['visit_id']}
+                           'EACQ_ROW': loc_y, 'EACQ_COL': loc_x,'RN': self.emccd_keywords_default['read_noise'],'target_name': sim_info['target_name'],'VISTYPE': sim_info['visit_type'],'VISITID': sim_info['visit_id'],'RA':sim_info['RA'],'DEC':sim_info['DEC']}
             if 'fsm_x_offset_mas' in sim_info:
                 header_info['FSMX'] = float(sim_info['fsm_x_offset_mas'])
             if 'fsm_y_offset_mas' in sim_info:
@@ -1783,11 +1807,12 @@ class CorgiDetector():
             - row_read_time (float, optional): Row read time in seconds, needed to simulate smearing. Defaults to 223.5e-6.  For no smearing, set this to 0.
             - nonlin_path (str, optional): Path to the nonlinearity file for simulating nonlinearity. Defaults to None (no nonlinearity simulated).
             - flat_path (str, optional): Path to the flat field file for simulating flat field nonuniformity. Defaults to None (no flat field nonuniformity simulated).
-            - fast_gain_mode : bool or 'auto' If True, a faster but less accurate method (uses Erlang/Gamma distribution for EM gain) of simulating the gain register is used.  
+            - fast_gain_mode : (bool or 'auto',optional): If True, a faster but less accurate method (uses Erlang/Gamma distribution for EM gain) of simulating the gain register is used.  
             If False, a slower but more accurate method (marches each pixel through the gain register with binomial distribution) is used. The fast method is quite accurate 
             for em_gain > 200 if the number of incoming particles to the gain register is n > 1.  If 'auto', both speed and accuracy are prioritized:the fast method is used 
             if em_gain > 200 (and n>1) and 'roman' is used for gain_CIC_Q,and the slow method is used with gain_CIC_Q = 0 (since partial CIC is negligible for low gains) 
             for em_gain <= 200 (or if n=1 for any gain). Defaults to 'auto'.
+            - gain_CIC_Q: optional: The gain of the CIC (Clock-Induced Charge) in the EM register. Set gain_CIC_Q = 0 to disable it to have faster simulation. The value will be overwrite if fast_gain_mode = 'auto'. 
         Returns:
             - emccd (EMCCDDetectBase): A configured EMCCD detector object. If `use_traps` is True, the detector's CTI is updated using the corresponding trap model.
         
@@ -1813,14 +1838,19 @@ class CorgiDetector():
                                   'row_read_time': 223.5e-6,              # in seconds (needed to simulate smearing)
                                   'nonlin_path': None,                  # path to file containing non-linearity map; if None, no input nonlinearity used
                                   'flat_path': None,            # path to file containing flat field map; if None, no flat field correction used
-                                  'fast_gain_mode':'auto'}
+                                  'fast_gain_mode':'auto',
+                                  'gain_CIC_Q':'roman'}                 # gain of the CIC in the EM register; set to 0 to disable it to have faster simulation}
         if emccd_keywords is not None:                    
             if 'qe' in emccd_keywords.keys():
                 raise Warning("Quantum efficiency has been added in the bandpass throughput; it must be enforced as 1 here.")
+            
             # Override default parameters with user-specified ones
             for key, value in emccd_keywords.items():
                 if key in self.emccd_keywords_default:
                     self.emccd_keywords_default[key] = value
+
+            if 'gain_CIC_Q' in emccd_keywords and self.emccd_keywords_default.get('fast_gain_mode') == 'auto':
+                warnings.warn("gain_CIC_Q is set by default when fast_gain_mode='auto'. If you want to change gain_CIC_Q, please set fast_gain_mode to True or False.")
 
         if (self.emccd_keywords_default['fast_gain_mode'] and self.emccd_keywords_default['em_gain'] < 200):
             warnings.warn('Warning: Fast gain mode needs em_gain to be over 200 to be reasonably accurate')
@@ -1829,7 +1859,7 @@ class CorgiDetector():
                              dark_current=self.emccd_keywords_default['dark_rate'], cic=self.emccd_keywords_default['cic_noise'], read_noise=self.emccd_keywords_default['read_noise'], bias=self.emccd_keywords_default['bias'],
                              qe=1.0, cr_rate=self.emccd_keywords_default['cr_rate'], pixel_pitch=self.emccd_keywords_default['pixel_pitch'], eperdn=self.emccd_keywords_default['e_per_dn'],
                              numel_gain_register=self.emccd_keywords_default['numel_gain_register'], nbits=self.emccd_keywords_default['nbits'], row_read_time=self.emccd_keywords_default['row_read_time'], 
-                             nonlin_path=self.emccd_keywords_default['nonlin_path'], flat_path=self.emccd_keywords_default['flat_path'])
+                             nonlin_path=self.emccd_keywords_default['nonlin_path'], flat_path=self.emccd_keywords_default['flat_path'], fast_gain_mode=self.emccd_keywords_default['fast_gain_mode'], gain_CIC_Q=self.emccd_keywords_default['gain_CIC_Q'])
         
         if self.emccd_keywords_default['use_traps']: 
             raise ValueError(f"The part to simulate CTI effects using trap models has not been implemented yet!")
