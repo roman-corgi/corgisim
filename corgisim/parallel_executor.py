@@ -1,6 +1,7 @@
 import multiprocessing as mp
 import multiprocessing.pool as mpp
-
+import os
+import warnings
 
 class NoDaemonProcess(mp.get_context("spawn").Process):
     """
@@ -99,3 +100,25 @@ def run_parallel(func, args_list, n_jobs=1, allow_nesting=True, start_method="sp
     ctx = mp.get_context(start_method)
     with ctx.Pool(processes=n_jobs) as pool:
         return pool.starmap(func, args_list)
+
+
+def available_cpus():
+    """
+    Number of CPUs this process may use, and where that number comes from.
+
+    Checks: 
+        1. os.process_cpu_count() or os.sched_getaffinity(0) (Linux). On Linux these follow the CPU affinity set by a scheduler such as SLURM/PBS when it pins the job to its allocated CPUs. 
+        2. SLURM_CPUS_PER_TASK / SLURM_CPUS_ON_NODE / PBS_NP environment variables 
+        3. os.cpu_count(), the whole machine, which can overestimate on a shared node.
+    
+    Returns:
+        tuple: (n_cpus (int), source (str)).
+    """
+    if hasattr(os, 'process_cpu_count') and os.process_cpu_count():
+        return os.process_cpu_count(), 'os.process_cpu_count()'
+    if hasattr(os, 'sched_getaffinity'):
+        return len(os.sched_getaffinity(0)), 'os.sched_getaffinity(0)'
+    for name in ['SLURM_CPUS_PER_TASK', 'SLURM_CPUS_ON_NODE', 'PBS_NP']:
+        if os.environ.get(name, '').isdigit() and int(os.environ[name]) > 0:
+            return int(os.environ[name]), name
+    return os.cpu_count() or 1, 'os.cpu_count()'
