@@ -1,0 +1,15 @@
+# no coronagraph masks
+
+name
+none
+
+owa (lam0/D)
+20.0      
+
+bandpasses
+1
+1_all
+2
+3
+4
+4_all

@@ -1,0 +1,9 @@
+sampling_um
+13.0
+
+lamref_um
+0.5
+
+sampling_lamref_div_D
+0.500
+

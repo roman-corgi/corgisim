@@ -15,7 +15,11 @@ setup(
       packages=find_packages(),
 
       package_data = {
-        '': ['*.*']
+        '': ['*.*'],
+        'corgisim': ['data/*.npz', 'data/*.json',
+                     'data/cgisim_info_dir/*.txt',
+                     'data/cgisim_info_dir/*.dat',
+                     'data/cgisim_info_dir/filters/*.dat']
       },
 
       script_args = copy_args,

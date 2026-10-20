@@ -1,5 +1,5 @@
 
-__all__ = ['convolution', 'data', 'instrument', 'observation', 'scene','inputs']
+__all__ = ['convolution', 'data', 'instrument', 'observation', 'scene', 'inputs', 'throughput']
 
 __version__ = '0.1'
 #__spec__ = __name__

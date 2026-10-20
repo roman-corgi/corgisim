@@ -3,9 +3,8 @@ import warnings
 import numpy as np
 from astropy.io import fits
 import roman_preflight_proper
-from corgisim import scene
+from corgisim import scene, throughput
 from corgisim.sat_spots import add_cos_pattern_dm
-import cgisim
 import corgisim
 from synphot.models import BlackBodyNorm1D, Box1D, Empirical1D
 from synphot import units, SourceSpectrum, SpectralElement, Observation
@@ -136,17 +135,14 @@ class CorgiOptics():
         else:
             self.bandpass = bandpass.lower()
         self.bandpass_header = bandpass
-        # self.bandpass is used as the keyword for cgisim, while self.bandpass_header is used for setting the FITS header.
-        # The distinction arises from differences in naming conventions for filters between cgisim and the latest wiki page.
+        # self.bandpass names the bundled filter; self.bandpass_header preserves the FITS header name.
 
         #self.bandpass = bandpass 
 
         # get mode and bandpass parameters:
-        info_dir = cgisim.lib_dir + '/cgisim_info_dir/'
+        mode_data, bandpass_data = throughput.read_mode(cgi_mode, self.cor_type, self.bandpass)
 
-        mode_data, bandpass_data = cgisim.cgisim_read_mode( cgi_mode, optics_keywords_internal['cor_type'], self.bandpass, info_dir )
-
-        # Set directory containing reference data for parameters external to CGISim
+        # Set directory containing the slit and prism reference data
         ref_data_dir = os.path.join(corgisim.lib_dir, 'data')
         if not os.path.exists(ref_data_dir):
             raise FileNotFoundError(f"Directory does not exist: {ref_data_dir}")
@@ -251,7 +247,7 @@ class CorgiOptics():
 
         
         if self.cgi_mode == 'spec':
-            baseline_mode_data, _ = cgisim.cgisim_read_mode('excam', 'hlc_band1', '1', info_dir=info_dir)
+            baseline_mode_data, _ = throughput.read_mode('excam', 'hlc_band1', '1')
             self.sampling_um = baseline_mode_data['sampling_um']
             # Redefine the wavelength array so that the prism dispersion wavelength bins span the full bandpass
             if self.prism != 'None': 
@@ -964,21 +960,18 @@ class CorgiOptics():
             - bp (SpectralElement): A spectral element object containing the bandpass data.
 
         """
-        info_dir = cgisim.lib_dir + '/cgisim_info_dir/'
-
-
         dlam_um = self.lam_um[1] - self.lam_um[0]
        
         lam_start_um = np.min(self.lam_um)-  1* dlam_um
         lam_end_um = np.max(self.lam_um)+  1* dlam_um
         bandpass_i = 'lam' + str(lam_start_um*1000) + 'lam' + str(lam_end_um*1000) 
 
-        wave, throughput = cgisim.cgisim_roman_throughput( bandpass_name, bandpass_i, nd, cgimode, info_dir )
+        wave, transmission = throughput.roman_throughput(bandpass_name, bandpass_i, nd, cgimode)
         if cgimode == 'spec': # upsample the wavelength and throughput arrays
-            f = interpolate.interp1d(wave, throughput, kind='linear')
+            f = interpolate.interp1d(wave, transmission, kind='linear')
             wave = np.linspace(wave[0], wave[-1], 100*len(wave))
-            throughput = f(wave)
-        bp = SpectralElement(Empirical1D, points=wave, lookup_table=throughput)
+            transmission = f(wave)
+        bp = SpectralElement(Empirical1D, points=wave, lookup_table=transmission)
 
         return bp
 

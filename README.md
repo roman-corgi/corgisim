@@ -64,11 +64,11 @@ Enter the directory that contains setup.py and run the following:
 ```
 python -m pip install .
 ```
-Go to the [CGISim website](https://sourceforge.net/projects/cgisim/) and download cgisim 
-Unzip it in your working directory. Enter the directory that contains setup.py and run the following: 
-```
-python -m pip install .
-```
+CGISim itself is not required by the CorgiSim runtime: mode parameters and
+throughput reference data are bundled with CorgiSim. The throughput comparison
+test requires CGISim v4.1; some legacy tests and examples also import CGISim.
+To run those, install it from the
+[CGISim website](https://sourceforge.net/projects/cgisim/).
 
 ### Install corgisim
 
@@ -99,6 +99,15 @@ ImportError: Unable to run roman_preflight prescription. Stopping.
 ```
 it means that the program cannot locate roman_preflight_compact.py and/or roman_preflight.py. The error is described in page two of roman_preflight_proper_public_v2.0.pdf.
 roman_preflight_compact.py and roman_preflight.py need to be copied in the same directory as the script you are trying to run (i.e. /corgisim/test/ if you are trying to run a test, corgisim/examples/if you are trying to run an example)
+
+### Mode and throughput reference data
+Mode parameters and system throughput are read by `corgisim.throughput`
+using the bundled `corgisim/data/cgisim_info_dir/` data, originally from CGISim
+v4.1. The throughput includes detector quantum efficiency and preserves the
+CGISim v4.1 wavelength sampling and interpolation for EXCAM, spectroscopy,
+and LOWFS. Spectroscopy's EXCAM baseline detector sampling also uses the
+bundled data. The `excam_efield` mode uses EXCAM throughput; image generation
+for LOWFS and `excam_efield` remains unimplemented.
 
 ### Stale branches
 A branch is marked as stale after 90 days. At that point, a comment is made on the last commit and the author is notified. If nothing is done, the branch is removed after 7 more days.
