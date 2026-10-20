@@ -6,7 +6,7 @@ from corgisim import scene, instrument, inputs, observation, outputs
 from corgidrp import mocks
 from datetime import datetime
 import copy 
-
+import warnings
 def generate_observation_sequence ( scene, optics, detector, exp_time, n_frames, 
                                     satspots_are_present = False, satspots_detector = None, satspots_exptime = None, satspots_number_of_frames = None, satspot_keywords = None,
                                     vistype = 'CGIVST_TDD_OBS', visit_id= '0200001001001001001', save_as_fits= False, output_dir=None, full_frame= False, loc_x=512, loc_y=512, write_as_L1=True ):
