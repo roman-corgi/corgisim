@@ -1,12 +1,16 @@
+import traceback
+
 from mpi4py import MPI
 
 TASK_RUN = "RUN"
 TASK_STOP = "STOP"
 TASK_RESULT = "RESULT"
+TASK_ERROR = "ERROR"
 
 
 def initialize_mpi_comm():
-    """Enter the MPI runtime and assign rank roles.
+    """
+    Enter the MPI runtime and assign rank roles.
 
     Rank 0 returns MPI.COMM_WORLD and continues into the caller's own
     manager code. Every other rank immediately enters worker_loop() and
@@ -31,9 +35,10 @@ def worker_loop(comm):
 
     Wait for a message from rank 0: a RUN task runs task['func'](*task['args'])
     and sends the result back; STOP ends the loop. One incoming task always produces
-    exactly one outgoing result, same shape as corgihowfsc's
-    mpi_runtime.worker_loop. The loop persists across visits, so a worker
-    rank simply picks up the next visit's frames when they arrive.
+    exactly one outgoing message, same shape as corgihowfsc's mpi_runtime.worker_loop:
+    the result, or the traceback if the task raised, so the manager never waits for a
+    rank that has died. The loop persists across visits and rounds, so a worker rank
+    simply picks up the next task (a PSF or a frame) when it arrives.
     """
     while True:
         message = comm.recv(source=0)
@@ -42,7 +47,12 @@ def worker_loop(comm):
             break
 
         task = message['task']
-        result = task['func'](*task['args'])
+        try:
+            result = task['func'](*task['args'])
+        except Exception:
+            comm.send({'message_type': TASK_ERROR, 'job_id': task['job_id'],
+                       'traceback': traceback.format_exc()}, dest=0)
+            continue
         comm.send({'message_type': TASK_RESULT, 'job_id': task['job_id'], 'result': result}, dest=0)
 
 
