@@ -5,32 +5,47 @@ import os
 from corgisim import scene, instrument, inputs, outputs
 from corgisim.parallel_executor import run_parallel
 from corgidrp import mocks
-
 import copy
 import warnings
+import numpy as np
 from datetime import datetime, timedelta
 
-# TODO - add a helper function to help user determine how many cores they should assign for the runs.
-# TODO - add an example.sh to demostrate how it is being launhced (mpi mode.)
 
-def _apply_detector(sim_scene, detector, exp_time, full_frame, loc_x, loc_y):
-    """Generate emccd frames on already defined simulated scene and optics.
+def _apply_detector(sim_scene, detector, exp_time, full_frame, loc_x, loc_y, seed=None):
+    """
+    Generate emccd frame on already defined simulated scene. 
 
     Args:
-        sim_scene: output of optics.get_host_star_psf()/inject_point_sources().
+        sim_scene: output of optics.get_host_star_psf() or inject_point_sources().
         detector (corgisim.instrument.CorgiDetector): detector model to apply.
         exp_time (float): exposure time in seconds.
         full_frame (bool): if True, place the result in a full detector frame.
         loc_x, loc_y (int or None): sub-array/full-frame placement, see
             `generate_observation_sequence`.
+        seed (int or tuple, optional): this frame's detector noise. 
+            An int seeds numpy's global RNG; a tuple is a full RNG state from np.random.get_state() 
+            (e.g. recorded before the same frame in a reference run, to reproduce it exactly). 
+            Default None leaves numpy's global RNG as it is: the frame draws from the process's current stream.
+            Setting a seed ensures reproducibility of the same frame across different runs on the same machine, so the user can compare the frames and debug later on.
 
     Returns:
         corgisim.scene.SimulatedImage: the generated frame.
     """
+    # if there is no seed, the current state of numpy's global RNG is used, as before.
+    if seed is not None:
+        rng_state = np.random.get_state() # remember the full current RNG state to restore it later
+        if isinstance(seed, tuple):
+            np.random.set_state(seed) # jump to the given RNG state to reproduce the same frame as before
+        else:
+            np.random.seed(seed) # start a fresh stream from this int: the frame's noise depends only on the seed
+
     if full_frame:
         sim_image = detector.generate_detector_image(sim_scene, exp_time, full_frame=True, loc_x=loc_x, loc_y=loc_y)
     else:
         sim_image = detector.generate_detector_image(sim_scene, exp_time)
+    
+    if seed is not None: # put the caller's RNG state back, so random numbers drawn after this frame continue from where they were
+        np.random.set_state(rng_state)
 
     return copy.deepcopy(sim_image)
 
