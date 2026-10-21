@@ -251,7 +251,7 @@ def _run_frames_local(frame_func, args_list):
 
 def generate_observation_sequence(scene, optics, detector, exp_time, n_frames,
                                   satspots_are_present=False, satspots_detector=None, satspots_exptime=None, satspots_number_of_frames=None, satspot_keywords=None,
-                                  vistype = 'CGIVST_TDD_OBS', visit_id= '0200001001001001001', save_as_fits= False, output_dir=None, full_frame= False, loc_x=None, loc_y=None, zindex=None, zval_m_i=None, frame_runner=None):
+                                  vistype = 'CGIVST_TDD_OBS', visit_id= '0200001001001001001', save_as_fits= False, output_dir=None, full_frame= False, loc_x=None, loc_y=None, zindex=None, zval_m_i=None, frame_runner=None, seed=None):
     """
     Generates a sequence of simulated observations and places them on a detector.
 
@@ -335,33 +335,21 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames,
         # Serial frame generation in this process, no parallel processing.
         frame_runner = _run_frames_local
 
-    def run_segment(seg_detector, seg_exp_time, seg_n_frames):
-        # Prepare the per-frame tasks (function + args) for one optics state, then run them and collect the results.
-        # Each segment is run before the optics state is changed for the next one (e.g. add/remove_satspot). 
-        frame_func, args_list = prepare_frame_tasks(scene, optics, seg_detector, seg_exp_time, seg_n_frames, vistype=vistype, visit_id=visit_id, full_frame=full_frame, loc_x=loc_x, loc_y=loc_y, zindex=zindex, zval_m_i=zval_m_i)
-        return frame_runner(frame_func, args_list)
+    optics.visit_id = visit_id
+    optics.visit_type = vistype
 
+    # One segment per optics state (satellite spot background/positive/negative, science), each with its own optics copy
+    segments = sequence_segments(optics, detector, exp_time, n_frames, satspots_are_present=satspots_are_present,
+                                 satspots_detector=satspots_detector, satspots_exptime=satspots_exptime,
+                                 satspots_number_of_frames=satspots_number_of_frames, satspot_keywords=satspot_keywords)
 
-    # Exposure time of each frame in simulatedImage_list, used to give each saved frame its own FTIMEUTC
+    # frame_runner calls: the segments' PSFs (inside prepare_frame_takss, only if zindex is None - no speckle variation), then every frame
+    frame_func, args_list = prepare_frame_tasks(scene, segments, full_frame=full_frame, loc_x=loc_x, loc_y=loc_y,
+                                                zindex=zindex, zval_m_i=zval_m_i, frame_runner=frame_runner, seed=seed)
+    simulatedImage_list = frame_runner(frame_func, args_list)
+
     # satspot and science frames can have different exposure times
-    simulatedImage_list = [] 
-    frame_exp_times = [] # satspot and science frames can have different exposure times
-    if satspots_are_present:
-        # For each frame, we take background (no satellite spots), positive and negative
-        # no satspot frames
-        optics.SATSPOTS = 1
-        simulatedImage_list.extend(run_segment(satspots_detector, satspots_exptime, satspots_number_of_frames))
-        frame_exp_times.extend([satspots_exptime] * satspots_number_of_frames)
-
-        for sign in ["positive", "negative"]:
-            satspot_keywords["sign"] = sign
-            optics.add_satspot(satspot_keywords=satspot_keywords)
-            simulatedImage_list.extend(run_segment(satspots_detector, satspots_exptime, satspots_number_of_frames))
-            frame_exp_times.extend([satspots_exptime] * satspots_number_of_frames)
-            optics.remove_satspot(satspot_keywords=satspot_keywords) # also resets optics.SATSPOTS to 0
-
-    simulatedImage_list.extend(run_segment(detector, exp_time, n_frames))
-    frame_exp_times.extend([exp_time] * n_frames)
+    frame_exp_times = [segment['exp_time'] for segment in segments for i in range(segment['n_frames'])]
 
     if save_as_fits:
         outdir = output_dir
@@ -371,17 +359,18 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames,
             outdir = os.path.join(local_path.split('corgisim')[0], 'corgisim/test/testdata')
             print("No output directory specified. FITS files saved in ", outdir)
 
-        # Frames generated in parallel are stamped with the same wall-clock FTIMEUTC,
-        # which would give them the same L1 filename. Give frame i the start time of
-        # the i-th exposure of the sequence instead: t0 plus the sum of the exposure times of
-        # the frames before it (save_hdu_to_fits also updates FILENAME and the frame's own header).
-        t0 = datetime.fromisoformat(simulatedImage_list[0].image_on_detector[1].header['FTIMEUTC'])
-        elapsed = 0.
+        # Frames generated in parallel are stamped with the same wall-clock FTIMEUTC, which would give them the same L1 filename. 
+        # Give frame i the start time of the i-th exposure of the sequence instead: t0 plus the sum of the exposure times of the frames before it (save_hdu_to_fits also updates FILENAME and the frame's own header).
+        # The L1 filename holds FTIMEUTC to 0.1 s, so frames shorter than that (e.g. 0 s satellite spot frames in some CPGS files) are spaced by at least 0.1 s, and moved on by 0.1 s more if their filename time still equals the previous frame's.
+        min_step = timedelta(seconds=0.1)
+        frame_start = datetime.fromisoformat(simulatedImage_list[0].image_on_detector[1].header['FTIMEUTC'])
+        previous_name_time = None
         for sim_image, frame_exp_time in zip(simulatedImage_list, frame_exp_times):
-            ftimeutc = (t0 + timedelta(seconds=elapsed)).isoformat()
-            elapsed += frame_exp_time
-            outputs.save_hdu_to_fits(sim_image.image_on_detector, outdir=outdir, write_as_L1=True,
-                                     overwrite_ext_keywords={'FTIMEUTC': ftimeutc})
+            while outputs.isotime_to_yyyymmddThhmmsss(frame_start.isoformat()) == previous_name_time:
+                frame_start += min_step
+            previous_name_time = outputs.isotime_to_yyyymmddThhmmsss(frame_start.isoformat())
+            outputs.save_hdu_to_fits(sim_image.image_on_detector, outdir=outdir, write_as_L1=True,overwrite_ext_keywords={'FTIMEUTC': frame_start.isoformat()}, overwrite_pri_keywords={'VISITID': visit_id})
+            frame_start += max(timedelta(seconds=frame_exp_time), min_step)
 
     return simulatedImage_list
 
