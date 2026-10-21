@@ -130,8 +130,8 @@ def get_cpu_allocation(n_jobs=1, nlam=1, n_psf_states=1, zindex=False, n_frames=
     Check a frame_runner's worker count against the CPUs this process may use, for one corgisim observation sequence, and warn about oversubscription.
 
     A sequence runs in up to two parallel rounds (see observation.prepare_frame_tasks):
-      - PSF: one task per distinct optics state (n_psf_states: 1, or 3 with satellite
-        spots: background, positive, negative). Each task is one PSF, i.e. one
+      - PSF: one task per distinct optics state (n_psf_states: 1, or 4 with satellite
+        spots: background, positive, negative, science). Each task is one PSF, i.e. one
         proper.prop_run_multi, which opens its own pool of min(nlam, os.cpu_count())
         processes. 
             Peak: min(n_jobs, n_psf_states) * that pool (n_jobs = 1: the PSFs run in this process, one pool at a time). 
@@ -150,9 +150,9 @@ def get_cpu_allocation(n_jobs=1, nlam=1, n_psf_states=1, zindex=False, n_frames=
         n_jobs (int): number of frame_runner workers (run_parallel's n_jobs, or the number of
             MPI worker ranks on this node).
         nlam (int): number of wavelengths of the optics (CorgiOptics.nlam).
-        n_psf_states (int): distinct optics states in the sequence: 1, or 3 with satellite spots.
+        n_psf_states (int): distinct optics states in the sequence: 1, or 4 with satellite spots.
         zindex (bool): True if the sequence has a time series with speckle variation (one PSF per frame).
-        n_frames (int, optional): frames in the largest segment (nominally the detector segment), to report idle workers.
+        n_frames (int, optional): frames in one visit (all segments: the detector round runs them in one call), to report idle workers.
         warn (bool): if True (default), issue a UserWarning for each problem found.
 
     Returns:
@@ -200,9 +200,9 @@ def get_cpu_allocation(n_jobs=1, nlam=1, n_psf_states=1, zindex=False, n_frames=
     # The detector round is one CPU per worker, so oversubscription is only a problem if n_jobs > cpus.
     if detector_peak > cpus: 
         problems.append(f"The detector round: n_jobs = {n_jobs} workers > {cpus} CPUs ({source}). Use n_jobs <= {cpus} if possible.")
-    # workers > frames in the largest segment, so some workers will sit idle.
-    if n_frames is not None and n_jobs > n_frames: 
-        problems.append(f"n_jobs = {n_jobs} > {n_frames} frames in the largest segment: "
+    # workers > frames in the visit, so some workers will sit idle.
+    if n_frames is not None and n_jobs > n_frames:
+        problems.append(f"n_jobs = {n_jobs} > {n_frames} frames in the visit: "
                         f"{n_jobs - n_frames} workers will sit idle.")
 
     if warn:
