@@ -49,13 +49,92 @@ def _apply_detector(sim_scene, detector, exp_time, full_frame, loc_x, loc_y, see
 
     return copy.deepcopy(sim_image)
 
+def frame_seeds(seed, n_frames):
+    """
+    Generate one detector-noise seed per frame, derived from one base seed.
 
-def _generate_one_frame(scene, optics, detector, exp_time, full_frame, loc_x, loc_y, zindex, zval_m_i):
-    """Generate a frame that needs updated optics keywords (e.g. a distinct
-    zernike/drift value for this frame), which triggers get_host_star_psf after the update.
-    This is a unit dispatched to `run_parallel` when frames don't share the same optics keywords.
-    See `_apply_detector` for the fixed optics keywords case. 
+    The seeds depend only on `seed` and the frame's position in the sequence, not on which
+    worker runs the frame, so serial, multiprocessing and MPI runs give the same frames 
+    (assuming the same base seed is used).
+
+    Every frame gets its own seed rather than every worker sharing one seed, which would repeat 
+    the same noise in different frames. 
+
+    The same `seed` (int or SeedSequence) always gives the same list, so give each visit its own seed. 
+
+    Args:
+        seed (int, numpy.random.SeedSequence or None): base seed. None gives no seeds.
+        n_frames (int): number of frames.
+
+    Returns:
+        list: n_frames ints (or n_frames None if `seed` is None).
+    """
+    if seed is None:
+        return [None] * n_frames # no seeds: frames draw from the process's current RNG stream (reproducible only in a serial run with np.random.seed set by the caller)
+
+    if isinstance(seed, np.random.SeedSequence):
+        seed_sequence = seed # already a SeedSequence, so use it directly
+    else:
+        seed_sequence = np.random.SeedSequence(seed) # create a SeedSequence from the int seed, so the frames' seeds depend only on this base seed and their position in the sequence
+
+    return [int(s) for s in seed_sequence.generate_state(n_frames)]
+
+
+def _optics_with_updates(optics, keyword_updates=None, attr_updates=None):
+    """
+    Return a copy of `optics` in another optics state, without modifying `optics`.
+
+    Only runtime state can be changed this way: `optics_keywords` passed to PROPER
+    (e.g. dm1_v, zindex, zval_m) and plain attributes (e.g. SATSPOTS). Settings that
+    __init__ derives other attributes from (cgi_mode, bandpass, cor_type, prism, ...)
+    need a new CorgiOptics instead.
+
+    Args:
+        optics (corgisim.instrument.CorgiOptics): base optics. Not modified.
+        keyword_updates (dict, optional): entries to set in the copy's optics_keywords.
+        attr_updates (dict, optional): attributes to set on the copy.
+
+    Returns:
+        corgisim.instrument.CorgiOptics: the copy.
+    """
+    optics = copy.copy(optics)
+    optics.optics_keywords = {**optics.optics_keywords, **(keyword_updates or {})}
+    for name, value in (attr_updates or {}).items():
+        setattr(optics, name, value)
+    return optics
+
+
+def _compute_psf(scene, optics):
+    """
+    Compute the PSF for a given scene and optics.
     
+    Host star PSF plus any point sources for one optics state (the PROPER runs).
+
+    A unit dispatched to `frame_runner` when every frame of a segment shares this
+    optics state, see `prepare_frame_tasks`. 
+    
+    With `zindex`, `_generate_one_frame` also calls this function for each frame.
+
+    Args:
+        scene (corgisim.scene.Scene): input astrophysical scene.
+        optics (corgisim.instrument.CorgiOptics): optics in the segment's state.
+
+    Returns:
+        corgisim.scene.SimulatedImage: the simulated scene, before the detector.
+    """
+    sim_scene = optics.get_host_star_psf(scene)
+    if hasattr(scene, 'point_source_dra') or hasattr(scene, 'point_source_ddec'):
+        sim_scene = optics.inject_point_sources(scene, sim_scene)
+    return sim_scene
+
+
+def _generate_one_frame(scene, optics, detector, exp_time, full_frame, loc_x, loc_y, keyword_updates=None, seed=None):
+    """
+    Generate a frame that needs its own optics state (e.g. a distinct zernike/drift value for this frame): PSF for that state, then the detector.
+    
+    This is a unit dispatched to `frame_runner` when frames don't share the same optics state.
+    See `_apply_detector` for the shared optics state case.
+
     Args:
         scene (corgisim.scene.Scene): output astrophysical scene.
         optics (corgisim.instrument.CorgiOptics): base optics, before this
