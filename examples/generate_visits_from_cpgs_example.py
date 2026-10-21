@@ -12,24 +12,36 @@ positive/negative sequences, if configured) the manager computes the PSF,
 generates the frames in parallel, collects them, writes them to disk and
 frees them before starting the next visit.
 
-mp  : local multiprocessing (run_parallel) with -n worker processes.
-mpi : rank 0 is the manager and ranks 1..n are workers, fed frames through a
-      dynamic queue (see corgisim.mpi_runtime). mpirun must start n + 1 ranks;
-      the script stops if it doesn't. Worker ranks never get past initialize_mpi_comm().
+    mp  : (one machine: a workstation or one cluster node) local multiprocessing (run_parallel) with -n worker processes.
+    mpi : (one or more cluster nodes; needs mpi4py and an MPI library) rank 0 is the manager and ranks 1..n are workers,
+          fed PSF and frame tasks through a dynamic queue (see corgisim.mpi_runtime). mpirun must start n + 1 ranks;
+          the script stops if it doesn't. Worker ranks never get past initialize_mpi_comm().
 
-TODO - explains what is going on in here. 
-TODO - write the output dir and a bunch of argumens in here, also whether have log or not. 
+Choosing -n: 
+    each PSF opens its own pool of nlam PROPER processes (nlam = 7 for the default file),
+    and round 1 runs up to 4 PSFs at once (1 without satellite spots), so it briefly needs up to
+    min(n, 4) x nlam CPUs. 
+    Round 2 needs one CPU per worker, and more workers than frames in a visit sit idle. Before the run, the script reads the CPGS file, logs the CPUs it may use and a suggested -n for that file, and warns if -n does not fit (corgisim.parallel_executor.get_cpu_allocation). With MPI the check is per rank: give each rank at least nlam CPUs.
 
+You can also run the script in serial mode (no parallelization) with --option serial. This is useful for testing and debugging, as well as for comparing the results of parallel runs.
 
-Usage of this script is norminally calling just in the cmd, with a specific CPGS file, and the output dir, and the number of workers. The script will run the simulation in parallel for each visit, and write the output to the specified output dir. The script will also log the progress of the simulation to a log file in the output dir.
-    python generate_visits_from_cpgs_example.py --option mp -n 4               # 4 worker processes (TODO explain whats going on here)
-    mpirun -n 5 python generate_visits_from_cpgs_example.py --option mpi -n 4  # 4 worker ranks + 1 manager (TODO explain whats going on here)
+    serial: every PSF and frame one after another in this process (-n is ignored),
+            e.g. as a baseline to compare the parallel runs with (use the same --seed).
 
-with the multinode thing, TODO - need to attach a shell script to run the simulation in a multinode environment, can provide an example using the lam example but user will really need to reach out to their system admin to get the correct way to run the simulation in a multinode environment, 
+Pick how to run with --option; -n is the number of workers for mp and mpi:
+    python generate_visits_from_cpgs_example.py --option serial                # one process, no parallelization
+    python generate_visits_from_cpgs_example.py --option mp -n 4               # 4 worker processes
+    mpirun -n 5 python generate_visits_from_cpgs_example.py --option mpi -n 4  # 4 worker ranks + 1 manager
+    python generate_visits_from_cpgs_example.py --option mp -n 4 --cpgs my_file.xml --seed 1 --output-dir ./output
 
-Drift / speckle variation is not yet implemented. 
+TODO - need to attach a shell script to run the simulation in a multinode environment, can provide an example using the lam example but user will really need to reach out to their system admin to get the correct way to run the simulation in a multinode environment, 
 
+--seed makes the run reproducible: each visit gets its own sub-seed and each frame its own
+seed, so the frames are the same for serial, -n workers and MPI. Without --seed the noise pattern
+changes from run to run.
 
+Speckle variation is not supported from a CPGS file yet: generate_observation_scenario_from_cpgs
+has no zindex (see generate_observation_sequence for the zindex / zval_m_i time series).
 """
 import argparse
 import functools
