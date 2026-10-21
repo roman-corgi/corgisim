@@ -219,20 +219,30 @@ def prepare_frame_tasks(scene, segments, full_frame=False, loc_x=None, loc_y=Non
         sequence as a corgisim.scene.SimulatedImage. frame_func is a module-level function, so the
         tasks can be sent to worker processes or MPI ranks.
     """
-    optics.visit_id = visit_id
-    optics.visit_type = vistype
+    if frame_runner is None:
+        frame_runner = _run_frames_local
+    seeds = frame_seeds(seed, sum(segment['n_frames'] for segment in segments))
 
     if zindex is None:
-        # All frames share one optics state: compute the PSF once, only the detector noise changes per frame
-        sim_scene = optics.get_host_star_psf(scene)
-        if hasattr(scene, 'point_source_dra') or hasattr(scene, 'point_source_ddec'):
-            sim_scene = optics.inject_point_sources(scene, sim_scene)
+        # One PSF per segment, all at the same time; only the detector noise changes per frame
+        sim_scenes = frame_runner(_compute_psf, [(scene, segment['optics']) for segment in segments])
 
-        args_list = [(sim_scene, detector, exp_time, full_frame, loc_x, loc_y) for i in range(n_frames)]
-        return _apply_detector, args_list
+        args_list = [(sim_scene, segment['detector'], segment['exp_time'], full_frame, loc_x, loc_y)
+                     for segment, sim_scene in zip(segments, sim_scenes)
+                     for i in range(segment['n_frames'])]
+        return _apply_detector, [args + (frame_seed,) for args, frame_seed in zip(args_list, seeds)]
+
+    n_frames_total = sum(segment['n_frames'] for segment in segments)
+    if zval_m_i is None or len(zval_m_i) != n_frames_total:
+        raise ValueError(f'zindex is given, so zval_m_i needs one row per frame of the sequence ({n_frames_total} rows, '
+                         'in the order the frames are taken: satellite spot frames, if any, then science frames)')
 
     # Each frame has its own optics state (zval_m_i[i]), so each frame is its own PROPER run
-    args_list = [(scene, optics, detector, exp_time, full_frame, loc_x, loc_y, zindex, zval_m_i[i]) for i in range(n_frames)]
+    args_list = []
+    for segment in segments:
+        for i in range(segment['n_frames']):
+            keyword_updates = {'zindex': zindex, 'zval_m': zval_m_i[len(args_list)]}
+            args_list.append((scene, segment['optics'], segment['detector'], segment['exp_time'], full_frame, loc_x, loc_y, keyword_updates, seeds[len(args_list)]))
     return _generate_one_frame, args_list
 
 def _run_frames_local(frame_func, args_list):
