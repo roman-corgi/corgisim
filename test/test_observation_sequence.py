@@ -7,7 +7,7 @@ import roman_preflight_proper
 import pytest
 import numpy as np
 import os
-
+import shutil
 def test_generate_observation_sequence():
 
     Vmag = 8
@@ -186,7 +186,7 @@ def test_saving_subframes_from_cpgs():
     dx= [3*49.3]
     dy= [3*49.3]
     point_source_info = [{'Vmag': mag_companion[0], 'magtype': 'vegamag','position_x':dx[0] , 'position_y':dy[0]}]
-    simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, point_source_info=point_source_info, full_frame=False, save_as_fits=True, save_as_list= True, output_dir=outdir, output_dim=51)
+    simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, point_source_info=point_source_info, full_frame=False, write_as_L1=False, save_as_fits=True, save_as_list= True, output_dir=outdir, output_dim=51)
 
     #Check that there are as many simulated images as files
     assert len(simulatedImage_list) == sum(len(files) for _, _, files in os.walk(outdir))
