@@ -6,6 +6,7 @@ import roman_preflight_proper
 import pytest
 import numpy as np
 import os
+from pyklip.fakes import gaussfit2d
 
 def test_generate_observation_sequence():
 
@@ -103,20 +104,21 @@ def test_generate_observation_sequence():
 
     
     # Test several frames
+    n_frames = 5
+    simulatedImage_list = observation.generate_observation_sequence(base_scene, optics, detector, exp_time, n_frames,
+                                                                    satspots_are_present = True, satspots_detector = detector_satspots, satspots_exptime = satellite_spots_frame_time, satspots_number_of_frames = satellite_spots_number_of_frames, satspot_keywords = satspot_keywords,
+                                                                    full_frame= False )
+    # Test correctness of satellite spots
     wavelength = 0.575e-6 # meter, assuming band 1
+    image_star = simulatedImage_list[-1].image_on_detector.data
+#    shift =  [0,0]
     lam_D = np.degrees(wavelength/2.3)*3600*1000 # in mas
     fov_shape = image_star.shape
     xcen = (fov_shape[1]-1)/2
     ycen = (fov_shape[0]-1)/2
     pix_scale = 0.0218*1000 #mas/pix
-    guess_x = xcen+shift[0]/pix_scale
-    guess_y = ycen+shift[1]/pix_scale
-    n_frames = 5
-    simulatedImage_list = observation.generate_observation_sequence(base_scene, optics, detector, exp_time, n_frames,
-                                                                              satspots_are_present = True, satspots_detector = detector_satspots, satspots_exptime = satellite_spots_frame_time, satspots_number_of_frames = satellite_spots_number_of_frames, satspot_keywords = satspot_keywords,
-                                                                              full_frame= False )
-    # Test correctness of satellite spots
-
+    # guess_x = xcen+shift[0]/pix_scale
+    # guess_y = ycen+shift[1]/pix_scale
     # Positive    
     peak_positive = []
     for i in range(satellite_spots_number_of_frames, 2*satellite_spots_number_of_frames ):
@@ -132,18 +134,19 @@ def test_generate_observation_sequence():
             guess_y2 = ycen-sep*np.sin(np.radians(angle))/pix_scale
 
             for guess_x,guess_y in zip([guess_x1,guess_x2],[guess_y1,guess_y2]):
-                peak,fwhm,x,y=gaussfit2d(image_star_with_spots,guess_x,guess_y)
+                peak,fwhm,x,y=gaussfit2d(satellite_spot_image_positive,guess_x,guess_y)
                 fitresult.append([peak,fwhm,x,y])
         peak_satspots_ave = np.mean(np.array(fitresult)[:,0])
         peak_positive.append(peak_satspots_ave)
-    assert np.allclose(peak_positive, peak_positive[0], rtol=0.1)        
+    # Test that         
+    assert np.all(np.isclose(peak_positive, peak_positive[0], rtol=0.1))        
     #Negative
 
     # for i in range(2*satellite_spots_number_of_frames,3*satellite_spots_number_of_frames ):
     #     satellite_spot_image_negative = simulatedImage_list[i].image_on_detector.data
 
     assert isinstance(simulatedImage_list, list)
-    assert len(simulatedImage_list) == n_frames
+    assert len(simulatedImage_list) == n_frames + 3*satellite_spots_number_of_frames
     assert isinstance(simulatedImage_list[n_frames-1], SimulatedImage)
     assert isinstance(simulatedImage_list[n_frames-1].image_on_detector, fits.hdu.image.PrimaryHDU)
 
