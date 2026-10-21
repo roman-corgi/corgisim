@@ -114,21 +114,37 @@ def run_tasks_mpi(comm, func, args_list, max_workers=None):
         comm.send({'message_type': TASK_RUN, 'task': tasks[n_sent]}, dest=rank)
         n_sent += 1
 
-    completed = 0
-    status = MPI.Status()
-
-    while completed < len(tasks):
+    # Dynamic queue: wait for any worker to answer, then give that (now free) worker the next
+    # task. Fast workers take more tasks, so a slow task does not hold the others back.
+    # The loop ends when every task that was sent has been answered.
+    status = MPI.Status()   # filled in by recv with the rank that sent the message
+    
+    while n_answered < n_sent:
+        # Blocks until one worker answers; ANY_SOURCE takes whichever finishes first
         message = comm.recv(source=MPI.ANY_SOURCE, status=status)
-        rank = status.Get_source()
+        n_answered += 1
+        rank = status.Get_source()    # who answered: this worker is free now
 
-        ordered_results[message['job_id']] = message['result']
-        completed += 1
+        if message['message_type'] == TASK_ERROR:
+            # Keep the first failure only; later ones are usually caused by the same problem
+            error = error or (rank, message['job_id'], message['traceback'])
+        else:
+            # Put the result at its task's position, whatever order the answers arrive in
+            results[message['job_id']] = message['result']
 
-        if next_task_index < len(tasks):
-            comm.send({'message_type': TASK_RUN, 'task': tasks[next_task_index]}, dest=rank)
-            next_task_index += 1
+        # Refill the free worker with the next task, if any are left.
+        # After an error, only collect the tasks still running; send nothing new
+        if error is None and n_sent < len(tasks):
+            comm.send({'message_type': TASK_RUN, 'task': tasks[n_sent]}, dest=rank)
+            n_sent += 1
 
-    return ordered_results
+    # Every worker is idle again (back waiting in worker_loop), so it is safe to raise: 
+    # the caller's shutdown_workers can then reach all of them
+    if error is not None:
+        rank, job_id, worker_traceback = error
+        raise RuntimeError(f"Task {job_id} ({func.__name__}) failed on MPI rank {rank}:\n{worker_traceback}")
+
+    return results
 
 
 def shutdown_workers(comm):
