@@ -267,13 +267,13 @@ def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, save_
 
     Args:
         - filepath (str): The path to the CPGS XML file.
-        - save_as_fits (bool): wether or not to save the generated images as fits file
-        - save_as_list (bool): wether or not to save the generated images as list of file. In order to save memory, default behaviour is not to save as a list if we're saving as fits
+        - save_as_fits (bool): whether or not to save the generated images as fits file
+        - save_as_list (bool): whether or not to save the generated images as list of file. In order to save memory, default behaviour is not to save as a list if we're saving as fits
         - output_dir: if saving as fits file, where to save them 
         - full_frame (bool, optional): If True, a full-frame detector image will be generated.
         - loc_x (int): The horizontal coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True, and image from CorgiOptics has size is smaller than 1024×1024
         - loc_y (int): The vertical coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True, and image from CorgiOptics has size is smaller than 1024×1024
-        - point_sources_info (list): A list of dictionaries, each representing an off-axis point source in the scene.
+        - point_source_info (list): A list of dictionaries, each representing an off-axis point source in the scene.
         - frame_runner (callable, optional): runs each visit's frames in parallel, see
           `generate_observation_sequence`. Visits are still run one after another, and each
           visit's frames are saved (if save_as_fits) before the next visit starts.
