@@ -136,29 +136,35 @@ def check_cpus(filepath, n_workers, mpi):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--option", choices=["mp", "mpi"], default="mp",
-                        help="local multiprocessing or MPI (launch with mpirun)")
+    parser.add_argument("--option", choices=["serial", "mp", "mpi"], default="mp",
+                        help="serial (one process, -n ignored), local multiprocessing, or MPI (launch with mpirun)")
     parser.add_argument("-n", type=int, default=1,
                         help="number of workers: worker processes (mp) or worker ranks (mpi, "
                              "launched with mpirun -n <n+1>)")
     parser.add_argument("--output-dir", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'output'),
                         help="where each visit's frames are written, one V<visit_id> subfolder per visit")
     parser.add_argument("--cpgs", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'test',
-                                                       'test_data', 'cpgs_short_sequence.xml'),
+                                                       'test_data', 'cpgs_ref_wfov_satspots.xml'),
                         help="CPGS XML file to simulate")
-    cli = parser.parse_args()
+    parser.add_argument("--seed", type=int, default=None,
+                        help="base seed for the detector noise; the same seed gives the same frames "
+                             "with any --option / -n (default: not reproducible)")
+    args = parser.parse_args()
+    if args.option == "serial":
+        args.n = 1   # serial: one process, so -n is ignored
 
     comm = None
-    if cli.option == "mpi":
+    if args.option == "mpi":
         from mpi4py import MPI
         from corgisim.mpi_runtime import initialize_mpi_comm, run_tasks_mpi, shutdown_workers
         # Every rank checks, so a mismatch stops all of them before any work starts
-        if MPI.COMM_WORLD.Get_size() != cli.n + 1:
+        if MPI.COMM_WORLD.Get_size() != args.n + 1:
             if MPI.COMM_WORLD.Get_rank() == 0:
-                print(f"-n {cli.n} expects {cli.n + 1} MPI ranks (1 manager + {cli.n} workers), "
-                      f"got {MPI.COMM_WORLD.Get_size()}: run with mpirun -n {cli.n + 1}")
+                print(f"-n {args.n} expects {args.n + 1} MPI ranks (1 manager + {args.n} workers), "
+                      f"got {MPI.COMM_WORLD.Get_size()}: run with mpirun -n {args.n + 1}")
             raise SystemExit(1)
         if MPI.COMM_WORLD.Get_rank() == 0:
+            print("Copying the PROPER prescription files to the working directory (rank 0)...")
             roman_preflight_proper.copy_here()
         MPI.COMM_WORLD.Barrier()
         comm = initialize_mpi_comm()
@@ -166,28 +172,30 @@ if __name__ == "__main__":
         roman_preflight_proper.copy_here()
 
     # Only the manager gets here (MPI worker ranks stay in worker_loop)
-    setup_logging(cli.output_dir)
-    filepath = os.path.abspath(cli.cpgs)
-    log.info("option=%s, n=%d workers, cpgs=%s, output_dir=%s", cli.option, cli.n, filepath, cli.output_dir)
+    setup_logging(args.output_dir)
+    filepath = os.path.abspath(args.cpgs)
+    log.info("option=%s, n=%d workers, seed=%s, cpgs=%s, output_dir=%s", args.option, args.n, args.seed, filepath, args.output_dir)
+    # Warn before the run if -n does not fit the CPUs this job may use
+    check_cpus(filepath, args.n, mpi=args.option == "mpi")
     run_start = time.perf_counter()
 
-    # How each visit's frames are run in parallel: on the MPI worker ranks, or
-    # on -n local worker processes
-    if cli.option == "mpi":
+    # How each visit's PSFs and frames are run: on the MPI worker ranks, on -n local worker
+    # processes, or (serial, n_jobs=1) one after another in this process
+    if args.option == "mpi":
         frame_runner = functools.partial(run_tasks_mpi, comm)
     else:
-        frame_runner = functools.partial(run_parallel, n_jobs=cli.n)
-    frame_runner = logged_frame_runner(frame_runner)
+        frame_runner = functools.partial(run_parallel, n_jobs=args.n)
+    frame_runner = logged_frame_runner(frame_runner) # wrap to log how long each visit's frame stage takes (PSFs + frames)
 
     try:
         # save_as_list=False (default): frames are written per visit and not kept,
         # so only one visit's frames are in memory at a time. Writing as L1 needs
         # full-frame images.
-        observation.generate_observation_scenario_from_cpgs(filepath, save_as_fits=True, output_dir=cli.output_dir,
+        observation.generate_observation_scenario_from_cpgs(filepath, save_as_fits=True, output_dir=args.output_dir, 
                                                             full_frame=True, loc_x=512, loc_y=512,
-                                                            frame_runner=frame_runner)
+                                                            frame_runner=frame_runner, seed=args.seed)
     finally:
-        if cli.option == "mpi":
+        if args.option == "mpi":
             shutdown_workers(comm)
 
-    log.info("Done: visits written to %s in %.1f s", cli.output_dir, time.perf_counter() - run_start)
+    log.info("Done: visits written to %s in %.1f s", args.output_dir, time.perf_counter() - run_start)
