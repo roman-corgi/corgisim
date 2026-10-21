@@ -1,33 +1,58 @@
 """
-Simulate several visits (one CorgiOptics state each), one visit at a time,
+Simulate visits from settings written in this script (no CPGS file), one visit at a time,
 with each visit's frames generated in parallel.
 
-Pick the parallel backend with --option; -n is the number of workers in both:
+All the simulation settings are in setup_observation(). They reproduce test/test_data/cpgs_ref_wfov_satspots.xml:
+wide FOV SPC in band 4, a target star (Eps Eri) and a reference star (alf Col), 7 visits that
+alternate between the two stars and between two roll angles, and satellite spots in every visit
+(28 PSFs and 107 frames in total, so a serial run is slow). Each visit is one observation sequence
+with its own star, roll angle, detector and satellite spot settings. With the same --seed, the
+frames should match generate_visits_from_cpgs_example.py run on that file. Edit setup_observation()
+to simulate something else.
+
+WARNING: apart from setup_observation(), this script is not meant to be edited.
+
+Output: each visit's frames are written as full-frame L1 FITS files to a V<visit_id> subfolder of
+--output-dir (default: examples/output), and the progress is logged to the console and to run.log
+in the output dir. The PROPER prescription files are copied into the current directory, so run the
+script from a directory you can write to.
+
+If you would like to enable parallelization, you can use the --option mp or --option mpi flags. 
+The -n flag specifies the number of workers to use for parallelization. For every visit, the workers compute the PSFs of its segments at the same time (round 1: satellite spot background, positive, negative and science, 4 PSFs) and then all of its frames (round 2); the manager collects the frames, writes them to disk and frees them before starting the next visit.
+
+    mp  : (one machine: a workstation or one cluster node) local multiprocessing (run_parallel) with -n worker processes.
+    mpi : (one or more cluster nodes; needs mpi4py and an MPI library) rank 0 is the manager and ranks 1..n are workers,
+          fed PSF and frame tasks through a dynamic queue (see corgisim.mpi_runtime). mpirun must start n + 1 ranks;
+          the script stops if it doesn't. Worker ranks never get past initialize_mpi_comm().
+
+Choosing -n: 
+    each PSF opens its own pool of nlam PROPER processes (nlam = 7 here), and round 1 runs
+    up to 4 PSFs at once (if there are satellite spots and no speckle variation), so it briefly needs up to min(n, 4) x nlam CPUs. 
+    Round 2 needs one CPU per worker, and more workers than frames in a visit sit idle. 
+    Before the run, the script logs the CPUs it may use and warns if -n does not fit (corgisim.parallel_executor.get_cpu_allocation). 
+    With MPI the check is per rank: give each rank at least nlam CPUs.
+
+You can also run the script in serial mode (no parallelization) with --option serial. 
+This is useful for testing and debugging, as well as for comparing the results of parallel runs.
+
+    serial: every PSF and frame one after another in this process (-n is ignored),
+            e.g. as a baseline to compare the parallel runs with (use the same --seed).
+
+Pick how to run with --option; -n is the number of workers for mp and mpi:
+    python generate_visits_example.py --option serial                # one process, no parallelization
     python generate_visits_example.py --option mp -n 4               # 4 worker processes
-    mpirun -n 5 python generate_visits_example.py --option mpi -n 4  # 4 worker ranks + 1 manager
+    mpirun -n 5 python generate_visits_example.py --option mpi -n 4  # 4 worker ranks + 1 manager (hence -n 5 for mpirun)
+    python generate_visits_example.py --option mp -n 4 --seed 1 --output-dir ./output   # reproducible, chosen output dir
 
-For every visit the manager computes the PSF, generates that visit's frames
-in parallel, collects them, writes them to disk and frees them before
-starting the next visit.
+TODO - need to attach a shell script to run the simulation in a multinode environment, can provide an example using the lam example but user will really need to reach out to their system admin to get the correct way to run the simulation in a multinode environment, 
 
-mp  : local multiprocessing (run_parallel) with -n worker processes.
-mpi : rank 0 is the manager and ranks 1..n are workers, fed frames through a
-      dynamic queue (see corgisim.mpi_runtime). mpirun must start n + 1 ranks;
-      the script stops if it doesn't. Worker ranks never get past initialize_mpi_comm().
-    
-TODO - populate the cases and explain what is going on in here. 
-
-TODO - things are visit based, meaning setup the optics for each visits, including the roll angle and point source and e.t.c, also host star properties if you like to change the host star properties for each visit. Then, run the simulation in parallel for each visit. This is a simplified example, and you can refer to the generate_visits_from_cpgs_example.py for a more complete
-example.
-
-Usage of this script is norminally calling just in the cmd, the output dir, and the number of workers. The script will run the simulation in parallel for each visit, and write the output to the specified output dir. The script will also log the progress of the simulation to a log file in the output dir.
-    python generate_visits_example.py --option mp -n 4               # 4 worker processes (TODO explain whats going on here)
-    mpirun -n 5 python generate_visits_example.py --option mpi -n 4  # 4 worker ranks + 1 manager
-
-with the multinode thing, TODO - need to attach a shell script to run the simulation in a multinode environment, can provide an example using the lam example but user will really need to reach out to their system admin to get the correct way to run the simulation in a multinode environment, 
-
-Drift / speckle variation is not yet implemented. 
-
+--seed makes the run reproducible: SeedSequence(seed).spawn gives each visit its own sub-seed
+(reusing one int for every visit would repeat the same noise in every visit), and each frame
+gets its own seed from it, so the frames are the same for serial, -n workers and MPI. Without
+--seed the noise pattern changes from run to run.
+ 
+Speckle variation (one PSF per frame) is supported by generate_observation_sequence through
+zindex / zval_m_i, but not fully supported with corgisim. 
 """
 ## import packages
 import argparse
