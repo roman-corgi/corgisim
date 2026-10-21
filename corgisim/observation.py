@@ -258,7 +258,7 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames,
 
     return simulatedImage_list
 
-def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, save_as_list=False, output_dir=None, full_frame=False, loc_x=None, loc_y=None, point_source_info=None, output_dim=201, polaxis=0, fast_gain_mode='auto', gain_CIC_Q='roman', frame_runner=None):
+def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, save_as_list=False, output_dir=None, full_frame=False, loc_x=None, loc_y=None, point_source_info=None, output_dim=201, polaxis=0, fast_gain_mode='auto', gain_CIC_Q='roman', frame_runner=None, seed=None):
     """Generates an observation scenario by loading instrument, scene, and visit
     information from a CPGS file.
 
@@ -277,7 +277,8 @@ def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, save_
         - frame_runner (callable, optional): runs each visit's frames in parallel, see
           `generate_observation_sequence`. Visits are still run one after another, and each
           visit's frames are saved (if save_as_fits) before the next visit starts.
-
+        - seed (int, optional): base seed for the detector noise. Each visit gets its own
+          sub-seed (numpy.random.SeedSequence.spawn), so visits don't repeat each other's noise and the whole scenario is reproducible with any frame_runner (serial, n_jobs, MPI). Default None: no seeds are set and each frame draws from numpy's global RNG. The noise statistics are still correct, but the noise pattern changes from run to run. 
     Returns:
         - list[corgisim.scene.SimulatedImage]: A list of SimulatedImage objects, representing the complete observation scenario across all visits defined in the CPGS file.
     """
@@ -345,7 +346,8 @@ def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, save_
 
     prihdr, exthdr = mocks.create_default_L1_headers()
     visit_id_root = prihdr['PROGNUM']+ prihdr['EXECNUM']+prihdr['CAMPAIGN']+prihdr['SEGMENT']+prihdr['OBSNUM']
-    for visit in visit_list:
+    visit_seeds = np.random.SeedSequence(seed).spawn(len(visit_list)) if seed is not None else [None] * len(visit_list)
+    for visit, visit_seed in zip(visit_list, visit_seeds):
         visit_id = visit_id_root + visit['visit_num']
         # make a new subfolder for each visit 
         subfolder_name = 'V' + visit_id
@@ -358,12 +360,12 @@ def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, save_
         if visit['isReference']:
             simulatedImage_visit = generate_observation_sequence(scene_reference, optics, detector_reference,  visit['exp_time'], visit['number_of_frames'], 
                                                                 satspots_are_present = satspots_are_present, satspots_detector = detector_satspots_reference, satspots_exptime = satellite_dict_reference['satellite_spots_frame_time'], satspots_number_of_frames = satellite_dict_reference['satellite_spots_number_of_frames'], satspot_keywords = satspot_keywords,
-                                                                visit_id= visit_id, vistype= visit['vistype'], save_as_fits= save_as_fits, output_dir=subfolder_path, full_frame= full_frame,loc_x=loc_x, loc_y=loc_y, frame_runner=frame_runner)
+                                                                visit_id= visit_id, vistype= visit['vistype'], save_as_fits= save_as_fits, output_dir=subfolder_path, full_frame= full_frame,loc_x=loc_x, loc_y=loc_y, frame_runner=frame_runner, seed=visit_seed)
 
         else:
             simulatedImage_visit = generate_observation_sequence(scene_target, optics, detector_target,  visit['exp_time'], visit['number_of_frames'], 
                                                                 satspots_are_present = satspots_are_present, satspots_detector = detector_satspots_target, satspots_exptime = satellite_dict_target['satellite_spots_frame_time'], satspots_number_of_frames = satellite_dict_target['satellite_spots_number_of_frames'], satspot_keywords = satspot_keywords,
-                                                                visit_id= visit_id, vistype= visit['vistype'], save_as_fits= save_as_fits, output_dir=subfolder_path, full_frame= full_frame,loc_x=loc_x, loc_y=loc_y, frame_runner=frame_runner)
+                                                                visit_id= visit_id, vistype= visit['vistype'], save_as_fits= save_as_fits, output_dir=subfolder_path, full_frame= full_frame,loc_x=loc_x, loc_y=loc_y, frame_runner=frame_runner, seed=visit_seed)
 
 
         if not save_as_fits or (save_as_fits and save_as_list): # If we are writing the files, we are not storing the images unless explicitly told to do so
