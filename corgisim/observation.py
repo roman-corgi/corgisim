@@ -136,49 +136,87 @@ def _generate_one_frame(scene, optics, detector, exp_time, full_frame, loc_x, lo
     See `_apply_detector` for the shared optics state case.
 
     Args:
-        scene (corgisim.scene.Scene): output astrophysical scene.
-        optics (corgisim.instrument.CorgiOptics): base optics, before this
-            frame's zindex/zval_m override. Not modified.
-        detector (corgisim.instrument.CorgiDetector): detector instance. 
+        scene (corgisim.scene.Scene): input astrophysical scene.
+        optics (corgisim.instrument.CorgiOptics): the segment's optics, before this frame's updates. 
+        detector (corgisim.instrument.CorgiDetector): detector instance.
         exp_time (float): exposure time in seconds.
         full_frame (bool): see `generate_observation_sequence`.
         loc_x, loc_y (int or None): see `generate_observation_sequence`.
-        zindex (list of int): zernike noll indices for this frame's.
-        zval_m_i (numpy 1d array): zernike values (meters) for this frame.
+        keyword_updates (dict, optional): optics_keywords for this frame only,
+            e.g. {'zindex': zindex, 'zval_m': zval_m_i[i]} - speckle variation for time-series. 
+        seed (int, optional): seed for this frame's detector noise, see `_apply_detector`.
 
     Returns:
         corgisim.scene.SimulatedImage: the generated frame.
     """
+    sim_scene = _compute_psf(scene, _optics_with_updates(optics, keyword_updates))
+    return _apply_detector(sim_scene, detector, exp_time, full_frame, loc_x, loc_y, seed)
 
-    optics_keywords = optics.optics_keywords.copy()
-    if zindex is not None:
-        optics_keywords.update({'zindex': zindex, 'zval_m': zval_m_i})
 
-    # Copy the optics rather than rebuilding it: CorgiOptics.__init__ rejects its
-    # own internal keywords (e.g. final_sampling_m), and a copy keeps the rest of
-    # the state (SATSPOTS, visit_id, ...)
-    optics = copy.copy(optics)
-    optics.optics_keywords = optics_keywords
+def sequence_segments(optics, detector, exp_time, n_frames, satspots_are_present=False, satspots_detector=None,
+                      satspots_exptime=None, satspots_number_of_frames=None, satspot_keywords=None):
+    """
+    Split an observation sequence into segments, in the order the frames are taken.
 
-    sim_scene = optics.get_host_star_psf(scene)
-    if hasattr(scene, 'point_source_dra') or hasattr(scene, 'point_source_ddec'):
-        sim_scene = optics.inject_point_sources(scene, sim_scene)
+    A segment is a consecutive block of frames in one visit that share the same optics
+    state (DM setting, satellite spots: +,0,-, and the SATSPOTS flag) and the same detector
+    setup (detector, exposure time). Within a segment, only the detector noise differs from frame to frame
+    (and, with `zindex`, each frame's zernike values on top of the segment's optics).
 
-    return _apply_detector(sim_scene, detector, exp_time, full_frame, loc_x, loc_y)
-
-def prepare_frame_tasks(scene, optics, detector, exp_time, n_frames, vistype = 'CGIVST_TDD_OBS', visit_id= '0200001001001001001', full_frame= False, loc_x=None, loc_y=None, zindex=None, zval_m_i=None):
-    """Build the per-frame work for one observation sequence, without running it.
-
-    If all frames share one optics state (`zindex is None`), the host star PSF is
-    computed here, once, and every task is only the detector step (`_apply_detector`).
-    Otherwise every task is one PROPER run plus detector step (`_generate_one_frame`).
+    A visit has up to four segments: 
+        - satellite spot background, positive and negative (only if `satspots_are_present`), 
+        - science. 
+    
+    Each segment gets its own copy of the optics, so `optics` itself is not modified and the segments don't depend on each
+    other: they can be computed at the same time.
 
     Args:
         See `generate_observation_sequence`.
 
     Returns:
-        tuple: (frame_func, args_list), where frame_func(*args_list[i]) returns frame i
-        as a corgisim.scene.SimulatedImage. frame_func is a module-level function, so the
+        list of dict: one dict per segment with keys 'name', 'optics', 'detector',
+        'exp_time' and 'n_frames'.
+    """
+    segments = []
+    if satspots_are_present:
+        satspot_detector_kwargs = {'detector': satspots_detector, 'exp_time': satspots_exptime, 'n_frames': satspots_number_of_frames}
+        # Background: no spots on the DM, but flagged as part of the satellite spot sequence
+        segments.append({'name': 'satspot_background', 'optics': _optics_with_updates(optics, attr_updates={'SATSPOTS': 1}),
+                         **satspot_detector_kwargs})
+
+        for sign in ['positive', 'negative']:
+            satspot_optics = _optics_with_updates(optics)
+            # add_satspot changes the copy's dm1_v and sets its SATSPOTS to 1. The keywords
+            # are copied because add_satspot also adds a default 'wavelength_m' to them.
+            satspot_optics.add_satspot(satspot_keywords={**satspot_keywords, 'sign': sign})
+            segments.append({'name': f'satspot_{sign}', 'optics': satspot_optics, **satspot_detector_kwargs})
+
+    segments.append({'name': 'science', 'optics': _optics_with_updates(optics, attr_updates={'SATSPOTS': 0}),
+                     'detector': detector, 'exp_time': exp_time, 'n_frames': n_frames})
+    return segments
+
+def prepare_frame_tasks(scene, segments, full_frame=False, loc_x=None, loc_y=None, zindex=None, zval_m_i=None, frame_runner=None, seed=None):
+    """Build the per-frame work for the segments of one observation sequence.
+
+    - `zindex is None`: the frames of a segment share its optics state. The PSFs are
+      computed first, one `_compute_psf` task per segment through `frame_runner` (so the
+      segments' PSFs run in parallel). Every frame task is then only the detector step
+      (`_apply_detector`).
+    - `zindex is not None`: every frame has its own optics state, so every frame task is
+      one PROPER run plus the detector step (`_generate_one_frame`). The rows of `zval_m_i`
+      follow the frames in sequence order, across all segments.
+
+    Args:
+        scene (corgisim.scene.Scene): input astrophysical scene.
+        segments (list of dict): output of `sequence_segments`.
+        frame_runner (callable, optional): runs the PSF tasks, see `generate_observation_sequence`.
+            Default None runs them one after another in this process.
+        seed (int or numpy.random.SeedSequence, optional): base seed for the detector noise, see `frame_seeds`. Default None.
+        Others: see `generate_observation_sequence`.
+
+    Returns:
+        tuple: (frame_func, args_list), where frame_func(*args_list[i]) returns frame i of the
+        sequence as a corgisim.scene.SimulatedImage. frame_func is a module-level function, so the
         tasks can be sent to worker processes or MPI ranks.
     """
     optics.visit_id = visit_id
