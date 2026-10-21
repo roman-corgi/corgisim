@@ -161,7 +161,7 @@ def setup_logging(output_dir):
 
 
 def logged_frame_runner(frame_runner):
-    """Wrap a frame_runner to log how long each sequence's frame stage takes."""
+    """Wrap a frame_runner to log how long each sequence's frame stage takes (the PSF, then the frames)."""
     def run(frame_func, args_list):
         start = time.perf_counter()
         frames = frame_runner(frame_func, args_list)
@@ -173,24 +173,30 @@ def logged_frame_runner(frame_runner):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--option", choices=["mp", "mpi"], default="mp",
-                        help="local multiprocessing or MPI (launch with mpirun)")
+    parser.add_argument("--option", choices=["serial", "mp", "mpi"], default="mp",
+                        help="serial (one process, -n ignored), local multiprocessing, or MPI (launch with mpirun)")
     parser.add_argument("-n", type=int, default=1,
                         help="number of workers: worker processes (mp) or worker ranks (mpi, "
                              "launched with mpirun -n <n+1>)")
     parser.add_argument("--output-dir", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'output'),
                         help="where each visit's frames are written, one V<visit_id> subfolder per visit")
-    cli = parser.parse_args()
+    parser.add_argument("--seed", type=int, default=None,
+                        help="base seed for the detector noise; the same seed gives the same frames "
+                             "with any --option / -n (default: noise pattern not reproducible)")
+    
+    args = parser.parse_args()
+    if args.option == "serial":
+        args.n = 1   # serial: one process, so -n is ignored
 
-    comm = None
-    if cli.option == "mpi":
+    comm = None # MPI communicator, if MPI is used; here for scope, not used in serial or mp
+    if args.option == "mpi":
         from mpi4py import MPI
         from corgisim.mpi_runtime import initialize_mpi_comm, run_tasks_mpi, shutdown_workers
         # Every rank checks, so a mismatch stops all of them before any work starts
-        if MPI.COMM_WORLD.Get_size() != cli.n + 1:
+        if MPI.COMM_WORLD.Get_size() != args.n + 1:
             if MPI.COMM_WORLD.Get_rank() == 0:
-                print(f"-n {cli.n} expects {cli.n + 1} MPI ranks (1 manager + {cli.n} workers), "
-                      f"got {MPI.COMM_WORLD.Get_size()}: run with mpirun -n {cli.n + 1}")
+                print(f"-n {args.n} expects {args.n + 1} MPI ranks (1 manager + {args.n} workers), "
+                      f"got {MPI.COMM_WORLD.Get_size()}: run with mpirun -n {args.n + 1}")
             raise SystemExit(1)
         if MPI.COMM_WORLD.Get_rank() == 0:
             roman_preflight_proper.copy_here()
@@ -200,126 +206,81 @@ if __name__ == "__main__":
         roman_preflight_proper.copy_here()
 
     # Only the manager gets here (MPI worker ranks stay in worker_loop)
-    setup_logging(cli.output_dir)
-    log.info("option=%s, n=%d workers, output_dir=%s", cli.option, cli.n, cli.output_dir)
+    setup_logging(args.output_dir)
+    log.info("option=%s, n=%d workers, seed=%s, output_dir=%s", args.option, args.n, args.seed, args.output_dir)
     run_start = time.perf_counter()
 
-    # --- Host Star Properties ---
-    Vmag = 8                            # V-band magnitude of the host star
-    sptype = 'G0V'                      # Spectral type of the host star
-    ref_flag = False                    # if the target is a reference star or not, default is False
-    host_star_properties = {'Vmag': Vmag,
-                            'spectral_type': sptype,
-                            'magtype': 'vegamag',
-                            'ref_flag': False}
+    obs = setup_observation() # setup the observing scenario: optics, stars and visits
+    visits, stars = obs['visits'], obs['stars']
 
-    # --- Companion Properties ---
-    # Define two companions
-    mag_companion = [25, 25]           # List of magnitudes for each companion
-
-    # Define their positions relative to the host star, in milliarcseconds (mas)
-    # For reference: 1 λ/D at 550 nm with a 2.3 m telescope is ~49.3 mas
-    # We're placing them at a separation of 3 λ/D
-    dx = 3 * 49.3           # X position relative to host star in sky coordinates (dRA) in mas for the companion
-    dy = 3 * 49.3           # Y position relative to host star in sky coordinates (dDec) in mas for the companion
-
-    # Construct a list of dictionaries for all companion point sources
-    point_source_info = [
-        {
-            'Vmag': mag_companion[0],
-            'magtype': 'vegamag',
-            'position_x': dx,
-            'position_y': dy
-        },
-
-    ]
-
-    # create a base scene with the host star and companions
-    base_scene = scene.Scene(host_star_properties, point_source_info)
-
-    # stellar spectrum of the host star, which is used to compute the flux of the host star and companions
-    sp_star = base_scene.stellar_spectrum
-    # companion spectrum of the companions, which is used to compute the flux of the companions
-    sp_comp = base_scene.off_axis_source_spectrum
-
-    cgi_mode = 'excam'
-    cor_type = 'hlc'
-    bandpass = '1F'
-
-
-    cases = ['3e-8']
-    rootname = 'hlc_ni_' + cases[0]
-    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm1_v.fits' )
-    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm2_v.fits' )
-
-    ##  Define the polarizer axis parameter. Use 10 for non-polaxis cases only, as other options are not yet implemented.
-    polaxis = 10
-    # output_dim define the size of the output image
-    output_dim = 51
-    # roll_angle in degree, define the roll angle of the telescope.
-    # roll_angle is defined as the rotation angle of the excam coordinates (X, Y) relative to the sky coordinates(RA,DEC), positive is counter-clockwise
-    # Default is 0 degrees, corresponding to North up, East left in the sky coordinates.
-    roll_angle = 0
-
-    ### define a dictinatary to pass keywarod to proper
-    ### optics_keywords are the keyword arguments to the internal functions for package proper, which define the optics of coronagraph
-    # use_dm1/use_dm2: if use dm
-    # use_fpm: if use focal plane mask
-    # use_lyot_stop: if use lyot stop
-    # use_field_stop: if use field stop
-    # other paramters that could pass to Proper defined by CgiSim
-    nd_filter = 0
-    ##options for nd_filter:
-    ##nd_filter = 1: ND 2.25 @ FPAM
-    ##nd_filter = 2: ND 4.75 @ FPAM
-    ##nd_filter = 3: ND 4.75 @ FSAM
-
-    optics_keywords ={'cor_type':cor_type, 'use_errors':2, 'polaxis':polaxis, 'output_dim':output_dim,\
-                        'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 ,"nd":nd_filter}
-
-    ##visit_type and visit_id are populated into the headers
-    visit_type = 'CGIVST_TDD_OBS'
-    visit_id  = '0020001001001901001'
-
-    visits = ['0020001001001901001', '0020001001001901002', '0020001001001901003', '0020001001001901004']
-
-    gain =100
-    emccd_keywords ={'em_gain':gain}
-    detector = instrument.CorgiDetector(emccd_keywords, photon_counting = True)
-
-    exptime = 100
-    n_frames = 2
-
-    # How each visit's frames are run in parallel: on the MPI worker ranks, or
-    # on -n local worker processes
-    if cli.option == "mpi":
+    # How each visit's PSFs and frames are run: on the MPI worker ranks, on -n local worker processes, or (serial, n_jobs=1) one after another in this process
+    if args.option == "mpi":
         frame_runner = functools.partial(run_tasks_mpi, comm)
     else:
-        frame_runner = functools.partial(run_parallel, n_jobs=cli.n)
-    frame_runner = logged_frame_runner(frame_runner)
+        frame_runner = functools.partial(run_parallel, n_jobs=args.n)
+    frame_runner = logged_frame_runner(frame_runner) # wrap to log how long each visit's frame stage takes (PSFs + frames)
+ 
+    # Warn before the run if -n does not fit the CPUs this job may use.
+    optics_check = instrument.CorgiOptics(obs['cgi_mode'], obs['bandpass'],
+                                          optics_keywords=obs['optics_keywords'], if_quiet=True)
+
+    nlam = optics_check.nlam # number of PROPER processes per PSF (7 here, from the coronagraph mask and bandpass)
+
+    # With satellite spots a visit has 4 PSFs (background, positive, negative, science), otherwise 1
+    any_satspots = any(star['satspots']['satspots_are_present'] for star in stars.values())
+    n_psf_states = 4 if any_satspots else 1
+
+    # The detector round runs all of a visit's frames at once: check against the largest visit
+    largest_visit = max(frames_in_visit(visit, stars[visit['star']]) for visit in visits)
+
+    # With MPI every worker rank is its own process with its own CPUs, so check one rank (n_jobs=1)
+    is_mpi = args.option == "mpi"
+    n_jobs = 1 if is_mpi else args.n
+
+    report = get_cpu_allocation(n_jobs=n_jobs, nlam=nlam, n_psf_states=n_psf_states,
+                                n_frames=largest_visit, warn=False)
+    log.info("CPUs: %d available (%s); per PSF PROPER opens %d processes (nlam=%d); "
+             "peak %d processes in the PSF round, %d in the detector round%s",
+             report['cpus'], report['cpus_source'], report['proper_pool'], nlam,
+             report['peak_cpu_count'], report['detector_peak'],
+             " per MPI rank" if is_mpi else "")
+    for problem in report['problems']:
+        log.warning(problem)
+
+    # One sub-seed per visit, so visits don't repeat each other's noise (None: noise pattern not reproducible)
+    if args.seed is not None:
+        visit_seeds = np.random.SeedSequence(args.seed).spawn(len(visits))
+    else:
+        visit_seeds = [None] * len(visits)
 
     try:
-        for visit_id in visits:
-            log.info("Visit %s: %d frame(s), exptime %s s", visit_id, n_frames, exptime)
+        for visit, visit_seed in zip(visits, visit_seeds):
+            star = stars[visit['star']]
+            visit_id = visit['visit_id']
+            log.info("Visit %s: %s star, roll %s deg, %d frame(s) (%d science, exptime %s s)",
+                     visit_id, visit['star'], visit['roll_angle'], frames_in_visit(visit, star),
+                     visit['n_frames'], visit['exp_time'])
             visit_start = time.perf_counter()
-            # One CorgiOptics instance is one fixed optics state, so each visit gets its own
-            optics_i = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords,
-                                              roll_angle=roll_angle, visit_type=visit_type,
+            # One CorgiOptics instance per visit: the roll angle and visit_id are set on it
+            optics_i = instrument.CorgiOptics(obs['cgi_mode'], obs['bandpass'], optics_keywords=obs['optics_keywords'],
+                                              roll_angle=visit['roll_angle'], visit_type=visit['vistype'],
                                               visit_id=visit_id, if_quiet=True)
 
             # Frames run in parallel, come back to this (manager) process and are
             # written here; writing as L1 needs full-frame images
-            visit_dir = os.path.join(cli.output_dir, 'V' + visit_id)
+            visit_dir = os.path.join(args.output_dir, 'V' + visit_id)
             os.makedirs(visit_dir, exist_ok=True)
-            observation.generate_observation_sequence(base_scene, optics_i, detector, exptime, n_frames,
-                                                      vistype=visit_type, visit_id=visit_id,
+            observation.generate_observation_sequence(star['scene'], optics_i, star['detector'],
+                                                      visit['exp_time'], visit['n_frames'],
+                                                      **star['satspots'],
+                                                      vistype=visit['vistype'], visit_id=visit_id,
                                                       save_as_fits=True, output_dir=visit_dir,
                                                       full_frame=True, loc_x=512, loc_y=512,
-                                                      frame_runner=frame_runner)
+                                                      frame_runner=frame_runner, seed=visit_seed)
             # The returned frames are not kept, so they are freed before the next visit
-            log.info("Visit %s done in %.1f s (PSF + frames + save)", visit_id, time.perf_counter() - visit_start)
+            log.info("Visit %s done in %.1f s (PSFs + frames + save)", visit_id, time.perf_counter() - visit_start)
     finally:
-        if cli.option == "mpi":
+        if args.option == "mpi":
             shutdown_workers(comm)
 
-    log.info("Done: %d visits written to %s in %.1f s", len(visits), cli.output_dir, time.perf_counter() - run_start)
+    log.info("Done: %d visits written to %s in %.1f s", len(visits), args.output_dir, time.perf_counter() - run_start)
