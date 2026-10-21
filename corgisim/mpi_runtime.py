@@ -89,24 +89,30 @@ def run_tasks_mpi(comm, func, args_list, max_workers=None):
     Raises:
         RuntimeError: if a task raised on a worker rank (message includes its traceback).
     """
+    # Nothing to do (e.g. a segment with no frames): return without touching the workers
     if not args_list:
         return []
 
+    # Rank 0 is this manager, so the workers are ranks 1 .. size-1. Use at most max_workers of them, and never more than there are tasks (the extra ranks just stay idle in worker_loop).
     n_workers = comm.Get_size() - 1
+    
     if max_workers is not None:
         n_workers = min(n_workers, max_workers)
     n_workers = min(n_workers, len(args_list))
 
+    # job_id is the task's position in args_list: workers may answer in any order, and the
+    # job_id in each answer tells where its result goes, so results come back in input order
     tasks = [{'job_id': i, 'func': func, 'args': args} for i, args in enumerate(args_list)]
-    ordered_results = [None] * len(tasks)
-    next_task_index = 0
+    results = [None] * len(tasks)
+    n_sent = 0          # tasks sent so far; they go out in order, so tasks[n_sent] is the next one
+    n_answered = 0      # results or errors received so far
+    error = None        # (rank, job_id, traceback) of the first failed task
 
-    # Fill the worker pool: one initial task per active worker rank.
+    # Fill the worker pool: one initial task per active worker rank (1, 2, ..., n_workers).
+    # n_workers <= len(tasks), so there is always a task for each of them.
     for rank in range(1, n_workers + 1):
-        if next_task_index >= len(tasks):
-            break
-        comm.send({'message_type': TASK_RUN, 'task': tasks[next_task_index]}, dest=rank)
-        next_task_index += 1
+        comm.send({'message_type': TASK_RUN, 'task': tasks[n_sent]}, dest=rank)
+        n_sent += 1
 
     completed = 0
     status = MPI.Status()
