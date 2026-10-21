@@ -62,20 +62,94 @@ import os
 import time
 from corgisim import scene
 from corgisim import instrument
-from corgisim import outputs
 from corgisim import observation
-from corgisim.parallel_executor import run_parallel
-import matplotlib.pyplot as plt
+from corgisim.parallel_executor import run_parallel, get_cpu_allocation
 import numpy as np
 import proper
 import roman_preflight_proper
 
 
-## Setup the optics in here, and simulate different visits with stars and planets
-
-
-
 log = logging.getLogger("generate_visits_example")
+
+
+def setup_observation():
+    """
+    All the simulation settings in one place: edit this function to change the observation, e.g. the stars, visits, roll angles, satellite spots, coronagraph mask, etc.
+
+    The values reproduce test/test_data/cpgs_ref_wfov_satspots.xml the way inputs.load_cpgs_data
+    and observation.generate_observation_scenario_from_cpgs read it, except output_dim (51 here,
+    201 by default there).
+
+    Returns:
+        dict: 'cgi_mode', 'bandpass', 'optics_keywords' (shared by all visits), 'stars' (per star:
+        scene, science detector and satellite spot settings) and 'visits' (in the order they are taken).
+    """
+    # Optics, shared by every visit (coronagraph_mask 2 = wide FOV SPC, howfsc_cfam_pos 4F) 
+    cgi_mode = 'excam'
+    bandpass = '4F'
+    cor_type = 'spc-wide_band4'
+
+    # DM solution closest to initial_target_planet_star_flux_ratio (7e-8), as load_cpgs_data picks it
+    rootname = 'spc-wide_ni_5e-9'
+    dm1 = proper.prop_fits_read(roman_preflight_proper.lib_dir + '/examples/' + rootname + '_dm1_v.fits')
+    dm2 = proper.prop_fits_read(roman_preflight_proper.lib_dir + '/examples/' + rootname + '_dm2_v.fits')
+    
+    # polaxis 0 and prism 'None' are the CPGS defaults for imaging without polarimetry;
+    # output_dim is the size of the simulated image before it is placed on the detector
+    optics_keywords = {'cor_type': cor_type, 'polaxis': 0, 'output_dim': 51, 'prism': 'None',
+                       'use_dm1': 1, 'dm1_v': dm1, 'use_dm2': 1, 'dm2_v': dm2}
+
+    # Satellite spots: pair id 1 for both stars = 2 pairs at 13 lambda/D, 0 and 90 deg, contrast 1e-7
+    satspot_keywords = {'num_pairs': 2, 'sep_lamD': 13, 'angle_deg': [0, 90], 'contrast': 1e-7}
+
+    # Stars: each has its own scene, science detector and satellite spot settings 
+    # No companions in this CPGS file. To add one to a star, pass e.g.
+    # [{'Vmag': 25, 'magtype': 'vegamag', 'position_x': 3 * 49.3, 'position_y': 3 * 49.3}]  (mas)
+    # as the second argument of scene.Scene.
+    stars = {
+        'target': {   # cpgs_input target_*, satellite_spots_*_targ
+            'scene': scene.Scene({'Vmag': 3.73, 'spectral_type': 'K2', 'magtype': 'vegamag',
+                                  'ref_flag': False, 'target_name': 'Eps Eri'}),
+            'detector': instrument.CorgiDetector({'em_gain': 300.0, 'fast_gain_mode': 'auto', 'gain_CIC_Q': 'roman'},
+                                                 photon_counting=True),
+            'satspots': {'satspots_are_present': True,
+                         'satspots_detector': instrument.CorgiDetector({'em_gain': 300.0}, photon_counting=False),
+                         'satspots_exptime': 0.5, 'satspots_number_of_frames': 3,
+                         'satspot_keywords': satspot_keywords},
+        },
+        'reference': {   # cpgs_input reference_*, satellite_spots_* (no _targ)
+            'scene': scene.Scene({'Vmag': 2.65, 'spectral_type': 'B9', 'magtype': 'vegamag',
+                                  'ref_flag': True, 'target_name': 'alf col'}),
+            'detector': instrument.CorgiDetector({'em_gain': 200.0, 'fast_gain_mode': 'auto', 'gain_CIC_Q': 'roman'},
+                                                 photon_counting=True),
+            'satspots': {'satspots_are_present': True,
+                         'satspots_detector': instrument.CorgiDetector({'em_gain': 200.0}, photon_counting=False),
+                         'satspots_exptime': 0.1, 'satspots_number_of_frames': 2,
+                         'satspot_keywords': satspot_keywords},
+        },
+    }
+
+    # Visits, in the order they are taken: one visit = one observation sequence 
+    # visit_id = default L1 header prefix + visit number; roll_angle is the visit's position_angle (as load_cpgs_data reads it); science frames and exposure time come from the visit's cgi_excam.
+    visits = [
+        {'visit_id': '0200001001001001001', 'star': 'reference', 'roll_angle': 88.92, 'n_frames': 3,  'exp_time': 0.1,  'vistype': 'CGIVST_TDD_SETUP_HOWFSC'},
+        {'visit_id': '0200001001001001002', 'star': 'target',    'roll_angle': 94.53, 'n_frames': 11, 'exp_time': 10.0, 'vistype': 'CGIVST_TDD_OBS'},
+        {'visit_id': '0200001001001001003', 'star': 'target',    'roll_angle': 90.54, 'n_frames': 11, 'exp_time': 10.0, 'vistype': 'CGIVST_TDD_OBS'},
+        {'visit_id': '0200001001001001004', 'star': 'reference', 'roll_angle': 85.03, 'n_frames': 3,  'exp_time': 0.1,  'vistype': 'CGIVST_TDD_OBS'},
+        {'visit_id': '0200001001001001005', 'star': 'target',    'roll_angle': 90.56, 'n_frames': 11, 'exp_time': 10.0, 'vistype': 'CGIVST_TDD_OBS'},
+        {'visit_id': '0200001001001001006', 'star': 'target',    'roll_angle': 94.57, 'n_frames': 11, 'exp_time': 10.0, 'vistype': 'CGIVST_TDD_OBS'},
+        {'visit_id': '0200001001001001007', 'star': 'reference', 'roll_angle': 89.07, 'n_frames': 3,  'exp_time': 0.1,  'vistype': 'CGIVST_TDD_OBS'},
+    ]
+
+    return {'cgi_mode': cgi_mode, 'bandpass': bandpass, 'optics_keywords': optics_keywords,
+            'stars': stars, 'visits': visits}
+
+
+def frames_in_visit(visit, star):
+    """Frames in one visit: satellite spot background, positive and negative (if any), then science."""
+    satspots = star['satspots']
+    n_sat = 3 * satspots['satspots_number_of_frames'] if satspots['satspots_are_present'] else 0
+    return n_sat + visit['n_frames']
 
 
 def setup_logging(output_dir):
