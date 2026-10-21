@@ -57,29 +57,37 @@ def worker_loop(comm):
 
 
 def run_tasks_mpi(comm, func, args_list, max_workers=None):
-    """Manager-side dynamic task queue: func(*args) for every args in args_list.
+    """
+    Manager-side dynamic task queue: func(*args) for every args in args_list.
 
     Sends one task to each active worker rank, then as soon as any
     worker returns a result, it immediately sends that now-free worker the
-    next pending task, until every task has been dispatched and
-    collected. 
+    next pending task, until every task has been dispatched and collected. 
     
     Blocks until all results are back (barrier). Same scheme as
     corgihowfsc's mpi_runtime._run_manager_task_queue, and the same
     (func, args_list) call shape as parallel_executor.run_parallel, so
-    functools.partial(run_tasks_mpi, comm) can be passed as 
-    observation.generate_observation_sequence's frame_runner.
+    functools.partial(run_tasks_mpi, comm) can be passed as observation.generate_observation_sequence's frame_runner.
+
+    If a task raises on a worker, no new tasks are sent, the tasks still running are
+    collected (so no worker is left blocked sending its result), and a RuntimeError with
+    the worker's traceback is raised here. The caller should then call shutdown_workers.
 
     Args:
         comm: MPI communicator, from initialize_mpi_comm().
         func: module-level function to run on the workers (sent by reference).
-        args_list (list of tuple): one positional argument tuple per task,
-            e.g. one frame from observation.prepare_frame_tasks.
+        args_list (list of tuple): one positional argument tuple per task: one PSF
+            (_compute_psf, round 1) or one frame (_apply_detector, or _generate_one_frame
+            with zindex), see observation.prepare_frame_tasks. generate_observation_sequence
+            calls this once per round: twice per visit, or once with zindex.
         max_workers (int or None): optional cap on active worker ranks,
             same role as run_parallel's n_jobs.
 
     Returns:
         list: func results, ordered the same as args_list.
+
+    Raises:
+        RuntimeError: if a task raised on a worker rank (message includes its traceback).
     """
     if not args_list:
         return []
