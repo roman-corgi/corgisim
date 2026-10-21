@@ -255,30 +255,41 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames,
     """
     Generates a sequence of simulated observations and places them on a detector.
 
-    This function setups the simulation of a given astrophysical scene through
+    This function set ups the simulation of a given astrophysical scene through
     the instrument optics and then onto the detector. It first generates the host star's PSF, then injects any defined off-axis point sources into the simulated scene. 
     
     Finally, it uses the detector model to create a detector image, optionally
-    generating either a sub-array or a full-frame image for each exposure. Each observation sequence corresponds to a single visit at a specific roll angle.
+    generating either a sub-array or a full-frame image for each exposure. Each observation sequence corresponds to a single visit at a specific roll angle. 
 
-    A `CorgiOptics` instance is one fixed optics state (DM settings, zernike/drift
-    value, etc.) -- a different state usually requires a new instance. So frames
-    either all share one state (e.g. `zindex is None`: the PSF is identical for
-    every frame, computed once) or each needs its own (e.g. `zindex is not None`: a distinct `zval_m_i[i]` per frame).
+    When frame_runner is None, the frames are generated in series in this process. 
 
-    Parallelisation: the sequence is split into segments, one per optics state:
-        satspot: positive, negative, background; only if `satspots_are_present`
-        science: the rest of frames are science frames. 
-        
-    Segments run one after another, because add_satspot/remove_satspot change `optics` between them. Within a segment, `prepare_frame_tasks` builds one task per frame and `frame_runner` runs these tasks in parallel:
-        - `zindex is None`: the PSF is computed once, in this process, and
-          only the detector step (`_apply_detector`) runs in parallel.
-        - `zindex is not None`: every task is a PROPER run plus the detector
-          step (`_generate_one_frame`), so the PROPER runs are parallel too.
+    When frame_runner is not None, here is how the parallelisation works:
     
-    The frames of all segments are collected in order (satspots first, then
-    science) and, if `save_as_fits`, written to disk before this function
-    returns, so a caller looping over visits only holds one visit's frames at a time.
+        Parallelisation: the sequence is split into segments. A segment is a consecutive block
+        of frames that share one optics state and one detector setup (see `sequence_segments`).
+        In the order the frames are taken:
+            1. satspot background (no spots on the DM, SATSPOTS=1)
+            2. satspot positive (DM + positive spots)
+            3. satspot negative (DM + negative spots)
+            -- 1 to 3 only if `satspots_are_present`, satspots_number_of_frames each
+            4. science, n_frames (same DM as the background, SATSPOTS=0)
+        
+        Each segment works on its own copy of `optics` and the segments do not depend on each other. 
+        `frame_runner` is then called:
+            - `zindex is None` (no speckle variation): first the PSFs, one task per segment (`_compute_psf`), so the
+            segments' PSFs run in parallel. Then every frame of every segment is one
+            detector task (`_apply_detector`).
+            - `zindex is not None` (with speckle variation): every frame is one task, a PROPER run plus the detector
+            step (`_generate_one_frame`), with its own row of `zval_m_i`. 
+            NOTE - the caller must supply the time series of Zernike values (one row per frame); corgisim does not
+            generate it yet, and generate_observation_scenario_from_cpgs does not take `zindex`.
+        
+        The PROPER runs inside one PSF (wavelengths, and polarization states for a POL prism)
+        stay inside `get_host_star_psf`.
+
+        The frames of all segments are collected in order (satspots first, then
+        science) and, if `save_as_fits`, written to disk before this function
+        returns, so a caller looping over visits only holds one visit's frames at a time.
 
     Args:
         scene (corgisim.scene.Scene): The scene object containing information about
@@ -289,13 +300,13 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames,
             the detector characteristics and noise properties.
         exp_time (float): The exposure time for each individual frame in seconds.
         n_frames (int): The number of frames to generate in this observation sequence, satellite spots frames not included.
-        satspots_present (bool): If yes, the sequence will generate 3xsatspots_number_of_frames satellite spots frames 
+        satspots_are_present (bool): If True, the sequence also has 3*satspots_number_of_frames satellite spot frames.
         satspots_detector(corgisim.instrument.CorgiDetector): The detector object defining
             the detector characteristics and noise properties used for satellite spots
         satspots_exptime (float): The exposure time for each individual satspots frame in seconds.
         satspots_number_of_frames (int): The number of satellite spots frames OF EACH TYPE (backgroup, positive, negative) to generate; The sequence will contain 3*satspots_number_of_frames
-        satspot_keywords:  A dictionary with the keywords that are used to add satellite spots. See instruments. py add_satspot for the keywords.
-        save_as_fits (bool): wether or not to save the generated images as fits file
+        satspot_keywords:  A dictionary with the keywords that are used to add satellite spots. See instruments.py add_satspot for the keywords.
+        save_as_fits (bool): whether or not to save the generated images as fits file
         vistype (str): A string indicating the type of visit  for populating header VISTYPE.
         visit_id (str): A string indicating the visit ID for populating header VISITID.
         output_dir: if saving as fits file, where to save them 
@@ -309,13 +320,21 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames,
             y-coordinate of the full frame's origin (top-left pixel). Required if `full_frame` is True.
         zindex (list of int, optional): Zernike Noll indices as `zindex` in the
             optics keywords. Default None (all frames share the input optics keywords).
-        zval_m_i (array, optional): Zernike values in meters, one row per frame
-            (shape n_frames x len(zindex)), passed as `zval_m`. Required if `zindex` is given.
+        zval_m_i (array, optional): Zernike values in meters, one row per frame, passed as `zval_m`.
+            Required if `zindex` is given. Rows follow the order the frames are taken: if
+            `satspots_are_present`, background, positive and negative satspot frames first
+            (satspots_number_of_frames rows each), then the science frames, so the shape is
+            (3*satspots_number_of_frames + n_frames) x len(zindex); otherwise n_frames x len(zindex).
         frame_runner (callable, optional): frame_runner(frame_func, args_list) runs the frame
             tasks and returns the frames in order. Default None runs them one after another
             in this process (serial). For n local worker processes pass
             functools.partial(corgisim.parallel_executor.run_parallel, n_jobs=n);
             for MPI pass functools.partial(corgisim.mpi_runtime.run_tasks_mpi, comm).
+        seed (int or numpy.random.SeedSequence, optional): base seed for the detector noise. Every frame gets its own seed,
+            derived from this one and the frame's position in the sequence (`frame_seeds`), so the
+            frames are the same with any frame_runner (serial, n_jobs, MPI) and on every rerun.
+            Default None: each frame draws from numpy's global RNG as it is (in the main process
+            for serial runs, in each worker otherwise), so parallel runs are not reproducible.
 
     Returns:
         list[corgisim.scene.SimulatedImage]: A list of :py:class:`corgisim.scene.SimulatedImage` objects,
