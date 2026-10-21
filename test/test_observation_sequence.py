@@ -1,3 +1,4 @@
+import corgisim
 from corgisim import scene, instrument, inputs, observation
 from corgisim.scene import SimulatedImage
 from astropy.io import fits
