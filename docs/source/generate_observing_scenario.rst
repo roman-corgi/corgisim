@@ -183,7 +183,7 @@ Both scripts run an observation visit by visit, in any of the three modes, and w
      - simulate an observation that is already defined with a CPGS file
      - try settings a CPGS file cannot express, or see how the parts of an observation fit together
 
-The default observation of both scripts is the one in ``test/test_data/cpgs_ref_wfov_satspots.xml``.
+The default observation of both scripts is the one in ``test/test_data/cpgs_ref_wfov_satspots.xml``. User can change where the scene is placed on the detector with ``LOC_X`` and ``LOC_Y`` in ``generate_visits_from_cpgs_example.py``, or ``LOC_X`` and ``LOC_Y`` in ``generate_visits_example.py``. The default is (512, 512) pixels.
 
 .. tip::
 
@@ -199,16 +199,17 @@ Both scripts take the same options, except ``--cpgs``:
 - ``-n``: the number of workers (see :ref:`parallel-sizing`). Ignored in ``serial``.
 - ``--seed``: any integer. The same seed gives the same frames; a different seed gives a different noise pattern. Without ``--seed`` the noise changes from run to run (see :ref:`parallel-seeds`).
 - ``--output-dir``: where the ``V<visit_id>`` folders and ``run.log`` are written (relative or absolute path). Default: ``examples/output``.
-- ``--cpgs`` (CPGS script only): the CPGS XML file to simulate (relative or absolute path).
+- ``--cpgs`` (CPGS scripts only): the CPGS XML file to simulate (relative or absolute path).
 
 What you can change in ``generate_visits_example.py``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-All the observation setup are in ``setup_observation()``, which returns a dictionary with three parts:
+All the observation setup parameters are in ``setup_observation()``, which returns a dictionary with three parts:
 
 - **Optics** (``cgi_mode``, ``bandpass``, ``optics_keywords``): the coronagraph mode and mask, the DM settings and ``output_dim``. **All visits share these.** Each visit gets its own ``CorgiOptics`` with its own roll angle, but built from the same settings.
 - **Stars** (``stars``): one entry per star, each with its scene (``scene.Scene``, where you can add companions and/or 2D scenes), its science detector (``instrument.CorgiDetector``) and its satellite spot settings. Set ``'satspots_are_present': False`` for no satellite spots.
 - **Visits** (``visits``): the list of visits, in the order they are taken. Each visit has a ``visit_id``, a ``'star'`` (a key of ``stars``), a ``roll_angle``, ``n_frames`` science frames with ``exp_time`` seconds each, and a ``vistype``.
+- **Scene location** (``loc_x``, ``loc_y``): the star location on the detector (pixels). The default is (512, 512).
 
 Rules that are easy to miss:
 
@@ -232,12 +233,13 @@ What the CPGS script supports
 ``observation.generate_observation_scenario_from_cpgs``, which reads it with
 ``inputs.load_cpgs_data``. From the file, corgisim takes:
 
+- **Optics:** the mask (HLC or wide-FOV SPC for imaging; SPC for spectroscopy, including the rotated version) and the color filter. The DM solution is the one whose contrast is closest to the file's target planet-star flux ratio.
 - **Stars:** the target, and the reference star if there is one (V magnitude, spectral type, name).
-- **Coronagraph and band:** the mask (HLC or wide-FOV SPC for imaging; SPC for spectroscopy, including the rotated version) and the color filter. The DM solution is the one whose contrast is closest to the file's target planet-star flux ratio.
 - **Mode per visit:** imaging, polarimetry (``CGIVST_TDD_POL_OBS`` visits, with the visit's ``dpampos`` setting, e.g. ``POL0`` or ``POL45``) or spectroscopy (with the file's slit and its offsets).
 - **Detector per star:** EM gain and photon counting, or auto gain.
 - **Satellite spots:** if the file asks for them every visit, with their own gain, exposure time and number of frames for the target and the reference star.
 - **Visits:** the order, the roll angle, the visit type, and the number of frames and exposure time of each visit.
+- **Scene location:** the star location on the detector (pixels). The default is (512, 512).
 
 Some parts are approximations or not supported yet:
 
@@ -256,14 +258,12 @@ Setting up each mode
 --------------------
 
 The example SLURM scripts are in ``examples/``: ``run_visits_*.sh`` for
-``generate_visits_example.py`` and ``run_cpgs_*.sh`` for ``generate_visits_from_cpgs_example.py``.
-Submit them from ``examples/``. Each script copies the PROPER prescription files
-(``roman_preflight.py``, ``roman_preflight_compact.py``) into its working directory, because PROPER
-loads the prescription by module name.
+``generate_visits_example.py`` and ``run_cpgs_*.sh`` for ``generate_visits_from_cpgs_example.py``. Submit them from ``examples/``, or where the script is located. Each script copies the PROPER prescription files
+(``roman_preflight.py``, ``roman_preflight_compact.py``) into its working directory, because PROPER loads the prescription by module name.
 
 .. important::
 
-   Replace ``<EMAIL_ADDRESS>``, ``<your conda environment>`` and, in the MPI scripts, ``<your MPI module>`` with your own. The ``#SBATCH`` lines are for SLURM: adapt them if your cluster uses another scheduler.
+   Replace ``<EMAIL_ADDRESS>``, ``<your conda environment>`` and, in the MPI scripts, ``<your MPI module>`` with your own. The ``#SBATCH`` lines are for SLURM: adapt them if your cluster uses another scheduler. Contact your cluster's adminstrators if you do not know how to set up a job.
 
 Serial: one process
 ~~~~~~~~~~~~~~~~~~~
@@ -279,8 +279,14 @@ mp: multiprocessing on one machine
 Set ``-c`` for the PSF round and ``-n`` for the memory:
 
 - ``-c`` = ``nlam`` x min(``n``, PSFs per visit). That is 28 for the default observation.
-- ``-n`` = (``--mem`` - 2 GB) / 13 GB, and no more than the frames of the largest visit. With
-  ``--mem=100G`` that's at most 7; the script uses 6.
+- ``-n`` has two upper limits. Use the smaller one:
+
+  - **Memory:** all ``n`` workers can be adding noise to a full frame at the same moment, at
+    ~13 GB each, plus ~2 GB for the manager and the loaded libraries. So
+    ``n`` x 13 GB + 2 GB must fit in ``--mem``. With ``--mem=100G``, that's at most 7.
+  - **Frames:** no more than the frames in the largest visit (20 here). Extra workers sit idle, which is fine but not wrong. 
+
+  The example script uses 6, one below the memory limit, to leave some margin.
 
 .. literalinclude:: ../../examples/run_visits_mp.sh
    :language: bash
@@ -290,10 +296,10 @@ MPI: one or more cluster nodes
 
 Each rank is its own process with its own CPUs, so the CPU check runs per rank:
 
-- ``--cpus-per-task`` = ``nlam``, so each rank can run one PSF.
+- ``--cpus-per-task`` = ``nlam``, so each rank can run one PSF task at a time without oversubscribing. 
 - ``--ntasks`` = workers + 1 manager, and ``-n $((SLURM_NTASKS - 1))``.
 - ``--ntasks-per-node`` = node cores / ``nlam``. That is 4 on a 32-core node.
-- ``--mem`` is **per node**, shared by that node's ranks: ranks per node x 13 GB + margin. That is 60G for 4 ranks.
+- ``--mem`` is **per node**, shared by that node's ranks: ranks per node x 13 GB + margin. That is 60G for 4 workers.
 
 .. literalinclude:: ../../examples/run_visits_mpi.sh
    :language: bash
@@ -323,11 +329,9 @@ Without a seed, each frame draws from numpy's global random state in whichever p
 Using parallel runs in your own script
 --------------------------------------
 
-The example scripts only choose a **frame runner** and pass it to corgisim.
+The example scripts only choose a **frame runner** and pass it to `corgisim`.
 ``generate_observation_sequence`` and ``generate_observation_scenario_from_cpgs`` both take
-``frame_runner=``: a function ``frame_runner(func, args_list)`` that returns
-``[func(*args) for args in args_list]`` in order. corgisim calls it once for the PSF round and once
-for the detector round of each visit. ``None`` (the default) runs everything serially.
+``frame_runner=``: a function ``frame_runner(func, args_list)`` that returns ``[func(*args) for args in args_list]`` in order. `corgisim` calls it once for the PSF round and once for the detector round of each visit. ``None`` (the default) runs everything serially.
 
 For ``mp``, use :func:`corgisim.parallel_executor.run_parallel`:
 
@@ -343,8 +347,7 @@ For ``mp``, use :func:`corgisim.parallel_executor.run_parallel`:
            scene, optics, detector, exp_time, n_frames,
            frame_runner=frame_runner, seed=1)
 
-For ``mpi``, rank 0 is the manager and all other ranks are workers.
-:func:`corgisim.mpi_runtime.initialize_mpi_comm` sends the worker ranks into a loop that waits for
+For ``mpi``, rank 0 is the manager: it sends the PSF and the frame tasks to other ranks (the workers), collect the results in order, and writes each visit's frames to disk. Worker only compute and never write files. :func:`corgisim.mpi_runtime.initialize_mpi_comm` sends the worker ranks into a loop that waits for
 tasks, and only returns on rank 0. Always stop the workers at the end, even if the run fails:
 
 .. code-block:: python
@@ -362,7 +365,7 @@ tasks, and only returns on rank 0. Always stop the workers at the end, even if t
    finally:
        shutdown_workers(comm)
 
-In both modes the PROPER prescription files have to be in the working directory (the example
+In both modes, the PROPER prescription files have to be in the working directory (the example
 scripts call ``roman_preflight_proper.copy_here()``; with MPI, only rank 0 should copy them).
 The sizing rules above apply unchanged.
 
@@ -386,7 +389,7 @@ In ``mp`` mode, if the memory limit kills a worker, ``multiprocessing.Pool`` wai
 task. The job stays running, ``run.log`` stops after a ``[_compute_psf]`` line, and no new frames
 appear.
 
-Check:
+Check (SLURM example):
 
 .. code-block:: bash
 
@@ -395,14 +398,14 @@ Check:
    srun --jobid=<jobid> --overlap ps -u $USER -o pid,stat,etime,%cpu,rss,cmd --forest
 
 In the ``ps`` output, a pool worker with a shorter elapsed time than the others is a replacement
-for a killed one. Cancel the job and lower ``-n`` or raise ``--mem``.
+for a killed one. Cancel the job and lower ``-n`` or raise ``--mem`` for the next run. 
 
 An MPI job never creates its output directory
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This means rank 0 never got past MPI startup. Nothing is printed, and the ranks may all sit at
 100% CPU, because many MPI libraries spin while they wait for messages. To check whether MPI
-itself works without corgisim, run this in the same job setup:
+itself works without corgisim, run this in the same job script (SLURM example):
 
 .. code-block:: bash
 
@@ -410,25 +413,20 @@ itself works without corgisim, run this in the same job setup:
        "from mpi4py import MPI; MPI.COMM_WORLD.Barrier(); print('ok', MPI.COMM_WORLD.Get_rank())"
 
 If that hangs too, the problem is the nodes or the network, not the script. A single node that
-can't communicate with the others is enough to cause this. Find it by running the test on smaller
-sets of nodes, then leave it out with ``#SBATCH --exclude=<node>`` and tell your cluster's
-administrators.
-
-With Intel MPI, ``export I_MPI_DEBUG=5`` logs the network provider and where each rank runs, and
-``I_MPI_OFI_PROVIDER=tcp`` runs the same test over TCP instead of the fast network.
+cannot communicate with the others is enough to cause this. Find it by running the test on smaller
+sets of nodes, then leave it out with ``#SBATCH --exclude=<node>``, maybe inform the cluster administrators.
 
 .. tip::
 
-   To see where a stuck Python process is, run it with ``python -X faulthandler`` and send it
-   ``kill -ABRT <pid>``. It prints its stack to stderr before exiting.
+   To see where a stuck Python process is, run it your script with ``python -X faulthandler``. It prints its stack to stderr before exiting.
 
 The memory report shows more than the limit
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ``seff`` and ``sacct`` add up each process's memory (RSS), so memory shared between processes is
-counted once per process. The ``mp`` run above reported 146 GB in a 100 GB job, while its real
-peak was 73 GB. A job that really goes over ``--mem`` gets processes killed. Use your cluster's
-job monitor for the real peak.
+counted once per process. Using the example run, the ``mp`` run above reported 146 GB in a 100 GB job, while its real
+peak was about 73 GB. A job that really goes over ``--mem`` gets processes killed. Use your cluster's
+job monitor for the real peak and adjust the memory limit for the next run.
 
 .. _detector-memory:
 
@@ -444,5 +442,4 @@ single call:
    np.random.binomial(n=1, p=gain_CIC_Q, size=array_size*numel_gain_register)
 
 For a full frame that's 1200 x 2200 pixels x 604 gain stages, about 1.6 billion int64 values or
-12.7 GB. macOS compresses this mostly-zero array in memory and reports only about 4 GB, so measure
-on the cluster.
+12.7 GB. This number is independent of the number of frames, because each frame is a separate task. With smaller gain, the memory is lower (to be tested).
