@@ -88,7 +88,7 @@ def test_generate_observation_sequence():
     xcen = (fov_shape[1]-1)/2
     ycen = (fov_shape[0]-1)/2
     pix_scale = 0.0218*1000 #mas/pix
-    peak_positive = []
+    peak = []
     for i in range(0,3*satellite_spots_number_of_frames):
         prihdr = simulatedImage_list_fullframe[i].image_on_detector[0]
         exthdr = simulatedImage_list_fullframe[i].image_on_detector[1]
@@ -102,8 +102,8 @@ def test_generate_observation_sequence():
         assert prihdr.header['OPGAIN'] == satellite_spots_gain
         assert prihdr.header['FRAMET'] == satellite_spots_frame_time
 
-        # If within positive satspots, test that all satspots flux are within 10%
-        if i in range(satellite_spots_number_of_frames, 2*satellite_spots_number_of_frames ):
+        # If within satspots, test that all satspots flux are within 10%
+        if i in range(satellite_spots_number_of_frames, 3*satellite_spots_number_of_frames ):
             satellite_spot_image_positive = simulatedImage_list_fullframe[i].host_star_image.data
             fitresult=[]
             for angle in satspot_keywords['angle_deg']: # note: this line does not work if angle_deg is not list
@@ -119,8 +119,8 @@ def test_generate_observation_sequence():
                     peak,fwhm,x,y=gaussfit2d(satellite_spot_image_positive,guess_x,guess_y)
                     fitresult.append([peak,fwhm,x,y])
             peak_satspots_ave = np.mean(np.array(fitresult)[:,0])
-            peak_positive.append(peak_satspots_ave)
-        if i == (2*satellite_spots_number_of_frames -1):
+            peakappend(peak_satspots_ave)
+        if i == (3*satellite_spots_number_of_frames -1):
             assert np.all(np.isclose(peak_positive, peak_positive[0], rtol=0.1))        
     
     assert simulatedImage_list_fullframe[-1].image_on_detector[1].header['EXPTIME'] == exp_time
