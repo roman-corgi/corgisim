@@ -88,7 +88,7 @@ def test_generate_observation_sequence():
     xcen = (fov_shape[1]-1)/2
     ycen = (fov_shape[0]-1)/2
     pix_scale = 0.0218*1000 #mas/pix
-    peak = []
+    peak_sat = []
     for i in range(0,3*satellite_spots_number_of_frames):
         prihdr = simulatedImage_list_fullframe[i].image_on_detector[0]
         exthdr = simulatedImage_list_fullframe[i].image_on_detector[1]
@@ -119,9 +119,9 @@ def test_generate_observation_sequence():
                     peak,fwhm,x,y=gaussfit2d(satellite_spot_image_positive,guess_x,guess_y)
                     fitresult.append([peak,fwhm,x,y])
             peak_satspots_ave = np.mean(np.array(fitresult)[:,0])
-            peak.append(peak_satspots_ave)
+            peak_sat.append(peak_satspots_ave)
         if i == (3*satellite_spots_number_of_frames -1):
-            assert np.all(np.isclose(peak, peak[0], rtol=0.1))        
+            assert np.all(np.isclose(peak_sat, peak_sat[0], rtol=0.1))        
     
     assert simulatedImage_list_fullframe[-1].image_on_detector[1].header['EXPTIME'] == exp_time
     assert simulatedImage_list_fullframe[-1].image_on_detector[1].header['EMGAIN_C'] == gain
