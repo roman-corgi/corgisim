@@ -261,6 +261,18 @@ The example SLURM scripts are in ``examples/``: ``run_visits_*.sh`` for
 ``generate_visits_example.py`` and ``run_cpgs_*.sh`` for ``generate_visits_from_cpgs_example.py``. Submit them from ``examples/``, or where the script is located. Each script copies the PROPER prescription files
 (``roman_preflight.py``, ``roman_preflight_compact.py``) into its working directory, because PROPER loads the prescription by module name.
 
+The scripts are examples: they show what a job looks like and roughly how many CPUs and how much
+memory to request for the default observation. To run ``serial`` or ``mp`` on your local
+workstation, or on any machine without a job scheduler, copy the ``python`` command from a script
+and run it directly, with the same ``-n`` and make sure you have enough free CPUs and memory:
+
+.. code-block:: bash
+
+   cd examples
+   python generate_visits_example.py --option mp -n 6 --seed 1 --output-dir ./output_visits_mp
+
+``mpi`` always needs ``mpirun``. On a cluster with multiple nodes and MPI setup, you can run the ``mpirun`` line directly too, with ``-np`` set to the number of workers + 1 (e.g. ``mpirun -np 5 ... -n 4``). 
+
 .. important::
 
    Replace ``<EMAIL_ADDRESS>``, ``<your conda environment>`` and, in the MPI scripts, ``<your MPI module>`` with your own. The ``#SBATCH`` lines are for SLURM: adapt them if your cluster uses another scheduler. Contact your cluster's adminstrators if you do not know how to set up a job.
