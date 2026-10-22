@@ -119,7 +119,7 @@ def test_generate_observation_sequence():
                     peak,fwhm,x,y=gaussfit2d(satellite_spot_image_positive,guess_x,guess_y)
                     fitresult.append([peak,fwhm,x,y])
             peak_satspots_ave = np.mean(np.array(fitresult)[:,0])
-            peakappend(peak_satspots_ave)
+            peak.append(peak_satspots_ave)
         if i == (3*satellite_spots_number_of_frames -1):
             assert np.all(np.isclose(peak_positive, peak_positive[0], rtol=0.1))        
     
