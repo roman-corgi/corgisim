@@ -44,7 +44,7 @@ Pick how to run with --option; -n is the number of workers for mp and mpi:
     mpirun -n 5 python generate_visits_example.py --option mpi -n 4  # 4 worker ranks + 1 manager (hence -n 5 for mpirun)
     python generate_visits_example.py --option mp -n 4 --seed 1 --output-dir ./output   # reproducible, chosen output dir
 
-TODO - need to attach a shell script to run the simulation in a multinode environment, can provide an example using the lam example but user will really need to reach out to their system admin to get the correct way to run the simulation in a multinode environment, 
+TODO - need to attach a shell script to run the simulation in a multinode environment, can provide an example using the lam example but user will really need to reach out to their system admin to get the correct way to run the simulation in a multinode environment.  
 
 --seed makes the run reproducible: SeedSequence(seed).spawn gives each visit its own sub-seed
 (reusing one int for every visit would repeat the same noise in every visit), and each frame
@@ -53,6 +53,8 @@ gets its own seed from it, so the frames are the same for serial, -n workers and
  
 Speckle variation (one PSF per frame) is supported by generate_observation_sequence through
 zindex / zval_m_i, but not fully supported with corgisim. 
+
+User can change where to place the scene onto the detector with loc_x and loc_y (pixels). The default is (512, 512). It is at the beginning of setup_observation() and passed to generate_observation_sequence().
 """
 ## import packages
 import argparse
@@ -84,6 +86,8 @@ def setup_observation():
         dict: 'cgi_mode', 'bandpass', 'optics_keywords' (shared by all visits), 'stars' (per star:
         scene, science detector and satellite spot settings) and 'visits' (in the order they are taken).
     """
+    LOC_X, LOC_Y = 512, 512  # star location on the detector (pixels)
+
     # Optics, shared by every visit (coronagraph_mask 2 = wide FOV SPC, howfsc_cfam_pos 4F) 
     cgi_mode = 'excam'
     bandpass = '4F'
@@ -105,7 +109,7 @@ def setup_observation():
     # Stars: each has its own scene, science detector and satellite spot settings 
     # No companions in this CPGS file. To add one to a star, pass e.g.
     # [{'Vmag': 25, 'magtype': 'vegamag', 'position_x': 3 * 49.3, 'position_y': 3 * 49.3}]  (mas)
-    # as the second argument of scene.Scene.
+    # as the second argument of scene.Scene. See scene.Scene.__init__() for the full list of parameters (host star, companions, 2D scene, etc.).
     stars = {
         'target': {   # cpgs_input target_*, satellite_spots_*_targ
             'scene': scene.Scene({'Vmag': 3.73, 'spectral_type': 'K2', 'magtype': 'vegamag',
@@ -142,7 +146,7 @@ def setup_observation():
     ]
 
     return {'cgi_mode': cgi_mode, 'bandpass': bandpass, 'optics_keywords': optics_keywords,
-            'stars': stars, 'visits': visits}
+            'stars': stars, 'visits': visits, 'loc_x': LOC_X, 'loc_y': LOC_Y}
 
 
 def frames_in_visit(visit, star):
@@ -275,7 +279,7 @@ if __name__ == "__main__":
                                                       **star['satspots'],
                                                       vistype=visit['vistype'], visit_id=visit_id,
                                                       save_as_fits=True, output_dir=visit_dir,
-                                                      full_frame=True, loc_x=512, loc_y=512,
+                                                      full_frame=True, loc_x=obs['loc_x'], loc_y=obs['loc_y'],
                                                       frame_runner=frame_runner, seed=visit_seed)
             # The returned frames are not kept, so they are freed before the next visit
             log.info("Visit %s done in %.1f s (PSFs + frames + save)", visit_id, time.perf_counter() - visit_start)
