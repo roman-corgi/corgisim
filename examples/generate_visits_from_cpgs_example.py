@@ -8,7 +8,8 @@ generate_visits_example.py writes the same observation out as Python settings. F
 use --cpgs test/test_data/cpgs_short_sequence.xml (2 visits, 8 PSFs, 18 frames; its satellite spot
 frames are 0 s at gain 1, so they show no spots).
 
-WARNING: apart from setup_observation(), this script is not meant to be edited.
+WARNING: this script is not meant to be edited. To simulate another observation, pass its CPGS file
+with --cpgs (or use generate_visits_example.py to write the observation in Python).
 
 Output: each visit's frames are written as full-frame L1 FITS files to a V<visit_id> subfolder of
 --output-dir (default: examples/output), and the progress is logged to the console and to run.log
@@ -47,6 +48,8 @@ changes from run to run.
 
 Speckle variation is not supported from a CPGS file yet: generate_observation_scenario_from_cpgs
 has no zindex (see generate_observation_sequence for the zindex / zval_m_i time series).
+
+User can change where to place the scene onto the detector with LOC_X and LOC_Y (pixels). The default is (512, 512).
 """
 import argparse
 import functools
@@ -60,6 +63,7 @@ from corgisim.parallel_executor import run_parallel, get_cpu_allocation
 import roman_preflight_proper
 
 log = logging.getLogger("generate_visits_from_cpgs_example")
+LOC_X, LOC_Y = 512, 512  # star location on the detector (pixels)
 
 
 def setup_logging(output_dir):
@@ -192,7 +196,7 @@ if __name__ == "__main__":
         # so only one visit's frames are in memory at a time. Writing as L1 needs
         # full-frame images.
         observation.generate_observation_scenario_from_cpgs(filepath, save_as_fits=True, output_dir=args.output_dir, 
-                                                            full_frame=True, loc_x=512, loc_y=512,
+                                                            full_frame=True, loc_x=LOC_X, loc_y=LOC_Y,
                                                             frame_runner=frame_runner, seed=args.seed)
     finally:
         if args.option == "mpi":
