@@ -121,7 +121,7 @@ def test_generate_observation_sequence():
             peak_satspots_ave = np.mean(np.array(fitresult)[:,0])
             peak.append(peak_satspots_ave)
         if i == (3*satellite_spots_number_of_frames -1):
-            assert np.all(np.isclose(peak_positive, peak_positive[0], rtol=0.1))        
+            assert np.all(np.isclose(peak, peak[0], rtol=0.1))        
     
     assert simulatedImage_list_fullframe[-1].image_on_detector[1].header['EXPTIME'] == exp_time
     assert simulatedImage_list_fullframe[-1].image_on_detector[1].header['EMGAIN_C'] == gain
