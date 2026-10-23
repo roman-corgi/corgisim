@@ -17,6 +17,7 @@ driver's visit-metadata contract. The whole module runs in seconds.
 """
 
 import importlib.util
+import inspect
 import os
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -67,6 +68,13 @@ def campaign_kwargs(tmp_path, **overrides):
     )
     kwargs.update(overrides)
     return kwargs
+
+
+def test_default_output_dim_is_255():
+    """The standalone driver defaults to the 51*5 = 255 standard-observation stamp,
+    both as the module constant and as run_campaign's default argument."""
+    assert driver.OUTPUT_DIM == 255
+    assert inspect.signature(driver.run_campaign).parameters['output_dim'].default == 255
 
 
 @pytest.mark.parametrize('frame_time_step_s, exptime', [

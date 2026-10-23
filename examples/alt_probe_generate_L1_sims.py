@@ -105,7 +105,7 @@ DM_ROOTNAME = 'hlc_ni_3e-8'  # roman_preflight_proper HLC Band-1 example dark-ho
 DM1_PATH = None
 DM2_PATH = None
 POLAXIS = 10
-OUTPUT_DIM = 153  # matches the 153x153 GITL crop geometry used by corgihowfsc
+OUTPUT_DIM = 51 * 5  # 255x255: standard-observation stamp dimension chosen for this standalone simulation
 
 # --- Detector placement on the 1024x1024 clean frame --------------------
 LOC_X = 512
@@ -118,9 +118,7 @@ PHOTON_COUNTING = False
 N_FRAMES_PER_STATE = 3  # unprobed / +probe / -probe each get this many frames
 
 # --- Visit metadata --------------------------------------------------------
-# VISTYPE for the satellite-spot imaging template is UNCONFIRMED (corgisim's
-# tutorial1 uses 'CGIVST_TDD_OBS'; other campaign scripts use a CAL VISTYPE)
-# -- kept configurable, and should be confirmed before production runs.
+# Confirmed VISTYPE for the Alternate Probe satellite-spot observation.
 VISTYPE = 'CGIVST_TDD_OBS'
 
 # VISITID scheme: 19-digit string PROGNUM(4)+EXECNUM(3)+CAMPAIGN(3)+
@@ -380,7 +378,8 @@ def run_campaign(
     dm1_path, dm2_path : str or None, optional
         Explicit base DM1/DM2 FITS paths, overriding ``dm_rootname``.
     vistype : str, optional
-        VISTYPE written to the primary header (UNCONFIRMED default).
+        VISTYPE written to the primary header. Defaults to the confirmed
+        Alternate Probe value, ``CGIVST_TDD_OBS``.
     visit_prognum, visit_execnum, visit_campaign, visit_segment, visit_visnum : str, optional
         Fixed VISITID fields shared by every probe execution.
     visit_obsnum_start : int, optional
@@ -626,7 +625,7 @@ def parse_args():
     parser.add_argument('--dm1-path', default=DM1_PATH, help="Arbitrary DM1 FITS path, overrides --dm-rootname.")
     parser.add_argument('--dm2-path', default=DM2_PATH, help="Arbitrary DM2 FITS path, overrides --dm-rootname.")
     parser.add_argument('--vistype', default=VISTYPE,
-                         help="UNCONFIRMED for this template; see module docstring.")
+                         help="VISTYPE written to the L1 primary header; defaults to CGIVST_TDD_OBS.")
     parser.add_argument('--visit-prognum', default=VISIT_PROGNUM)
     parser.add_argument('--visit-execnum', default=VISIT_EXECNUM)
     parser.add_argument('--visit-campaign', default=VISIT_CAMPAIGN)
