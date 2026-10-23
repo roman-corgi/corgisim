@@ -428,7 +428,7 @@ def test_pol_obs_with_finite_stellar_diam_and_jitter():
     simulatedImage_list_0_90 = observation.generate_observation_sequence(base_scene, optics_0_90, detector, exp_time, n_frames) 
 
 @pytest.mark.parametrize("case", [(['1e-7']), (['1e-8']), (['1e-9']),(['3e-8']),(['5e-9']),])
-def test_finite_diam_and_jitter_spec_band2():
+def test_finite_diam_and_jitter_spec_band2(case):
     '''
     This function checks that the finite stellar diameter and jitter model runs
     for the spectroscopy mode without any issues.
@@ -529,7 +529,7 @@ def test_finite_diam_and_jitter_spec_band2():
     assert((image_comp_basic == image_comp_slit_prism).all())   
     
 @pytest.mark.parametrize("case", [(['1e-7']), (['1e-8']), (['1e-9']),(['3e-8']),(['5e-9']),])
-def test_finite_diam_and_jitter_spec_band3():
+def test_finite_diam_and_jitter_spec_band3(case):
     '''
     This function checks that the finite stellar diameter and jitter model runs
     for the spectroscopy mode without any issues.
