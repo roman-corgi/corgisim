@@ -459,10 +459,10 @@ def test_finite_diam_and_jitter_spec():
     
     # Set up the optics
     cgi_mode = 'spec'
-    cor_type = 'spc-spec_band3_rotated'#'spc-spec_band2'
+    cor_type = 'spc-spec_band2'#'spc-spec_band2'
     bandpass = '2F'
     cases = ['1e-9']
-    rootname = 'spc_spec_rot_band3_ni_' + cases[0]
+    rootname = 'spc_spec_band2_ni_' + cases[0]
     dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm1_v.fits' )
     dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm2_v.fits' )
     polaxis = 10
