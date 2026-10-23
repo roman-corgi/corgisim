@@ -376,6 +376,7 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, fast_gain_mode='auto', g
         detector_target = instrument.CorgiDetector(emccd_keywords={'em_gain':em_gain, 'fast_gain_mode': fast_gain_mode, 'gain_CIC_Q': gain_CIC_Q}, photon_counting=photon_counting) 
     elif (cpgs_input.find('target_autogain').text == '1'):
         #TO DO use eetc for better gain approximation
+        
         detector_target = instrument.CorgiDetector(emccd_keywords={'em_gain':1000, 'fast_gain_mode': fast_gain_mode, 'gain_CIC_Q': gain_CIC_Q}, photon_counting=True)        #TO DO: have a approximate autogain using eetc
     if reference_star_present :
         if (cpgs_input.find('reference_autogain').text == '0'):
@@ -399,14 +400,21 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, fast_gain_mode='auto', g
     if is_spectroscopy :
         cgi_mode = 'spec'
         cor_type = 'spc-spec_band' +bandpass[0]
-        cases = [1E-9,2E-8,4E-9 ]
+        cases = [1E-7,1E-8,1E-9,3E-8,5E-9]
         contrast = str(min(cases, key=lambda x: abs(x - float(required_contrast))))
         # The operation inserts a 0 we need to get rid of
-        rootname = 'spc-spec_ni_' + contrast[:-2] + contrast[-1]
+        rootname = 'spc_spec_band'+bandpass[0]+'_ni_' + contrast[:-2] + contrast[-1]
 
         # Untested but available
         if cpgs_input.find('howfsc_spam_pos').text == 'SPECROT' :
             cor_type = cor_type + '_rotated'
+            cases = [1E-7,1E-8,3E-8,5E-9]
+            if bandpass[0] =="2":
+                cases.append(2E-9)
+            if bandpass[0] =="3":
+                cases.append(1E-9)
+            contrast = str(min(cases, key=lambda x: abs(x - float(required_contrast))))
+            rootname = 'spc_spec_rot_band'+ bandpass[0] +'_ni_' + contrast[:-2] + contrast[-1]
 
         slit = cpgs_input.find('fsam_pos_spec').text
         slit_x_offset_mas_orientation_a = float(cpgs_input.find('fsam_dx_pix_a').text)*MAS_PIX
@@ -418,20 +426,24 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, fast_gain_mode='auto', g
         cgi_mode = 'excam'
         if coronograph_mask == '1':
             cor_type = 'hlc_band'+ bandpass[0]
-            cases = [2E-9,3E-8,5E-9 ]
+            cases = [1E-7,1E-8,3E-8,5E-9,8E-9]
             contrast = str(min(cases, key=lambda x: abs(x - float(required_contrast))))
             # The operation inserts a 0 we need to get rid of
-            rootname = 'hlc_ni_' + contrast[:-2] + contrast[-1]
+            rootname = 'hlc_nfov_band1_ni_' + contrast[:-2] + contrast[-1]
 
         elif coronograph_mask == '2':
             cor_type = 'spc-wide_band'+ bandpass[0]
-            cases = [3E-9,5E-9 ]
+            cases = [1E-7,1E-8,3E-8]
+            if bandpass[0] =="1":
+                cases.append(6E-9)
+            if bandpass[0] =="4":
+                cases.append(4E-9)                
             contrast = str(min(cases, key=lambda x: abs(x - float(required_contrast))))
             # The operation inserts a 0 we need to get rid of
-            rootname = 'spc-wide_ni_' + contrast[:-2] + contrast[-1]
+            rootname = 'spc_wfov_band'+ bandpass[0] +'_ni_' + contrast[:-2] + contrast[-1]
 
-    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm1_v.fits' )
-    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm2_v.fits' )
+    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm1_v.fits' )
+    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm2_v.fits' )
 
     # Satellite spots    
     obtain_satspots = (cpgs_input.find('obtain_satspot_image_every_visit').text == '1')
