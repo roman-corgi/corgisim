@@ -1,19 +1,6 @@
-"""Fast, non-propagating checks of the Alternate Probe L1 campaign driver
-(``examples/alt_probe_generate_L1_sims.py``).
+"""Fast tests of campaign validation, planning, safety, and visit metadata.
 
-Covers:
-
-- input and timing validation (``frame_time_step_s`` vs exposure time and the
-  whole-second SCTSRT floor);
-- output-filename planning and detection of sub-0.1 s filename collisions;
-- overwrite and filesystem safety (a rejected configuration must leave no
-  output directory and no copied PROPER prescription files);
-- VISITID/VISTYPE metadata consistency across successive probe executions.
-
-These tests never run a PROPER propagation and never write an L1 product: they
-exercise ``run_campaign``'s up-front validation, the pure filename-planning
-helper, and -- with the optics, detector, scene and frame writer stubbed -- the
-driver's visit-metadata contract. The whole module runs in seconds.
+Propagation and L1 writing are stubbed where needed so the module runs quickly.
 """
 
 import importlib.util
@@ -32,7 +19,7 @@ DRIVER_PATH = Path(__file__).resolve().parents[1] / 'examples' / 'alt_probe_gene
 
 
 def load_driver():
-    """Import the driver script (which lives in examples/, not the package)."""
+    """Import the driver from ``examples``."""
     spec = importlib.util.spec_from_file_location('alt_probe_driver', DRIVER_PATH)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -43,8 +30,7 @@ driver = load_driver()
 
 
 def write_probe(tmp_path, name='probe.fits', shape=(48, 48)):
-    """Write a synthetic 48x48 Gaussian DM probe (returns its path), so tests
-    never depend on delivered probe files outside this repository."""
+    """Write a synthetic Gaussian probe and return its path."""
     ny, nx = shape
     y, x = np.indices((ny, nx))
     pattern = 0.8 * np.exp(-((x - 37) ** 2 + (y - 32) ** 2) / 2.0)
@@ -54,12 +40,7 @@ def write_probe(tmp_path, name='probe.fits', shape=(48, 48)):
 
 
 def campaign_kwargs(tmp_path, **overrides):
-    """Build a minimal valid run_campaign keyword set for validation tests.
-
-    Supplies the required ``scale`` and ``probe_files`` plus a temporary
-    output directory, so each test only specifies the parameter it exercises;
-    ``**overrides`` replaces any of those defaults.
-    """
+    """Return minimal valid campaign arguments with optional overrides."""
     kwargs = dict(
         scale=1.0,
         probe_files=[write_probe(tmp_path)],
@@ -71,8 +52,7 @@ def campaign_kwargs(tmp_path, **overrides):
 
 
 def test_default_output_dim_is_255():
-    """The standalone driver defaults to the 51*5 = 255 standard-observation stamp,
-    both as the module constant and as run_campaign's default argument."""
+    """Verify the constant and function signature default to the 51*5 stamp."""
     assert driver.OUTPUT_DIM == 255
     assert inspect.signature(driver.run_campaign).parameters['output_dim'].default == 255
 
@@ -84,7 +64,7 @@ def test_default_output_dim_is_255():
     (9.99, 10.0),  # just short of the exposure time
 ])
 def test_frame_time_step_must_clear_exptime_and_one_second(tmp_path, frame_time_step_s, exptime):
-    """frame_time_step_s < max(exptime, 1.0) is rejected up front."""
+    """Reject frame spacing below either the exposure or one-second floor."""
     with pytest.raises(ValueError, match='frame_time_step_s'):
         driver.run_campaign(**campaign_kwargs(
             tmp_path, frame_time_step_s=frame_time_step_s, exptime=exptime))
@@ -96,12 +76,7 @@ def test_frame_time_step_must_clear_exptime_and_one_second(tmp_path, frame_time_
     (30.0, 10.0),  # comfortably above both
 ])
 def test_frame_time_step_at_or_above_bound_passes_timing_check(tmp_path, frame_time_step_s, exptime):
-    """A step >= max(exptime, 1.0) clears the timing check.
-
-    Acceptance is asserted without propagating: a deliberately malformed
-    probe makes the call fail at the *later* probe-validation stage, which
-    is only reachable once the timing check has passed.
-    """
+    """Accept valid spacing by reaching the later probe-validation stage."""
     bad_probe = write_probe(tmp_path, name='bad_probe.fits', shape=(10, 10))
     with pytest.raises(ValueError, match='does not match DM shape'):
         driver.run_campaign(**campaign_kwargs(
@@ -110,7 +85,7 @@ def test_frame_time_step_at_or_above_bound_passes_timing_check(tmp_path, frame_t
 
 
 def test_planned_filename_matches_outputs_formatter():
-    """The planned path must be derived with the writer's own formatter."""
+    """Verify planned names use the L1 writer's timestamp formatter."""
     visitid = driver.build_visitid('0200', '001', '001', '001', 1, '001')
     for microsecond in (0, 40000, 500000, 950000):
         ftimeutc = datetime(2027, 6, 1, 0, 0, 0, microsecond).isoformat()
@@ -119,13 +94,7 @@ def test_planned_filename_matches_outputs_formatter():
 
 
 def test_filename_planning_detects_sub_tenth_second_collisions():
-    """Justifies retaining the collision check as a defence in depth.
-
-    The L1 filename timestamp is rounded to 0.1 s, so distinct FTIMEUTC
-    values do not by themselves imply distinct filenames. The enforced
-    >= max(exptime, 1.0) s spacing keeps real campaigns clear of this, but
-    the planner is what actually guarantees it.
-    """
+    """Detect collisions caused by the writer's 0.1-second timestamp rounding."""
     visitid = driver.build_visitid('0200', '001', '001', '001', 1, '001')
     start = datetime(2027, 6, 1, 0, 0, 0)
 
@@ -140,12 +109,7 @@ def test_filename_planning_detects_sub_tenth_second_collisions():
 
 
 def test_invalid_config_has_no_filesystem_side_effects(tmp_path, monkeypatch):
-    """A rejected configuration must not create output or copy PROPER files.
-
-    roman_preflight_proper.copy_here() writes prescription modules into the
-    current working directory, so it is deferred until after every
-    validation stage.
-    """
+    """Reject invalid input before creating output or copying PROPER files."""
     work_dir = tmp_path / 'cwd'
     work_dir.mkdir()
     monkeypatch.chdir(work_dir)
@@ -158,7 +122,7 @@ def test_invalid_config_has_no_filesystem_side_effects(tmp_path, monkeypatch):
 
 
 def test_existing_output_refused_without_overwrite_and_without_side_effects(tmp_path, monkeypatch):
-    """The deepest reachable validation stage also leaves no side effects."""
+    """Refuse existing products before any PROPER filesystem side effects."""
     work_dir = tmp_path / 'cwd'
     work_dir.mkdir()
     monkeypatch.chdir(work_dir)
@@ -179,17 +143,10 @@ def test_existing_output_refused_without_overwrite_and_without_side_effects(tmp_
 
 
 def test_visit_metadata_tracks_each_probe_execution(tmp_path, monkeypatch):
-    """Each probe execution's visit metadata matches its own VISITID and the
-    configured VISTYPE.
+    """Keep VISITID/VISTYPE synchronized across successive probe executions.
 
-    One CorgiOptics object serves several probe executions, and it snapshots
-    visit_id/visit_type into the simulation-metadata block when the scene is
-    generated -- that block becomes the L1 primary header's visit_id/visit_type
-    COMMENT cards. Overriding only the VISITID keyword at write time would leave
-    the COMMENT provenance stale for every probe after the first.
-
-    Optics, detector, scene and frame writing are stubbed, so nothing propagates
-    and nothing is written; the assertions cover only the observable contract.
+    Stubs capture metadata at scene generation and frame writing, the points
+    where it enters simulation COMMENTs and formal L1 headers.
     """
     unset = object()
     scenes = []  # (visit_id, visit_type) seen at each scene generation
@@ -198,8 +155,6 @@ def test_visit_metadata_tracks_each_probe_execution(tmp_path, monkeypatch):
 
     class StubOptics:
         def __init__(self, cgi_mode, bandpass, optics_keywords=None, **kwargs):
-            # ``unset`` marks metadata the driver never supplied; the real class
-            # would silently substitute its own default.
             self.visit_id = kwargs.get('visit_id', unset)
             self.visit_type = kwargs.get('visit_type', unset)
 
@@ -237,8 +192,7 @@ def test_visit_metadata_tracks_each_probe_execution(tmp_path, monkeypatch):
         for i in range(2)]
     assert visitids[0] != visitids[1]
 
-    # One scene and (at n_frames_per_state=1) one frame per DM state:
-    # unprobed, positive, negative for each probe, in that order.
+    # One frame per DM state for each probe.
     expected = [(visitid, vistype) for visitid in visitids for _ in range(3)]
     assert scenes == expected
     assert frames == expected
