@@ -15,7 +15,7 @@ import argparse
 import math
 import os
 from collections import Counter
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import proper
 import roman_preflight_proper
@@ -191,7 +191,8 @@ def run_campaign(
     frame_time_step_s : float, optional
         Seconds between frame starts.
     campaign_start_time_utc : str, optional
-        ISO UTC start time.
+        ISO UTC start time. Timezone-naive values are taken as UTC; aware
+        values (e.g. ``Z`` or ``+00:00``) are converted to UTC.
     output_dir : str, pathlib.Path or None, optional
         Output root; defaults to ``<cwd>/alt_probe_l1_output``.
     overwrite : bool, optional
@@ -252,6 +253,9 @@ def run_campaign(
 
     # Plan every visit and timestamp before writing.
     campaign_time = datetime.fromisoformat(campaign_start_time_utc)
+    # The L1 writer expects timezone-naive UTC strings.
+    if campaign_time.tzinfo is not None:
+        campaign_time = campaign_time.astimezone(timezone.utc).replace(tzinfo=None)
     plan = []
     for probe_index, (probe_path, pattern) in enumerate(probes):
         visitid = build_visitid(

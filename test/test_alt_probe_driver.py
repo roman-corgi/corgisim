@@ -142,6 +142,50 @@ def test_existing_output_refused_without_overwrite_and_without_side_effects(tmp_
     assert os.listdir(work_dir) == []
 
 
+@pytest.mark.parametrize('start_time', [
+    '2027-06-01T00:00:00',
+    '2027-06-01T00:00:00Z',
+    '2027-06-01T00:00:00+00:00',
+    '2027-05-31T20:00:00-04:00',
+])
+def test_campaign_start_time_is_written_as_naive_utc(tmp_path, monkeypatch, start_time):
+    """Equivalent UTC start times reach the writer as identical naive ISO strings."""
+    written = []
+
+    class StubOptics:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def get_host_star_psf(self, input_scene, **kwargs):
+            return object()
+
+        def add_satspot(self, satspot_keywords=None):
+            pass
+
+        def remove_satspot(self, satspot_keywords=None):
+            pass
+
+    def record_frame(sim_scene, detector, exptime, loc_x, loc_y, outdir, visitid,
+                     vistype, ftimeutc, overwrite=False):
+        written.append(ftimeutc)
+
+    monkeypatch.setattr(driver.instrument, 'CorgiOptics', StubOptics)
+    monkeypatch.setattr(driver.instrument, 'CorgiDetector', lambda *a, **k: object())
+    monkeypatch.setattr(driver.scene, 'Scene', lambda properties: object())
+    monkeypatch.setattr(driver.roman_preflight_proper, 'copy_here', lambda: None)
+    monkeypatch.setattr(driver, 'load_base_dm',
+                        lambda *a, **k: (np.zeros((48, 48)), np.zeros((48, 48))))
+    monkeypatch.setattr(driver, 'save_frame', record_frame)
+
+    driver.run_campaign(**campaign_kwargs(
+        tmp_path, campaign_start_time_utc=start_time, frame_time_step_s=30.0))
+
+    assert written == ['2027-06-01T00:00:00', '2027-06-01T00:00:30', '2027-06-01T00:01:00']
+    for ftimeutc in written:
+        assert datetime.fromisoformat(ftimeutc).tzinfo is None
+        assert not ftimeutc.endswith('Z') and '+' not in ftimeutc
+
+
 def test_visit_metadata_tracks_each_probe_execution(tmp_path, monkeypatch):
     """Keep VISITID/VISTYPE synchronized across successive probe executions.
 
