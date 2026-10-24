@@ -1,3 +1,4 @@
+import corgisim
 from corgisim import scene, instrument, inputs, observation
 from corgisim.scene import SimulatedImage
 from astropy.io import fits
@@ -6,7 +7,7 @@ import roman_preflight_proper
 import pytest
 import numpy as np
 import os
-
+import shutil
 def test_generate_observation_sequence():
 
     Vmag = 8
@@ -102,14 +103,17 @@ def test_generate_observation_sequence():
     assert simulatedImage_list_fullframe[-1].image_on_detector[0].header['FRAMET'] == exp_time
 
     
-    # Test several frames
-
+    # Test several frames and saving not full frames
+    local_path = corgisim.lib_dir
+    outdir = os.path.join(local_path.split('corgisim')[0], 'corgisim/test/testdata/cpgs')
     n_frames = 10
-    simulatedImage_list = observation.generate_observation_sequence(base_scene, optics, detector, exp_time, n_frames)
+    simulatedImage_list = observation.generate_observation_sequence(base_scene, optics, detector, exp_time, n_frames, save_as_fits=True, full_frame= False, write_as_L1= False, output_dir= outdir)
+    assert len([name for name in os.listdir(outdir) if os.path.isfile(os.path.join(outdir, name))]) == n_frames
     assert isinstance(simulatedImage_list, list)
     assert len(simulatedImage_list) == n_frames
     assert isinstance(simulatedImage_list[n_frames-1], SimulatedImage)
     assert isinstance(simulatedImage_list[n_frames-1].image_on_detector, fits.hdu.image.PrimaryHDU)
+    shutil.rmtree(outdir)
 
 def test_generate_observation_scenario_from_cpgs():
     script_dir = os.getcwd()
@@ -167,8 +171,33 @@ def test_generate_observation_scenario_from_cpgs():
     assert isinstance(simulatedImage_list[0], SimulatedImage)
 
 
+def test_saving_subframes_from_cpgs():
+    """Test the saving of files from CPGS
+    """
+
+    script_dir = os.getcwd() 
+
+    filepath = 'test/test_data/cpgs_short_sequence.xml'
+    abs_path =  os.path.join(script_dir, filepath)
+    local_path = corgisim.lib_dir
+    outdir = os.path.join(local_path.split('corgisim')[0], 'corgisim/test/testdata/cpgs/NotL1')
+    #Test with an off-axis light source
+    mag_companion = [10] 
+    dx= [3*49.3]
+    dy= [3*49.3]
+    point_source_info = [{'Vmag': mag_companion[0], 'magtype': 'vegamag','position_x':dx[0] , 'position_y':dy[0]}]
+    simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, point_source_info=point_source_info, full_frame=False, write_as_L1=False, save_as_fits=True, save_as_list= True, output_dir=outdir, output_dim=51)
+
+    #Check that there are as many simulated images as files
+    assert len(simulatedImage_list) == sum(len(files) for _, _, files in os.walk(outdir))
+    # Delete the files 
+    shutil.rmtree(outdir)
+
+
+
 
 
 if __name__ == '__main__':
     test_generate_observation_sequence()
     test_generate_observation_scenario_from_cpgs()
+    test_saving_subframes_from_cpgs()
