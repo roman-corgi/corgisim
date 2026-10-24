@@ -133,10 +133,10 @@ def generate_observation_sequence ( scene, optics, detector, exp_time, n_frames,
                 for i in range(0, satspots_number_of_frames):
                     sim_image = satspots_detector.generate_detector_image(sim_scene,satspots_exptime, full_frame=True,loc_x=loc_x, loc_y=loc_y)
                     simulatedImage_list.append(copy.deepcopy(sim_image))
-                    optics.remove_satspot(satspot_keywords=satspot_keywords)
                     if save_as_fits:
                         outputs.save_hdu_to_fits(sim_image.image_on_detector,outdir=outdir ,write_as_L1=True)
                           
+                optics.remove_satspot(satspot_keywords=satspot_keywords)
             sim_scene = optics.get_host_star_psf(scene)  
             if point_source_present:  
                 sim_scene = optics.inject_point_sources(scene, sim_scene) 
