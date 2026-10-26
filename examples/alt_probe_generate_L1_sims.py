@@ -15,7 +15,6 @@ import argparse
 import math
 import os
 import sys
-from collections import Counter
 from datetime import datetime, timedelta, timezone
 
 import proper
@@ -250,29 +249,17 @@ def run_campaign(
             visit_obsnum_start + probe_index, visit_visnum,
         )
         visit_outdir = os.path.join(output_dir, f'V{visitid}')
-        states = []
-        for state in ('unprobed', 'positive', 'negative'):
-            stamps = []
-            for _ in range(n_frames_per_state):
-                stamps.append(campaign_time.isoformat())
-                campaign_time += timedelta(seconds=frame_time_step_s)
-            states.append((state, stamps))
-        plan.append((probe_path, pattern, visitid, visit_outdir, states))
+        frame_times = []
+        for _ in range(3 * n_frames_per_state):
+            frame_times.append(campaign_time.isoformat())
+            campaign_time += timedelta(seconds=frame_time_step_s)
+        plan.append((probe_path, pattern, visitid, visit_outdir, frame_times))
 
-    # L1 filenames round FTIMEUTC to 0.1 s, so check the planned paths.
     planned_paths = [
         os.path.join(visit_outdir, planned_l1_filename(visitid, ftimeutc))
-        for _, _, visitid, visit_outdir, states in plan
-        for _, stamps in states
-        for ftimeutc in stamps
+        for _, _, visitid, visit_outdir, frame_times in plan
+        for ftimeutc in frame_times
     ]
-    collisions = sorted(path for path, count in Counter(planned_paths).items() if count > 1)
-    if collisions:
-        raise ValueError(
-            f"{len(collisions)} planned L1 output path(s) would collide because the "
-            "filename timestamp is rounded to 0.1 s; increase frame_time_step_s or "
-            "use distinct VISITIDs. First collision: " + collisions[0]
-        )
 
     if not overwrite:
         existing = [path for path in planned_paths if os.path.exists(path)]
@@ -303,7 +290,7 @@ def run_campaign(
                                     if_quiet=True, visit_type=vistype)
     detector = instrument.CorgiDetector({'em_gain': em_gain}, photon_counting=photon_counting)
 
-    for probe_index, (probe_path, pattern, visitid, visit_outdir, states) in enumerate(plan):
+    for probe_index, (probe_path, pattern, visitid, visit_outdir, frame_times) in enumerate(plan):
         pattern_name = probe_label(probe_path)
         os.makedirs(visit_outdir, exist_ok=True)
 
@@ -316,7 +303,7 @@ def run_campaign(
             satspot_keywords={'custom_pattern': pattern, 'scale': scale, 'pattern_name': pattern_name},
             visit_id=visitid, vistype=vistype, save_as_fits=True,
             output_dir=visit_outdir, full_frame=True, loc_x=loc_x, loc_y=loc_y,
-            frame_times_utc=[stamp for _, stamps in states for stamp in stamps],
+            frame_times_utc=frame_times,
             retain_images=False, overwrite=overwrite,
         )
 

@@ -59,9 +59,8 @@ def add_custom_pattern_dm(dm_volts, pattern_volts, scale, sign="positive"):
     if sign not in ("positive", "negative"):
         raise ValueError(f"ERROR: sign must be 'positive' or 'negative', got '{sign}'")
 
-    signed_scale = scale if sign == "positive" else -scale
-
-    return dm_volts + signed_scale * pattern
+    delta = scale * pattern
+    return dm_volts + delta if sign == "positive" else dm_volts - delta
 
 
 def add_cos_pattern_dm(dm_volts, num_pairs=2, sep_lamD=7, angle_deg=[0,90], contrast=1e-6, wavelength_m=0.575e-6, gain_nm_per_V=None, sign = "positive"):

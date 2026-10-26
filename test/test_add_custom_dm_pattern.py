@@ -82,12 +82,13 @@ def test_add_custom_pattern_dm_scale_types():
     """Accept Python/NumPy real scalars and reject non-real or non-scalar scales."""
     dm = np.zeros((48, 48))
     pattern = make_gaussian_probe()
-    expected = 0.5 * pattern
-
-    for scale in (0.5, np.float16(0.5), np.float32(0.5), np.float64(0.5)):
-        assert np.array_equal(add_custom_pattern_dm(dm, pattern, scale), expected)
-    for scale in (2, np.int32(2), np.int64(2), np.uint8(2)):
-        assert np.array_equal(add_custom_pattern_dm(dm, pattern, scale), 2 * pattern)
+    for scale in (0.5, np.float16(0.5), np.float32(0.5), np.float64(0.5),
+                  2, np.int32(2), np.int64(2), np.uint8(2)):
+        expected = float(scale) * pattern
+        positive = add_custom_pattern_dm(dm, pattern, scale)
+        assert np.array_equal(positive, expected)
+        assert np.array_equal(add_custom_pattern_dm(dm, pattern, scale, sign="negative"), -expected)
+        assert np.array_equal(add_custom_pattern_dm(positive, pattern, scale, sign="negative"), dm)
 
     for bad in (True, np.bool_(True), 1j, np.complex128(0.5), "0.5", None,
                 np.array(0.5), np.array([0.5]), [0.5]):

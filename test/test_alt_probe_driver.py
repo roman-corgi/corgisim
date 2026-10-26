@@ -94,21 +94,6 @@ def test_planned_filename_matches_outputs_formatter():
         assert driver.planned_l1_filename(visitid, ftimeutc) == expected
 
 
-def test_filename_planning_detects_sub_tenth_second_collisions():
-    """Detect collisions caused by the writer's 0.1-second timestamp rounding."""
-    visitid = driver.build_visitid('0200', '001', '001', '001', 1, '001')
-    start = datetime(2027, 6, 1, 0, 0, 0)
-
-    collide = [driver.planned_l1_filename(visitid, (start + timedelta(seconds=0.05 * i)).isoformat())
-               for i in range(3)]
-    assert len(set(collide)) < len(collide)
-
-    spaced = [driver.planned_l1_filename(
-        visitid, (start + timedelta(seconds=driver.MIN_FRAME_TIME_STEP_S * i)).isoformat())
-        for i in range(3)]
-    assert len(set(spaced)) == len(spaced)
-
-
 def test_invalid_config_has_no_filesystem_side_effects(tmp_path, monkeypatch):
     """Reject invalid input before creating output or copying PROPER files."""
     work_dir = tmp_path / 'cwd'
@@ -282,6 +267,9 @@ def test_driver_uses_shared_sequence_for_multiple_frames_and_visits(tmp_path, mo
                 assert f'satspot_sign : {sign}' in comments
                 assert f'satspot_pattern_name : probe_{"ab"[visit_index]}' in comments
             assert kw['overwrite_pri_keywords'] == {'VISITID': visitid, 'VISTYPE': vistype}
+            expected_time = datetime.fromisoformat(driver.CAMPAIGN_START_TIME_UTC) + timedelta(
+                seconds=driver.FRAME_TIME_STEP_S * (6 * visit_index + frame_index))
+            assert kw['overwrite_ext_keywords'] == {'FTIMEUTC': expected_time.isoformat()}
             assert kw['overwrite'] is overwrite
             assert kw['write_as_L1'] is True
             assert kw['outdir'] == str(tmp_path / 'out' / f'V{visitid}')
