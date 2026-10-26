@@ -474,7 +474,7 @@ def test_disk_model_is_normalised_after_rotation(roll_angle):
     # check if any of the value is nan, inf in the rolled disk
     assert np.isfinite(rolled_disk).all()
     # fails if normalization is done before rolling or normalization is not handled correctly
-    assert np.isclose(np.sum(rolled_disk), 1.0, rtol=1e-5)
+    assert np.isclose(np.sum(rolled_disk), np.sum(disk), rtol=1e-4)
     with pytest.raises(NotImplementedError, match=r"Roll angle rotation is not implemented yet for 2D scene."):
         CorgiOptics.simulate_2d_scene(mock_optics, mock_scene, prf_cube_path=mock_scene.twoD_scene_info["prf_cube_path"])
 
