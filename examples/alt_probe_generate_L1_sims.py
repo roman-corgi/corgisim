@@ -2,18 +2,19 @@
 """Generate flight-like Alternate Probe L1 campaigns.
 
 For each custom DM probe, the driver writes unprobed, positive, and negative
-frames, then restores the base DM. ``scale`` is required. The examples use
-``1.0`` to apply the delivered array directly; legacy HOWFSC used ``0.3``,
-and the final science value remains to be confirmed.
+frames, then restores the base DM. ``scale`` is required; normal operation
+uses ``1.0``. Intended amplitudes and orientation belong in the probe files;
+the multiplier allows exceptional amplitude adjustments.
 
-Probed frames carry ``SATSPOTS=1`` and pattern/scale/sign COMMENT provenance.
-Unprobed frames carry ``SATSPOTS=0`` and are associated with the same probe
-through their VISITID and acquisition order.
+All three template states carry the group flag ``SATSPOTS=1``. Probed frames
+also carry pattern/scale/sign COMMENT provenance; the unprobed background has
+no sign. Subsequent target science frames carry ``SATSPOTS=0``.
 """
 
 import argparse
 import math
 import os
+import sys
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 
@@ -21,7 +22,7 @@ import proper
 import roman_preflight_proper
 from astropy.io import fits
 
-from corgisim import instrument, outputs, scene
+from corgisim import instrument, observation, outputs, scene
 from corgisim.sat_spots import add_custom_pattern_dm
 
 # Defaults are overridable through the CLI or ``run_campaign``.
@@ -108,20 +109,6 @@ def planned_l1_filename(visitid, ftimeutc):
     return f"cgi_{visitid}_{outputs.isotime_to_yyyymmddThhmmsss(ftimeutc)}_l1_.fits"
 
 
-def save_frame(sim_scene, detector, exptime, loc_x, loc_y, outdir, visitid, vistype, ftimeutc,
-               overwrite=False):
-    """Generate and save one full-frame L1 exposure."""
-    sim_scene = detector.generate_detector_image(sim_scene, exptime, full_frame=True, loc_x=loc_x, loc_y=loc_y)
-    outputs.save_hdu_to_fits(
-        sim_scene.image_on_detector,
-        outdir=outdir,
-        write_as_L1=True,
-        overwrite=overwrite,
-        overwrite_pri_keywords={'VISITID': visitid, 'VISTYPE': vistype},
-        overwrite_ext_keywords={'FTIMEUTC': ftimeutc},
-    )
-
-
 def run_campaign(
     *,
     scale,
@@ -159,7 +146,7 @@ def run_campaign(
     Parameters
     ----------
     scale : numbers.Real
-        Required probe amplitude scale.
+        Required probe amplitude scale; normally 1.0.
     probe_files : iterable of path-like
         Relative-DM probe FITS files, one sequence per file.
     n_frames_per_state : int, optional
@@ -297,6 +284,10 @@ def run_campaign(
 
     # copy_here() has filesystem side effects, so call it after validation.
     roman_preflight_proper.copy_here()
+    # PROPER workers import the prescriptions copied into the working directory.
+    prescription_dir = os.getcwd()
+    if prescription_dir not in sys.path:
+        sys.path.insert(0, prescription_dir)
 
     os.makedirs(output_dir, exist_ok=True)
 
@@ -312,41 +303,22 @@ def run_campaign(
                                     if_quiet=True, visit_type=vistype)
     detector = instrument.CorgiDetector({'em_gain': em_gain}, photon_counting=photon_counting)
 
-    def capture(stamps, outdir, visitid):
-        """Acquire and save one DM state."""
-        # Reuse the noise-free scene; detector noise varies per frame.
-        sim_scene = optics.get_host_star_psf(base_scene)
-        for ftimeutc in stamps:
-            save_frame(sim_scene, detector, exptime, loc_x, loc_y, outdir, visitid, vistype,
-                       ftimeutc, overwrite=overwrite)
-
     for probe_index, (probe_path, pattern, visitid, visit_outdir, states) in enumerate(plan):
         pattern_name = probe_label(probe_path)
-        stamps_by_state = dict(states)
         os.makedirs(visit_outdir, exist_ok=True)
 
         print(f"[{probe_index + 1}/{len(plan)}] probe={pattern_name} VISITID={visitid} scale={scale}")
 
-        # Scene metadata snapshots visit_id during propagation.
-        optics.visit_id = visitid
-
-        satspot_keywords = {'custom_pattern': pattern, 'scale': scale, 'pattern_name': pattern_name}
-
-        # 1) Unprobed (SATSPOTS=0).
-        capture(stamps_by_state['unprobed'], visit_outdir, visitid)
-
-        # 2) Positive probe (SATSPOTS=1).
-        optics.add_satspot(satspot_keywords=satspot_keywords)
-        capture(stamps_by_state['positive'], visit_outdir, visitid)
-
-        # 3) Restore, then apply the negative probe (SATSPOTS=1).
-        optics.remove_satspot(satspot_keywords=satspot_keywords)
-        satspot_keywords['sign'] = 'negative'
-        optics.add_satspot(satspot_keywords=satspot_keywords)
-        capture(stamps_by_state['negative'], visit_outdir, visitid)
-
-        # 4) Restore the base DM.
-        optics.remove_satspot(satspot_keywords=satspot_keywords)
+        observation.generate_observation_sequence(
+            base_scene, optics, detector, exptime, n_frames=0,
+            satspots_are_present=True, satspots_detector=detector,
+            satspots_exptime=exptime, satspots_number_of_frames=n_frames_per_state,
+            satspot_keywords={'custom_pattern': pattern, 'scale': scale, 'pattern_name': pattern_name},
+            visit_id=visitid, vistype=vistype, save_as_fits=True,
+            output_dir=visit_outdir, full_frame=True, loc_x=loc_x, loc_y=loc_y,
+            frame_times_utc=[stamp for _, stamps in states for stamp in stamps],
+            retain_images=False, overwrite=overwrite,
+        )
 
     return output_dir
 
@@ -361,8 +333,8 @@ def parse_args():
         ),
     )
     parser.add_argument('--scale', type=float, required=True,
-                         help="Probe amplitude scale factor. REQUIRED, no default -- "
-                              "see module docstring for the 0.3-vs-1.0 provenance discussion.")
+                         help="Required probe amplitude multiplier; normally 1.0. "
+                              "Use other values only for exceptional amplitude adjustments.")
     parser.add_argument('--probe-files', nargs='+', required=True,
                          help="Paths to 48x48 dmrel probe FITS files, one campaign trio per file. "
                               "REQUIRED -- no default (no user-specific paths are embedded here).")

@@ -6,10 +6,12 @@ from corgisim import scene, instrument, inputs, observation, outputs
 from corgidrp import mocks
 import warnings
 import copy 
+from datetime import datetime
 
 def generate_observation_sequence ( scene, optics, detector, exp_time, n_frames, 
                                     satspots_are_present = False, satspots_detector = None, satspots_exptime = None, satspots_number_of_frames = None, satspot_keywords = None,
-                                    vistype = 'CGIVST_TDD_OBS', visit_id= '0200001001001001001', save_as_fits= False, output_dir=None, full_frame= False, loc_x=None, loc_y=None):
+                                    vistype = 'CGIVST_TDD_OBS', visit_id= '0200001001001001001', save_as_fits= False, output_dir=None, full_frame= False, loc_x=None, loc_y=None,
+                                    frame_times_utc=None, retain_images=True, overwrite=False):
     """
     Generates a sequence of simulated observations and places them on a detector.
 
@@ -29,7 +31,8 @@ def generate_observation_sequence ( scene, optics, detector, exp_time, n_frames,
             the detector characteristics and noise properties.
         exp_time (float): The exposure time for each individual frame in seconds.
         n_frames (int): The number of frames to generate in this observation sequence, satellite spots frames not included.
-        satspots_present (bool): If yes, the sequence will generate 3xsatspots_number_of_frames satellite spots frames 
+        satspots_are_present (bool): Generate a background/positive/negative template group,
+            all with SATSPOTS=1; subsequent science frames have SATSPOTS=0.
         satspots_detector(corgisim.instrument.CorgiDetector): The detector object defining
             the detector characteristics and noise properties used for satellite spots
         satspots_exptime (float): The exposure time for each individual satspots frame in seconds.
@@ -48,105 +51,98 @@ def generate_observation_sequence ( scene, optics, detector, exp_time, n_frames,
             if `full_frame` is False. If `full_frame` is True, this specifies the
             y-coordinate of the full frame's origin (top-left pixel). Required if `full_frame` is True.        
 
+        frame_times_utc (sequence[str], optional): Explicit timezone-naive UTC ISO timestamps,
+            one per frame in background/positive/negative/science order. Requires
+            full_frame=True and save_as_fits=True; forwarded to the L1 writer.
+        retain_images (bool, optional): Keep deep copies in the returned list (default True).
+            False writes through without retaining images and returns an empty list.
+        overwrite (bool, optional): Allow the L1 writer to replace existing files (default False).
+
     Returns:
         list[corgisim.scene.SimulatedImage]: A list of :py:class:`corgisim.scene.SimulatedImage` objects,
         where each object represents a single generated observation frame with its image data
         and associated FITS header information.
     """
-    if save_as_fits == False: 
+    if satspots_are_present and (satspots_detector is None or satspots_exptime is None
+                                or satspots_number_of_frames is None or satspot_keywords is None):
+        raise ValueError('Satellite spots are present but arguments are missing. Please specify satspot keywords, detector, exposure time and number of frames')
+
+    frame_count = n_frames + (3 * satspots_number_of_frames if satspots_are_present else 0)
+    if frame_times_utc is not None:
+        if not (full_frame and save_as_fits):
+            raise ValueError('frame_times_utc requires full_frame=True and save_as_fits=True')
+        frame_times_utc = tuple(frame_times_utc)
+        if len(frame_times_utc) != frame_count:
+            raise ValueError(f'frame_times_utc must contain {frame_count} timestamps')
+        for stamp in frame_times_utc:
+            if not isinstance(stamp, str) or datetime.fromisoformat(stamp).tzinfo is not None:
+                raise ValueError('frame_times_utc must contain timezone-naive UTC ISO strings')
+
+    if not save_as_fits:
         warnings.warn(
-                    "save_as_fits is set to False, so files are not automatically written to the disk. "
-                    "If you want to re-use these files later, save them using outputs.save_hdu_to_fits ",
-                    UserWarning,
-                )    
+            "save_as_fits is set to False, so files are not automatically written to the disk. "
+            "If you want to re-use these files later, save them using outputs.save_hdu_to_fits ",
+            UserWarning,
+        )
     optics.visit_id = visit_id
     optics.visit_type = vistype
-    if satspots_are_present:
-        optics.SATSPOTS = 1
-    sim_scene = optics.get_host_star_psf(scene)
-    point_source_present = False
-
-    if hasattr(scene, 'point_source_dra') or hasattr(scene, 'point_source_ddec'):
-        point_source_present = True
-        sim_scene = optics.inject_point_sources(scene,sim_scene)
-    
     simulatedImage_list = []
-    if satspots_are_present and (satspots_detector is None or satspots_exptime is None or satspots_number_of_frames is None): 
-            raise ValueError('Satellite spots are presents but arguments are missing. Please specify satspot keywords, detector, exposure time and number of frames' )
+    frame_index = 0
+    point_source_present = hasattr(scene, 'point_source_dra') or hasattr(scene, 'point_source_ddec')
+    detector_keywords = dict(full_frame=True, loc_x=loc_x, loc_y=loc_y) if full_frame else {}
+    outdir = output_dir
+    if full_frame and save_as_fits and outdir is None:
+        outdir = os.path.join(corgisim.lib_dir.split('corgisim')[0], 'corgisim/test/testdata')
+        print("No output directory specified. FITS files saved in ", outdir)
 
-    if full_frame == False : # if full_frame is false, we can't save as L1
-        if satspots_are_present:
-            # For each frame, we take background (no satellite spots), positive and negative
-            # Background 
-            for i in range(0, satspots_number_of_frames):
-                sim_image = satspots_detector.generate_detector_image(sim_scene,satspots_exptime)
+    def capture(sim_scene, camera, exposure, count):
+        """Write each exposure before retaining an optional independent copy."""
+        nonlocal frame_index
+        for _ in range(count):
+            sim_image = camera.generate_detector_image(sim_scene, exposure, **detector_keywords)
+            if full_frame and save_as_fits:
+                ext_keywords = None if frame_times_utc is None else {'FTIMEUTC': frame_times_utc[frame_index]}
+                outputs.save_hdu_to_fits(
+                    sim_image.image_on_detector, outdir=outdir, write_as_L1=True,
+                    overwrite=overwrite,
+                    overwrite_pri_keywords={'VISITID': visit_id, 'VISTYPE': vistype},
+                    overwrite_ext_keywords=ext_keywords,
+                )
+            if retain_images:
                 simulatedImage_list.append(copy.deepcopy(sim_image))
+            frame_index += 1
 
-            for sign in ["positive", "negative"]:
-                satspot_keywords["sign"] = sign
-                optics.add_satspot(satspot_keywords=satspot_keywords)
-                #Get the new PSF with point source if present
-                sim_scene = optics.get_host_star_psf(scene)
-                if point_source_present:
-                    sim_scene = optics.inject_point_sources(scene,sim_scene)
-
-                for i in range(0, satspots_number_of_frames):
-                    sim_image = satspots_detector.generate_detector_image(sim_scene,satspots_exptime)
-                    simulatedImage_list.append(copy.deepcopy(sim_image))
-                
-                optics.remove_satspot(satspot_keywords=satspot_keywords)
-            sim_scene = optics.get_host_star_psf(scene)  
-            if point_source_present:  
-                sim_scene = optics.inject_point_sources(scene, sim_scene)  
-
-        for i in range(0, n_frames):
-            sim_image = detector.generate_detector_image(sim_scene,exp_time)
-            simulatedImage_list.append(copy.deepcopy(sim_image))
-    else:
-        if save_as_fits:
-            # Save the images as fits in output_dir if specified, in corgisim/test/testdata if not
-            # Simulation needs to be full frame to be written as L1
-            if output_dir == None:
-                local_path = corgisim.lib_dir
-                outdir = os.path.join(local_path.split('corgisim')[0], 'corgisim/test/testdata')
-                print("No output directory specified. FITS files saved in ", outdir)
-            else:
-                outdir = output_dir
+    if satspots_are_present:
+        satspot_keywords = satspot_keywords.copy()
+        # SATSPOTS marks the whole template group, including its unprobed background.
+        optics.SATSPOTS = 1
+    try:
+        sim_scene = optics.get_host_star_psf(scene)
+        if point_source_present:
+            sim_scene = optics.inject_point_sources(scene, sim_scene)
 
         if satspots_are_present:
-            # For each frame, we take background (no satellite spots), positive and negative
-            # Background 
-            for i in range(0, satspots_number_of_frames):
-                sim_image = satspots_detector.generate_detector_image(sim_scene,satspots_exptime,full_frame=True,loc_x=loc_x, loc_y=loc_y)
-                simulatedImage_list.append(copy.deepcopy(sim_image))
-                if save_as_fits:
-                    outputs.save_hdu_to_fits(sim_image.image_on_detector,outdir=outdir ,write_as_L1=True)
-
-            for sign in ["positive", "negative"]:
+            capture(sim_scene, satspots_detector, satspots_exptime, satspots_number_of_frames)
+            for sign in ("positive", "negative"):
                 satspot_keywords["sign"] = sign
                 optics.add_satspot(satspot_keywords=satspot_keywords)
-                #Get the new PSF with point source if present
-                sim_scene = optics.get_host_star_psf(scene)
-                if point_source_present:
-                    sim_scene = optics.inject_point_sources(scene,sim_scene)
-
-                for i in range(0, satspots_number_of_frames):
-                    sim_image = satspots_detector.generate_detector_image(sim_scene,satspots_exptime, full_frame=True,loc_x=loc_x, loc_y=loc_y)
-                    simulatedImage_list.append(copy.deepcopy(sim_image))
+                try:
+                    sim_scene = optics.get_host_star_psf(scene)
+                    if point_source_present:
+                        sim_scene = optics.inject_point_sources(scene, sim_scene)
+                    capture(sim_scene, satspots_detector, satspots_exptime, satspots_number_of_frames)
+                finally:
+                    # Remove once after the entire sign block, also on acquisition/write errors.
                     optics.remove_satspot(satspot_keywords=satspot_keywords)
-                    if save_as_fits:
-                        outputs.save_hdu_to_fits(sim_image.image_on_detector,outdir=outdir ,write_as_L1=True)
-                          
-            sim_scene = optics.get_host_star_psf(scene)  
-            if point_source_present:  
-                sim_scene = optics.inject_point_sources(scene, sim_scene) 
-        for i in range(0, n_frames):
-            sim_image = detector.generate_detector_image(sim_scene,exp_time,full_frame=True,loc_x=loc_x, loc_y=loc_y)
-            simulatedImage_list.append(copy.deepcopy(sim_image))
+    finally:
+        if satspots_are_present:
+            optics.SATSPOTS = 0
+    if satspots_are_present and n_frames:
+        sim_scene = optics.get_host_star_psf(scene)
+        if point_source_present:
+            sim_scene = optics.inject_point_sources(scene, sim_scene)
 
-            if save_as_fits:
-                outputs.save_hdu_to_fits(sim_image.image_on_detector,outdir=outdir ,write_as_L1=True)
-
+    capture(sim_scene, detector, exp_time, n_frames)
     return simulatedImage_list
 
 def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, save_as_list=False, output_dir=None, full_frame=False, loc_x=None, loc_y=None, point_source_info=None, output_dim=201, polaxis=0, fast_gain_mode='auto', gain_CIC_Q='roman' ):

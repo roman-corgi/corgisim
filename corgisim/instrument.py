@@ -333,9 +333,8 @@ class CorgiOptics():
         self.visit_type = kwargs.get("visit_type", "CGIVST_TDD_OBS")
         self.visit_id = kwargs.get("visit_id", "0200001001001001001")
 
-        ##self.SATSPOTS is the value to be populated to L1 header prihdr[SATSPOTS]
-        # prihdr[SATSPOTS]= 0: No satellite spots present 
-        # prihdr[SATSPOTS]= 1: Satellite spots present
+        # L1 image-extension SATSPOTS marks acquisition-group membership:
+        # 1 includes the unprobed template background; subsequent science uses 0.
 
 
         # call self.add_satspot() to satellite spots in DM files, update the dm1 info in self.optics_keywords
@@ -1335,8 +1334,8 @@ class CorgiOptics():
             if 'scale' not in satspot_keywords:
                 raise KeyError(
                     "ERROR: 'scale' is required with 'custom_pattern' and has no default. "
-                    "1.0 applies the delivered array unmodified; 0.3 is the legacy "
-                    "HOWFSC convention. See sat_spots.add_custom_pattern_dm."
+                    "Use 1.0 normally; intended amplitudes belong in the pattern file. "
+                    "See sat_spots.add_custom_pattern_dm."
                 )
 
             sign = satspot_keywords.get('sign', 'positive')

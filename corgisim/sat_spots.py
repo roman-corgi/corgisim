@@ -6,8 +6,9 @@ def add_custom_pattern_dm(dm_volts, pattern_volts, scale, sign="positive"):
 
     This supports Alternate Probe observations through the satellite-spot path
     instead of the analytical cosine pattern. The applied command is
-    ``+/- scale * pattern_volts``; ``scale`` is required because no
-    delivery-specific default is established.
+    ``+/- scale * pattern_volts``. Normal operation uses explicit ``scale=1.0``;
+    intended amplitudes and orientation belong in the supplied pattern files.
+    The required multiplier allows exceptional amplitude adjustments.
 
     Parameters
     ----------
