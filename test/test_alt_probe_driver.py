@@ -94,6 +94,17 @@ def test_planned_filename_matches_outputs_formatter():
         assert driver.planned_l1_filename(visitid, ftimeutc) == expected
 
 
+@pytest.mark.parametrize('parts', [
+    ('02000', '01', '001', '001', 1, '001'),  # compensating malformed widths
+    ('0200', '0001', '01', '001', 1, '001'),
+    ('0200', '001', '001', '001', 1000, '01'),
+    ('０２００', '001', '001', '001', 1, '001'),  # non-ASCII digits
+])
+def test_visitid_rejects_invalid_components(parts):
+    with pytest.raises(ValueError, match='VISITID components'):
+        driver.build_visitid(*parts)
+
+
 def test_invalid_config_has_no_filesystem_side_effects(tmp_path, monkeypatch):
     """Reject invalid input before creating output or copying PROPER files."""
     work_dir = tmp_path / 'cwd'
@@ -207,6 +218,70 @@ def mocked_campaign(monkeypatch):
                         lambda *a, **k: (np.zeros((48, 48)), np.zeros((48, 48))))
     monkeypatch.setattr(outputs, 'save_hdu_to_fits', record_frame)
     return optics_instances, cameras, written
+
+
+def test_invalid_visitid_fails_before_acquisition(tmp_path, mocked_campaign, monkeypatch):
+    monkeypatch.setattr(driver.roman_preflight_proper, 'copy_here',
+                        lambda: pytest.fail('PROPER copy before validation'))
+    with pytest.raises(ValueError, match='VISITID components'):
+        driver.run_campaign(**campaign_kwargs(
+            tmp_path, visit_prognum='02000', visit_execnum='01'))
+    assert mocked_campaign == ([], [], [])
+    assert not (tmp_path / 'out').exists()
+
+
+@pytest.mark.parametrize('overwrite', [False, True])
+@pytest.mark.parametrize('blocked_path', ['second_visit', 'output_ancestor'])
+def test_blocked_output_ancestor_fails_before_acquisition(
+        tmp_path, mocked_campaign, monkeypatch, overwrite, blocked_path):
+    probes = [write_probe(tmp_path, name='probe_a.fits'),
+              write_probe(tmp_path, name='probe_b.fits')]
+    output_dir = tmp_path / 'out'
+    if blocked_path == 'second_visit':
+        output_dir.mkdir()
+        second_visitid = driver.build_visitid(
+            driver.VISIT_PROGNUM, driver.VISIT_EXECNUM, driver.VISIT_CAMPAIGN,
+            driver.VISIT_SEGMENT, driver.VISIT_OBSNUM_START + 1, driver.VISIT_VISNUM)
+        blocker = output_dir / f'V{second_visitid}'
+    else:
+        blocker = output_dir
+        output_dir = output_dir / 'nested'
+    blocker.write_text('blocked')
+    monkeypatch.setattr(driver.roman_preflight_proper, 'copy_here',
+                        lambda: pytest.fail('PROPER copy before validation'))
+
+    with pytest.raises(NotADirectoryError, match='output ancestor'):
+        driver.run_campaign(**campaign_kwargs(
+            tmp_path, probe_files=probes, output_dir=output_dir, overwrite=overwrite))
+
+    assert mocked_campaign == ([], [], [])
+    assert blocker.read_text() == 'blocked'
+    if blocked_path == 'second_visit':
+        assert list(output_dir.iterdir()) == [blocker]
+
+
+@pytest.mark.parametrize('overwrite', [False, True])
+@pytest.mark.parametrize('destination', ['directory', 'symlink'])
+def test_invalid_output_destination_fails_before_acquisition(
+        tmp_path, mocked_campaign, monkeypatch, overwrite, destination):
+    kwargs = campaign_kwargs(tmp_path, overwrite=overwrite)
+    visitid = driver.build_visitid(
+        driver.VISIT_PROGNUM, driver.VISIT_EXECNUM, driver.VISIT_CAMPAIGN,
+        driver.VISIT_SEGMENT, driver.VISIT_OBSNUM_START, driver.VISIT_VISNUM)
+    visit_dir = Path(kwargs['output_dir']) / f'V{visitid}'
+    visit_dir.mkdir(parents=True)
+    path = visit_dir / driver.planned_l1_filename(visitid, driver.CAMPAIGN_START_TIME_UTC)
+    if destination == 'directory':
+        path.mkdir()
+    else:
+        path.symlink_to(tmp_path / 'missing.fits')
+    monkeypatch.setattr(driver.roman_preflight_proper, 'copy_here',
+                        lambda: pytest.fail('PROPER copy before validation'))
+
+    with pytest.raises(ValueError, match='output path is a directory or symlink'):
+        driver.run_campaign(**kwargs)
+
+    assert mocked_campaign == ([], [], [])
 
 
 @pytest.mark.parametrize('start_time', [

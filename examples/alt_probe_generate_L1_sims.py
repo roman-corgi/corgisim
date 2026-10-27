@@ -16,6 +16,7 @@ import math
 import os
 import sys
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import proper
 import roman_preflight_proper
@@ -32,7 +33,7 @@ HOST_STAR_PROPERTIES = {'Vmag': 5, 'spectral_type': 'G0V', 'magtype': 'vegamag'}
 # --- Coronagraph / optics -----------------------------------------------
 CGI_MODE = 'excam'
 COR_TYPE = 'hlc_band1'
-# Provisional central-subband default; full Band 1 is ``1F``.
+# Standalone default is the central subband; use ``1F`` for full Band 1.
 BANDPASS = '1B'
 DM_ROOTNAME = 'hlc_ni_3e-8'  # roman_preflight_proper HLC Band-1 example dark-hole solution
 # Explicit paths override the example DM solution.
@@ -76,10 +77,11 @@ DEFAULT_OUTPUT_DIR = None
 
 def build_visitid(prognum, execnum, campaign, segment, obsnum, visnum):
     """Assemble a validated 19-digit VISITID."""
-    visitid = f"{prognum}{execnum}{campaign}{segment}{obsnum:03d}{visnum}"
-    if len(visitid) != 19 or not visitid.isdigit():
-        raise ValueError(f"Constructed VISITID '{visitid}' is not a 19-digit numeric string")
-    return visitid
+    parts = (prognum, execnum, campaign, segment, f'{obsnum:03d}', visnum)
+    if any(not isinstance(p, str) or len(p) != n or not p.isascii() or not p.isdigit()
+           for p, n in zip(parts, (4, 3, 3, 3, 3, 3))):
+        raise ValueError('VISITID components require 4/3/3/3/3/3 digits')
+    return ''.join(parts)
 
 
 def load_base_dm(dm_rootname=DM_ROOTNAME, dm1_path=None, dm2_path=None):
@@ -261,13 +263,19 @@ def run_campaign(
         for ftimeutc in frame_times
     ]
 
-    if not overwrite:
-        existing = [path for path in planned_paths if os.path.exists(path)]
-        if existing:
+    for planned_path in planned_paths:
+        path = Path(planned_path)
+        if path.is_dir() or path.is_symlink():
+            raise ValueError(f'output path is a directory or symlink: {path}')
+        if path.exists() and not overwrite:
             raise FileExistsError(
-                f"{len(existing)} planned L1 output file(s) already exist and overwrite=False. "
-                "First: " + existing[0]
+                f'output already exists and overwrite=False: {path}'
             )
+        parent = path.parent
+        while not parent.exists() and parent != parent.parent:
+            parent = parent.parent
+        if not parent.is_dir():
+            raise NotADirectoryError(f'output ancestor is not a directory: {parent}')
 
     # copy_here() has filesystem side effects, so call it after validation.
     roman_preflight_proper.copy_here()
@@ -333,7 +341,7 @@ def parse_args():
     parser.add_argument('--loc-x', type=int, default=LOC_X)
     parser.add_argument('--loc-y', type=int, default=LOC_Y)
     parser.add_argument('--bandpass', default=BANDPASS,
-                         help="UNCONFIRMED default '1B' (Band 1 central subband); '1F' is the alternative.")
+                         help="Standalone default is '1B' (Band 1 central subband); use '1F' for full Band 1.")
     parser.add_argument('--cor-type', default=COR_TYPE)
     parser.add_argument('--cgi-mode', default=CGI_MODE)
     parser.add_argument('--dm-rootname', default=DM_ROOTNAME,
