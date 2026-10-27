@@ -35,6 +35,9 @@ probe3 = PROBE_ROOT / 'nfov_dm_dmrel_5.0e-07_gaussian2.fits'
 # HLC_B1_C1: alternative probes (A-L). Temporary observation numbers/bands show the fixed order;
 # executable identities/settings come from XML. Set XML to None for hard-coded imaging.
 # Commented <...> paths are placeholders for XML files not yet supplied.
+# No setup XML handy? Comment out A (and any other setup rows).
+# Imaging XML supplies its own bandpass; without imaging XML, set BANDPASS below.
+# Omit setup rows entirely rather than setting their XML path to None.
 ALTERNATIVE_OBSERVATIONS = (
     ('A', ALTERNATIVE_XML_ROOT / 'observation_a/alternative_probe_CFAM_1A.xml', None),  # 910 setup 1A
     ('B', ALTERNATIVE_XML_ROOT / 'observation_b/alternative_probe_1A_probe1.xml', probe1),  # 911 1A
@@ -82,7 +85,7 @@ OVERWRITE = False
 HOST_STAR_PROPERTIES = {'Vmag': 5, 'spectral_type': 'G0V', 'target_name': 'example', 'RA': 0., 'DEC': 0.}
 CGI_MODE = 'excam'
 COR_TYPE = 'hlc_band1'
-BANDPASS = '1A'  # Applies only to imaging without XML.
+BANDPASS = '1A'  # Used when an imaging entry's XML path is None; imaging XML takes precedence.
 POSITION_ANGLE = 0.
 EXPTIME_S, EM_GAIN, PHOTON_COUNTING, N_FRAMES_PER_STATE = 10., 1000., False, 3
 VISTYPE, VISIT_OBSNUM_START, VISIT_VISNUM = 'CGIVST_TDD_OBS', 1, '001'
