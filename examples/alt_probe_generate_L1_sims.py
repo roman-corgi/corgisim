@@ -1,5 +1,9 @@
 #!/usr/bin/env python
-"""Generate Alternate Probe L1 trios, followed by science when XML requests it."""
+"""Generate Alternate Probe L1 trios, followed by science when XML requests it.
+
+See the [input and run guide](alt_probe_inputs.md).
+Use --input-root to relocate inputs and --full-campaign to select all 23 entries.
+"""
 
 import argparse
 from datetime import datetime, timedelta, timezone
@@ -39,41 +43,43 @@ standard_probe3 = STANDARD_PROBE_ROOT / 'nfov_dm_dmrel_5.0e-07_standard2.fits'
 
 # HLC_B1_C1: alternative probes (A-L). Temporary observation numbers/bands show the fixed order;
 # executable identities/settings come from XML. Set XML to None for hard-coded imaging.
-# Only A setup + B imaging are active for development; uncomment other rows as needed.
-# No setup XML handy? Comment out A (and any other setup rows).
+# All rows are data; OBSERVATIONS below selects A setup + B imaging by default.
+# No setup XML handy? Select imaging rows only in OBSERVATIONS.
 # Imaging XML supplies its own bandpass; without imaging XML, set BANDPASS below.
 # Omit setup rows entirely rather than setting their XML path to None.
 ALTERNATIVE_OBSERVATIONS = (
     ('A', ALTERNATIVE_XML_ROOT / 'observation_a/alternative_probe_CFAM_1A.xml', None),  # 910 setup 1A
     ('B', ALTERNATIVE_XML_ROOT / 'observation_b/alternative_probe_1A_probe1.xml', alternative_probe1),  # 911 1A
-    # ('C', ALTERNATIVE_XML_ROOT / 'observation_c/alternative_probe_1A_probe2.xml', alternative_probe2),  # 912 1A
-    # ('D', ALTERNATIVE_XML_ROOT / 'observation_d/alternative_probe_1A_probe3.xml', alternative_probe3),  # 913 1A
-    # ('E', ALTERNATIVE_XML_ROOT / 'observation_e/alternative_probe_CFAM_1B.xml', None),  # 914 setup 1B
-    # ('F', ALTERNATIVE_XML_ROOT / 'observation_f/alternative_probe_1B_probe1.xml', alternative_probe1),  # 915 1B
-    # ('G', ALTERNATIVE_XML_ROOT / 'observation_g/alternative_probe_1B_probe2.xml', alternative_probe2),  # 916 1B
-    # ('H', ALTERNATIVE_XML_ROOT / 'observation_h/alternative_probe_1B_probe3.xml', alternative_probe3),  # 917 1B
-    # ('I', ALTERNATIVE_XML_ROOT / 'observation_i/alternative_probe_CFAM_1C.xml', None),  # 918 setup 1C
-    # ('J', ALTERNATIVE_XML_ROOT / 'observation_j/alternative_probe_1C_probe1.xml', alternative_probe1),  # 919 1C
-    # ('K', ALTERNATIVE_XML_ROOT / 'observation_k/alternative_probe_1C_probe2.xml', alternative_probe2),  # 920 1C
-    # ('L', ALTERNATIVE_XML_ROOT / 'observation_l/alternative_probe_1C_probe3.xml', alternative_probe3),  # 921 1C
+    ('C', ALTERNATIVE_XML_ROOT / 'observation_c/alternative_probe_1A_probe2.xml', alternative_probe2),  # 912 1A
+    ('D', ALTERNATIVE_XML_ROOT / 'observation_d/alternative_probe_1A_probe3.xml', alternative_probe3),  # 913 1A
+    ('E', ALTERNATIVE_XML_ROOT / 'observation_e/alternative_probe_CFAM_1B.xml', None),  # 914 setup 1B
+    ('F', ALTERNATIVE_XML_ROOT / 'observation_f/alternative_probe_1B_probe1.xml', alternative_probe1),  # 915 1B
+    ('G', ALTERNATIVE_XML_ROOT / 'observation_g/alternative_probe_1B_probe2.xml', alternative_probe2),  # 916 1B
+    ('H', ALTERNATIVE_XML_ROOT / 'observation_h/alternative_probe_1B_probe3.xml', alternative_probe3),  # 917 1B
+    ('I', ALTERNATIVE_XML_ROOT / 'observation_i/alternative_probe_CFAM_1C.xml', None),  # 918 setup 1C
+    ('J', ALTERNATIVE_XML_ROOT / 'observation_j/alternative_probe_1C_probe1.xml', alternative_probe1),  # 919 1C
+    ('K', ALTERNATIVE_XML_ROOT / 'observation_k/alternative_probe_1C_probe2.xml', alternative_probe2),  # 920 1C
+    ('L', ALTERNATIVE_XML_ROOT / 'observation_l/alternative_probe_1C_probe3.xml', alternative_probe3),  # 921 1C
 )
-# HLC_B1_C1: standard probes (A-K). All rows remain commented for development.
+# HLC_B1_C1: standard probes (A-K), selected with --full-campaign.
 # Standalone imaging supplies its own band; no initial setup is assumed.
 # Numbers are temporary observation numbers, not executable identity overrides.
 STANDARD_OBSERVATIONS = (
-    # ('A', STANDARD_XML_ROOT / 'observation_a/standard_probe_1C_probe1.xml', standard_probe1),  # 922 1C
-    # ('B', STANDARD_XML_ROOT / 'observation_b/standard_probe_1C_probe2.xml', standard_probe2),  # 923 1C
-    # ('C', STANDARD_XML_ROOT / 'observation_c/standard_probe_1C_probe3.xml', standard_probe3),  # 924 1C
-    # ('D', STANDARD_XML_ROOT / 'observation_d/standard_probe_CFAM_1A.xml', None),  # 925 setup 1A
-    # ('E', STANDARD_XML_ROOT / 'observation_e/standard_probe_1A_probe1.xml', standard_probe1),  # 926 1A
-    # ('F', STANDARD_XML_ROOT / 'observation_f/standard_probe_1A_probe2.xml', standard_probe2),  # 927 1A
-    # ('G', STANDARD_XML_ROOT / 'observation_g/standard_probe_1A_probe3.xml', standard_probe3),  # 928 1A
-    # ('H', STANDARD_XML_ROOT / 'observation_h/standard_probe_CFAM_1B.xml', None),  # 929 setup 1B
-    # ('I', STANDARD_XML_ROOT / 'observation_i/standard_probe_1B_probe1.xml', standard_probe1),  # 981 1B
-    # ('J', STANDARD_XML_ROOT / 'observation_j/standard_probe_1B_probe2.xml', standard_probe2),  # 982 1B
-    # ('K', STANDARD_XML_ROOT / 'observation_k/standard_probe_1B_probe3.xml', standard_probe3),  # 983 1B
+    ('A', STANDARD_XML_ROOT / 'observation_a/standard_probe_1C_probe1.xml', standard_probe1),  # 922 1C
+    ('B', STANDARD_XML_ROOT / 'observation_b/standard_probe_1C_probe2.xml', standard_probe2),  # 923 1C
+    ('C', STANDARD_XML_ROOT / 'observation_c/standard_probe_1C_probe3.xml', standard_probe3),  # 924 1C
+    ('D', STANDARD_XML_ROOT / 'observation_d/standard_probe_CFAM_1A.xml', None),  # 925 setup 1A
+    ('E', STANDARD_XML_ROOT / 'observation_e/standard_probe_1A_probe1.xml', standard_probe1),  # 926 1A
+    ('F', STANDARD_XML_ROOT / 'observation_f/standard_probe_1A_probe2.xml', standard_probe2),  # 927 1A
+    ('G', STANDARD_XML_ROOT / 'observation_g/standard_probe_1A_probe3.xml', standard_probe3),  # 928 1A
+    ('H', STANDARD_XML_ROOT / 'observation_h/standard_probe_CFAM_1B.xml', None),  # 929 setup 1B
+    ('I', STANDARD_XML_ROOT / 'observation_i/standard_probe_1B_probe1.xml', standard_probe1),  # 981 1B
+    ('J', STANDARD_XML_ROOT / 'observation_j/standard_probe_1B_probe2.xml', standard_probe2),  # 982 1B
+    ('K', STANDARD_XML_ROOT / 'observation_k/standard_probe_1B_probe3.xml', standard_probe3),  # 983 1B
 )
-OBSERVATIONS = ALTERNATIVE_OBSERVATIONS + STANDARD_OBSERVATIONS
+FULL_CAMPAIGN = ALTERNATIVE_OBSERVATIONS + STANDARD_OBSERVATIONS
+OBSERVATIONS = ALTERNATIVE_OBSERVATIONS[:2]  # Default A setup + B imaging.
+# To omit setup A: OBSERVATIONS = ALTERNATIVE_OBSERVATIONS[1:2].
 # Without XML, replace the selection above with this tuple; it excludes setup entries.
 # OBSERVATIONS = (
 #     ('B', None, alternative_probe1),
@@ -382,9 +388,33 @@ def run_campaign(*, observations=OBSERVATIONS, scale=SCALE, output_dir=DEFAULT_O
     return output_dir
 
 
-if __name__ == '__main__':
+def select_observations(input_root=None, full_campaign=False):
+    """Select rows; relocate only paths beneath configured INPUT_ROOT."""
+    selected = FULL_CAMPAIGN if full_campaign else OBSERVATIONS
+    if input_root is None:
+        return selected
+    input_root = Path(input_root).expanduser()
+
+    def relocate(path):
+        if path is None or not path.is_relative_to(INPUT_ROOT):
+            return path
+        return input_root / path.relative_to(INPUT_ROOT)
+
+    return tuple((label, relocate(xml), relocate(probe)) for label, xml, probe in selected)
+
+
+def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--input-root', type=Path, help='Replace INPUT_ROOT; external paths stay configured')
+    parser.add_argument('--full-campaign', action='store_true',
+                        help='Select all 12 alternate + 11 standard entries instead of OBSERVATIONS')
     parser.add_argument('--scale', type=float, default=SCALE)
     parser.add_argument('--output-dir', type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument('--overwrite', action='store_true', default=OVERWRITE)
-    run_campaign(**vars(parser.parse_args()))
+    args = parser.parse_args(argv)
+    return run_campaign(observations=select_observations(args.input_root, args.full_campaign),
+                        scale=args.scale, output_dir=args.output_dir, overwrite=args.overwrite)
+
+
+if __name__ == '__main__':
+    main()

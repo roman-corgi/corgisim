@@ -23,6 +23,47 @@ spec.loader.exec_module(driver)
 CAMERA = 'visit_list/cgi_visit/cgi_excam/'
 
 
+@pytest.mark.parametrize('full_campaign', [False, True])
+def test_cli_selects_default_or_full_campaign_and_maps_input_root(tmp_path, monkeypatch, full_campaign):
+    calls = []
+    monkeypatch.setattr(driver, 'run_campaign', lambda **kwargs: calls.append(kwargs))
+    args = ['--input-root', str(tmp_path / 'inputs'), '--output-dir', str(tmp_path / 'out'),
+            '--scale', '0.5', '--overwrite']
+    if full_campaign:
+        args.append('--full-campaign')
+    driver.main(args)
+    expected = driver.FULL_CAMPAIGN if full_campaign else driver.OBSERVATIONS
+    assert len(expected) == (23 if full_campaign else 2)
+    assert [label for label, _, _ in calls[0]['observations']] == [row[0] for row in expected]
+    for (_, xml, probe), (_, mapped_xml, mapped_probe) in zip(expected, calls[0]['observations']):
+        assert mapped_xml == tmp_path / 'inputs' / xml.relative_to(driver.INPUT_ROOT)
+        assert mapped_probe == (tmp_path / 'inputs' / probe.relative_to(driver.INPUT_ROOT) if probe else None)
+    assert calls[0]['output_dir'] == tmp_path / 'out'
+    assert calls[0]['scale'] == 0.5 and calls[0]['overwrite'] is True
+
+
+def test_cli_without_flags_preserves_configured_defaults(monkeypatch):
+    calls = []
+    monkeypatch.setattr(driver, 'run_campaign', lambda **kwargs: calls.append(kwargs))
+    driver.main([])
+    assert calls == [dict(observations=driver.OBSERVATIONS, scale=driver.SCALE,
+                          output_dir=driver.DEFAULT_OUTPUT_DIR, overwrite=driver.OVERWRITE)]
+    assert [row[0] for row in driver.OBSERVATIONS] == ['A', 'B']
+
+
+def test_root_override_preserves_manual_xml_and_external_probe_paths(tmp_path, monkeypatch):
+    external = tmp_path / 'separate_probes/custom.fits'
+    external_xml = tmp_path / 'separate_xml/visit.xml'
+    selected = (('manual', None, external), ('custom', external_xml, driver.alternative_probe2))
+    monkeypatch.setattr(driver, 'OBSERVATIONS', selected)
+    assert driver.select_observations() is selected
+    assert driver.select_observations(tmp_path / 'inputs') == (
+        ('manual', None, external),
+        ('custom', external_xml, tmp_path / 'inputs' / driver.alternative_probe2.relative_to(driver.INPUT_ROOT)),
+    )
+    assert driver.select_observations(full_campaign=True) is driver.FULL_CAMPAIGN
+
+
 def inputs(tmp_path):
     entries = []
     for index, letter in enumerate('bcd'):
