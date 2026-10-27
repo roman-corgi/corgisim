@@ -18,62 +18,67 @@ from corgisim.sat_spots import add_custom_pattern_dm
 
 
 # --- Configuration: paths -------------------------------------------------
-# Paths: edit these placeholders. Relative paths resolve from the working directory.
-ALTERNATIVE_XML_ROOT = Path('/path/to/alternative/xml')
-STANDARD_XML_ROOT = Path('/path/to/standard/xml')
-PROBE_ROOT = Path('/path/to/probes')
-DEFAULT_OUTPUT_DIR = Path('/path/to/output')
+# Edit the input/output roots; derived paths may be customized for other layouts.
+INPUT_ROOT = Path('/path/to/inputs/HLC_B1_C1')
+ALTERNATIVE_XML_ROOT = INPUT_ROOT / 'alternative_probes'
+STANDARD_XML_ROOT = INPUT_ROOT / 'standard_probes'
+ALTERNATIVE_PROBE_ROOT = ALTERNATIVE_XML_ROOT / 'aux_files'
+STANDARD_PROBE_ROOT = STANDARD_XML_ROOT / 'aux_files'
+DEFAULT_OUTPUT_DIR = Path('/path/to/data/new_campaign')
 DM_ROOTNAME = 'hlc_ni_3e-8'
 DM1_PATH = None  # Optional explicit paths; None uses the installed DM_ROOTNAME maps.
 DM2_PATH = None
 
 # --- Campaign observations ------------------------------------------------
-probe1 = PROBE_ROOT / 'nfov_dm_dmrel_5.0e-07_gaussian0.fits'
-probe2 = PROBE_ROOT / 'nfov_dm_dmrel_5.0e-07_gaussian1.fits'
-probe3 = PROBE_ROOT / 'nfov_dm_dmrel_5.0e-07_gaussian2.fits'
+alternative_probe1 = ALTERNATIVE_PROBE_ROOT / 'nfov_dm_dmrel_5.0e-07_gaussian0.fits'
+alternative_probe2 = ALTERNATIVE_PROBE_ROOT / 'nfov_dm_dmrel_5.0e-07_gaussian1.fits'
+alternative_probe3 = ALTERNATIVE_PROBE_ROOT / 'nfov_dm_dmrel_5.0e-07_gaussian2.fits'
+standard_probe1 = STANDARD_PROBE_ROOT / 'nfov_dm_dmrel_5.0e-07_standard0.fits'
+standard_probe2 = STANDARD_PROBE_ROOT / 'nfov_dm_dmrel_5.0e-07_standard1_unmod.fits'
+standard_probe3 = STANDARD_PROBE_ROOT / 'nfov_dm_dmrel_5.0e-07_standard2.fits'
 
 # HLC_B1_C1: alternative probes (A-L). Temporary observation numbers/bands show the fixed order;
 # executable identities/settings come from XML. Set XML to None for hard-coded imaging.
-# Commented <...> paths are placeholders for XML files not yet supplied.
+# Only A setup + B imaging are active for development; uncomment other rows as needed.
 # No setup XML handy? Comment out A (and any other setup rows).
 # Imaging XML supplies its own bandpass; without imaging XML, set BANDPASS below.
 # Omit setup rows entirely rather than setting their XML path to None.
 ALTERNATIVE_OBSERVATIONS = (
     ('A', ALTERNATIVE_XML_ROOT / 'observation_a/alternative_probe_CFAM_1A.xml', None),  # 910 setup 1A
-    ('B', ALTERNATIVE_XML_ROOT / 'observation_b/alternative_probe_1A_probe1.xml', probe1),  # 911 1A
-    # ('C', ALTERNATIVE_XML_ROOT / 'observation_c/alternative_probe_1A_probe2.xml', probe2),  # 912 1A
-    # ('D', ALTERNATIVE_XML_ROOT / 'observation_d/alternative_probe_1A_probe3.xml', probe3),  # 913 1A
-    # ('E', ALTERNATIVE_XML_ROOT / '<E_914_setup_1B.xml>', None),
-    # ('F', ALTERNATIVE_XML_ROOT / '<F_915_probe1_1B.xml>', probe1),
-    # ('G', ALTERNATIVE_XML_ROOT / '<G_916_probe2_1B.xml>', probe2),
-    # ('H', ALTERNATIVE_XML_ROOT / '<H_917_probe3_1B.xml>', probe3),
-    # ('I', ALTERNATIVE_XML_ROOT / '<I_918_setup_1C.xml>', None),
-    # ('J', ALTERNATIVE_XML_ROOT / '<J_919_probe1_1C.xml>', probe1),
-    # ('K', ALTERNATIVE_XML_ROOT / '<K_920_probe2_1C.xml>', probe2),
-    # ('L', ALTERNATIVE_XML_ROOT / '<L_921_probe3_1C.xml>', probe3),
+    ('B', ALTERNATIVE_XML_ROOT / 'observation_b/alternative_probe_1A_probe1.xml', alternative_probe1),  # 911 1A
+    # ('C', ALTERNATIVE_XML_ROOT / 'observation_c/alternative_probe_1A_probe2.xml', alternative_probe2),  # 912 1A
+    # ('D', ALTERNATIVE_XML_ROOT / 'observation_d/alternative_probe_1A_probe3.xml', alternative_probe3),  # 913 1A
+    # ('E', ALTERNATIVE_XML_ROOT / 'observation_e/alternative_probe_CFAM_1B.xml', None),  # 914 setup 1B
+    # ('F', ALTERNATIVE_XML_ROOT / 'observation_f/alternative_probe_1B_probe1.xml', alternative_probe1),  # 915 1B
+    # ('G', ALTERNATIVE_XML_ROOT / 'observation_g/alternative_probe_1B_probe2.xml', alternative_probe2),  # 916 1B
+    # ('H', ALTERNATIVE_XML_ROOT / 'observation_h/alternative_probe_1B_probe3.xml', alternative_probe3),  # 917 1B
+    # ('I', ALTERNATIVE_XML_ROOT / 'observation_i/alternative_probe_CFAM_1C.xml', None),  # 918 setup 1C
+    # ('J', ALTERNATIVE_XML_ROOT / 'observation_j/alternative_probe_1C_probe1.xml', alternative_probe1),  # 919 1C
+    # ('K', ALTERNATIVE_XML_ROOT / 'observation_k/alternative_probe_1C_probe2.xml', alternative_probe2),  # 920 1C
+    # ('L', ALTERNATIVE_XML_ROOT / 'observation_l/alternative_probe_1C_probe3.xml', alternative_probe3),  # 921 1C
 )
-# HLC_B1_C1: standard probes (A-K). All XML filenames below are unsupplied placeholders;
-# uncomment only after supplying and checking the actual inputs. No initial setup is assumed.
+# HLC_B1_C1: standard probes (A-K). All rows remain commented for development.
+# Standalone imaging supplies its own band; no initial setup is assumed.
 # Numbers are temporary observation numbers, not executable identity overrides.
 STANDARD_OBSERVATIONS = (
-    # ('A', STANDARD_XML_ROOT / '<A_922_probe1_1C.xml>', probe1),
-    # ('B', STANDARD_XML_ROOT / '<B_923_probe2_1C.xml>', probe2),
-    # ('C', STANDARD_XML_ROOT / '<C_924_probe3_1C.xml>', probe3),
-    # ('D', STANDARD_XML_ROOT / '<D_925_setup_1A.xml>', None),
-    # ('E', STANDARD_XML_ROOT / '<E_926_probe1_1A.xml>', probe1),
-    # ('F', STANDARD_XML_ROOT / '<F_927_probe2_1A.xml>', probe2),
-    # ('G', STANDARD_XML_ROOT / '<G_928_probe3_1A.xml>', probe3),
-    # ('H', STANDARD_XML_ROOT / '<H_929_setup_1B.xml>', None),
-    # ('I', STANDARD_XML_ROOT / '<I_981_probe1_1B.xml>', probe1),
-    # ('J', STANDARD_XML_ROOT / '<J_982_probe2_1B.xml>', probe2),
-    # ('K', STANDARD_XML_ROOT / '<K_983_probe3_1B.xml>', probe3),
+    # ('A', STANDARD_XML_ROOT / 'observation_a/standard_probe_1C_probe1.xml', standard_probe1),  # 922 1C
+    # ('B', STANDARD_XML_ROOT / 'observation_b/standard_probe_1C_probe2.xml', standard_probe2),  # 923 1C
+    # ('C', STANDARD_XML_ROOT / 'observation_c/standard_probe_1C_probe3.xml', standard_probe3),  # 924 1C
+    # ('D', STANDARD_XML_ROOT / 'observation_d/standard_probe_CFAM_1A.xml', None),  # 925 setup 1A
+    # ('E', STANDARD_XML_ROOT / 'observation_e/standard_probe_1A_probe1.xml', standard_probe1),  # 926 1A
+    # ('F', STANDARD_XML_ROOT / 'observation_f/standard_probe_1A_probe2.xml', standard_probe2),  # 927 1A
+    # ('G', STANDARD_XML_ROOT / 'observation_g/standard_probe_1A_probe3.xml', standard_probe3),  # 928 1A
+    # ('H', STANDARD_XML_ROOT / 'observation_h/standard_probe_CFAM_1B.xml', None),  # 929 setup 1B
+    # ('I', STANDARD_XML_ROOT / 'observation_i/standard_probe_1B_probe1.xml', standard_probe1),  # 981 1B
+    # ('J', STANDARD_XML_ROOT / 'observation_j/standard_probe_1B_probe2.xml', standard_probe2),  # 982 1B
+    # ('K', STANDARD_XML_ROOT / 'observation_k/standard_probe_1B_probe3.xml', standard_probe3),  # 983 1B
 )
 OBSERVATIONS = ALTERNATIVE_OBSERVATIONS + STANDARD_OBSERVATIONS
 # Without XML, replace the selection above with this tuple; it excludes setup entries.
 # OBSERVATIONS = (
-#     ('B', None, probe1),
-#     # ('C', None, probe2),
-#     # ('D', None, probe3),
+#     ('B', None, alternative_probe1),
+#     # ('C', None, alternative_probe2),
+#     # ('D', None, alternative_probe3),
 # )
 
 # --- Simulation controls --------------------------------------------------
