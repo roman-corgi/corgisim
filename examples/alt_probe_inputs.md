@@ -92,9 +92,10 @@ starts at the first imaging request in UTC and advances by exposure duration,
 with no added gaps or setup overhead.
 
 Open [Alt_probe_L1_demo.ipynb](Alt_probe_L1_demo.ipynb), set
-`PRODUCT_DIR = Path('/path/to/data/new_campaign')`, `VISIT_INDEX = 0` and
+`PROGRAM_DIR = Path('/path/to/data/new_campaign')`, `VISIT_INDEX = 0` and
 `FRAME_INDEX_WITHIN_STATE = 0`, then run it to inspect existing FITS products.
-The notebook generates no data.
+Set `REDUCED_DIR` to the existing reduction root if it is stored separately.
+The notebook generates no data and displays all available levels together.
 
 ## Reduce saved products through L3
 
@@ -199,8 +200,80 @@ EACQ is a NumPy pixel coordinate. The adapter supplies the existing WCS offset
 stamp. Crop is pixel extraction, not registration or distortion resampling.
 Native cropping retains SCI/ERR/DQ; the lower-level BIAS extension stays in L2b.
 
-Open [Alt_probe_L1_demo.ipynb](Alt_probe_L1_demo.ipynb) and set its single
-`PRODUCT_DIR` to the desired saved level or visit directory. The viewer infers
-the level, inventories and checks every file, and displays a selected matched
-trio, differences and optional science with saved units and DQ masks. ERR summaries
-cover all calibrated files. The notebook performs no generation or reduction.
+### Folder layout and program inspection
+
+The original L1 visit folders remain directly under the program directory.
+The reducer's chosen output directory contains the level folders. For example,
+when that output is `program/reduced`, the existing layout is:
+
+```text
+program/                              # PROGRAM_DIR: original L1 inputs
+├── V<visitid>/
+│   └── cgi_<visitid>_<time>_l1_.fits
+├── V<another_visitid>/...
+└── reduced/                          # REDUCED_DIR: chosen --output-dir
+    ├── L2a/V<visitid>/
+    │   ├── cgi_<visitid>_<time>_l2a.fits
+    │   └── l1_to_l2a_basic_*_recipe.json
+    ├── L2b/V<visitid>/
+    │   ├── cgi_<visitid>_<time>_l2b.fits
+    │   └── l2a_to_l2b_*_recipe.json
+    └── L3/V<visitid>/
+        ├── cgi_<visitid>_<time>_l3_.fits
+        └── l2b_to_l3_*_recipe.json
+```
+
+Existing reductions may be outside the program directory: keep them there and
+override `REDUCED_DIR`. No `L1/` subfolder, file moves, copies or symlinks are
+required. Calibrations also remain at the explicitly chosen calibration path.
+Native recipe JSON is saved per level/visit, with separate camera calls when needed.
+The folder-level reduction command above processes all immediate `V*` visits;
+it does not require listing individual exposures.
+
+The notebook configuration matches these two existing roots:
+
+```python
+PROGRAM_DIR = Path('/path/to/program')
+REDUCED_DIR = PROGRAM_DIR / 'reduced'  # Or Path('/path/to/existing/reductions').
+VISIT_INDEX = 0
+FRAME_INDEX_WITHIN_STATE = 0
+```
+
+The viewer inventories every available level and visit, then shows the selected
+VISITID in four explicit **L1, L2a, L2b and L3** sections. Missing levels are
+reported. Each state's selected exposure is identified by SCTSRT in the lowest
+available level and matched across levels. A filtered counterpart is shown as
+missing, rather than replaced with another indexed exposure.
+
+Each section compares a single template trio with its arithmetic means, retains
+the matched-template difference panels, and shows single/mean science separately
+when present. Means stay in memory, with input N and per-pixel valid coverage;
+no combined FITS products are created. Samples must be finite and, for calibrated
+data, have DQ=0. Zero-coverage pixels are masked. Combinations never cross levels,
+visits, states/probe signs, bands, exposure/gain/PC settings, pointing/roll or
+reference geometry. There is no alignment, interpolation, weighting or clipping.
+Raw L1 has no DQ, so its mean can retain cosmic contamination. Later means also
+do not guarantee complete cosmic-ray removal. White indicates excluded samples,
+missing selected exposures or zero valid coverage. ERR summaries remain per-frame
+native uncertainties; the viewer does not infer combined uncertainty.
+
+### Inspect an individual frame in DS9
+
+The primary HDU (index0) contains metadata, with no image. The science array is
+**image extension1**, which currently has no EXTNAME, even in L3. Do not require
+an extension named SCI. L1 has only primary and image HDUs; calibrated files add
+ERR (extension2) and DQ (extension3). L2a/L2b also retain BIAS.
+
+Open a saved science array explicitly, substituting its actual filename:
+
+```bash
+ds9 "/path/to/reduced/L3/V<visitid>/cgi_<visitid>_<time>_l3_.fits[1]"
+```
+
+Use `[2]` or `[ERR]` for ERR and `[3]` or `[DQ]` for DQ in calibrated files.
+ERR is a one-plane cube; display its first plane if prompted. Nonzero DQ means
+flagged; L2b/L3 science pixels may already be NaN there. Image units are DN for
+L1/L2a, photoelectron for L2b and photoelectron/s for L3. DS9's
+[qualified filename syntax](https://ds9.si.edu/doc/ref/file.html) accepts extension
+numbers or names. The notebook adds its DQ mask for display; a DS9 view of the
+science HDU alone does not automatically apply a separate DQ extension.
