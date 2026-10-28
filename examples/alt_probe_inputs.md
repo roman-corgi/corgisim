@@ -161,6 +161,39 @@ calibration path is explicit, JIT lookup and missing-step skipping are disabled,
 and any recipe database use is confined to the output root. It does not call
 `autogen_recipe` or change the real DRP configuration.
 
+### Optional checkout selection and logging
+
+When working with separate branches or worktrees, select the intended source
+checkouts before running the commands above:
+
+```bash
+SIM=/path/to/corgisim-checkout
+DRP=/path/to/corgidrp-checkout
+export PYTHONPATH="$SIM:$DRP${PYTHONPATH:+:$PYTHONPATH}"
+```
+
+This applies to the current terminal and its child processes. Omit it when your
+environment already imports the intended versions; remove stale worktree paths
+from `PYTHONPATH` when returning to your usual checkouts. The scripts themselves
+disable automatic calibration-database initialization; no extra export is needed.
+
+For long runs, optionally display progress while saving it to a log (Bash/Zsh):
+
+```bash
+set -o pipefail
+python -u /path/to/corgisim/examples/alt_probe_reduce.py \
+  --inputs /path/to/data/new_campaign \
+  --output-dir /path/to/data/new_campaign/reduced \
+  --calibration-dir /path/to/calibrations --stop-after L3 --crop-size 255 \
+  2>&1 | tee reduction.log
+```
+
+`-u` prints progress promptly; `2>&1` includes errors; `pipefail` preserves a
+failed exit status if Python fails. Use a new log filename for each run. This
+also works for L1 generation, but does not prevent sleep or keep a job running
+after the terminal closes. On a cluster, use the scheduler's job submission and
+logging facilities instead.
+
 ### Nominal simulator calibrations and limits
 
 These products describe model parameters, not measured detector calibration or
