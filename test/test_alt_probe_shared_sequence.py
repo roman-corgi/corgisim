@@ -1,4 +1,4 @@
-"""Shared acquisition coverage retained from the PR273 driver tests."""
+"""Shared acquisition contracts for custom and analytical probes."""
 
 from types import SimpleNamespace
 
