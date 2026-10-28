@@ -1,8 +1,8 @@
-# Alternate and Standard Probe inputs
+# Alternate and Standard Probe workflow
 
-The generation script reads local XML and probe FITS files from
-`roman-corgi/corgiobsspecs`. Download these four pinned snapshots in a browser
-signed in to GitHub with access to that repository, then unzip them:
+## 1. Get the inputs
+
+Download these four pinned ZIPs in a browser signed in to GitHub with access to `roman-corgi/corgiobsspecs`, then unzip them:
 
 | Inputs | Source branch/folder | Pinned ZIP download |
 |---|---|---|
@@ -11,68 +11,51 @@ signed in to GitHub with access to that repository, then unzip them:
 | Alternate probes (3 FITS files) | [alternative_probes_DM_commands](https://github.com/roman-corgi/corgiobsspecs/tree/alternative_probes_DM_commands/obs_specs/HLC_B1_C1/alternative_probes/aux_files) | [c6a6a9386d8b3a01f48abd7bc808a16a0e2fe936](https://github.com/roman-corgi/corgiobsspecs/archive/c6a6a9386d8b3a01f48abd7bc808a16a0e2fe936.zip) |
 | Standard probes (3 FITS files) | [standard_probes_DM_commands](https://github.com/roman-corgi/corgiobsspecs/tree/standard_probes_DM_commands/obs_specs/HLC_B1_C1/standard_probes/aux_files) | [b66e9153eae8ce82583cf0ffec268b15f29f68b2](https://github.com/roman-corgi/corgiobsspecs/archive/b66e9153eae8ce82583cf0ffec268b15f29f68b2.zip) |
 
-Each ZIP selects the listed branch's exact commit without switching branches.
-Cloning is useful when editing observation specifications; running this example
-only requires the downloaded files.
-Each archive expands into `corgiobsspecs-<commit>`; copy only the folders listed below.
-
-## Combine the inputs
-
-Keep the inputs outside the Corgisim checkout, preserving the original filenames:
-
-1. From the alternate XML archive, copy `obs_specs/HLC_B1_C1/alternative_probes`
-   into `/path/to/inputs/HLC_B1_C1`.
-2. From the standard XML archive, copy `obs_specs/HLC_B1_C1/standard_probes`
-   alongside it.
-3. From each probe archive, copy its matching activity's `aux_files` folder into
-   the activity folder. Add it without replacing the XML observation folders.
+Each ZIP contains the whole repository at the listed branch's pinned commit and expands into
+`corgiobsspecs-<commit>`; it does not include all branches. Cloning is useful when editing observation
+specifications; running this example only requires the downloaded files. Keep inputs outside the Corgisim checkout.
+Copy each XML archive's `obs_specs/HLC_B1_C1/<activity>` folder into your input root, then add the matching
+DM-command archive's `aux_files` inside that activity folder without replacing its XML observation folders.
+The XML branches supply observation settings; the separate DM-command branches supply the relative-DM
+voltage arrays in `aux_files`. Preserve the original filenames:
 
 ```text
 /path/to/inputs/HLC_B1_C1/
 ├── alternative_probes/
 │   ├── observation_a/alternative_probe_CFAM_1A.xml
 │   ├── observation_b/alternative_probe_1A_probe1.xml
-│   ├── ... (remaining observation folders through observation_l)
+│   ├── ... (through observation_l)
 │   └── aux_files/
 │       ├── nfov_dm_dmrel_5.0e-07_gaussian0.fits
 │       ├── nfov_dm_dmrel_5.0e-07_gaussian1.fits
 │       └── nfov_dm_dmrel_5.0e-07_gaussian2.fits
 └── standard_probes/
     ├── observation_a/standard_probe_1C_probe1.xml
-    ├── ... (remaining observation folders through observation_k)
+    ├── ... (through observation_k)
     └── aux_files/
         ├── nfov_dm_dmrel_5.0e-07_standard0.fits
         ├── nfov_dm_dmrel_5.0e-07_standard1_unmod.fits
         └── nfov_dm_dmrel_5.0e-07_standard2.fits
 ```
 
-## Configure and run
+## 2. Configure and generate L1
 
-At the top of [alt_probe_generate_L1_sims.py](alt_probe_generate_L1_sims.py), configure
-the default input/output roots, or override them with `--input-root`/`--output-dir`:
+At the top of [alt_probe_generate_L1_sims.py](alt_probe_generate_L1_sims.py), set the default roots:
 
 ```python
 INPUT_ROOT = Path('/path/to/inputs/HLC_B1_C1')
 DEFAULT_OUTPUT_DIR = Path('/path/to/data/new_campaign')
 ```
 
-`INPUT_ROOT` contains both activity folders. The script derives their XML and
-`aux_files` paths; edit the derived probe roots only if using another layout.
-`--input-root` relocates only paths beneath the configured `INPUT_ROOT`; explicit
-XML or probe paths outside it remain unchanged. This preserves separately stored
-probe arrays when overriding the campaign root.
-Optional `DM1_PATH`/`DM2_PATH` override the installed `hlc_ni_3e-8` base maps.
-Normal `SCALE = 1.0` applies the supplied probe arrays directly.
+`INPUT_ROOT` is the parent of both activity folders shown above. The script derives
+`ALTERNATIVE_XML_ROOT` and `STANDARD_XML_ROOT` from it, then derives each `*_PROBE_ROOT` by appending
+`aux_files`. Those folders hold the three Gaussian alternative probe arrays and three standard arrays
+listed above; the observation rows bind them to the corresponding XML visits. For another layout,
+edit the derived XML/probe roots. Probe arrays can remain separately stored.
 
-Only alternate A setup and B imaging are selected by default. `--full-campaign`
-selects all 12 alternate and 11 standard rows in order, including five setup rows
-and 18 imaging visits. It supersedes the editable `OBSERVATIONS` selection.
-To omit setup A, set `OBSERVATIONS = ALTERNATIVE_OBSERVATIONS[1:2]`: B's XML supplies
-its bandpass. For XML-free imaging, use the script's commented `OBSERVATIONS`
-example with XML paths `None`, omit setup rows, and edit the hard-coded settings,
-including `BANDPASS = '1A'`. Supplied XML takes precedence; invalid XML raises an error.
-
-Choose a new output directory and run from scratch, where PROPER copies helper files:
+CLI values override the configured defaults. `--input-root` relocates only configured paths beneath
+`INPUT_ROOT`; explicit XML or probe paths outside it stay unchanged. Activate the project environment
+and run from a scratch directory, where PROPER copies helper files. Choose a new output directory:
 
 ```bash
 conda activate corgisim
@@ -83,28 +66,29 @@ python /path/to/corgisim/examples/alt_probe_generate_L1_sims.py \
   --output-dir /path/to/data/new_campaign
 ```
 
-Append `--full-campaign` for the full sequential campaign. `--scale` and
-`--overwrite` remain available; no flags use the configured roots and A+B selection.
-Visits and frames run sequentially; PROPER may use worker processes internally.
+Default selection is alternate A setup + B imaging. `--full-campaign` supersedes the editable `OBSERVATIONS`
+selection and runs all 12 alternate + 11 standard entries: five no-image setup entries and 18 imaging visits.
+Visits and frames run sequentially; PROPER may use workers internally. XML timing starts at the first imaging
+request in UTC and advances by exposure duration without added gaps or setup overhead.
+To skip setup A, set `OBSERVATIONS = ALTERNATIVE_OBSERVATIONS[1:2]`; B's XML supplies its bandpass.
 
-The script creates L1 visit folders and prints setup/timing context. XML timing
-starts at the first imaging request in UTC and advances by exposure duration,
-with no added gaps or setup overhead.
+Keep `SCALE=1.0` (or `--scale 1.0`) to apply supplied arrays directly. Optional `DM1_PATH`/`DM2_PATH` replace
+the installed `hlc_ni_3e-8` base maps. `--overwrite` allows replacement of existing L1 products;
+otherwise existing products are refused. Use `--help` for all options.
 
-Open [Alt_probe_L1_demo.ipynb](Alt_probe_L1_demo.ipynb), set
-`PROGRAM_DIR = Path('/path/to/data/new_campaign')`, `VISIT_INDEX = 0` and
-`FRAME_INDEX_WITHIN_STATE = 0`, then run it to inspect existing FITS products.
-Set `REDUCED_DIR` to the existing reduction root if it is stored separately.
-The notebook generates no data and displays all available levels together.
+For simple XML-free imaging, use the commented `OBSERVATIONS` example with XML paths `None`, omit setup rows and edit the hard-coded
+settings, including `BANDPASS='1A'` for Band 1A (choose the intended band for other manual visits).
+Supplied imaging XML takes precedence for the bandpass and observation settings; invalid XML raises an error.
 
-## Reduce saved products through L3
+## 3. Reduce to the required level
 
-The adapter uses stock CorgiDRP recipes, tested with **CorgiDRP 5.1.1** and
-**EMCCDDetect 2.6.2**. Select the tested DRP checkout through process `PYTHONPATH`
-or use its installed environment. Normal DRP configuration must already exist.
-No package installation or user-configuration change is performed by these scripts.
+The adapter uses stock recipes, tested with CorgiDRP 5.1.1 and EMCCDDetect 2.6.2. Use an environment with normal DRP configuration
+already present. Inputs must share one data level and contain analog (`ISPC=0`) SCI arrays; L1 must be full 1200×2200 frames.
+A directory input selects FITS directly inside it and its immediate `V*` folders; individual file paths are also accepted.
 
-Create explicit nominal simulator calibrations, then reduce existing L1:
+Create nominal simulator calibrations in an empty calibration directory, then reduce saved L1.
+The helper also accepts a representative FITS file, but directory input is needed to collect every
+exposure/gain camera set for L2b/L3 from L1:
 
 ```bash
 python /path/to/corgisim/examples/alt_probe_sim_calibs.py \
@@ -115,10 +99,6 @@ python /path/to/corgisim/examples/alt_probe_reduce.py \
   --calibration-dir /path/to/calibrations --stop-after L3 --crop-size 255
 ```
 
-Choose the endpoint needed in both commands; L1 needs no calibration helper.
-The helper defaults to L2a and also accepts a single representative FITS file.
-For L2b/L3 from L1, directory input supplies every exposure/gain camera set.
-
 | Endpoint | Stock recipe | Saved data | Required calibration |
 |---|---|---|---|
 | L1 | no reduction | full 1200×2200, DN | none |
@@ -126,48 +106,32 @@ For L2b/L3 from L1, directory input supplies every exposure/gain camera set.
 | L2b | `l2a_to_l2b` | individual 1024×1024, photoelectron; ERR/DQ/BIAS | camera KGain/PTC and direct dark; identity flat, zero defect map |
 | L3 | `l2b_to_l3` | individual crop, photoelectron/s; ERR/DQ/WCS | nominal astrometry only |
 
-Resume directly from a saved level into a new destination:
+L3 defaults to a 255×255 crop, set with `--crop-size`. Choose `--stop-after L2a`, `L2b` or `L3` in both
+commands; both default to L2a. L1 generation needs no calibrations and remains L1-only by default. Its `--stop-after`,
+`--calibration-dir` and `--crop-size` flags can also request reduction after generation into a new empty campaign directory,
+using prepared matching calibrations.
+
+Resume from a saved level into a fresh destination:
 
 ```bash
 python /path/to/corgisim/examples/alt_probe_reduce.py \
   --inputs /path/to/data/new_campaign/reduced/L2b \
   --output-dir /path/to/data/resumed/reduced \
-  --calibration-dir /path/to/calibrations --stop-after L3 --crop-size 255
+  --calibration-dir /path/to/calibrations --stop-after L3
 ```
 
-Resuming L2b→L3 requires only `sim_astrometry.fits`. The helper with L2b inputs
-and `--stop-after L3` can create that file alone, without earlier-stage truth or
-calibrations. Requested endpoints below the input level are rejected; matching
-levels return existing paths without processing. Each stage checks only its own
-prerequisites. A later-stage failure preserves lower saved FITS; resume those
-products into a fresh destination.
-
-Editable settings are at the top of the scripts; CLI values override them.
-Generation remains L1-only by default. Add `--stop-after L2a|L2b|L3`, the
-calibration directory and optional crop size to generate and reduce through the
-same function, using an empty campaign output directory. Existing L1 generation
-options remain available. The standalone reducer defaults to L2a.
-
-Directory inputs select FITS directly inside the directory and immediate `V*`
-subfolders; explicit files are also accepted. Select one common data level and
-analog SCI frames. Calls are grouped by visit, exposure and commanded/effective
-gain; L3 also checks every frame has a consistent EACQ reference and shape within
-each group. Native recipes save under `<output>/<level>/V<visit>` with processing
-history and recipe JSON. Counts report filtered frames from completed calls.
-Native filtering raises and stops the run if an entire four-frame chunk is
-rejected, even if later inputs are usable. Previously saved products remain;
-use a new destination after a partial failure. Occupied visit outputs,
-duplicate inputs and crops extending beyond the input image are rejected.
-
-The adapter disables automatic caldb initialization before DRP imports. Every
-calibration path is explicit, JIT lookup and missing-step skipping are disabled,
-and any recipe database use is confined to the output root. It does not call
-`autogen_recipe` or change the real DRP configuration.
+L2b→L3 needs only `sim_astrometry.fits`; the calibration helper can create it from L2b inputs with `--stop-after L3`. Native
+filtering stops the run if an entire four-frame chunk is rejected, even if later inputs are usable. Saved products remain; use a new
+destination after a partial failure. An endpoint below the input level is rejected; a matching level returns existing paths.
+Each stage checks only its own prerequisites. Occupied visit outputs, duplicate inputs and crops outside the input image
+are rejected. Calls are grouped by visit, exposure and commanded/effective gain; L3 requires consistent EACQ/shape within a group.
+The scripts disable automatic caldb initialization, use explicit calibration paths and confine recipe database use to the output root;
+they do not modify the real DRP configuration.
 
 ### Optional checkout selection and logging
 
-When working with separate branches or worktrees, select the intended source
-checkouts before running the commands above:
+For separate source checkouts, set these before running commands; omit them when your environment already imports the intended
+versions:
 
 ```bash
 SIM=/path/to/corgisim-checkout
@@ -175,27 +139,10 @@ DRP=/path/to/corgidrp-checkout
 export PYTHONPATH="$SIM:$DRP${PYTHONPATH:+:$PYTHONPATH}"
 ```
 
-This applies to the current terminal and its child processes. Omit it when your
-environment already imports the intended versions; remove stale worktree paths
-from `PYTHONPATH` when returning to your usual checkouts. The scripts themselves
-disable automatic calibration-database initialization; no extra export is needed.
-
-For long runs, optionally display progress while saving it to a log (Bash/Zsh):
-
-```bash
-set -o pipefail
-python -u /path/to/corgisim/examples/alt_probe_reduce.py \
-  --inputs /path/to/data/new_campaign \
-  --output-dir /path/to/data/new_campaign/reduced \
-  --calibration-dir /path/to/calibrations --stop-after L3 --crop-size 255 \
-  2>&1 | tee reduction.log
-```
-
-`-u` prints progress promptly; `2>&1` includes errors; `pipefail` preserves a
-failed exit status if Python fails. Use a new log filename for each run. This
-also works for L1 generation, but does not prevent sleep or keep a job running
-after the terminal closes. On a cluster, use the scheduler's job submission and
-logging facilities instead.
+Remove stale worktree paths when returning to usual checkouts. For Bash/Zsh logging, run `set -o pipefail`, add `-u` after `python`
+and append `2>&1 | tee reduction.log` to your command. `-u` prints progress promptly; `2>&1` includes errors;
+`pipefail` preserves a failed exit status if Python fails. Use a new log for each run. Logging does not prevent sleep
+or keep jobs alive after the terminal closes. On clusters, use scheduler logging.
 
 ### Nominal simulator calibrations and limits
 
@@ -236,80 +183,46 @@ EACQ is a NumPy pixel coordinate. The adapter supplies the existing WCS offset
 stamp. Crop is pixel extraction, not registration or distortion resampling.
 Native cropping retains SCI/ERR/DQ; the lower-level BIAS extension stays in L2b.
 
-### Folder layout and program inspection
+## 4. Inspect the saved products
 
-The original L1 visit folders remain directly under the program directory.
-The reducer's chosen output directory contains the level folders. For example,
-when that output is `program/reduced`, the existing layout is:
+The output layout keeps original L1 and each derived level separate:
 
 ```text
-program/                              # PROGRAM_DIR: original L1 inputs
-├── V<visitid>/
-│   └── cgi_<visitid>_<time>_l1_.fits
-├── V<another_visitid>/...
-└── reduced/                          # REDUCED_DIR: chosen --output-dir
-    ├── L2a/V<visitid>/
-    │   ├── cgi_<visitid>_<time>_l2a.fits
-    │   └── l1_to_l2a_basic_*_recipe.json
-    ├── L2b/V<visitid>/
-    │   ├── cgi_<visitid>_<time>_l2b.fits
-    │   └── l2a_to_l2b_*_recipe.json
-    └── L3/V<visitid>/
-        ├── cgi_<visitid>_<time>_l3_.fits
-        └── l2b_to_l3_*_recipe.json
+new_campaign/                       # PROGRAM_DIR
+├── V<visitid>/*.fits                # L1
+└── reduced/                        # REDUCED_DIR (or an existing external root)
+    ├── L2a/V<visitid>/*.fits
+    ├── L2b/V<visitid>/*.fits
+    └── L3/V<visitid>/*.fits
 ```
 
-Existing reductions may be outside the program directory: keep them there and
-override `REDUCED_DIR`. No `L1/` subfolder, file moves, copies or symlinks are
-required. Calibrations also remain at the explicitly chosen calibration path.
-Native recipe JSON is saved per level/visit, with separate camera calls when needed.
-The folder-level reduction command above processes all immediate `V*` visits;
-it does not require listing individual exposures.
-
-The notebook configuration matches these two existing roots:
+Native recipe JSON is saved alongside derived products. Open [Alt_probe_L1_demo.ipynb](Alt_probe_L1_demo.ipynb) and set:
 
 ```python
-PROGRAM_DIR = Path('/path/to/program')
-REDUCED_DIR = PROGRAM_DIR / 'reduced'  # Or Path('/path/to/existing/reductions').
+PROGRAM_DIR = Path('/path/to/data/new_campaign')
+REDUCED_DIR = PROGRAM_DIR / 'reduced'  # Override for existing reductions elsewhere.
 VISIT_INDEX = 0
 FRAME_INDEX_WITHIN_STATE = 0
 ```
 
-The viewer inventories every available level and visit, then shows the selected
-VISITID in four explicit **L1, L2a, L2b and L3** sections. Missing levels are
-reported. Each state's selected exposure is identified by SCTSRT in the lowest
-available level and matched across levels. A filtered counterpart is shown as
-missing, rather than replaced with another indexed exposure.
+The read-only notebook inventories all available levels/visits and displays the selected visit's individual template/science frames,
+differences and arithmetic means in explicit L1/L2a/L2b/L3 sections. Counts describe files present, not XML completeness.
+Each state's exposure is identified by SCTSRT in the lowest available level and matched across levels; missing levels or
+filtered counterparts are reported without substituting a different indexed exposure.
 
-Each section compares a single template trio with its arithmetic means, retains
-the matched-template difference panels, and shows single/mean science separately
-when present. Means stay in memory, with input N and per-pixel valid coverage;
-no combined FITS products are created. Samples must be finite and, for calibrated
-data, have DQ=0. Zero-coverage pixels are masked. Combinations never cross levels,
-visits, states/probe signs, bands, exposure/gain/PC settings, pointing/roll or
-reference geometry. There is no alignment, interpolation, weighting or clipping.
-Raw L1 has no DQ, so its mean can retain cosmic contamination. Later means also
-do not guarantee complete cosmic-ray removal. White indicates excluded samples,
-missing selected exposures or zero valid coverage. ERR summaries remain per-frame
-native uncertainties; the viewer does not infer combined uncertainty.
+Means show input N and per-pixel valid coverage. They combine only matching level, visit, state/probe sign, band,
+exposure/gain/PC, pointing/roll and reference geometry, using finite samples and DQ=0 where available.
+White marks excluded samples, missing counterparts or zero coverage. Means stay in memory without alignment,
+interpolation, weighting, clipping, combined uncertainty or new combined FITS. Raw L1 lacks DQ;
+means at any level can retain cosmic contamination. ERR summaries describe native per-frame uncertainties.
 
-### Inspect an individual frame in DS9
-
-The primary HDU (index0) contains metadata, with no image. The science array is
-**image extension1**, which currently has no EXTNAME, even in L3. Do not require
-an extension named SCI. L1 has only primary and image HDUs; calibrated files add
-ERR (extension2) and DQ (extension3). L2a/L2b also retain BIAS.
-
-Open a saved science array explicitly, substituting its actual filename:
+For DS9, select science extension 1 explicitly:
 
 ```bash
-ds9 "/path/to/reduced/L3/V<visitid>/cgi_<visitid>_<time>_l3_.fits[1]"
+ds9 "/path/to/data/new_campaign/reduced/L3/V<visitid>/cgi_<visitid>_<time>_l3_.fits[1]"
 ```
 
-Use `[2]` or `[ERR]` for ERR and `[3]` or `[DQ]` for DQ in calibrated files.
-ERR is a one-plane cube; display its first plane if prompted. Nonzero DQ means
-flagged; L2b/L3 science pixels may already be NaN there. Image units are DN for
-L1/L2a, photoelectron for L2b and photoelectron/s for L3. DS9's
-[qualified filename syntax](https://ds9.si.edu/doc/ref/file.html) accepts extension
-numbers or names. The notebook adds its DQ mask for display; a DS9 view of the
-science HDU alone does not automatically apply a separate DQ extension.
+Primary HDU 0 is metadata only. Science extension 1 has no EXTNAME, even in L3, so do not require an extension named SCI.
+Calibrated files have ERR at extension 2 (`[ERR]`, a one-plane cube) and DQ at 3 (`[DQ]`); choose the first ERR plane if prompted.
+Nonzero DQ flags samples; L2b/L3 science may already be NaN there. DS9 does not automatically apply DQ to science.
+L1 has neither ERR nor DQ. Units are given in the table above.
