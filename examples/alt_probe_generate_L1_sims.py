@@ -92,7 +92,7 @@ SCALE = 1.0  # Amplitude belongs in probe files; multiplier is for exceptional a
 OVERWRITE = False
 
 # --- Hard-coded observation settings (used only without XML) ---------------
-# The original trio has no target-science block.
+# XML-free trios have no target-science block.
 HOST_STAR_PROPERTIES = {'Vmag': 5, 'spectral_type': 'G0V', 'target_name': 'example', 'RA': 0., 'DEC': 0.}
 CGI_MODE = 'excam'
 COR_TYPE = 'hlc_band1'
