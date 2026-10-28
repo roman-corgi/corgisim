@@ -44,12 +44,12 @@ def generate_observation_sequence ( scene, optics, detector, exp_time, n_frames,
         output_dir: if saving as fits file, where to save them 
         full_frame (bool, optional): If True, a full-frame detector image will be generated.
             If False (default), a sub-array image is generated.
-        loc_x (int, optional): The x-coordinate for the center of the sub-array in pixels
-            if `full_frame` is False. If `full_frame` is True, this specifies the
-            x-coordinate of the full frame's origin (top-left pixel). Required if `full_frame` is True.
-        loc_y (int, optional): The y-coordinate for the center of the sub-array in pixels
-            if `full_frame` is False. If `full_frame` is True, this specifies the
-            y-coordinate of the full frame's origin (top-left pixel). Required if `full_frame` is True.        
+        loc_x (int, optional): The optical stamp center's x-coordinate in imaging-area
+            pixels for `full_frame=True` (stamps smaller than 1024×1024).
+            Ignored when `full_frame=False`.
+        loc_y (int, optional): The optical stamp center's y-coordinate in imaging-area
+            pixels for `full_frame=True` (stamps smaller than 1024×1024).
+            Ignored when `full_frame=False`.
 
         frame_times_utc (sequence[str], optional): Explicit timezone-naive UTC ISO timestamps,
             one per frame in background/positive/negative/science order. Requires
