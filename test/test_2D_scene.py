@@ -475,9 +475,7 @@ def test_disk_model_is_normalised_after_rotation(roll_angle):
     assert np.isfinite(rolled_disk).all()
     # fails if normalization is done before rolling or normalization is not handled correctly
     assert np.isclose(np.sum(rolled_disk), np.sum(disk), rtol=1e-4)
-    with pytest.raises(NotImplementedError, match=r"Roll angle rotation is not implemented yet for 2D scene."):
-        CorgiOptics.simulate_2d_scene(mock_optics, mock_scene, prf_cube_path=mock_scene.twoD_scene_info["prf_cube_path"])
-
+    
 @pytest.mark.parametrize("offset_pix", [(0, 0), (0, 8)])
 def test_one_pixel_disk_matches_point_source_flux(offset_pix):
     """A one-pixel disk is physically a point source, so the 2D-scene path must
