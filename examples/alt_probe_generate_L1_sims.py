@@ -90,6 +90,8 @@ OBSERVATIONS = ALTERNATIVE_OBSERVATIONS[:2]  # Default A setup + B imaging.
 # --- Simulation controls --------------------------------------------------
 SCALE = 1.0  # Amplitude belongs in probe files; multiplier is for exceptional adjustments.
 OVERWRITE = False
+STOP_AFTER = 'L1'
+CALIBRATION_DIR = Path('/path/to/calibrations')
 
 # --- Hard-coded observation settings (used only without XML) ---------------
 # XML-free trios have no target-science block.
@@ -411,9 +413,18 @@ def main(argv=None):
     parser.add_argument('--scale', type=float, default=SCALE)
     parser.add_argument('--output-dir', type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument('--overwrite', action='store_true', default=OVERWRITE)
+    parser.add_argument('--stop-after', choices=('L1', 'L2a'), default=STOP_AFTER)
+    parser.add_argument('--calibration-dir', type=Path, default=CALIBRATION_DIR)
     args = parser.parse_args(argv)
-    return run_campaign(observations=select_observations(args.input_root, args.full_campaign),
-                        scale=args.scale, output_dir=args.output_dir, overwrite=args.overwrite)
+    if args.stop_after != 'L1' and args.output_dir.exists() and any(args.output_dir.iterdir()):
+        raise FileExistsError('Generation through L2a requires a new empty output directory')
+    result = run_campaign(observations=select_observations(args.input_root, args.full_campaign),
+                          scale=args.scale, output_dir=args.output_dir, overwrite=args.overwrite)
+    if args.stop_after != 'L1':
+        from alt_probe_reduce import reduce_products
+        reduce_products(args.output_dir, args.output_dir / 'reduced', args.stop_after,
+                        args.calibration_dir)
+    return result
 
 
 if __name__ == '__main__':

@@ -95,3 +95,56 @@ Open [Alt_probe_L1_demo.ipynb](Alt_probe_L1_demo.ipynb), set
 `CAMPAIGN_DIR = Path('/path/to/data/new_campaign')`, `VISIT_INDEX = 0` and
 `FRAME_INDEX_WITHIN_STATE = 0`, then run it to inspect existing FITS products.
 The notebook generates no data.
+
+## Reduce saved frames through L2a
+
+[alt_probe_reduce.py](alt_probe_reduce.py) uses CorgiDRP's stock
+`l1_to_l2a_basic.json`: prescan bias subtraction, acquisition-frame filtering,
+cosmic-ray flags, nonlinearity correction and individual L2a saves in DN.
+Configure its top processing settings or supply CLI overrides:
+
+```bash
+python /path/to/corgisim/examples/alt_probe_reduce.py \
+  --inputs /path/to/data/new_campaign/V0200001001001911001 \
+  --output-dir /path/to/data/new_campaign/reduced \
+  --calibration-dir /path/to/calibrations --stop-after L2a
+```
+
+Use the tested CorgiDRP checkout on `PYTHONPATH` (or its installed environment).
+Normal DRP configuration must already exist. The adapter disables automatic
+calibration database initialization before importing DRP, uses explicit
+calibration files, and confines any recipe database use to the output root.
+It does not change user configuration. No automatic calibration lookup is used.
+
+For Corgisim L1 generated **without simulated nonlinearity**, create the two
+required model-truth files explicitly:
+
+```bash
+python /path/to/corgisim/examples/alt_probe_sim_calibs.py \
+  /path/to/data/new_campaign/V0200001001001911001/representative_l1.fits \
+  /path/to/calibrations
+```
+
+The helper reads full wells, e-/DN, read noise, row time and gain-register length
+from primary COMMENT cards; check that these values match every input camera.
+`sim_detector_params.fits` and `sim_identity_nonlin.fits` describe the simulator,
+not measured calibrations. The identity table is valid only when `nonlin_path`
+is `None`; the helper rejects other values or absent truth. The recipe uses
+DetectorParams' gain conversion, with no separate KGain product, and assumes
+zero additional image/prescan bias offset (`DetectorNoiseMaps=None`). Replace
+the two calibration files with matching native DRP products for other inputs.
+
+Directory input selects FITS directly in it and in immediate `V*` subfolders;
+explicit FITS paths can also follow `--inputs`. Every selected input must have
+one common level, with analog SCI arrays. L1 requires full 1200×2200 frames.
+Calls are separated by visit, exposure and commanded/applied gain. Frames remain
+individual and retain their state metadata. Outputs are saved under
+`L2a/V<visit>` with native DRP recipe/history. Counts printed per call include
+any frames filtered by the recipe. Use a fresh destination; occupied visit
+folders are rejected so failed or stale products cannot be mistaken for a
+complete run. Saved L2a input with `--stop-after L2a` is returned unchanged.
+
+Generation stays L1-only by default. To reduce immediately after generation,
+add `--stop-after L2a --calibration-dir /path/to/calibrations` to the generation
+command, using a new empty campaign directory. Both entry points use the same
+reduction function. L2b/L3 and crop controls are not implemented at this checkpoint.
