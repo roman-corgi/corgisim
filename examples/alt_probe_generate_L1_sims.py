@@ -92,6 +92,7 @@ SCALE = 1.0  # Amplitude belongs in probe files; multiplier is for exceptional a
 OVERWRITE = False
 STOP_AFTER = 'L1'
 CALIBRATION_DIR = Path('/path/to/calibrations')
+CROP_SIZE = 255
 
 # --- Hard-coded observation settings (used only without XML) ---------------
 # XML-free trios have no target-science block.
@@ -413,8 +414,9 @@ def main(argv=None):
     parser.add_argument('--scale', type=float, default=SCALE)
     parser.add_argument('--output-dir', type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument('--overwrite', action='store_true', default=OVERWRITE)
-    parser.add_argument('--stop-after', choices=('L1', 'L2a', 'L2b'), default=STOP_AFTER)
+    parser.add_argument('--stop-after', choices=('L1', 'L2a', 'L2b', 'L3'), default=STOP_AFTER)
     parser.add_argument('--calibration-dir', type=Path, default=CALIBRATION_DIR)
+    parser.add_argument('--crop-size', type=int, default=CROP_SIZE, help='L3 square crop width in pixels')
     args = parser.parse_args(argv)
     if args.stop_after != 'L1' and args.output_dir.exists() and any(args.output_dir.iterdir()):
         raise FileExistsError('Generation with reduction requires a new empty output directory')
@@ -423,7 +425,7 @@ def main(argv=None):
     if args.stop_after != 'L1':
         from alt_probe_reduce import reduce_products
         reduce_products(args.output_dir, args.output_dir / 'reduced', args.stop_after,
-                        args.calibration_dir)
+                        args.calibration_dir, args.crop_size)
     return result
 
 

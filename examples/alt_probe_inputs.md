@@ -92,101 +92,115 @@ starts at the first imaging request in UTC and advances by exposure duration,
 with no added gaps or setup overhead.
 
 Open [Alt_probe_L1_demo.ipynb](Alt_probe_L1_demo.ipynb), set
-`CAMPAIGN_DIR = Path('/path/to/data/new_campaign')`, `VISIT_INDEX = 0` and
+`PRODUCT_DIR = Path('/path/to/data/new_campaign')`, `VISIT_INDEX = 0` and
 `FRAME_INDEX_WITHIN_STATE = 0`, then run it to inspect existing FITS products.
 The notebook generates no data.
 
-## Reduce saved frames through L2b
+## Reduce saved products through L3
 
-[alt_probe_reduce.py](alt_probe_reduce.py) uses CorgiDRP's stock
-`l1_to_l2a_basic.json`: prescan bias subtraction, acquisition-frame filtering,
-cosmic-ray flags, nonlinearity correction and individual L2a saves in DN.
-Configure its top processing settings or supply CLI overrides:
+The adapter uses stock CorgiDRP recipes, tested with **CorgiDRP 5.1.1** and
+**EMCCDDetect 2.6.2**. Select the tested DRP checkout through process `PYTHONPATH`
+or use its installed environment. Normal DRP configuration must already exist.
+No package installation or user-configuration change is performed by these scripts.
 
-```bash
-python /path/to/corgisim/examples/alt_probe_reduce.py \
-  --inputs /path/to/data/new_campaign/V0200001001001911001 \
-  --output-dir /path/to/data/new_campaign/reduced \
-  --calibration-dir /path/to/calibrations --stop-after L2a
-```
-
-This path was tested with CorgiDRP5.1.1 and EMCCDDetect2.6.2.
-Use the tested CorgiDRP checkout on `PYTHONPATH` (or its installed environment).
-Normal DRP configuration must already exist. The adapter disables automatic
-calibration database initialization before importing DRP, uses explicit
-calibration files, and confines any recipe database use to the output root.
-It does not change user configuration. No automatic calibration lookup is used.
-
-For Corgisim L1 generated **without simulated nonlinearity**, create the two
-required model-truth files explicitly:
+Create explicit nominal simulator calibrations, then reduce existing L1:
 
 ```bash
 python /path/to/corgisim/examples/alt_probe_sim_calibs.py \
-  /path/to/data/new_campaign/V0200001001001911001/representative_l1.fits \
-  /path/to/calibrations
+  /path/to/data/new_campaign /path/to/calibrations --stop-after L3
+python /path/to/corgisim/examples/alt_probe_reduce.py \
+  --inputs /path/to/data/new_campaign \
+  --output-dir /path/to/data/new_campaign/reduced \
+  --calibration-dir /path/to/calibrations --stop-after L3 --crop-size 255
 ```
 
-The helper reads full wells, e-/DN, read noise, row time and gain-register length
-from primary COMMENT cards; check that these values match every input camera.
-`sim_detector_params.fits` and `sim_identity_nonlin.fits` describe the simulator,
-not measured calibrations. The identity table is valid only when `nonlin_path`
-is `None`; the helper rejects other values or absent truth. The recipe uses
-DetectorParams' gain conversion, with no separate KGain product, and assumes
-zero additional image/prescan bias offset (`DetectorNoiseMaps=None`). Replace
-the two calibration files with matching native DRP products for other inputs.
+Choose the endpoint needed in both commands; L1 needs no calibration helper.
+The helper defaults to L2a and also accepts a single representative FITS file.
+For L2b/L3 from L1, directory input supplies every exposure/gain camera set.
 
-For analog L2b, generate a new calibration directory with all required cameras:
+| Endpoint | Stock recipe | Saved data | Required calibration |
+|---|---|---|---|
+| L1 | no reduction | full 1200×2200, DN | none |
+| L2a | `l1_to_l2a_basic` | individual 1024×1024, DN; ERR/DQ/BIAS | detector parameters, identity nonlinearity |
+| L2b | `l2a_to_l2b` | individual 1024×1024, photoelectron; ERR/DQ/BIAS | camera KGain/PTC and direct dark; identity flat, zero defect map |
+| L3 | `l2b_to_l3` | individual crop, photoelectron/s; ERR/DQ/WCS | nominal astrometry only |
+
+Resume directly from a saved level into a new destination:
 
 ```bash
-python /path/to/corgisim/examples/alt_probe_sim_calibs.py \
-  /path/to/data/new_campaign /path/to/l2b_calibrations --stop-after L2b
 python /path/to/corgisim/examples/alt_probe_reduce.py \
-  --inputs /path/to/data/new_campaign/reduced/L2a \
-  --output-dir /path/to/data/new_campaign/reduced \
-  --calibration-dir /path/to/l2b_calibrations --stop-after L2b
+  --inputs /path/to/data/new_campaign/reduced/L2b \
+  --output-dir /path/to/data/resumed/reduced \
+  --calibration-dir /path/to/calibrations --stop-after L3 --crop-size 255
 ```
 
-The helper accepts a directory or individual FITS paths. Its default single-file
-L2a use remains available. L2b additionally requires simulator metadata for an
-identity flat, absent traps and `fast_gain_mode=auto`, `gain_CIC_Q=roman`.
-Unsupported or missing truth raises an error. Each `gain_<g>_exptime_<t>` folder
-contains a native KGain/PTC, direct Dark, identity FlatField and zero BadPixelMap.
-The zero map represents the simulator's absence of additional detector defects;
-the recipe still masks cosmic rays and saturation using each frame's DQ.
-TrapCalibration is None; no CTI correction is inferred or simulated.
+Resuming L2b→L3 requires only `sim_astrometry.fits`. The helper with L2b inputs
+and `--stop-after L3` can create that file alone, without earlier-stage truth or
+calibrations. Requested endpoints below the input level are rejected; matching
+levels return existing paths without processing. Each stage checks only its own
+prerequisites. A later-stage failure preserves lower saved FITS; resume those
+products into a fresh destination.
 
-Dark means include exposure-scaled dark current, entrance CIC and installed
-EMCCDDetect's partial CIC from gain-register stages1..N-1. Auto gain mode disables
-partial CIC at gain≤200. The mean model assumes that prescan medians center on
-the amplifier bias; a stochastic skew from CIC can leave a small background
-offset. These analytic calibrations support pipeline checks, not precision
-detector calibration. Their zero parameter errors describe fixed model inputs,
-not measured calibration accuracy or the absence of observation noise.
+Editable settings are at the top of the scripts; CLI values override them.
+Generation remains L1-only by default. Add `--stop-after L2a|L2b|L3`, the
+calibration directory and optional crop size to generate and reduce through the
+same function, using an empty campaign output directory. Existing L1 generation
+options remain available. The standalone reducer defaults to L2a.
 
-The PTC is tabulated in input electrons at the point where the stock recipe
-uses it, after gain division. After native ENF multiplication, its variance is
+Directory inputs select FITS directly inside the directory and immediate `V*`
+subfolders; explicit files are also accepted. Select one common data level and
+analog SCI frames. Calls are grouped by visit, exposure and commanded/effective
+gain; L3 also checks every frame has a consistent EACQ reference and shape within
+each group. Native recipes save under `<output>/<level>/V<visit>` with processing
+history and recipe JSON. Counts report filtered frames. Occupied visit outputs,
+duplicate inputs and crops extending beyond the input image are rejected.
+
+The adapter disables automatic caldb initialization before DRP imports. Every
+calibration path is explicit, JIT lookup and missing-step skipping are disabled,
+and any recipe database use is confined to the output root. It does not call
+`autogen_recipe` or change the real DRP configuration.
+
+### Nominal simulator calibrations and limits
+
+These products describe model parameters, not measured detector calibration or
+uncertainty. The helper reads detector truth from primary COMMENT cards and
+rejects missing/unsupported truth. Inputs sharing a calibration directory must
+have matching detector parameters. L2a assumes no extra image/prescan bias offset
+and requires `nonlin_path=None`. L2b additionally requires `flat_path=None`, no
+traps, `fast_gain_mode=auto` and `gain_CIC_Q=roman`. Camera files are stored under
+`gain_<g>_exptime_<t>`; the zero defect map adds no invented bad pixels, while
+native frame DQ continues to mask cosmic rays and saturation.
+
+Direct dark means include exposure-scaled dark current, entrance CIC and partial
+CIC from installed gain-register stages 1..N−1. Auto mode disables partial CIC at
+gain≤200. The nominal model assumes prescan medians center on amplifier bias;
+stochastic CIC skew can leave a small background offset. Zero calibration
+parameter errors describe fixed model inputs, not measured accuracy.
+
+The PTC is in input electrons at the native post-gain-division step. After ENF
+multiplication its variance is
 `ENF² max(signal − partial_CIC_mean, 0) + (read_noise/gain)² + partial_CIC_variance`.
-A constant negative branch keeps the uncertainty finite for negative data.
-Native DRP carries prescan uncertainty and adds the shot/read contribution.
-The signal-dependent estimate and native desmear/error handling are
-approximations: desmear adjusts SCI without propagating pixel covariance or
-changing ERR. DQ flags identify the pixels replaced by NaN; their ERR may remain
-finite. The nominal dark has no measured-stack uncertainty.
+A constant negative branch keeps uncertainties finite for negative observations.
+Native DRP separately carries the prescan estimator error. The clipped
+signal-based estimate is approximate; desmear changes SCI without full ERR or
+pixel-covariance propagation. DQ-masked SCI may be NaN while ERR remains finite.
+Stock DQ is not an independent guarantee of cosmic-ray completeness.
+The activity recipe explicitly uses native `cosm_tail='auto'`, matching the
+simulator's Roman gain-dependent tail length, `round(gain * 40/1000)` pixels;
+homogeneous gain groups keep that setting consistent within each call.
 
-Directory input selects FITS directly in it and in immediate `V*` subfolders;
-explicit FITS paths can also follow `--inputs`. Every selected input must have
-one common level, with analog SCI arrays. L1 requires full 1200×2200 frames.
-Calls are separated by visit, exposure, commanded and effective gain. Frames remain
-individual and retain their state metadata. Outputs are saved under
-`<level>/V<visit>` with native DRP recipe/history. Counts printed per call include
-any frames filtered by the recipe. Use a fresh destination; occupied visit
-folders are rejected so failed or stale products cannot be mistaken for a
-complete run. Saved input at its requested endpoint is returned unchanged.
-L1 can run through L2a to L2b, or processing can resume directly from saved L2a.
-Each stage checks only its own calibration dependencies. A later-stage failure
-preserves the lower saved FITS; resume that level into a fresh destination.
+Nominal astrometry uses the simulator's 0.0218 arcsec/pixel, north angle 0,
+calibration PA_APER 0 and zero boresight correction; each image uses its commanded
+RA/DEC and PA_APER. This describes the model convention, not measured pointing.
+EACQ is a NumPy pixel coordinate. The adapter supplies the existing WCS offset
+`EACQ + 1 − (size−1)//2` to express that same reference as FITS CRPIX. For a
+1024-pixel image with EACQ=512, the offset is 2 and CRPIX is 513; a centered
+255-pixel crop gives EACQ=127 and CRPIX=128. The 255 default retains the optical
+stamp. Crop is pixel extraction, not registration or distortion resampling.
+Native cropping retains SCI/ERR/DQ; the lower-level BIAS extension stays in L2b.
 
-Generation stays L1-only by default. To reduce immediately after generation,
-add `--stop-after L2b --calibration-dir /path/to/l2b_calibrations` to the generation
-command, using a new empty campaign directory. Both entry points use the same
-reduction function. L3 and crop controls are not implemented at this checkpoint.
+Open [Alt_probe_L1_demo.ipynb](Alt_probe_L1_demo.ipynb) and set its single
+`PRODUCT_DIR` to the desired saved level or visit directory. The viewer infers
+the level, inventories and checks every file, and displays a selected matched
+trio, differences and optional science with saved units and DQ masks. ERR summaries
+cover all calibrated files. The notebook performs no generation or reduction.

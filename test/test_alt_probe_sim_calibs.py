@@ -109,3 +109,58 @@ def test_l2b_helper_rejects_unsupported_simulator_models(tmp_path, key, value):
     with pytest.raises(ValueError, match=key):
         helper.create_simulated_calibrations(path, tmp_path / 'calibs', 'L2b')
     assert not (tmp_path / 'calibs').exists()
+
+
+@pytest.mark.parametrize('exposure,roll', [(19., 0.), (28., 37.), (39., 149.07)])
+def test_nominal_wcs_simulator_roll_exposure_and_crop(tmp_path, exposure, roll):
+    from astropy import units as u
+    from astropy.coordinates import SkyCoord
+    from astropy.wcs import WCS
+    from corgisim.instrument import skycoord_to_excamcoord
+    from corgidrp.l2b_to_l3 import create_wcs, divide_by_exptime, crop
+
+    pri, hdr = mocks.create_default_L1_headers('SCI')
+    pri['RA'], pri['DEC'], pri['PA_APER'] = 138.299875, -69.71719444, roll
+    hdr['DATALVL'], hdr['BUNIT'], hdr['EXPTIME'] = 'L2b', 'photoelectron', exposure
+    hdr['EACQ_COL'], hdr['EACQ_ROW'] = 23, 17
+    signal = np.arange(32 * 48, dtype=float).reshape(32, 48)
+    dq = np.zeros(signal.shape, dtype=np.uint16)
+    dq[17, 22], signal[17, 22] = 130, np.nan
+    image = data.Image(signal, pri_hdr=pri, ext_hdr=hdr,
+                       err=np.full((1, 32, 48), .3), dq=dq)
+    image.save(filedir=str(tmp_path), filename='source_l2b.fits')
+    # No detector COMMENT truth or earlier-stage calibration is needed here.
+    calibs = helper.create_simulated_calibrations(tmp_path / 'source_l2b.fits',
+                                                 tmp_path / 'astrometry', 'L3')
+    assert sorted(p.name for p in calibs.iterdir()) == ['sim_astrometry.fits']
+    astrom = data.AstrometricCalibration(str(calibs / 'sim_astrometry.fits'))
+    assert astrom.platescale == 21.8 and astrom.northangle == 0.
+    assert astrom.pri_hdr['PA_APER'] == 0.
+    np.testing.assert_array_equal(astrom.avg_offset, [0., 0.])
+    assert astrom.distortion_coeffs[-1] == 1
+
+    dataset = data.Dataset([image])
+    offset = [23 + 1 - (48 - 1) // 2, 17 + 1 - (32 - 1) // 2]
+    with_wcs = create_wcs(dataset, astrom, offset=offset)
+    wcs = WCS(with_wcs[0].ext_hdr)
+    star = SkyCoord(pri['RA'] * u.deg, pri['DEC'] * u.deg)
+    np.testing.assert_allclose(wcs.world_to_pixel(star), [23., 17.], atol=1.e-7)
+    companion = star.spherical_offsets_by(40 * u.mas, -25 * u.mas)
+    dx, dy = skycoord_to_excamcoord(40., -25., roll)
+    expected_pixel = np.array([23 + dx / 21.8, 17 + dy / 21.8])
+    pixel = np.array(wcs.world_to_pixel(companion))
+    np.testing.assert_allclose(pixel, expected_pixel, atol=1.e-5)
+    assert wcs.pixel_to_world(*pixel).separation(companion).to_value(u.mas) < 1.e-4
+
+    normalized = divide_by_exptime(with_wcs)
+    output = crop(normalized, sizexy=11)
+    expected_crop = (slice(12, 23), slice(18, 29))
+    np.testing.assert_allclose(output[0].data, signal[expected_crop] / exposure, equal_nan=True)
+    np.testing.assert_allclose(output[0].err, .3 / exposure, atol=1.e-15)
+    np.testing.assert_array_equal(output[0].dq, dq[expected_crop])
+    assert output[0].ext_hdr['BUNIT'] == 'photoelectron/s'
+    assert (output[0].ext_hdr['EACQ_COL'], output[0].ext_hdr['EACQ_ROW']) == (5, 5)
+    assert (output[0].ext_hdr['DETPIX0X'], output[0].ext_hdr['DETPIX0Y']) == (18, 12)
+    cropped_wcs = WCS(output[0].ext_hdr)
+    np.testing.assert_allclose(cropped_wcs.world_to_pixel(star), [5., 5.], atol=1.e-7)
+    np.testing.assert_allclose(cropped_wcs.world_to_pixel(companion), pixel - [18, 12], atol=1.e-7)

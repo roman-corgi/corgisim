@@ -49,6 +49,7 @@ def test_cli_without_flags_preserves_configured_defaults(monkeypatch):
     assert calls == [dict(observations=driver.OBSERVATIONS, scale=driver.SCALE,
                           output_dir=driver.DEFAULT_OUTPUT_DIR, overwrite=driver.OVERWRITE)]
     assert [row[0] for row in driver.OBSERVATIONS] == ['A', 'B']
+    assert driver.STOP_AFTER == 'L1'
 
 
 def test_generation_can_call_saved_product_reducer(tmp_path, monkeypatch):
@@ -58,8 +59,8 @@ def test_generation_can_call_saved_product_reducer(tmp_path, monkeypatch):
     monkeypatch.setitem(sys.modules, 'alt_probe_reduce',
                         SimpleNamespace(reduce_products=lambda *args: calls.append(args)))
     driver.main(['--output-dir', str(tmp_path), '--stop-after', 'L2a',
-                 '--calibration-dir', str(tmp_path / 'calibs')])
-    assert calls == [(tmp_path, tmp_path / 'reduced', 'L2a', tmp_path / 'calibs')]
+                 '--calibration-dir', str(tmp_path / 'calibs'), '--crop-size', '101'])
+    assert calls == [(tmp_path, tmp_path / 'reduced', 'L2a', tmp_path / 'calibs', 101)]
 
 
 def test_root_override_preserves_manual_xml_and_external_probe_paths(tmp_path, monkeypatch):

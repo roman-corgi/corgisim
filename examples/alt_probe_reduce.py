@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Reduce saved analog probe frames with stock CorgiDRP recipes through L2b."""
+"""Reduce saved analog probe frames with stock CorgiDRP recipes through L3."""
 
 import argparse
 from collections import defaultdict
@@ -16,10 +16,12 @@ OUTPUT_DIR = INPUT_PRODUCTS / 'reduced'
 STOP_AFTER = 'L2a'
 CALIBRATION_DIR = Path('/path/to/calibrations')
 CHUNK_SIZE = 4
+CROP_SIZE = 255
+COSMIC_TAIL = 'auto'  # Match the simulator's Roman tail length, round(EM gain * 40/1000).
 
 
 def reduce_products(inputs, output_dir=OUTPUT_DIR, stop_after=STOP_AFTER,
-                    calibration_dir=CALIBRATION_DIR):
+                    calibration_dir=CALIBRATION_DIR, crop_size=CROP_SIZE):
     """Save individual calibrated frames under output_dir/<level>/V<visit>.
 
     Inputs are FITS paths or a directory containing FITS directly or in V* folders.
@@ -27,9 +29,9 @@ def reduce_products(inputs, output_dir=OUTPUT_DIR, stop_after=STOP_AFTER,
     A destination visit must be empty; use a new destination after a failed run.
     Calibrations are explicit, with no automatic database lookup.
     """
-    stages = ('L1', 'L2a', 'L2b')
+    stages = ('L1', 'L2a', 'L2b', 'L3')
     if stop_after not in stages:
-        raise ValueError('Only L1, L2a and L2b endpoints are implemented')
+        raise ValueError('Only L1, L2a, L2b and L3 endpoints are implemented')
     if isinstance(inputs, (str, Path)):
         inputs = [inputs]
     paths = []
@@ -90,19 +92,37 @@ def reduce_products(inputs, output_dir=OUTPUT_DIR, stop_after=STOP_AFTER,
             if destination.exists() and any(destination.iterdir()):
                 raise FileExistsError(f'Destination is not empty: {destination}')
         runs = []
+        references = {}
         for key, files in groups.items():
             visit, exposure, commanded_gain, gain = key
             camera = calibration_dir / f'gain_{gain:g}_exptime_{exposure:g}'
-            calibrations = {'DetectorNoiseMaps': None,
-                            'DetectorParams': str(calibration_dir / 'sim_detector_params.fits')}
-            if target == 'L2a':
-                calibrations.update(KGain=None,
-                                    NonLinearityCalibration=str(calibration_dir / 'sim_identity_nonlin.fits'))
+            if target == 'L3':
+                calibrations = {'AstrometricCalibration': str(calibration_dir / 'sim_astrometry.fits')}
+                geometry = set()
+                for file in files:
+                    hdr = fits.getheader(file, 1)
+                    geometry.add((hdr['EACQ_COL'], hdr['EACQ_ROW'], hdr['NAXIS1'], hdr['NAXIS2']))
+                if len(geometry) != 1:
+                    raise ValueError('L3 requires consistent EACQ/shape within each camera group')
+                x, y, width, height = references[key] = geometry.pop()
+                if not isinstance(crop_size, int) or crop_size < 1:
+                    raise ValueError('crop_size must be a positive integer')
+                for center, length in ((x, width), (y, height)):
+                    center = round(center - .5) + .5 if crop_size % 2 == 0 else round(center)
+                    start = int(center + .5 - crop_size / 2)
+                    if start < 0 or start + crop_size > length:
+                        raise ValueError('Requested L3 crop extends beyond the input image')
             else:
-                calibrations.update(KGain=str(camera / 'sim_kgain.fits'),
-                                    Dark=str(camera / 'sim_dark.fits'), TrapCalibration=None,
-                                    FlatField=str(camera / 'sim_flat.fits'),
-                                    BadPixelMap=str(camera / 'sim_bad_pixels.fits'))
+                calibrations = {'DetectorNoiseMaps': None,
+                                'DetectorParams': str(calibration_dir / 'sim_detector_params.fits')}
+                if target == 'L2a':
+                    calibrations.update(KGain=None,
+                                        NonLinearityCalibration=str(calibration_dir / 'sim_identity_nonlin.fits'))
+                else:
+                    calibrations.update(KGain=str(camera / 'sim_kgain.fits'),
+                                        Dark=str(camera / 'sim_dark.fits'), TrapCalibration=None,
+                                        FlatField=str(camera / 'sim_flat.fits'),
+                                        BadPixelMap=str(camera / 'sim_bad_pixels.fits'))
             for path in calibrations.values():
                 if path is not None and not Path(path).is_file():
                     raise FileNotFoundError(path)
@@ -114,7 +134,8 @@ def reduce_products(inputs, output_dir=OUTPUT_DIR, stop_after=STOP_AFTER,
         import corgidrp
         from corgidrp.walker import run_recipe
 
-        template_name = 'l1_to_l2a_basic.json' if target == 'L2a' else 'l2a_to_l2b.json'
+        template_name = {'L2a': 'l1_to_l2a_basic.json', 'L2b': 'l2a_to_l2b.json',
+                         'L3': 'l2b_to_l3.json'}[target]
         template = Path(corgidrp.__file__).parent / 'recipe_templates' / template_name
         next_groups = {}
         for key, files, calibrations in runs:
@@ -130,6 +151,16 @@ def reduce_products(inputs, output_dir=OUTPUT_DIR, stop_after=STOP_AFTER,
                 skip_missing_cal_steps=False, chunk_size=CHUNK_SIZE,
             )
             for step in recipe['steps']:
+                if step['name'] == 'detect_cosmic_rays':
+                    step.setdefault('keywords', {})['cosm_tail'] = COSMIC_TAIL
+                if step['name'] == 'create_wcs':
+                    x, y, width, height = references[key]
+                    # EACQ is a NumPy pixel coordinate; FITS CRPIX is one-based.
+                    # Translate stock DRP's default reference to that same star.
+                    step['keywords'] = {'offset': [x + 1 - (width - 1) // 2,
+                                                   y + 1 - (height - 1) // 2]}
+                if step['name'] == 'crop':
+                    step['keywords'] = {'sizexy': crop_size}
                 if step['name'] == 'dark_subtraction':
                     step['calibs'] = {'DetectorNoiseMaps': None, 'Dark': calibrations['Dark']}
                     step['keywords']['outputdir'] = str(destination)
@@ -149,10 +180,11 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--inputs', nargs='+', type=Path, default=[INPUT_PRODUCTS])
     parser.add_argument('--output-dir', type=Path, default=OUTPUT_DIR)
-    parser.add_argument('--stop-after', choices=('L1', 'L2a', 'L2b'), default=STOP_AFTER)
+    parser.add_argument('--stop-after', choices=('L1', 'L2a', 'L2b', 'L3'), default=STOP_AFTER)
     parser.add_argument('--calibration-dir', type=Path, default=CALIBRATION_DIR)
+    parser.add_argument('--crop-size', type=int, default=CROP_SIZE, help='L3 square crop width in pixels')
     args = parser.parse_args(argv)
-    return reduce_products(args.inputs, args.output_dir, args.stop_after, args.calibration_dir)
+    return reduce_products(args.inputs, args.output_dir, args.stop_after, args.calibration_dir, args.crop_size)
 
 
 if __name__ == '__main__':

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Write nominal model calibrations for Corgisim analog frames through L2b.
+"""Write nominal model calibrations for Corgisim analog frames through L3.
 
 These describe the simulator, not measured detector calibration or uncertainty.
 Prescan subtraction assumes no extra image/prescan bias offset.
@@ -12,6 +12,32 @@ from pathlib import Path
 from astropy.io import fits
 from astropy.time import Time
 import numpy as np
+
+
+def create_nominal_astrometry(input_product, output_dir):
+    """Save simulator plate scale/orientation, with no measured pointing correction."""
+    os.environ['CORGIDRP_DO_NOT_AUTO_INIT_CALDB'] = '1'
+    from corgidrp import check
+    from corgidrp.data import Dataset, AstrometricCalibration
+    from corgisim.constants import PIXEL_SCALE_ARCSEC
+
+    output_dir = Path(output_dir).expanduser().resolve()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    if (output_dir / 'sim_astrometry.fits').exists():
+        raise FileExistsError(output_dir / 'sim_astrometry.fits')
+    dataset = Dataset([str(input_product)])
+    pri, hdr = dataset[0].pri_hdr, dataset[0].ext_hdr
+    # Stock order-one Legendre identity convention; L3 does not resample distortion.
+    values = np.array([float(pri['RA']), float(pri['DEC']), PIXEL_SCALE_ARCSEC * 1000,
+                       0., 0., 0., 0., 0., 500., 0., 0., 500., 0., 0., 1.])
+    calibration = AstrometricCalibration(values, pri_hdr=pri.copy(), ext_hdr=hdr.copy(),
+                                        input_dataset=dataset)
+    calibration.pri_hdr['PA_APER'] = 0.
+    calibration.pri_hdr['ORIGIN'] = 'Corgisim nominal astrometry'
+    calibration.ext_hdr['HISTORY'] = 'Simulator plate scale/north angle; zero boresight offset, not measured.'
+    calibration.ext_hdr['HISTORY'] = 'Commanded RA/DEC reference; no distortion resampling in L3 recipe.'
+    calibration.save(filedir=str(output_dir), filename='sim_astrometry.fits')
+    return output_dir
 
 
 def partial_cic_moments(gain, stages):
@@ -37,8 +63,8 @@ def create_simulated_calibrations(input_products, output_dir, stop_after='L2a'):
     L2b assumes no flat response variations, traps or extra detector defects.
     Dark means approximate prescan median centering at the amplifier bias.
     """
-    if stop_after not in ('L2a', 'L2b'):
-        raise ValueError('Calibration endpoint must be L2a or L2b')
+    if stop_after not in ('L2a', 'L2b', 'L3'):
+        raise ValueError('Calibration endpoint must be L2a, L2b or L3')
     if isinstance(input_products, (str, Path)):
         input_products = [input_products]
     paths = []
@@ -48,6 +74,12 @@ def create_simulated_calibrations(input_products, output_dir, stop_after='L2a'):
                      if item.is_dir() else [item])
     if not paths:
         raise ValueError('No simulator input products found')
+    if stop_after == 'L3':
+        levels = {fits.getheader(path, 1)['DATALVL'] for path in paths}
+        if levels == {'L2b'}:
+            return create_nominal_astrometry(paths[0], output_dir)
+        if len(levels) != 1 or not levels <= {'L1', 'L2a'}:
+            raise ValueError('L3 calibrations require one consistent L1, L2a or L2b input level')
     names = {
         'FWC_PP_E': 'full_well_image', 'FWC_EM_E': 'full_well_serial',
         'KGAINPAR': 'e_per_dn', 'READ_N': 'read_noise',
@@ -66,7 +98,7 @@ def create_simulated_calibrations(input_products, output_dir, stop_after='L2a'):
         if params is not None and params != this_params:
             raise ValueError('Input detector parameters differ; use separate calibration directories')
         params = this_params
-        if stop_after == 'L2b':
+        if stop_after in ('L2b', 'L3'):
             for key, value in dict(flat_path='None', use_traps='False',
                                    fast_gain_mode='auto', gain_CIC_Q='roman').items():
                 if truth[key] != value:
@@ -138,6 +170,8 @@ def create_simulated_calibrations(input_products, output_dir, stop_after='L2a'):
         for calibration, filename in ((dark, 'sim_dark.fits'),
                                       (flat, 'sim_flat.fits'), (bad_pixels, 'sim_bad_pixels.fits')):
             save(calibration, camera_dir, filename, path)
+    if stop_after == 'L3':
+        create_nominal_astrometry(paths[0], output_dir)
     return output_dir
 
 
@@ -145,7 +179,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('input_products', type=Path, nargs='+')
     parser.add_argument('output_dir', type=Path)
-    parser.add_argument('--stop-after', choices=('L2a', 'L2b'), default='L2a')
+    parser.add_argument('--stop-after', choices=('L2a', 'L2b', 'L3'), default='L2a')
     args = parser.parse_args(argv)
     return create_simulated_calibrations(args.input_products, args.output_dir, args.stop_after)
 

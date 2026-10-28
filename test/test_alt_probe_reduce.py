@@ -23,8 +23,8 @@ def product(directory, name, gain=281., level='L1', pc=0):
                            SEGMENT='001', OBSNUM='911', VISNUM='001'))
     hdr = fits.Header(dict(DATALVL=level, ISPC=pc, ARRTYPE='SCI',
                            EXPTIME=19. if gain == 281 else 28.,
-                           EMGAIN_C=gain, EMGAIN_A=gain))
-    image = np.zeros((1200, 2200), dtype=np.uint16)
+                           EMGAIN_C=gain, EMGAIN_A=gain, EACQ_COL=512, EACQ_ROW=512))
+    image = np.zeros((1200, 2200) if level == 'L1' else (1024, 1024), dtype=np.uint16)
     path = directory / name
     fits.HDUList([fits.PrimaryHDU(header=pri), fits.ImageHDU(image, header=hdr)]).writeto(path)
     return path
@@ -50,6 +50,11 @@ def stock_walker(tmp_path, monkeypatch):
             dict(name='cti_correction', calibs={'TrapCalibration': 'AUTOMATIC,OPTIONAL'}),
             dict(name='flat_division', calibs={'FlatField': 'AUTOMATIC'}),
             dict(name='correct_bad_pixels', calibs={'BadPixelMap': 'AUTOMATIC'}),
+        ])))
+    (template_dir / 'l2b_to_l3.json').write_text(json.dumps(dict(
+        name='l2b_to_l3', drpconfig={}, steps=[
+            dict(name='create_wcs', calibs={'AstrometricCalibration': 'AUTOMATIC'}),
+            dict(name='divide_by_exptime'), dict(name='crop'),
         ])))
     calls = []
 
@@ -87,6 +92,7 @@ def test_explicit_recipe_camera_groups_and_directory_scope(tmp_path, stock_walke
         assert recipe['drpconfig']['skip_missing_cal_steps'] is False
         assert recipe['steps'][0]['calibs']['DetectorNoiseMaps'] is None
         assert recipe['steps'][1]['calibs']['KGain'] is None
+        assert recipe['steps'][1]['keywords']['cosm_tail'] == 'auto'
         assert recipe['steps'][2]['calibs']['NonLinearityCalibration'] == str(calibs / 'sim_identity_nonlin.fits')
 
 
@@ -109,7 +115,7 @@ def test_reject_pc_duplicates_future_and_occupied_output(tmp_path, stock_walker)
     with pytest.raises(ValueError, match='Duplicate'):
         reducer.reduce_products([path, path])
     with pytest.raises(ValueError, match='endpoints'):
-        reducer.reduce_products(path, stop_after='L3')
+        reducer.reduce_products(path, stop_after='L4')
     path = product(tmp_path, 'analog.fits')
     destination = tmp_path / 'out/L2a/V0200001001001911001'
     destination.mkdir(parents=True)
@@ -124,10 +130,10 @@ def test_configured_cli_and_overrides_use_one_function(tmp_path, monkeypatch):
     monkeypatch.setattr(reducer, 'reduce_products', lambda *args: calls.append(args))
     reducer.main([])
     assert calls.pop() == ([reducer.INPUT_PRODUCTS], reducer.OUTPUT_DIR,
-                           reducer.STOP_AFTER, reducer.CALIBRATION_DIR)
+                           reducer.STOP_AFTER, reducer.CALIBRATION_DIR, reducer.CROP_SIZE)
     reducer.main(['--inputs', str(tmp_path / 'input'), '--output-dir', str(tmp_path / 'out'),
-                  '--stop-after', 'L1', '--calibration-dir', str(tmp_path / 'calibs')])
-    assert calls.pop() == ([tmp_path / 'input'], tmp_path / 'out', 'L1', tmp_path / 'calibs')
+                  '--stop-after', 'L1', '--calibration-dir', str(tmp_path / 'calibs'), '--crop-size', '101'])
+    assert calls.pop() == ([tmp_path / 'input'], tmp_path / 'out', 'L1', tmp_path / 'calibs', 101)
 
 
 def test_l2b_resume_needs_only_stage_calibrations(tmp_path, stock_walker):
@@ -169,6 +175,36 @@ def test_filtered_camera_does_not_enter_next_stage(tmp_path, stock_walker, monke
     path = product(tmp_path, 'raw.fits')
     assert reducer.reduce_products(path, tmp_path / 'out', 'L2b', calibs) == []
     assert len(calls) == 1
+
+
+def test_l3_resume_only_needs_astrometry_and_derives_reference(tmp_path, stock_walker):
+    calls, calibs = stock_walker
+    (calibs / 'sim_identity_nonlin.fits').unlink()
+    (calibs / 'sim_detector_params.fits').unlink()
+    (calibs / 'sim_astrometry.fits').touch()
+    path = product(tmp_path, 'saved.fits', level='L2b')
+    reducer.reduce_products(path, tmp_path / 'out', 'L3', calibs, crop_size=101)
+    assert len(calls) == 1 and calls[0]['name'] == 'l2b_to_l3'
+    assert calls[0]['steps'][0]['keywords']['offset'] == [2, 2]
+    assert calls[0]['steps'][2]['keywords']['sizexy'] == 101
+    final = product(tmp_path, 'final.fits', level='L3')
+    assert reducer.reduce_products(final, stop_after='L3') == [final]
+    with pytest.raises(ValueError, match='precedes'):
+        reducer.reduce_products(final, stop_after='L2b')
+
+
+def test_l3_checks_all_references_and_crop_before_writes(tmp_path, stock_walker):
+    calls, calibs = stock_walker
+    (calibs / 'sim_astrometry.fits').touch()
+    a = product(tmp_path, 'a.fits', level='L2b')
+    b = product(tmp_path, 'b.fits', level='L2b')
+    fits.setval(b, 'EACQ_COL', ext=1, value=511)
+    with pytest.raises(ValueError, match='consistent EACQ'):
+        reducer.reduce_products([a, b], tmp_path / 'out', 'L3', calibs)
+    for size in (0, 1025):
+        with pytest.raises(ValueError, match='crop'):
+            reducer.reduce_products(a, tmp_path / 'out', 'L3', calibs, crop_size=size)
+    assert calls == [] and not (tmp_path / 'out').exists()
 
 
 def test_simulator_calibration_rejects_nonlinearity_and_absent_truth(tmp_path):
