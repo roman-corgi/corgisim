@@ -96,7 +96,7 @@ Open [Alt_probe_L1_demo.ipynb](Alt_probe_L1_demo.ipynb), set
 `FRAME_INDEX_WITHIN_STATE = 0`, then run it to inspect existing FITS products.
 The notebook generates no data.
 
-## Reduce saved frames through L2a
+## Reduce saved frames through L2b
 
 [alt_probe_reduce.py](alt_probe_reduce.py) uses CorgiDRP's stock
 `l1_to_l2a_basic.json`: prescan bias subtraction, acquisition-frame filtering,
@@ -110,6 +110,7 @@ python /path/to/corgisim/examples/alt_probe_reduce.py \
   --calibration-dir /path/to/calibrations --stop-after L2a
 ```
 
+This path was tested with CorgiDRP5.1.1 and EMCCDDetect2.6.2.
 Use the tested CorgiDRP checkout on `PYTHONPATH` (or its installed environment).
 Normal DRP configuration must already exist. The adapter disables automatic
 calibration database initialization before importing DRP, uses explicit
@@ -134,17 +135,58 @@ DetectorParams' gain conversion, with no separate KGain product, and assumes
 zero additional image/prescan bias offset (`DetectorNoiseMaps=None`). Replace
 the two calibration files with matching native DRP products for other inputs.
 
+For analog L2b, generate a new calibration directory with all required cameras:
+
+```bash
+python /path/to/corgisim/examples/alt_probe_sim_calibs.py \
+  /path/to/data/new_campaign /path/to/l2b_calibrations --stop-after L2b
+python /path/to/corgisim/examples/alt_probe_reduce.py \
+  --inputs /path/to/data/new_campaign/reduced/L2a \
+  --output-dir /path/to/data/new_campaign/reduced \
+  --calibration-dir /path/to/l2b_calibrations --stop-after L2b
+```
+
+The helper accepts a directory or individual FITS paths. Its default single-file
+L2a use remains available. L2b additionally requires simulator metadata for an
+identity flat, absent traps and `fast_gain_mode=auto`, `gain_CIC_Q=roman`.
+Unsupported or missing truth raises an error. Each `gain_<g>_exptime_<t>` folder
+contains a native KGain/PTC, direct Dark, identity FlatField and zero BadPixelMap.
+The zero map represents the simulator's absence of additional detector defects;
+the recipe still masks cosmic rays and saturation using each frame's DQ.
+TrapCalibration is None; no CTI correction is inferred or simulated.
+
+Dark means include exposure-scaled dark current, entrance CIC and installed
+EMCCDDetect's partial CIC from gain-register stages1..N-1. Auto gain mode disables
+partial CIC at gain≤200. The mean model assumes that prescan medians center on
+the amplifier bias; a stochastic skew from CIC can leave a small background
+offset. These analytic calibrations support pipeline checks, not precision
+detector calibration. Their zero parameter errors describe fixed model inputs,
+not measured calibration accuracy or the absence of observation noise.
+
+The PTC is tabulated in input electrons at the point where the stock recipe
+uses it, after gain division. After native ENF multiplication, its variance is
+`ENF² max(signal − partial_CIC_mean, 0) + (read_noise/gain)² + partial_CIC_variance`.
+A constant negative branch keeps the uncertainty finite for negative data.
+Native DRP carries prescan uncertainty and adds the shot/read contribution.
+The signal-dependent estimate and native desmear/error handling are
+approximations: desmear adjusts SCI without propagating pixel covariance or
+changing ERR. DQ flags identify the pixels replaced by NaN; their ERR may remain
+finite. The nominal dark has no measured-stack uncertainty.
+
 Directory input selects FITS directly in it and in immediate `V*` subfolders;
 explicit FITS paths can also follow `--inputs`. Every selected input must have
 one common level, with analog SCI arrays. L1 requires full 1200×2200 frames.
-Calls are separated by visit, exposure and commanded/applied gain. Frames remain
+Calls are separated by visit, exposure, commanded and effective gain. Frames remain
 individual and retain their state metadata. Outputs are saved under
-`L2a/V<visit>` with native DRP recipe/history. Counts printed per call include
+`<level>/V<visit>` with native DRP recipe/history. Counts printed per call include
 any frames filtered by the recipe. Use a fresh destination; occupied visit
 folders are rejected so failed or stale products cannot be mistaken for a
-complete run. Saved L2a input with `--stop-after L2a` is returned unchanged.
+complete run. Saved input at its requested endpoint is returned unchanged.
+L1 can run through L2a to L2b, or processing can resume directly from saved L2a.
+Each stage checks only its own calibration dependencies. A later-stage failure
+preserves the lower saved FITS; resume that level into a fresh destination.
 
 Generation stays L1-only by default. To reduce immediately after generation,
-add `--stop-after L2a --calibration-dir /path/to/calibrations` to the generation
+add `--stop-after L2b --calibration-dir /path/to/l2b_calibrations` to the generation
 command, using a new empty campaign directory. Both entry points use the same
-reduction function. L2b/L3 and crop controls are not implemented at this checkpoint.
+reduction function. L3 and crop controls are not implemented at this checkpoint.

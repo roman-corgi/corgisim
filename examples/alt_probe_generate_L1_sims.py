@@ -413,11 +413,11 @@ def main(argv=None):
     parser.add_argument('--scale', type=float, default=SCALE)
     parser.add_argument('--output-dir', type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument('--overwrite', action='store_true', default=OVERWRITE)
-    parser.add_argument('--stop-after', choices=('L1', 'L2a'), default=STOP_AFTER)
+    parser.add_argument('--stop-after', choices=('L1', 'L2a', 'L2b'), default=STOP_AFTER)
     parser.add_argument('--calibration-dir', type=Path, default=CALIBRATION_DIR)
     args = parser.parse_args(argv)
     if args.stop_after != 'L1' and args.output_dir.exists() and any(args.output_dir.iterdir()):
-        raise FileExistsError('Generation through L2a requires a new empty output directory')
+        raise FileExistsError('Generation with reduction requires a new empty output directory')
     result = run_campaign(observations=select_observations(args.input_root, args.full_campaign),
                           scale=args.scale, output_dir=args.output_dir, overwrite=args.overwrite)
     if args.stop_after != 'L1':

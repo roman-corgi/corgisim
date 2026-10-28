@@ -42,11 +42,23 @@ def stock_walker(tmp_path, monkeypatch):
         dict(name='correct_nonlinearity', calibs={'NonLinearityCalibration': 'AUTOMATIC'}),
     ])
     (template_dir / 'l1_to_l2a_basic.json').write_text(json.dumps(template))
+    (template_dir / 'l2a_to_l2b.json').write_text(json.dumps(dict(
+        name='l2a_to_l2b', drpconfig={}, steps=[
+            dict(name='convert_to_electrons', calibs={'KGain': 'AUTOMATIC'}),
+            dict(name='dark_subtraction', calibs={'DetectorNoiseMaps': 'AUTOMATIC'},
+                 keywords={'outputdir': 'AUTOMATIC'}),
+            dict(name='cti_correction', calibs={'TrapCalibration': 'AUTOMATIC,OPTIONAL'}),
+            dict(name='flat_division', calibs={'FlatField': 'AUTOMATIC'}),
+            dict(name='correct_bad_pixels', calibs={'BadPixelMap': 'AUTOMATIC'}),
+        ])))
     calls = []
 
     def run(recipe):
         calls.append(recipe)
-        return [str(Path(recipe['outputdir']) / Path(p).name) for p in recipe['inputs']]
+        saved = [Path(recipe['outputdir']) / Path(p).name for p in recipe['inputs']]
+        for path in saved:
+            path.write_bytes(b'saved product')
+        return [str(path) for path in saved]
 
     walker = ModuleType('corgidrp.walker')
     walker.run_recipe = run
@@ -116,6 +128,47 @@ def test_configured_cli_and_overrides_use_one_function(tmp_path, monkeypatch):
     reducer.main(['--inputs', str(tmp_path / 'input'), '--output-dir', str(tmp_path / 'out'),
                   '--stop-after', 'L1', '--calibration-dir', str(tmp_path / 'calibs')])
     assert calls.pop() == ([tmp_path / 'input'], tmp_path / 'out', 'L1', tmp_path / 'calibs')
+
+
+def test_l2b_resume_needs_only_stage_calibrations(tmp_path, stock_walker):
+    calls, calibs = stock_walker
+    (calibs / 'sim_identity_nonlin.fits').unlink()
+    camera = calibs / 'gain_281_exptime_19'
+    camera.mkdir()
+    for name in ('sim_kgain.fits', 'sim_dark.fits', 'sim_flat.fits', 'sim_bad_pixels.fits'):
+        (camera / name).touch()
+    path = product(tmp_path, 'saved.fits', level='L2a')
+    reducer.reduce_products(path, tmp_path / 'out', 'L2b', calibs)
+    assert len(calls) == 1 and calls[0]['name'] == 'l2a_to_l2b'
+    assert calls[0]['steps'][1]['calibs'] == {
+        'DetectorNoiseMaps': None, 'Dark': str(camera / 'sim_dark.fits')}
+    assert calls[0]['steps'][2]['calibs']['TrapCalibration'] is None
+    saved = product(tmp_path, 'final.fits', level='L2b')
+    assert reducer.reduce_products(saved, stop_after='L2b') == [saved]
+
+
+def test_later_prerequisite_failure_preserves_lower_outputs(tmp_path, stock_walker):
+    calls, calibs = stock_walker
+    path = product(tmp_path, 'raw.fits')
+    original = path.read_bytes()
+    with pytest.raises(FileNotFoundError, match='sim_kgain'):
+        reducer.reduce_products(path, tmp_path / 'out', 'L2b', calibs)
+    assert len(calls) == 1 and calls[0]['name'] == 'l1_to_l2a_basic'
+    assert (tmp_path / 'out/L2a/V0200001001001911001').is_dir()
+    assert (tmp_path / 'out/L2a/V0200001001001911001/raw.fits').read_bytes() == b'saved product'
+    assert not (tmp_path / 'out/L2b').exists()
+    assert path.read_bytes() == original
+
+
+def test_filtered_camera_does_not_enter_next_stage(tmp_path, stock_walker, monkeypatch):
+    calls, calibs = stock_walker
+    def no_outputs(recipe):
+        calls.append(recipe)
+        return []
+    monkeypatch.setattr(sys.modules['corgidrp.walker'], 'run_recipe', no_outputs)
+    path = product(tmp_path, 'raw.fits')
+    assert reducer.reduce_products(path, tmp_path / 'out', 'L2b', calibs) == []
+    assert len(calls) == 1
 
 
 def test_simulator_calibration_rejects_nonlinearity_and_absent_truth(tmp_path):
