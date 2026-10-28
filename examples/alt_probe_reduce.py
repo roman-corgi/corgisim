@@ -27,6 +27,8 @@ def reduce_products(inputs, output_dir=OUTPUT_DIR, stop_after=STOP_AFTER,
     Inputs are FITS paths or a directory containing FITS directly or in V* folders.
     Existing products at the requested level are returned without processing.
     A destination visit must be empty; use a new destination after a failed run.
+    Native filtering raises if an entire four-frame chunk is rejected, stopping
+    the run even if later inputs are usable. Previously saved products remain.
     Calibrations are explicit, with no automatic database lookup.
     """
     stages = ('L1', 'L2a', 'L2b', 'L3')

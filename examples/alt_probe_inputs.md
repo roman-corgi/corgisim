@@ -153,7 +153,10 @@ subfolders; explicit files are also accepted. Select one common data level and
 analog SCI frames. Calls are grouped by visit, exposure and commanded/effective
 gain; L3 also checks every frame has a consistent EACQ reference and shape within
 each group. Native recipes save under `<output>/<level>/V<visit>` with processing
-history and recipe JSON. Counts report filtered frames. Occupied visit outputs,
+history and recipe JSON. Counts report filtered frames from completed calls.
+Native filtering raises and stops the run if an entire four-frame chunk is
+rejected, even if later inputs are usable. Previously saved products remain;
+use a new destination after a partial failure. Occupied visit outputs,
 duplicate inputs and crops extending beyond the input image are rejected.
 
 The adapter disables automatic caldb initialization before DRP imports. Every

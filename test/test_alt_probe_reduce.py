@@ -166,7 +166,8 @@ def test_later_prerequisite_failure_preserves_lower_outputs(tmp_path, stock_walk
     assert path.read_bytes() == original
 
 
-def test_filtered_camera_does_not_enter_next_stage(tmp_path, stock_walker, monkeypatch):
+def test_empty_walker_return_does_not_enter_next_stage(tmp_path, stock_walker, monkeypatch):
+    """Handle a mocked empty return; native all-rejected chunks raise instead."""
     calls, calibs = stock_walker
     def no_outputs(recipe):
         calls.append(recipe)
