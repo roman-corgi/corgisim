@@ -24,6 +24,7 @@ import sys
 import astropy.units as u
 import corgisim.constants as constants
 import corgisim.convolution as conv
+from scipy.ndimage import rotate
 
 from corgisim.scene import Scene, SimulatedImage
 from corgisim import outputs, spec, prf_simulation, constants, disk_countrate
@@ -1465,14 +1466,36 @@ class CorgiOptics():
         if sim_scene is None:
             # No output format was specified - create a new SimulatedImage object
             sim_scene = SimulatedImage(input_scene)
-
-        # Check if roll angle is non-zero and raise NotImplementedError if so
-        # To be removed after implementing roll angle for the 2D scene. 
-        if self.roll_angle != 0:
-            raise NotImplementedError("Roll angle rotation is not implemented yet for 2D scene.")
-
+        
         # input disk model
         disk_model_data = fits.getdata(input_scene.twoD_scene_info['disk_model_path'])
+
+        # raise a warning if the disk data dimension is not square 
+        if disk_model_data.ndim != 2 or disk_model_data.shape[0] != disk_model_data.shape[1]:
+            raise ValueError(f"Disk model must be a square 2D array, got shape {disk_model_data.shape}")
+
+        disk_model_data = np.nan_to_num(disk_model_data, nan=0.0, posinf=0.0, neginf=0.0)
+        roll_angle = getattr(self, 'roll_angle', 0.0)
+        
+
+        if roll_angle != 0:
+            #estimate sum of disk flux before roll
+            disk_sum_before_roll = np.nansum(disk_model_data)
+            #pad zeros for the scipy rotate function - the padding assumes that the disk model data is a square array
+            ny, nx = disk_model_data.shape
+            pad = int(np.ceil((np.hypot(ny, nx) - min(ny, nx)) / 2))
+            padded_disk = np.pad(disk_model_data, pad, mode='constant', constant_values=0.0)
+            # any kind of interpolation here produces negative values: order =3 has preserved the total flux and peak value
+            rotated_disk = rotate(padded_disk, angle=roll_angle, reshape=False, order=3, mode='constant', cval=0.0)
+            # resize the disk data to its original size
+            disk_model_data = rotated_disk[pad:pad + ny, pad:pad + nx]
+            #estimate sum of disk flux after roll
+            disk_sum_after_roll = np.nansum(disk_model_data) 
+            disk_model_data *= disk_sum_before_roll / disk_sum_after_roll 
+        total_flux = np.nansum(disk_model_data)
+        if not np.isfinite(total_flux) or total_flux <= 0:
+            raise ValueError(f"Disk model has non-positive total flux ({total_flux}); ""cannot normalise.")
+        
         # Convert the input pixel values to detector count rate before convolution.
         disk_model_countrate = disk_countrate.disk_to_countrate(
             disk_image=disk_model_data,
@@ -1484,8 +1507,7 @@ class CorgiOptics():
             pixel_scale_arcsec=constants.PIXEL_SCALE_ARCSEC,
             wavelength_micron=self.lam0_um,
             return_quantity=False,
-            input_scene=input_scene,
-        )
+            input_scene=input_scene,)
 
         prf_sim_info = prf_simulation._get_prf_sim_info(prf_cube_path) # Get the simulation information 
 
@@ -1533,7 +1555,7 @@ class CorgiOptics():
 
         # 3. Perform convolution
         conv2d = conv._convolve_with_prfs(
-            obj=disk_model_countrate,
+            obj=disk_model_data, 
             prfs_array=prf_cube, 
             radii_lamD=radii_lamD , 
             azimuths_deg=azimuths_deg, 
