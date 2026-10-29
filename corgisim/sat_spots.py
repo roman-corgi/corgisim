@@ -1,4 +1,67 @@
+import numbers
 import numpy as np
+
+def add_custom_pattern_dm(dm_volts, pattern_volts, scale, sign="positive"):
+    """Add an externally supplied DM pattern to a Roman CGI DM solution.
+
+    This supports Alternate Probe observations through the satellite-spot path
+    instead of the analytical cosine pattern. The applied command is
+    ``+/- scale * pattern_volts``. Normal operation uses explicit ``scale=1.0``;
+    intended amplitudes and orientation belong in the supplied pattern files.
+    The required multiplier allows exceptional amplitude adjustments.
+
+    Parameters
+    ----------
+    dm_volts : numpy.ndarray
+        Two-dimensional base DM solution in volts.
+    pattern_volts : numpy.ndarray
+        Real, finite relative-DM pattern in volts with the same shape and
+        ``[row, column] = [y, x]`` orientation as ``dm_volts``.
+    scale : numbers.Real
+        Required finite scalar amplitude; booleans are rejected.
+    sign : str, optional
+        ``"positive"`` or ``"negative"``. Negative applies
+        ``-scale * pattern_volts``. Default is ``"positive"``.
+
+    Returns
+    -------
+    numpy.ndarray
+        New DM voltage map; inputs are not modified.
+
+    Raises
+    ------
+    TypeError
+        If ``scale`` is not a real scalar.
+    ValueError
+        If the pattern, scale, or sign is invalid.
+    """
+    pattern = np.asarray(pattern_volts)
+
+    if np.iscomplexobj(pattern):
+        raise ValueError(
+            "ERROR: custom pattern must be real-valued; got a complex-valued array "
+            "(pattern_volts must not have a nonzero imaginary component)"
+        )
+    pattern = pattern.astype(float)
+
+    if pattern.ndim != 2 or pattern.shape != np.shape(dm_volts):
+        raise ValueError(
+            f"ERROR: custom pattern shape {pattern.shape} does not match DM shape {np.shape(dm_volts)}"
+        )
+    if not np.all(np.isfinite(pattern)):
+        raise ValueError("ERROR: custom pattern contains non-finite values")
+    if isinstance(scale, (bool, np.bool_)) or not isinstance(scale, numbers.Real):
+        raise TypeError(
+            "ERROR: scale must be a real scalar number (e.g., int, float, or a NumPy real scalar)"
+        )
+    if not np.isfinite(scale):
+        raise ValueError(f"ERROR: scale must be finite, got {scale}")
+    if sign not in ("positive", "negative"):
+        raise ValueError(f"ERROR: sign must be 'positive' or 'negative', got '{sign}'")
+
+    delta = scale * pattern
+    return dm_volts + delta if sign == "positive" else dm_volts - delta
+
 
 def add_cos_pattern_dm(dm_volts, num_pairs=2, sep_lamD=7, angle_deg=[0,90], contrast=1e-6, wavelength_m=0.575e-6, gain_nm_per_V=None, sign = "positive"):
     """

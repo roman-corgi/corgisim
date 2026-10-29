@@ -80,7 +80,8 @@ def test_generate_observation_sequence():
     assert len(simulatedImage_list_fullframe[n_frames-1].image_on_detector) == 2 # Primary and Image HDU
     assert isinstance(simulatedImage_list_fullframe[n_frames-1].image_on_detector[1].data, np.ndarray)
     
-    for i in range(0,3*satellite_spots_number_of_frames - 1):
+    # Every template frame belongs to the satellite-spot group, including background.
+    for i in range(3 * satellite_spots_number_of_frames):
         prihdr = simulatedImage_list_fullframe[i].image_on_detector[0]
         exthdr = simulatedImage_list_fullframe[i].image_on_detector[1]
 
