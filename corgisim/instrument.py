@@ -1610,11 +1610,11 @@ class CorgiDetector():
 
         Arguments:
             - simulated_scene: a corgisim.scene.SimulatedScen object that contains the noise-free scene from CorgiOptics 
-            - full_frame: if generated full_frame image in detetor
+            - full_frame: if generated full_frame image in detector
             - loc_x (int): The horizontal coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True, and image from CorgiOptics has size is smaller than 1024×1024
             - loc_y (int): The vertical coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True, and image from CorgiOptics has size is smaller than 1024×1024
             - exptime: exptime in second
-            - cut_sub_frame: if generating a sub frame, this option ellows the user to generate a full frame and then cut it down, so as to avoid the issue of cosmic rays tails wrapping to the next row
+            - cut_sub_frame: if generating a sub frame, this option allows the user to generate a full frame and then cut it down, to avoid the issue of cosmic rays tails wrapping to the next row
 
         Returns:
             - A corgisim.scene.SimulatedImage object that contains the detector image in the 
