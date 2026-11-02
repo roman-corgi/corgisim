@@ -228,20 +228,27 @@ def run_parallel(func, args_list, n_jobs=1, allow_nesting=True, start_method="sp
                        which corgisim frames with their own optics state run).
         start_method:  process start method. 'spawn' is safest for
                        nested/process-heavy workloads.
+        poll_interval: seconds between checks that all workers are still alive.
+        log_interval:  seconds between progress reports (cannot be None).
+        timeout:       optional total time limit in seconds (None = no limit).
 
     Returns:
         list of results in the same order as args_list
+
+    Raises:
+        WorkerDiedError: if a worker dies (e.g. killed for exceeding the memory limit).
+        TimeoutError:    if timeout is set and exceeded.
     """
     if not args_list:
         return []
 
     if n_jobs == 1:
-        return [func(*a) for a in args_list]
+        return [func(*a) for a in args_list] # serial, no multiprocessing apart from PROPER's internal Pool
 
     if allow_nesting:
         with NestablePool(processes=n_jobs) as pool:
-            return pool.starmap(func, args_list)
+            return _run_tasks_with_monitoring(pool, func, args_list, poll_interval, log_interval, timeout)
 
     ctx = mp.get_context(start_method)
     with ctx.Pool(processes=n_jobs) as pool:
-        return pool.starmap(func, args_list)
+        return _run_tasks_with_monitoring(pool, func, args_list, poll_interval, log_interval, timeout)
