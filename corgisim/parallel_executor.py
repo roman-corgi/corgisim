@@ -58,8 +58,8 @@ class NestablePool(mpp.Pool):
     backend, where each worker calls PROPER's internal multiprocessing.Pool.
 
     Usage:
-        with NestablePool(processes=n) as pool:
-            results = pool.starmap(func, args_list)
+        Use run_parallel(..., allow_nesting=True) to enable
+        worker monitoring and timeout handling.
 
     Warning:
         Only use when nested pools are genuinely required. Non-daemonic
@@ -71,7 +71,149 @@ class NestablePool(mpp.Pool):
         super().__init__(*args, **kwargs)
 
 
-def run_parallel(func, args_list, n_jobs=1, allow_nesting=True, start_method="spawn"):
+class WorkerDiedError(RuntimeError):
+    """A pool worker exited while tasks were pending (e.g. killed by the OOM killer)."""
+
+def _run_task(task):
+    """func(*args) for pool.imap, which passes one argument per task. Module level, so it pickles under spawn."""
+    func, args = task
+    return func(*args)
+
+
+def _memory_report():
+    """Report approximate memory usage of this process and its subprocesses, together with avaliable memory."""
+
+    process = psutil.Process() 
+
+    main = process.memory_info().rss
+    worker_memory = 0
+
+    for child in process.children(recursive=True):
+        try:
+            worker_memory += child.memory_info().rss
+        except psutil.Error:   # child exited between listing and reading
+            pass
+    
+    available_memory = psutil.virtual_memory().available
+    return (
+        f"RAM: main {main / 1e9:.2f} GB, subprocesses {worker_memory / 1e9:.2f} GB, device available {available_memory / 1e9:.2f} GB"
+    )
+
+
+def _dead_workers(pool, known_workers):
+    """
+    Return workers that have exited unexpectedly. 
+    Remember workers because Pool may replace them after a crash. 
+    """
+
+    for worker in list(pool._pool):
+        if worker.pid is not None:
+            known_workers.setdefault(worker.pid, worker)
+
+    return [
+        (pid, worker.exitcode)
+        for pid, worker in known_workers.items()
+        if worker.exitcode is not None
+    ]        
+
+
+def _run_tasks_with_monitoring(pool, func, args_list, poll_interval=5.0, log_interval=60.0, timeout=None):
+    """
+    Run tasks in parallel while monitoring their execution. 
+    
+    Report progress and memory usage periodically. Raise an error if a worker dies or the time limit is exceeded,
+    rather than waiting indefinitely.
+
+    Results are returned in the same order as the input tasks.
+    """
+    if poll_interval <= 0 or log_interval <= 0:
+        raise ValueError("Monitoring intervals must be positive.")
+
+    name = getattr(func, "__name__", repr(func))
+    n_tasks = len(args_list)
+
+    # Remember the original workers so we can detect their deaths, even if Pool replaces them.
+    known_workers = {
+        worker.pid: worker
+        for worker in pool._pool
+        if worker.pid is not None
+    }
+
+    # imap returns results in input order and supports timed waiting.
+    tasks = ((func, args) for args in args_list)
+    results_iter = pool.imap(_run_task, tasks, chunksize=1)
+
+    results = []
+    start = last_log = time.perf_counter()
+
+    log.info(
+        "%s: started %d tasks. %s",
+        name, n_tasks, _memory_report()
+    )
+
+    while len(results) < n_tasks:
+        # Check the overall time limit.
+        elapsed = time.perf_counter() - start
+
+        if timeout is not None and elapsed >= timeout:
+            pool.terminate()
+            raise TimeoutError(
+                f"{name}: simulation exceeded the {timeout}s "
+                f"time limit ({len(results)}/{n_tasks} results received)."
+            )
+
+        # Do not wait beyond the remaining time limit.
+        wait = poll_interval
+        if timeout is not None:
+            wait = min(wait, timeout - elapsed)
+
+        # Wait for the next result.
+        try:
+            results.append(results_iter.next(timeout=wait))
+        except mp.TimeoutError:
+            pass
+
+        # Check whether a worker has died.
+        dead = _dead_workers(pool, known_workers)
+
+        if dead:
+            memory = _memory_report()
+            pool.terminate()
+
+            details = ", ".join(
+                f"process {pid} exited with code {code}"
+                + (" (SIGKILL; possible memory issue)" if code == -9 else "")
+                for pid, code in dead
+            )
+
+            raise WorkerDiedError(
+                f"{name}: a simulation worker stopped unexpectedly. "
+                f"{len(results)}/{n_tasks} results received. "
+                f"{details}. {memory}. "
+                "Check the job logs, reduce n_jobs, or request more memory."
+            )
+
+        # Check elapsed time and report progress.
+        now = time.perf_counter()
+        elapsed = now - start
+
+        if now - last_log >= log_interval:
+            log.info(
+                "%s: %d/%d results received after %.0f s. %s",
+                name, len(results), n_tasks, elapsed,
+                _memory_report()
+            )
+            last_log = now
+
+    log.info(
+        "%s: all %d tasks completed in %.0f s. %s",
+        name, n_tasks, time.perf_counter() - start,
+        _memory_report()
+    )
+
+    return results
+
+def run_parallel(func, args_list, n_jobs=1, allow_nesting=True, start_method="spawn", poll_interval=5.0, log_interval=60.0, timeout=None):
     """
     Run func over args_list in parallel using multiprocessing.Pool.
     Blocks until all jobs finish (barrier).
