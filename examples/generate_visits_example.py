@@ -46,7 +46,7 @@ Pick how to run with --option; -n is the number of workers for mp and mpi:
 
 To simulate disk observations, need to pass additional arguments: the disk-model FITS file, matching PRF cube, and pixel-value unit. 
 
-The disk is attached to the target star only; the reference star has no disk. The disk dimensions set output_dim. Use a PRF cube generated for the observation's bandpass and optics.
+The disk is attached to the target star only; the reference star has no disk. The disk must be square and at least as large as the minimum for the coronagraph mode (201 pixels for SPC-wide band 4, see setup_observation()); its size sets output_dim. Use a PRF cube generated for the observation's bandpass and optics.
 
 The disk is convolved once per visit, at that visit's roll angle, in the main
 process (rank 0 for MPI), and added to every satellite-spot and science frame
@@ -80,6 +80,7 @@ import functools
 import logging
 import os
 import time
+from astropy.io import fits
 from corgisim import scene
 from corgisim import instrument
 from corgisim import observation
@@ -97,23 +98,30 @@ def setup_observation(twoD_scene_info=None):
     All the simulation settings in one place: edit this function to change the observation, e.g. the stars, visits, roll angles, satellite spots, coronagraph mask, etc.
 
     The values reproduce test/test_data/cpgs_ref_wfov_satspots.xml the way inputs.load_cpgs_data
-    and observation.generate_observation_scenario_from_cpgs read it, except output_dim (51 here,
-    201 by default there).
+    and observation.generate_observation_scenario_from_cpgs read it.
+    
+    With a disk, output_dim is set by the disk, as in disk_sim_demo.ipynb:
+    the larger of the disk size and a minimum that depends on the coronagraph mode and band
+    (MIN_OUTPUT_DIM_WITH_DISK below). The disk must be square and at least that large.
+    twoD_scene_info contains disk_model_path, prf_path, surface_brightness_unit
+    and optional interpolate_prfs, as in disk_sim_demo.ipynb.
+    The disk is attached only to the target star, not the reference.
 
     Returns:
         dict: 'cgi_mode', 'bandpass', 'optics_keywords' (shared by all visits), 'stars' (per star:
         scene, science detector and satellite spot settings) and 'visits' (in the order they are taken).
     """
     LOC_X, LOC_Y = 512, 512  # star location on the detector (pixels)
+    output_dim = 201  # size of the simulated image (pixels) before it is placed on the detector, default for SPC-wide band 4
 
-    # Optics, shared by every visit (coronagraph_mask 2 = wide FOV SPC, howfsc_cfam_pos 4F) 
+    # Optics, shared by every visit (coronagraph_mask = wide FOV SPC, howfsc_cfam_pos 4F)
+    # Adjust to match the coronagraph mode and bandpass you want to simulate.
     cgi_mode = 'excam'
     bandpass = '4F'
     cor_type = 'spc-wide_band4'
 
     # Size of the simulated image (pixels) with a disk it is the larger of the disk size and the minimum for this mode (disk_sim_demo.ipynb: 51 for HLC band 1, 201 for SPC-wide band 4); 
     # change the MIN_OUTPUT_DIM_WITH_DISK if you change cor_type/bandpass.
-    output_dim = 201
     if twoD_scene_info is not None:
         MIN_OUTPUT_DIM_WITH_DISK = 201 # value to be changed 
         header = fits.getheader(twoD_scene_info['disk_model_path'])
@@ -221,8 +229,30 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, default=None,
                         help="base seed for the detector noise; the same seed gives the same frames "
                              "with any --option / -n (default: noise pattern not reproducible)")
+    parser.add_argument("--disk-model", help="2D disk-model FITS file")
+    parser.add_argument("--prf-cube", help="matching field-dependent PRF-cube FITS file")
+    parser.add_argument("--surface-brightness-unit",
+                        choices=["mJy/arcsec^2", "W.m^-2.pixel^-1", "contrast/pixel"],
+                        help="unit of the disk-model pixel values")
+    parser.add_argument("--interpolate-prfs", action=argparse.BooleanOptionalAction, default=True,
+                        help="interpolate between neighbouring PRFs (default); --no-interpolate-prfs uses the nearest PRF")
     
     args = parser.parse_args()
+    disk_args = (args.disk_model, args.prf_cube, args.surface_brightness_unit) # group the three disk-related arguments to check if they are all given or none
+
+    # Check that either all three disk-related arguments are given or none of them are given
+    if any(disk_args) and not all(disk_args):
+        parser.error("--disk-model, --prf-cube, and --surface-brightness-unit must be given together")
+
+    # Setup the twoD_scene_info dictionary if all disk-related arguments are provided, otherwise set it to None
+    if all(disk_args):
+        disk_path, prf_path = os.path.abspath(args.disk_model), os.path.abspath(args.prf_cube)
+        twoD_scene_info = {'disk_model_path': disk_path, 'prf_path': prf_path,
+                           'surface_brightness_unit': args.surface_brightness_unit,
+                           'interpolate_prfs': args.interpolate_prfs}
+    else:
+        twoD_scene_info = None
+        
     if args.option == "serial":
         args.n = 1   # serial: one process, so -n is ignored
 
@@ -248,7 +278,7 @@ if __name__ == "__main__":
     log.info("option=%s, n=%d workers, seed=%s, output_dir=%s", args.option, args.n, args.seed, args.output_dir)
     run_start = time.perf_counter()
 
-    obs = setup_observation() # setup the observing scenario: optics, stars and visits
+    obs = setup_observation(twoD_scene_info=twoD_scene_info) # setup the observing scenario: optics, stars and visits
     visits, stars = obs['visits'], obs['stars']
 
     # How each visit's PSFs and frames are run: on the MPI worker ranks, on -n local worker processes, or (serial, n_jobs=1) one after another in this process
