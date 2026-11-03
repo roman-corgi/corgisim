@@ -232,7 +232,7 @@ def sequence_segments(optics, detector, exp_time, n_frames, satspots_are_present
         - satellite spot background, positive and negative (only if `satspots_are_present`), 
         - science. 
     
-    Each segment gets its own copy of the optics, so `optics` itself is not modified and the segments don't depend on each
+    Each segment gets its own copy of the optics, so `optics` itself is not modified and the segments do not depend on each
     other: they can be computed at the same time.
 
     Args:
@@ -243,8 +243,10 @@ def sequence_segments(optics, detector, exp_time, n_frames, satspots_are_present
         'exp_time' and 'n_frames'.
     """
     segments = []
+
     if satspots_are_present:
         satspot_detector_kwargs = {'detector': satspots_detector, 'exp_time': satspots_exptime, 'n_frames': satspots_number_of_frames}
+        
         # Background: no spots on the DM, but flagged as part of the satellite spot sequence
         segments.append({'name': 'satspot_background', 'optics': _optics_with_updates(optics, attr_updates={'SATSPOTS': 1}),
                          **satspot_detector_kwargs})
@@ -285,12 +287,19 @@ def prepare_frame_tasks(scene, segments, full_frame=False, loc_x=None, loc_y=Non
         tasks can be sent to worker processes or MPI ranks.
     """
     if frame_runner is None:
-        frame_runner = _run_frames_local
+        frame_runner = _run_frames_serial
     seeds = frame_seeds(seed, sum(segment['n_frames'] for segment in segments))
+
+    # The disk (if any) is the same in every segment, so it is convolved once here, before the PSFs.
+    # segments[-1] is the science segment; all segments share its roll angle and bandpass.
+    disk = _simulate_disk(scene, segments[-1]['optics'])
 
     if zindex is None:
         # One PSF per segment, all at the same time; only the detector noise changes per frame
         sim_scenes = frame_runner(_compute_psf, [(scene, segment['optics']) for segment in segments])
+        if disk is not None:
+            sim_scenes = [_add_disk(sim_scene, disk, segment['optics'])
+                          for segment, sim_scene in zip(segments, sim_scenes)]
 
         args_list = [(sim_scene, segment['detector'], segment['exp_time'], full_frame, loc_x, loc_y)
                      for segment, sim_scene in zip(segments, sim_scenes)
@@ -298,7 +307,8 @@ def prepare_frame_tasks(scene, segments, full_frame=False, loc_x=None, loc_y=Non
         return _apply_detector, [args + (frame_seed,) for args, frame_seed in zip(args_list, seeds)]
 
     n_frames_total = sum(segment['n_frames'] for segment in segments)
-    if zval_m_i is None or len(zval_m_i) != n_frames_total:
+    if zval_m_i is None or len(zval_m_i) != n_frames_total: 
+        # CHECK - the caller must supply the time series of Zernike values (one row per frame); corgisim does not generate it yet, and generate_observation_scenario_from_cpgs does not take `zindex`.
         raise ValueError(f'zindex is given, so zval_m_i needs one row per frame of the sequence ({n_frames_total} rows, '
                          'in the order the frames are taken: satellite spot frames, if any, then science frames)')
 
@@ -307,10 +317,11 @@ def prepare_frame_tasks(scene, segments, full_frame=False, loc_x=None, loc_y=Non
     for segment in segments:
         for i in range(segment['n_frames']):
             keyword_updates = {'zindex': zindex, 'zval_m': zval_m_i[len(args_list)]}
-            args_list.append((scene, segment['optics'], segment['detector'], segment['exp_time'], full_frame, loc_x, loc_y, keyword_updates, seeds[len(args_list)]))
+            args_list.append((scene, segment['optics'], segment['detector'], segment['exp_time'], full_frame, loc_x, loc_y, keyword_updates, seeds[len(args_list)], disk))
+
     return _generate_one_frame, args_list
 
-def _run_frames_local(frame_func, args_list):
+def _run_frames_serial(frame_func, args_list):
     """Default frame runner: frames run one after another in this process, no parallel processing. Used if frame_runner is None."""
     return run_parallel(frame_func, args_list, n_jobs=1)
 
@@ -321,7 +332,7 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames,
     Generates a sequence of simulated observations and places them on a detector.
 
     This function set ups the simulation of a given astrophysical scene through
-    the instrument optics and then onto the detector. It first generates the host star's PSF, then injects any defined off-axis point sources into the simulated scene. 
+    the instrument optics and then onto the detector. It first generates the host star's PSF, then injects any defined off-axis point sources and 2D disk into the simulated scene.
     
     Finally, it uses the detector model to create a detector image, optionally
     generating either a sub-array or a full-frame image for each exposure. Each observation sequence corresponds to a single visit at a specific roll angle. 
@@ -351,6 +362,12 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames,
         
         The PROPER runs inside one PSF (wavelengths, and polarization states for a POL prism)
         stay inside `get_host_star_psf`.
+
+        A disk in scene.twoD_scene_info is convolved once per visit, in this process, before
+        the PSFs (`_simulate_disk`). It does not depend on the satellite spot DM pattern or the
+        zernike values, because it uses the precomputed PRF cube rather than PROPER. The same disk
+        is then added to every satellite spot and science frame before the detector, with a header
+        from that segment's optics (`_add_disk`).
 
         The frames of all segments are collected in order (satspots first, then
         science) and, if `save_as_fits`, written to disk before this function
@@ -417,7 +434,7 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames,
 
     if frame_runner is None:
         # Serial frame generation in this process, no parallel processing.
-        frame_runner = _run_frames_local
+        frame_runner = _run_frames_serial
 
     optics.visit_id = visit_id
     optics.visit_type = vistype
