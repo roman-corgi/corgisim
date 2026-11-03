@@ -475,7 +475,7 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames,
 
     return simulatedImage_list
 
-def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, save_as_list=False, output_dir=None, full_frame=False, loc_x=None, loc_y=None, point_source_info=None, output_dim=201, polaxis=0, fast_gain_mode='auto', gain_CIC_Q='roman', frame_runner=None, seed=None):
+def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, save_as_list=False, output_dir=None, full_frame=False, loc_x=None, loc_y=None, point_source_info=None, output_dim=201, polaxis=0, fast_gain_mode='auto', gain_CIC_Q='roman', frame_runner=None, seed=None, twoD_scene_info=None):
     """Generates an observation scenario by loading instrument, scene, and visit
     information from a CPGS file.
 
@@ -491,6 +491,8 @@ def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, save_
         - loc_x (int): The horizontal coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True, and image from CorgiOptics has size is smaller than 1024×1024
         - loc_y (int): The vertical coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True, and image from CorgiOptics has size is smaller than 1024×1024
         - point_source_info (list): A list of dictionaries, each representing an off-axis point source in the scene.
+        - twoD_scene_info (dict, optional): disk of the target star, see `corgisim.scene.Scene`. Default None: no disk.
+          The reference star never has a disk (CHECK - is that true?).
         - frame_runner (callable, optional): runs each visit's frames in parallel, see
           `generate_observation_sequence`. Visits are still run one after another, and each
           visit's frames are saved (if save_as_fits) before the next visit starts.
@@ -511,6 +513,9 @@ def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, save_
     if point_source_info is not None:
         host_star_properties = {'Vmag': scene_target._host_star_Vmag, 'spectral_type': scene_target._host_star_sptype, 'magtype': scene_target._host_star_magtype, 'ref_flag': False}
         scene_target = scene.Scene(host_star_properties, point_source_info)
+
+    # The disk is not in the CPGS file, so it is added to the loaded target scene
+    scene_target.twoD_scene_info = twoD_scene_info
 
     # Satellite spot configuration
     satspots_are_present = (satellite_dict_target is not None) 
