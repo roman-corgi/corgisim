@@ -203,11 +203,18 @@ def _generate_one_frame(scene, optics, detector, exp_time, full_frame, loc_x, lo
         keyword_updates (dict, optional): optics_keywords for this frame only,
             e.g. {'zindex': zindex, 'zval_m': zval_m_i[i]} - speckle variation for time-series. 
         seed (int, optional): seed for this frame's detector noise, see `_apply_detector`.
+        disk (numpy.ndarray, optional): the visit's convolved disk, see `_simulate_disk`.
 
     Returns:
         corgisim.scene.SimulatedImage: the generated frame.
     """
-    sim_scene = _compute_psf(scene, _optics_with_updates(optics, keyword_updates))
+    frame_optics = _optics_with_updates(optics, keyword_updates)
+    
+    if disk is None:
+        sim_scene = _compute_psf(scene, frame_optics)
+    else:
+        sim_scene = _add_disk(_compute_psf(scene, frame_optics), disk, frame_optics)
+
     return _apply_detector(sim_scene, detector, exp_time, full_frame, loc_x, loc_y, seed)
 
 
