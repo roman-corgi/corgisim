@@ -44,13 +44,31 @@ Pick how to run with --option; -n is the number of workers for mp and mpi:
     mpirun -n 5 python generate_visits_example.py --option mpi -n 4  # 4 worker ranks + 1 manager (hence -n 5 for mpirun)
     python generate_visits_example.py --option mp -n 4 --seed 1 --output-dir ./output   # reproducible, chosen output dir
 
-TODO - need to attach a shell script to run the simulation in a multinode environment, can provide an example using the lam example but user will really need to reach out to their system admin to get the correct way to run the simulation in a multinode environment.  
+To simulate disk observations, need to pass additional arguments: the disk-model FITS file, matching PRF cube, and pixel-value unit. 
+
+The disk is attached to the target star only; the reference star has no disk. The disk dimensions set output_dim. Use a PRF cube generated for the observation's bandpass and optics.
+
+The disk is convolved once per visit, at that visit's roll angle, in the main
+process (rank 0 for MPI), and added to every satellite-spot and science frame
+before detector noise. Only the main process reads the two files.
+The supplied PRF cube stays fixed across satellite-spot DM and wavefront aberrations.
+
+    python generate_visits_example.py --option mp -n 2 --disk-model disk.fits \
+        --prf-cube prf_cube.fits --surface-brightness-unit contrast/pixel \
+        --output-dir ./disk_output
+
+The same with MPI (2 workers + 1 manager = 3 ranks). Pass the same arguments to
+every rank (mpirun does); only rank 0 reads the disk and PRF files:
+
+    mpirun -n 3 python generate_visits_example.py --option mpi -n 2 --disk-model disk.fits \
+        --prf-cube prf_cube.fits --surface-brightness-unit contrast/pixel \
+        --output-dir ./disk_output_mpi
 
 --seed makes the run reproducible: SeedSequence(seed).spawn gives each visit its own sub-seed
 (reusing one int for every visit would repeat the same noise in every visit), and each frame
 gets its own seed from it, so the frames are the same for serial, -n workers and MPI. Without
 --seed the noise pattern changes from run to run.
- 
+
 Speckle variation (one PSF per frame) is supported by generate_observation_sequence through
 zindex / zval_m_i, but not fully supported with corgisim. 
 
