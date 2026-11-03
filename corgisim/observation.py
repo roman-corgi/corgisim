@@ -3,6 +3,7 @@
 import corgisim
 import os
 from corgisim import scene, instrument, inputs, outputs
+import corgisim.convolution as conv
 from corgisim.parallel_executor import run_parallel
 from corgidrp import mocks
 import copy
@@ -128,7 +129,64 @@ def _compute_psf(scene, optics):
     return sim_scene
 
 
-def _generate_one_frame(scene, optics, detector, exp_time, full_frame, loc_x, loc_y, keyword_updates=None, seed=None):
+def _simulate_disk(scene, optics):
+    """
+    Convolve the scene's 2D disk once, for all the frames of one visit.
+
+    The disk only depends on the disk model, the PRF cube, the roll angle and the bandpass, which
+    are the same for every segment of a visit. The satellite spot DM pattern and per-frame zernike
+    values only change the PROPER runs (`_compute_psf`), not the precomputed PRF cube. So the disk
+    is convolved once here, in the calling process, and `_add_disk` attaches it to every frame.
+
+    Args:
+        scene (corgisim.scene.Scene): input scene. If `scene.twoD_scene_info` is set, it needs
+            'disk_model_path', 'prf_path' and 'surface_brightness_unit'; 'interpolate_prfs' is
+            optional (default True).
+        optics (corgisim.instrument.CorgiOptics): optics of the visit (roll angle, bandpass).
+
+    Returns:
+        numpy.ndarray or None: the convolved disk in count/s, or None if the scene has no disk.
+    """
+    disk_info = getattr(scene, 'twoD_scene_info', None) 
+    if disk_info is None:
+        return None
+    if not disk_info.get('prf_path'):
+        raise ValueError("twoD_scene_info requires 'prf_path' for disk injection")
+    
+    disk_scene = optics.simulate_2d_scene(input_scene=scene, prf_cube_path=disk_info['prf_path'], interpolate_prfs=disk_info.get('interpolate_prfs', True))
+    return disk_scene.twoD_image.data
+
+
+def _add_disk(sim_scene, disk, optics):
+    """
+    Attach the disk from `_simulate_disk` to one segment's (or frame's) simulated scene.
+
+    The header is built from this segment's optics, so SATSPOTS and the optics keywords match the
+    star's. The detector then adds the disk to the star and point sources like any other component.
+
+    Args:
+        sim_scene (corgisim.scene.SimulatedImage): output of `_compute_psf`.
+        disk (numpy.ndarray): output of `_simulate_disk`. Callers skip this function when the
+            scene has no disk (`_simulate_disk` returned None).
+        optics (corgisim.instrument.CorgiOptics): optics in the segment's (or frame's) state.
+
+    Returns:
+        corgisim.scene.SimulatedImage: sim_scene, with `twoD_image` set.
+    """
+    if disk is None:
+        raise ValueError("disk is None: the scene has no twoD_scene_info, so there is no disk to add. "
+                         "Only call _add_disk when _simulate_disk returned a disk.")
+                         
+    for name in ('host_star_image', 'point_source_image'):
+        component = getattr(sim_scene, name)
+        if component is not None and component.data.shape != disk.shape:
+            raise ValueError(f"2D scene shape {disk.shape} does not match {name} shape {component.data.shape}. "
+                             "Match the disk output dimensions to the stellar output_dim.")
+    sim_scene.twoD_image = outputs.create_hdu(disk, sim_info=conv._set_2D_image_sim_info(optics, sim_scene.input_scene))
+    return sim_scene
+
+
+def _generate_one_frame(scene, optics, detector, exp_time, full_frame, loc_x, loc_y, keyword_updates=None, seed=None, disk=None):
     """
     Generate a frame that needs its own optics state (e.g. a distinct zernike/drift value for this frame): PSF for that state, then the detector.
     
