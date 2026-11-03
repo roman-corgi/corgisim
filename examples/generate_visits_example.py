@@ -92,7 +92,7 @@ import roman_preflight_proper
 log = logging.getLogger("generate_visits_example")
 
 
-def setup_observation():
+def setup_observation(twoD_scene_info=None):
     """
     All the simulation settings in one place: edit this function to change the observation, e.g. the stars, visits, roll angles, satellite spots, coronagraph mask, etc.
 
@@ -111,6 +111,21 @@ def setup_observation():
     bandpass = '4F'
     cor_type = 'spc-wide_band4'
 
+    # Size of the simulated image (pixels) with a disk it is the larger of the disk size and the minimum for this mode (disk_sim_demo.ipynb: 51 for HLC band 1, 201 for SPC-wide band 4); 
+    # change the MIN_OUTPUT_DIM_WITH_DISK if you change cor_type/bandpass.
+    output_dim = 201
+    if twoD_scene_info is not None:
+        MIN_OUTPUT_DIM_WITH_DISK = 201 # value to be changed 
+        header = fits.getheader(twoD_scene_info['disk_model_path'])
+        
+        if header['NAXIS1'] != header['NAXIS2']:
+            raise ValueError(f"The disk must be square, got {header['NAXIS1']} x {header['NAXIS2']}")
+        output_dim = max(MIN_OUTPUT_DIM_WITH_DISK, header['NAXIS1'])
+        
+        if output_dim != header['NAXIS1']:
+            raise ValueError(f"The disk is {header['NAXIS1']} x {header['NAXIS1']} but this mode needs at least "
+                             f"{output_dim} x {output_dim}; padding the disk is not implemented")
+
     # DM solution closest to initial_target_planet_star_flux_ratio (7e-8), as load_cpgs_data picks it
     rootname = 'spc-wide_ni_5e-9'
     dm1 = proper.prop_fits_read(roman_preflight_proper.lib_dir + '/examples/' + rootname + '_dm1_v.fits')
@@ -118,7 +133,7 @@ def setup_observation():
     
     # polaxis 0 and prism 'None' are the CPGS defaults for imaging without polarimetry;
     # output_dim is the size of the simulated image before it is placed on the detector
-    optics_keywords = {'cor_type': cor_type, 'polaxis': 0, 'output_dim': 51, 'prism': 'None',
+    optics_keywords = {'cor_type': cor_type, 'polaxis': 0, 'output_dim': output_dim, 'prism': 'None',
                        'use_dm1': 1, 'dm1_v': dm1, 'use_dm2': 1, 'dm2_v': dm2}
 
     # Satellite spots: pair id 1 for both stars = 2 pairs at 13 lambda/D, 0 and 90 deg, contrast 1e-7
@@ -131,7 +146,8 @@ def setup_observation():
     stars = {
         'target': {   # cpgs_input target_*, satellite_spots_*_targ
             'scene': scene.Scene({'Vmag': 3.73, 'spectral_type': 'K2', 'magtype': 'vegamag',
-                                  'ref_flag': False, 'target_name': 'Eps Eri'}),
+                                  'ref_flag': False, 'target_name': 'Eps Eri'},
+                                 twoD_scene_info=twoD_scene_info),
             'detector': instrument.CorgiDetector({'em_gain': 300.0, 'fast_gain_mode': 'auto', 'gain_CIC_Q': 'roman'},
                                                  photon_counting=True),
             'satspots': {'satspots_are_present': True,
