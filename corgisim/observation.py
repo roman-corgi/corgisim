@@ -3,6 +3,7 @@
 import corgisim
 import os
 from corgisim import scene, instrument, inputs, outputs
+import corgisim.convolution as conv
 from corgisim.parallel_executor import run_parallel
 from corgidrp import mocks
 import copy
@@ -128,7 +129,64 @@ def _compute_psf(scene, optics):
     return sim_scene
 
 
-def _generate_one_frame(scene, optics, detector, exp_time, full_frame, loc_x, loc_y, keyword_updates=None, seed=None):
+def _simulate_disk(scene, optics):
+    """
+    Convolve the scene's 2D disk once, for all the frames of one visit.
+
+    The disk only depends on the disk model, the PRF cube, the roll angle and the bandpass, which
+    are the same for every segment of a visit. The satellite spot DM pattern and per-frame zernike
+    values only change the PROPER runs (`_compute_psf`), not the precomputed PRF cube. So the disk
+    is convolved once here, in the calling process, and `_add_disk` attaches it to every frame.
+
+    Args:
+        scene (corgisim.scene.Scene): input scene. If `scene.twoD_scene_info` is set, it needs
+            'disk_model_path', 'prf_path' and 'surface_brightness_unit'; 'interpolate_prfs' is
+            optional (default True).
+        optics (corgisim.instrument.CorgiOptics): optics of the visit (roll angle, bandpass).
+
+    Returns:
+        numpy.ndarray or None: the convolved disk in count/s, or None if the scene has no disk.
+    """
+    disk_info = getattr(scene, 'twoD_scene_info', None) 
+    if disk_info is None:
+        return None
+    if not disk_info.get('prf_path'):
+        raise ValueError("twoD_scene_info requires 'prf_path' for disk injection")
+    
+    disk_scene = optics.simulate_2d_scene(input_scene=scene, prf_cube_path=disk_info['prf_path'], interpolate_prfs=disk_info.get('interpolate_prfs', True))
+    return disk_scene.twoD_image.data
+
+
+def _add_disk(sim_scene, disk, optics):
+    """
+    Attach the disk from `_simulate_disk` to one segment's (or frame's) simulated scene.
+
+    The header is built from this segment's optics, so SATSPOTS and the optics keywords match the
+    star's. The detector then adds the disk to the star and point sources like any other component.
+
+    Args:
+        sim_scene (corgisim.scene.SimulatedImage): output of `_compute_psf`.
+        disk (numpy.ndarray): output of `_simulate_disk`. Callers skip this function when the
+            scene has no disk (`_simulate_disk` returned None).
+        optics (corgisim.instrument.CorgiOptics): optics in the segment's (or frame's) state.
+
+    Returns:
+        corgisim.scene.SimulatedImage: sim_scene, with `twoD_image` set.
+    """
+    if disk is None:
+        raise ValueError("disk is None: the scene has no twoD_scene_info, so there is no disk to add. "
+                         "Only call _add_disk when _simulate_disk returned a disk.")
+                         
+    for name in ('host_star_image', 'point_source_image'):
+        component = getattr(sim_scene, name)
+        if component is not None and component.data.shape != disk.shape:
+            raise ValueError(f"2D scene shape {disk.shape} does not match {name} shape {component.data.shape}. "
+                             "Match the disk output dimensions to the stellar output_dim.")
+    sim_scene.twoD_image = outputs.create_hdu(disk, sim_info=conv._set_2D_image_sim_info(optics, sim_scene.input_scene))
+    return sim_scene
+
+
+def _generate_one_frame(scene, optics, detector, exp_time, full_frame, loc_x, loc_y, keyword_updates=None, seed=None, disk=None):
     """
     Generate a frame that needs its own optics state (e.g. a distinct zernike/drift value for this frame): PSF for that state, then the detector.
     
@@ -145,11 +203,18 @@ def _generate_one_frame(scene, optics, detector, exp_time, full_frame, loc_x, lo
         keyword_updates (dict, optional): optics_keywords for this frame only,
             e.g. {'zindex': zindex, 'zval_m': zval_m_i[i]} - speckle variation for time-series. 
         seed (int, optional): seed for this frame's detector noise, see `_apply_detector`.
+        disk (numpy.ndarray, optional): the visit's convolved disk, see `_simulate_disk`.
 
     Returns:
         corgisim.scene.SimulatedImage: the generated frame.
     """
-    sim_scene = _compute_psf(scene, _optics_with_updates(optics, keyword_updates))
+    frame_optics = _optics_with_updates(optics, keyword_updates)
+    
+    if disk is None:
+        sim_scene = _compute_psf(scene, frame_optics)
+    else:
+        sim_scene = _add_disk(_compute_psf(scene, frame_optics), disk, frame_optics)
+
     return _apply_detector(sim_scene, detector, exp_time, full_frame, loc_x, loc_y, seed)
 
 
@@ -167,7 +232,7 @@ def sequence_segments(optics, detector, exp_time, n_frames, satspots_are_present
         - satellite spot background, positive and negative (only if `satspots_are_present`), 
         - science. 
     
-    Each segment gets its own copy of the optics, so `optics` itself is not modified and the segments don't depend on each
+    Each segment gets its own copy of the optics, so `optics` itself is not modified and the segments do not depend on each
     other: they can be computed at the same time.
 
     Args:
@@ -178,8 +243,10 @@ def sequence_segments(optics, detector, exp_time, n_frames, satspots_are_present
         'exp_time' and 'n_frames'.
     """
     segments = []
+
     if satspots_are_present:
         satspot_detector_kwargs = {'detector': satspots_detector, 'exp_time': satspots_exptime, 'n_frames': satspots_number_of_frames}
+        
         # Background: no spots on the DM, but flagged as part of the satellite spot sequence
         segments.append({'name': 'satspot_background', 'optics': _optics_with_updates(optics, attr_updates={'SATSPOTS': 1}),
                          **satspot_detector_kwargs})
@@ -220,12 +287,19 @@ def prepare_frame_tasks(scene, segments, full_frame=False, loc_x=None, loc_y=Non
         tasks can be sent to worker processes or MPI ranks.
     """
     if frame_runner is None:
-        frame_runner = _run_frames_local
+        frame_runner = _run_frames_serial
     seeds = frame_seeds(seed, sum(segment['n_frames'] for segment in segments))
+
+    # The disk (if any) is the same in every segment, so it is convolved once here, before the PSFs.
+    # segments[-1] is the science segment; all segments share its roll angle and bandpass.
+    disk = _simulate_disk(scene, segments[-1]['optics'])
 
     if zindex is None:
         # One PSF per segment, all at the same time; only the detector noise changes per frame
         sim_scenes = frame_runner(_compute_psf, [(scene, segment['optics']) for segment in segments])
+        if disk is not None:
+            sim_scenes = [_add_disk(sim_scene, disk, segment['optics'])
+                          for segment, sim_scene in zip(segments, sim_scenes)]
 
         args_list = [(sim_scene, segment['detector'], segment['exp_time'], full_frame, loc_x, loc_y)
                      for segment, sim_scene in zip(segments, sim_scenes)
@@ -233,7 +307,8 @@ def prepare_frame_tasks(scene, segments, full_frame=False, loc_x=None, loc_y=Non
         return _apply_detector, [args + (frame_seed,) for args, frame_seed in zip(args_list, seeds)]
 
     n_frames_total = sum(segment['n_frames'] for segment in segments)
-    if zval_m_i is None or len(zval_m_i) != n_frames_total:
+    if zval_m_i is None or len(zval_m_i) != n_frames_total: 
+        # CHECK - the caller must supply the time series of Zernike values (one row per frame); corgisim does not generate it yet, and generate_observation_scenario_from_cpgs does not take `zindex`.
         raise ValueError(f'zindex is given, so zval_m_i needs one row per frame of the sequence ({n_frames_total} rows, '
                          'in the order the frames are taken: satellite spot frames, if any, then science frames)')
 
@@ -242,10 +317,11 @@ def prepare_frame_tasks(scene, segments, full_frame=False, loc_x=None, loc_y=Non
     for segment in segments:
         for i in range(segment['n_frames']):
             keyword_updates = {'zindex': zindex, 'zval_m': zval_m_i[len(args_list)]}
-            args_list.append((scene, segment['optics'], segment['detector'], segment['exp_time'], full_frame, loc_x, loc_y, keyword_updates, seeds[len(args_list)]))
+            args_list.append((scene, segment['optics'], segment['detector'], segment['exp_time'], full_frame, loc_x, loc_y, keyword_updates, seeds[len(args_list)], disk))
+
     return _generate_one_frame, args_list
 
-def _run_frames_local(frame_func, args_list):
+def _run_frames_serial(frame_func, args_list):
     """Default frame runner: frames run one after another in this process, no parallel processing. Used if frame_runner is None."""
     return run_parallel(frame_func, args_list, n_jobs=1)
 
@@ -256,7 +332,7 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames,
     Generates a sequence of simulated observations and places them on a detector.
 
     This function set ups the simulation of a given astrophysical scene through
-    the instrument optics and then onto the detector. It first generates the host star's PSF, then injects any defined off-axis point sources into the simulated scene. 
+    the instrument optics and then onto the detector. It first generates the host star's PSF, then injects any defined off-axis point sources and 2D disk into the simulated scene.
     
     Finally, it uses the detector model to create a detector image, optionally
     generating either a sub-array or a full-frame image for each exposure. Each observation sequence corresponds to a single visit at a specific roll angle. 
@@ -286,6 +362,12 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames,
         
         The PROPER runs inside one PSF (wavelengths, and polarization states for a POL prism)
         stay inside `get_host_star_psf`.
+
+        A disk in scene.twoD_scene_info is convolved once per visit, in this process, before
+        the PSFs (`_simulate_disk`). It does not depend on the satellite spot DM pattern or the
+        zernike values, because it uses the precomputed PRF cube rather than PROPER. The same disk
+        is then added to every satellite spot and science frame before the detector, with a header
+        from that segment's optics (`_add_disk`).
 
         The frames of all segments are collected in order (satspots first, then
         science) and, if `save_as_fits`, written to disk before this function
@@ -352,7 +434,7 @@ def generate_observation_sequence(scene, optics, detector, exp_time, n_frames,
 
     if frame_runner is None:
         # Serial frame generation in this process, no parallel processing.
-        frame_runner = _run_frames_local
+        frame_runner = _run_frames_serial
 
     optics.visit_id = visit_id
     optics.visit_type = vistype
