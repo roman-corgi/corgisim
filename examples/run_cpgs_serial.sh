@@ -15,6 +15,6 @@
 
 conda activate <your conda environment>
 
-python generate_visits_from_cpgs_example.py --option serial \
+python generate_visits_from_cpgs_example.py --option serial --output-dim 201 \
     --cpgs ../test/test_data/cpgs_ref_wfov_satspots.xml --seed 1 --output-dir ./output_serial
 

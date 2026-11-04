@@ -24,6 +24,6 @@ module load <your MPI module>
 conda activate <your conda environment>
 
 # -n is the number of workers: one less than the number of ranks
-mpirun -np $SLURM_NTASKS python generate_visits_from_cpgs_example.py --option mpi -n $((SLURM_NTASKS - 1)) \
+mpirun -np $SLURM_NTASKS python generate_visits_from_cpgs_example.py --option mpi --output-dim 201 -n $((SLURM_NTASKS - 1)) \
     --cpgs ../test/test_data/cpgs_ref_wfov_satspots.xml --seed 1 --output-dir ./output_mpi
 

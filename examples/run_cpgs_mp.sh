@@ -20,6 +20,6 @@
 
 conda activate <your conda environment>
 
-python generate_visits_from_cpgs_example.py --option mp -n 6 \
+python generate_visits_from_cpgs_example.py --option mp --output-dim 201 -n 6 \
     --cpgs ../test/test_data/cpgs_ref_wfov_satspots.xml --seed 1 --output-dir ./output_mp
 
