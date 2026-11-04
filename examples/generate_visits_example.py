@@ -39,28 +39,28 @@ This is useful for testing and debugging, as well as for comparing the results o
             e.g. as a baseline to compare the parallel runs with (use the same --seed).
 
 Pick how to run with --option; -n is the number of workers for mp and mpi:
-    python generate_visits_example.py --option serial                # one process, no parallelization
-    python generate_visits_example.py --option mp -n 4               # 4 worker processes
-    mpirun -n 5 python generate_visits_example.py --option mpi -n 4  # 4 worker ranks + 1 manager (hence -n 5 for mpirun)
-    python generate_visits_example.py --option mp -n 4 --seed 1 --output-dir ./output   # reproducible, chosen output dir
+    python generate_visits_example.py --option serial --output-dim 201  # one process, no parallelization
+    python generate_visits_example.py --option mp -n 4 --output-dim 201  # 4 worker processes
+    mpirun -n 5 python generate_visits_example.py --option mpi -n 4 --output-dim 201  # 4 worker ranks + 1 manager (hence -n 5 for mpirun)
+    python generate_visits_example.py --option mp -n 4 --output-dim 201 --seed 1 --output-dir ./output   # reproducible, chosen output dir
 
 To simulate disk observations, need to pass additional arguments: the disk-model FITS file, matching PRF cube, and pixel-value unit. 
 
-The disk is attached to the target star only; the reference star has no disk. The disk must be square and at least as large as the minimum for the coronagraph mode (201 pixels for SPC-wide band 4, see setup_observation()); its size sets output_dim. Use a PRF cube generated for the observation's bandpass and optics.
+The disk is attached to the target star only; the reference star has no disk. The disk must be square and --output-dim must equal its size (padding is not implemented); the disk must be at least as large as the minimum for the coronagraph mode (51 pixels for HLC band 1, 201 for SPC-wide band 4). Use a PRF cube generated for the observation's bandpass and optics.
 
 The disk is convolved once per visit, at that visit's roll angle, in the main
 process (rank 0 for MPI), and added to every satellite-spot and science frame
 before detector noise. Only the main process reads the two files.
 The supplied PRF cube stays fixed across satellite-spot DM and wavefront aberrations.
 
-    python generate_visits_example.py --option mp -n 2 --disk-model disk.fits \
+    python generate_visits_example.py --option mp -n 2 --output-dim 201 --disk-model disk.fits \
         --prf-cube prf_cube.fits --surface-brightness-unit contrast/pixel \
         --output-dir ./disk_output
 
 The same with MPI (2 workers + 1 manager = 3 ranks). Pass the same arguments to
 every rank (mpirun does); only rank 0 reads the disk and PRF files:
 
-    mpirun -n 3 python generate_visits_example.py --option mpi -n 2 --disk-model disk.fits \
+    mpirun -n 3 python generate_visits_example.py --option mpi -n 2 --output-dim 201 --disk-model disk.fits \
         --prf-cube prf_cube.fits --surface-brightness-unit contrast/pixel \
         --output-dir ./disk_output_mpi
 
