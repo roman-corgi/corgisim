@@ -74,6 +74,7 @@ import functools
 import logging
 import os
 import time
+from astropy.io import fits
 
 from corgisim import inputs, observation
 from corgisim.parallel_executor import run_parallel, get_cpu_allocation
@@ -171,7 +172,37 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, default=None,
                         help="base seed for the detector noise; the same seed gives the same frames "
                              "with any --option / -n (default: not reproducible)")
+    parser.add_argument("--output-dim", type=int, required=True,
+                        help="size (pixels) of the simulated image before it is placed on the detector; with a disk it must equal the disk size")
+    parser.add_argument("--disk-model", help="2D disk-model FITS file")
+    parser.add_argument("--prf-cube", help="matching field-dependent PRF-cube FITS file")
+    parser.add_argument("--surface-brightness-unit",
+                        choices=["mJy/arcsec^2", "W.m^-2.pixel^-1", "contrast/pixel"],
+                        help="unit of the disk-model pixel values")
+    parser.add_argument("--interpolate-prfs", action=argparse.BooleanOptionalAction, default=True,
+                        help="interpolate between neighbouring PRFs (default); --no-interpolate-prfs uses the nearest PRF")
     args = parser.parse_args()
+
+    # Check that either all three disk-related arguments are given or none of them are given
+    disk_args = (args.disk_model, args.prf_cube, args.surface_brightness_unit)
+    if any(disk_args) and not all(disk_args):
+        parser.error("--disk-model, --prf-cube, and --surface-brightness-unit must be given together")
+
+    # Setup the twoD_scene_info dictionary if all disk-related arguments are provided, otherwise set it to None
+    if all(disk_args):
+        disk_path, prf_path = os.path.abspath(args.disk_model), os.path.abspath(args.prf_cube)
+        # The disk image must match the simulated image, and padding the disk is not implemented
+        header = fits.getheader(disk_path)
+        if header['NAXIS1'] != header['NAXIS2']:
+            parser.error(f"The disk must be square, got {header['NAXIS1']} x {header['NAXIS2']}")
+        if args.output_dim != header['NAXIS1']:
+            parser.error(f"--output-dim ({args.output_dim}) must equal the disk size ({header['NAXIS1']}); padding the disk is not implemented")
+        twoD_scene_info = {'disk_model_path': disk_path, 'prf_path': prf_path,
+                           'surface_brightness_unit': args.surface_brightness_unit,
+                           'interpolate_prfs': args.interpolate_prfs}
+    else: 
+        twoD_scene_info = None #
+
     if args.option == "serial":
         args.n = 1   # serial: one process, so -n is ignored
 
@@ -213,9 +244,11 @@ if __name__ == "__main__":
         # save_as_list=False (default): frames are written per visit and not kept,
         # so only one visit's frames are in memory at a time. Writing as L1 needs
         # full-frame images.
-        observation.generate_observation_scenario_from_cpgs(filepath, save_as_fits=True, output_dir=args.output_dir, 
+        observation.generate_observation_scenario_from_cpgs(filepath, save_as_fits=True, output_dir=args.output_dir,
                                                             full_frame=True, loc_x=LOC_X, loc_y=LOC_Y,
-                                                            frame_runner=frame_runner, seed=args.seed)
+                                                            frame_runner=frame_runner, seed=args.seed,
+                                                            output_dim=args.output_dim,
+                                                            twoD_scene_info=twoD_scene_info)
     finally:
         if args.option == "mpi":
             shutdown_workers(comm)
