@@ -93,16 +93,17 @@ import roman_preflight_proper
 log = logging.getLogger("generate_visits_example")
 
 
-def setup_observation(twoD_scene_info=None):
+def setup_observation(output_dim, twoD_scene_info=None):
     """
     All the simulation settings in one place: edit this function to change the observation, e.g. the stars, visits, roll angles, satellite spots, coronagraph mask, etc.
 
     The values reproduce test/test_data/cpgs_ref_wfov_satspots.xml the way inputs.load_cpgs_data
     and observation.generate_observation_scenario_from_cpgs read it.
     
-    With a disk, output_dim is set by the disk, as in disk_sim_demo.ipynb:
-    the larger of the disk size and a minimum that depends on the coronagraph mode and band
-    (MIN_OUTPUT_DIM_WITH_DISK below). The disk must be square and at least that large.
+    output_dim is the size of the simulated image (pixels) before it is placed on the detector, given with --output-dim.
+
+    With a disk it must equal the disk size, which must be at least the minimum for the coronagraph mode
+    (51 for HLC band 1, 201 for SPC-wide band 4). 
     twoD_scene_info contains disk_model_path, prf_path, surface_brightness_unit
     and optional interpolate_prfs, as in disk_sim_demo.ipynb.
     The disk is attached only to the target star, not the reference.
@@ -112,27 +113,12 @@ def setup_observation(twoD_scene_info=None):
         scene, science detector and satellite spot settings) and 'visits' (in the order they are taken).
     """
     LOC_X, LOC_Y = 512, 512  # star location on the detector (pixels)
-    output_dim = 201  # size of the simulated image (pixels) before it is placed on the detector, default for SPC-wide band 4
 
     # Optics, shared by every visit (coronagraph_mask = wide FOV SPC, howfsc_cfam_pos 4F)
     # Adjust to match the coronagraph mode and bandpass you want to simulate.
     cgi_mode = 'excam'
     bandpass = '4F'
     cor_type = 'spc-wide_band4'
-
-    # Size of the simulated image (pixels) with a disk it is the larger of the disk size and the minimum for this mode (disk_sim_demo.ipynb: 51 for HLC band 1, 201 for SPC-wide band 4); 
-    # change the MIN_OUTPUT_DIM_WITH_DISK if you change cor_type/bandpass.
-    if twoD_scene_info is not None:
-        MIN_OUTPUT_DIM_WITH_DISK = 201 # value to be changed 
-        header = fits.getheader(twoD_scene_info['disk_model_path'])
-        
-        if header['NAXIS1'] != header['NAXIS2']:
-            raise ValueError(f"The disk must be square, got {header['NAXIS1']} x {header['NAXIS2']}")
-        output_dim = max(MIN_OUTPUT_DIM_WITH_DISK, header['NAXIS1'])
-        
-        if output_dim != header['NAXIS1']:
-            raise ValueError(f"The disk is {header['NAXIS1']} x {header['NAXIS1']} but this mode needs at least "
-                             f"{output_dim} x {output_dim}; padding the disk is not implemented")
 
     # DM solution closest to initial_target_planet_star_flux_ratio (7e-8), as load_cpgs_data picks it
     rootname = 'spc-wide_ni_5e-9'
@@ -229,6 +215,8 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, default=None,
                         help="base seed for the detector noise; the same seed gives the same frames "
                              "with any --option / -n (default: noise pattern not reproducible)")
+    parser.add_argument("--output-dim", type=int, required=True,
+                        help="size (pixels) of the simulated image before it is placed on the detector; with a disk it must equal the disk size")
     parser.add_argument("--disk-model", help="2D disk-model FITS file")
     parser.add_argument("--prf-cube", help="matching field-dependent PRF-cube FITS file")
     parser.add_argument("--surface-brightness-unit",
@@ -250,6 +238,11 @@ if __name__ == "__main__":
         twoD_scene_info = {'disk_model_path': disk_path, 'prf_path': prf_path,
                            'surface_brightness_unit': args.surface_brightness_unit,
                            'interpolate_prfs': args.interpolate_prfs}
+        header = fits.getheader(disk_path)
+        if header['NAXIS1'] != header['NAXIS2']:
+            parser.error(f"The disk must be square, got {header['NAXIS1']} x {header['NAXIS2']}")
+        if args.output_dim != header['NAXIS1']:
+            parser.error(f"--output-dim ({args.output_dim}) must equal the disk size ({header['NAXIS1']}); padding the disk is not implemented")
     else:
         twoD_scene_info = None
         
@@ -278,7 +271,7 @@ if __name__ == "__main__":
     log.info("option=%s, n=%d workers, seed=%s, output_dir=%s", args.option, args.n, args.seed, args.output_dir)
     run_start = time.perf_counter()
 
-    obs = setup_observation(twoD_scene_info=twoD_scene_info) # setup the observing scenario: optics, stars and visits
+    obs = setup_observation(args.output_dim, twoD_scene_info=twoD_scene_info) # setup the observing scenario: optics, stars and visits
     visits, stars = obs['visits'], obs['stars']
 
     # How each visit's PSFs and frames are run: on the MPI worker ranks, on -n local worker processes, or (serial, n_jobs=1) one after another in this process
