@@ -19,5 +19,5 @@
 
 conda activate <your conda environment>
 
-python generate_visits_example.py --option mp -n 6 --seed 1 --output-dir ./output_visits_mp
+python generate_visits_example.py --option mp --output-dim 201 -n 6 --seed 1 --output-dir ./output_visits_mp
 
