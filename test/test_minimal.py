@@ -528,7 +528,7 @@ import cgisim
 #     # (The jitter model has not been implemented for off-axis point sources.)
 #     assert((image_comp_basic == image_comp_slit_prism).all())   
     
-@pytest.mark.parametrize("case", [(['1e-7']), (['1e-8']), (['3e-8']),(['6e-9']),])
+@pytest.mark.parametrize("case", [(['1e-7']), (['1e-8']), (['3e-8']),(['4e-9']),])
 def test_finite_diam_and_jitter_band1(case):
     '''
     This function checks that the finite stellar diameter and jitter model runs
@@ -562,9 +562,9 @@ def test_finite_diam_and_jitter_band1(case):
     # Set up the optics
     cgi_mode = 'excam'
     cor_type = "spc-wide_band1"
-    bandpass = "1F"
+    bandpass = "4F"
     cases = case
-    rootname = 'spc_wfov_band1_ni_' + cases[0]
+    rootname = 'spc_wfov_band4_ni_' + cases[0]
     path = roman_preflight_proper.lib_dir + '/examples/dm_solutions/'
     # if os.path.isdir(path):
     #     print(os.listdir(path))
