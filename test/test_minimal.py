@@ -565,6 +565,11 @@ def test_finite_diam_and_jitter_band1(case):
     bandpass = "1F"
     cases = case
     rootname = 'spc_wfov_band1_' + cases[0]
+    path = roman_preflight_proper.lib_dir + '/examples/dm_solutions/'
+    if os.path.isdir(path):
+        print(os.listdir(path))
+    else: 
+        print(os.listdir(roman_preflight_proper.lib_dir + '/examples/'))
     dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm1_v.fits' )
     dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm2_v.fits' )
     polaxis = 10
