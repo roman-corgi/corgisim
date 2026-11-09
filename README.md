@@ -44,12 +44,7 @@ Enter the directory that contains setup.py and run the following:
 python -m pip install .
 ```
 ### Install roman_preflight_proper, cgi-eetc and CGISIm
-In your working directory, first clone [roman_preflight_proper](https://github.com/roman-corgi/cgisim_cpp)(
-please note that this is not the official version, but a modified version needed to implement certain functions):
-```
-git clone https://github.com/roman-corgi/cgisim_cpp.git
-cd 
-```
+Go to the [roman_preflight_proper](https://sourceforge.net/projects/cgisim/files/roman_preflight_proper_public_v3.0_python.zip) website. Unzip it in your working directory
 Enter the directory that contains setup.py and run the following: 
 ```
 python -m pip install .
