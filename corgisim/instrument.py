@@ -24,9 +24,10 @@ import sys
 import astropy.units as u
 import corgisim.constants as constants
 import corgisim.convolution as conv
+from scipy.ndimage import rotate
 
 from corgisim.scene import Scene, SimulatedImage
-from corgisim import outputs, spec, prf_simulation, constants
+from corgisim import outputs, spec, prf_simulation, constants, disk_countrate
 import corgisim.convolution as conv
 warnings.simplefilter('always', UserWarning)
 class CorgiOptics():
@@ -430,7 +431,8 @@ class CorgiOptics():
                     # ares in unit of cm^2
                     # counts in unit of photos/s
                     # wollaston transmission is around 0.96%, divide by two to split between polarization
-                    counts = 0.48 * obs.countrate(area=self.area, waverange=[lam_um_l, lam_um_u])
+                    # fix: The wollaston Mueller matrix already accounts for the throughput loss, adding it again here would be double-counting
+                    counts = obs.countrate(area=self.area, waverange=[lam_um_l, lam_um_u])
     
                     images_1[i,:,:] = images_1[i,:,:] * counts
                     images_2[i,:,:] = images_2[i,:,:] * counts
@@ -466,13 +468,15 @@ class CorgiOptics():
                 
             return image
         
-    def construct_jittered_image_from_fields(self,fields):
+    def construct_jittered_image_from_fields(self, fields, source_stokes_vector=None):
         '''
         This function uses the onaxis electric field and the library of offset
         electric fields and their weights to determine the intensity that
         incorporates the effects of jitter and/or finite stellar diameter.
         Inputs:
                fields: onaxis electric fields as returned by proper
+               source_stokes_vector: For use in polarimetric simulations. Stokes vector describing the polarization state
+                of the source. Defaults to none.
         Outputs:
                images_temp: Temporary images
 
@@ -492,7 +496,7 @@ class CorgiOptics():
         # The specific calculations vary depending on the polarization case.
         # Because the syntax is essentially identical for POL0 and POL45, we can
         # define a function that works for both cases at the expense of a little clarity.
-        def calculate_images_tem_for_pol0_or_pol45(N_offsets_counting_origin,delta_e_library,delta_e_keys,grid_dim_out_tem,fields):
+        def calculate_images_tem_for_pol0_or_pol45(N_offsets_counting_origin,delta_e_library,delta_e_keys,grid_dim_out_tem,fields,stokes_vector):
             # For each offset, calculate E_offset = E_onaxis + deltaE.
             # Repeat for each electric field component.
             # Convert the electric field to an intensity.
@@ -513,8 +517,10 @@ class CorgiOptics():
                 E_offset_4 = delta_e_library[delta_e_keys['4']][i_offset,:,:,:] + fields[3]
                 
                 # Step 3: Obtain the two polarization intensities
-                intensity_1_temp = ((np.abs(E_offset_1) ** 2) + (np.abs(E_offset_2) ** 2)) / 2
-                intensity_2_temp = ((np.abs(E_offset_3) ** 2) + (np.abs(E_offset_4) ** 2)) / 2
+                intensity_1_temp, intensity_2_temp = self.obtain_polarized_intensities_from_fields(
+                    [E_offset_1, E_offset_2, E_offset_3, E_offset_4],
+                    stokes_vector
+                )
                 
                 # Step 4: Weight the intensitites
                 intensity_1_temp = intensity_1_temp * weights[i_offset]
@@ -532,8 +538,8 @@ class CorgiOptics():
             images_tem = [intensity_1, intensity_2]
             return images_tem
             
-        if self.prism == 'POL0':
-            # 0/90 deg polarization case
+        if self.prism == 'POL0' or self.prism == 'POL45':
+            # pol mode
             # The four electric field components are:
             # delta_E_m45in_xout
             # delta_E_45in_xout
@@ -541,24 +547,13 @@ class CorgiOptics():
             # delta_E_45in_yout
             # Set up a library of keys to identify these components:
             delta_e_keys = {'1':'delta_E_m45in_xout','2':'delta_E_45in_xout','3':'delta_E_m45in_yout','4':'delta_E_45in_yout'}
+
+            # assign default if nothing is passed in
+            if source_stokes_vector is None:
+                source_stokes_vector = np.array([1,0,0,0])
             
             # Construct the temporary images array
-            images_tem = calculate_images_tem_for_pol0_or_pol45(N_offsets_counting_origin, delta_e_library, delta_e_keys, grid_dim_out_tem, fields)
-            
-            
-        elif self.prism == 'POL45':
-            #45/135 case
-            # The four electric field components are:
-            # delta_E_m45in_45out
-            # delta_E_45in_45out
-            # delta_E_m45in_135out
-            # delta_E_45in_135out
-            # Set up a library of keys to identify these components:
-            delta_e_keys = {'1':'delta_E_m45in_45out','2':'delta_E_45in_45out','3':'delta_E_m45in_135out','4':'delta_E_45in_135out'}
-
-            # Construct the temporary images array                
-            images_tem = calculate_images_tem_for_pol0_or_pol45(N_offsets_counting_origin, delta_e_library, delta_e_keys, grid_dim_out_tem, fields)
-                    
+            images_tem = calculate_images_tem_for_pol0_or_pol45(N_offsets_counting_origin, delta_e_library, delta_e_keys, grid_dim_out_tem, fields, source_stokes_vector)     
         elif self.optics_keywords['polaxis'] == -10:
             # if polaxis is set to -10, obtain full aberration model by individually summing intensities obtained from polaxis=-2, -1, 1, 2
             # The four electric field components are:
@@ -643,6 +638,76 @@ class CorgiOptics():
             
         # Return the image(s)
         return images_tem
+    
+    def obtain_polarized_intensities_from_fields(self, fields, input_stokes_vector):
+        '''
+        Using the focal plane electric fields from proper, construct the polarized intensities
+        after being split by the wollaston prism
+        Inputs:
+               fields: list of the four on-axis electric fields as returned by proper, in the order of polxais=-1, 1, -2, and 2. This should
+                    correspond to the Roman Jones pupil propagated to the focal plane. Each individual field should be of shape (w,y,x) where
+                    w is the wavelength and y and x are spatial coordinates. 
+                input_stokes_vector: The Stokes vector describing the polarization state of the source as seen on sky.
+        Outputs:
+               images_temp: The focal plane intensities at each sampled wavelength, in pairs of either 0/90 degree linear polarization
+                    or 45/135 degree linear polarization. Will have shape of (2, w, y, x).
+
+        '''
+        # first reshape the fields into an (w, y, x, 2, 2) array where w is the wavelength, y and x are the spatial coordinates, and
+        # at each w, y, x there is a 2x2 Jones matrix
+        y_size, x_size = fields[0][0].shape
+        focal_plane_jones_matrix = np.zeros(shape=[self.nlam, y_size, x_size, 2, 2], dtype=complex)
+        # since the E-fields have a precomputed rotation of -45/45->x/y, we need to prepend a -45 degree rotation
+        # from x/y->-45/45 so an incoming Jones vector is rotated into the right basis before being transformed
+        # the results of the matrix multiplication with the -45 degree rotation matrix is explicitly written down for each component
+        # note that the field corresponding to polaxis=-2 requires a sign flip for it to describe the -45 -> Y projection correctly
+        # the factor of 0.5 out front comes from (1/sqrt(2))^2. One of which is from the change of basis, the other is for correct
+        # normalization of the Jones pupil
+        focal_plane_jones_matrix[:,:,:,0,0] = 0.5 * (fields[0] + fields[1])
+        focal_plane_jones_matrix[:,:,:,0,1] = 0.5 * (-1 * fields[0] + fields[1])
+        focal_plane_jones_matrix[:,:,:,1,0] = 0.5 * (-1 * fields[2] + fields[3])
+        focal_plane_jones_matrix[:,:,:,1,1] = 0.5 * (fields[2] + fields[3])
+
+        # convert this jones matrix to a mueller matrix in order to work with intensities
+        psf_mueller_matrix = pol.jones_to_mueller_conversion(focal_plane_jones_matrix)
+
+        # obtain the mueller matrix corresponding to a CCW rotation from the sky RA/Dec frame to the instrument X/Y frame as defined by the roll angle
+        roll_angle_mueller = pol.get_rotation_mueller_matrix(self.roll_angle)
+        # rotate the input stokes vector into the instrument frame
+        stokes_vector_ins = roll_angle_mueller @ input_stokes_vector
+
+        # obtain the mueller matrix corresponding to the wollaston prism analyzers
+        if self.prism == 'POL0':
+            wollaston_mueller_o = pol.get_wollaston_mueller_matrix(0)
+            wollaston_mueller_e = pol.get_wollaston_mueller_matrix(90)
+        else:
+            wollaston_mueller_o = pol.get_wollaston_mueller_matrix(45)
+            wollaston_mueller_e = pol.get_wollaston_mueller_matrix(135)
+
+        # process each sampled wavelength separately since the instrumental polarization is wavelength dependent
+        intensities_o = []
+        intensities_e = []
+        for w_idx in range(self.nlam):
+            psf_mueller_matrix_w = psf_mueller_matrix[w_idx,:,:,:,:]
+            # obtain the field-averaged instrument mueller matrix at this wavelength
+            wavelength = self.lam_um[w_idx]
+            ins_mueller = pol.get_instrument_mueller_matrix([wavelength])
+            # normalize the IP mueller matrix since throughput loss is already baked into propagation
+            ins_mueller_norm = ins_mueller / ins_mueller[0,0]
+            # obtain the total instrument response mueller matrix at this wavelength:
+            # wollason * field-averaged IP mueller matrix * field-dependent IP amplitude response matrix
+            total_ins_psf_mueller_o = wollaston_mueller_o @ ins_mueller_norm @ psf_mueller_matrix_w
+            total_ins_psf_mueller_e = wollaston_mueller_e @ ins_mueller_norm @ psf_mueller_matrix_w
+            # propagate stokes vector to output
+            stokes_out_o = total_ins_psf_mueller_o @ stokes_vector_ins
+            stokes_out_e = total_ins_psf_mueller_e @ stokes_vector_ins
+            # observed output polarized intensities is the stokes I of both beams
+            intensities_o.append(stokes_out_o[:,:,0])
+            intensities_e.append(stokes_out_e[:,:,0])
+        
+        # return the list of output intensities at each sampled wavelength
+        return np.array([intensities_o, intensities_e])
+
 
     def get_host_star_psf(self, input_scene, sim_scene=None, on_the_fly=False):
         '''
@@ -707,55 +772,27 @@ class CorgiOptics():
                         #TODO: Add option to use saved library
 
             #if polarimetry mode is enabled
-            if self.prism == 'POL0':
-                #0/90 case
-                # models the polarization aberration of the speckle field
-                # polaxis=-1 and 1 gives -45->X and 45->X aberrations, incoherently
-                # averaging the two gives the x polarized intensity data.
-                # polaxis=-2 and 2 gives -45->Y and 45->Y aberrations, incoherently
-                # averaging the two gives the y polarized intensity data. 
+            if self.prism == 'POL0' or self.prism == 'POL45':
+                # get the stokes vector of the host star
+                host_star_stokes_vector = input_scene._host_star_stokes_vector
+                # using polaxis parameters -1, 1, -2, 2, propagate the Roman Jones pupil to the focal plane
                 polaxis_params = [-1, 1, -2, 2]
                 fields = []
-                optics_keywords_pol_xy = self.optics_keywords.copy()
+                optics_keywords_pol = self.optics_keywords.copy()
+                # propagate each Jones pupil
                 for polaxis in polaxis_params:
-                    optics_keywords_pol_xy['polaxis'] = polaxis
-                    (field, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=optics_keywords_pol_xy,QUIET=self.quiet)
+                    optics_keywords_pol['polaxis'] = polaxis
+                    (field, sampling) = proper.prop_run_multi('roman_preflight', self.lam_um, 1024,PASSVALUE=optics_keywords_pol,QUIET=self.quiet)
                     fields.append(field)
-                #obtain 0/90 degree polarization intensities
                 # If not incorporating jitter or finite stellar diameter:
                 if ((hasattr(self,'stellar_diam_and_jitter_keywords') == False) or
                    ((self.stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] == 0) and (self.stellar_diam_and_jitter_keywords['add_jitter'] == 0))):
-                    intensity_x = ((np.abs(fields[0]) ** 2) + (np.abs(fields[1]) ** 2)) / 2
-                    intensity_y = ((np.abs(fields[2]) ** 2) + (np.abs(fields[3]) ** 2)) / 2
-                    images_tem = [intensity_x, intensity_y]
+                   images_tem = self.obtain_polarized_intensities_from_fields(fields, host_star_stokes_vector)
                 elif  ((self.stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] == 1) or (self.stellar_diam_and_jitter_keywords['add_jitter'] == 1)):
                     # Incorporating jitter or finite stellar diameter:
-                    images_tem = self.construct_jittered_image_from_fields(fields)                    
+                    images_tem = self.construct_jittered_image_from_fields(fields, host_star_stokes_vector)   
                 image = self.construct_image_array(grid_dim_out_tem,images_tem,obs)
-            elif self.prism == 'POL45':
-                #45/135 case
-                # models the polarization aberration of the speckle field
-                # polaxis=-3 and 3 gives -45->45 and 45->45 aberrations, incoherently
-                # averaging the two gives the 45 degree polarized intensity data.
-                # polaxis=-2 and 2 gives -45->-45 and 45->-45 aberrations, incoherently
-                # averaging the two gives the -45 degree polarized intensity data. 
-                polaxis_params = [-3, 3, -4, 4]
-                fields = []
-                optics_keywords_pol_45 = self.optics_keywords.copy()
-                for polaxis in polaxis_params:
-                    optics_keywords_pol_45['polaxis'] = polaxis
-                    (field, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE=optics_keywords_pol_45,QUIET=self.quiet)
-                    fields.append(field)
-                #obtain 45/135 degree polarization intensities
-                if ((hasattr(self,'stellar_diam_and_jitter_keywords') == False) or
-                   ((self.stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] == 0) and (self.stellar_diam_and_jitter_keywords['add_jitter'] == 0))):
-                    intensity_45 = ((np.abs(fields[0]) ** 2) + (np.abs(fields[1]) ** 2)) / 2
-                    intensity_135 = ((np.abs(fields[2]) ** 2) + (np.abs(fields[3]) ** 2)) / 2
-                    images_tem = [intensity_45, intensity_135]
-                elif  ((self.stellar_diam_and_jitter_keywords['use_finite_stellar_diam'] == 1) or (self.stellar_diam_and_jitter_keywords['add_jitter'] == 1)):
-                    # Incorporating jitter or finite stellar diameter:
-                    images_tem = self.construct_jittered_image_from_fields(fields)                    
-                image = self.construct_image_array(grid_dim_out_tem,images_tem,obs)
+
             elif self.optics_keywords['polaxis'] == -10:
                 # if polaxis is set to -10, obtain full aberration model by individually summing intensities obtained from polaxis=-2, -1, 1, 2
                 optics_keywords_m10 = self.optics_keywords.copy()
@@ -1012,7 +1049,7 @@ class CorgiOptics():
         point_source_spectra = input_scene.off_axis_source_spectrum
         point_source_dra = input_scene.point_source_dra
         point_source_ddec = input_scene.point_source_ddec
-        point_source_pol = input_scene.point_source_pol_state
+        point_source_pol = input_scene.point_source_stokes_vector
 
         # Ensure all inputs are lists for uniform processing
         if not isinstance(point_source_spectra, list):
@@ -1063,7 +1100,7 @@ class CorgiOptics():
             
             point_source_image = []
             for j in range(len(point_source_spectra )):
-            
+                
                 self.optics_keywords_comp = self.optics_keywords.copy()
                 ## convert companion sky coord to exacam coord, using roll angle
                 point_source_dx, point_source_dy = skycoord_to_excamcoord(point_source_dra[j], point_source_ddec[j], self.roll_angle)
@@ -1072,61 +1109,32 @@ class CorgiOptics():
                                             'final_sampling_m': sampling_um_tem * 1e-6,
                                             'source_x_offset_mas': point_source_dx,
                                             'source_y_offset_mas': point_source_dy})
+
+                source_obs = obs_point_source[j]
                 
-                if self.optics_keywords['polaxis'] == -10:
+                # pol mode
+                if self.prism in ['POL0', 'POL45']:
+                    stokes_vector = point_source_pol[j]
+                    polaxis_params = [-1, 1, -2, 2]
+                    fields = []
+                    optics_keywords_comp_pol = self.optics_keywords_comp.copy()
+                    # propagate each Jones pupil
+                    for polaxis in polaxis_params:
+                        optics_keywords_comp_pol['polaxis'] = polaxis
+                        (field, sampling) = proper.prop_run_multi('roman_preflight', self.lam_um, 1024,PASSVALUE=optics_keywords_comp_pol,QUIET=self.quiet)
+                        fields.append(field)
+                    images_tem = self.obtain_polarized_intensities_from_fields(fields, stokes_vector)
+
+                elif self.optics_keywords['polaxis'] == -10:
                     optics_keywords_comp_m10 = self.optics_keywords_comp.copy()
                     images_tem = self.generate_full_aberration_psf(optics_keywords_comp_m10,is_offaxis_source=True)
                 else: 
                     (fields, sampling) = proper.prop_run_multi('roman_preflight',  self.lam_um, 1024,PASSVALUE= self.optics_keywords_comp ,QUIET=True)
                     images_tem = np.abs(fields)**2
 
-                # Initialize the image array based on whether oversampling is returned
-                images_shape = (self.nlam, grid_dim_out_tem, grid_dim_out_tem) if self.return_oversample else (self.nlam, self.grid_dim_out, self.grid_dim_out)
-                images = np.zeros(images_shape, dtype=float)
-                counts = np.zeros(self.nlam)
-
-                for i in range(images_tem.shape[0]):
-                    if self.return_oversample:
-                        ##return the oversampled PSF, default 7 grid per pixel
-                        images[i,:,:] +=  images_tem[i,:,:]
-                    else:
-                        ## integrate oversampled PSF back to one grid per pixel
-                        images[i,:,:] +=  images_tem[i,:,:].reshape((self.grid_dim_out,self.oversampling_factor,self.grid_dim_out,self.oversampling_factor)).mean(3).mean(1) * self.oversampling_factor**2
-
-                    dlam_um = self.lam_um[1]-self.lam_um[0]
-                    lam_um_l = (self.lam_um[i]- 0.5*dlam_um) * 1e4 ## unit of anstrom
-                    lam_um_u = (self.lam_um[i]+ 0.5*dlam_um) * 1e4 ## unit of anstrom
-                    # ares in unit of cm^2
-                    # counts in unit of photos/s
-                    counts[i] = self.polarizer_transmission * obs_point_source[j].countrate(area=self.area, waverange=[lam_um_l, lam_um_u]).value
-
-                # if wollaston is used, compute point source stokes vector and scale intensity accordingly
-                # multiply input point source stokes vector by instrument mueller matrix, renormalize, then
-                # multiply that by the 0/90/45/135 degree polarizer matrix of the CGI wollaston
-                if self.prism in ['POL0', 'POL45']:
-                    images_1 = np.zeros(images_shape, dtype=float)
-                    images_2 = np.zeros(images_shape, dtype=float)
-                    # transform point source stokes vector by instrument Mueller matrix
-                    # renormalize since instrument Mueller matrix decreases total intensity, and that should already
-                    # be accounted for in the proper model
-                    source_pol_after_instrument = np.matmul(pol.get_instrument_mueller_matrix(self.lam_um), point_source_pol[j])
-                    source_pol_after_instrument = source_pol_after_instrument / source_pol_after_instrument[0]
-                    if (self.prism == 'POL0'):
-                        source_pol_path_1 = np.matmul(pol.get_wollaston_mueller_matrix(0), source_pol_after_instrument)
-                        source_pol_path_2 = np.matmul(pol.get_wollaston_mueller_matrix(90), source_pol_after_instrument)
-                    else:
-                        source_pol_path_1 = np.matmul(pol.get_wollaston_mueller_matrix(45), source_pol_after_instrument)
-                        source_pol_path_2 = np.matmul(pol.get_wollaston_mueller_matrix(135), source_pol_after_instrument)
-                    counts_after_wollaston = [counts * source_pol_path_1[0], counts * source_pol_path_2[0]]
-                    images_1 = images * counts_after_wollaston[0][:, np.newaxis, np.newaxis]
-                    images_2 = images * counts_after_wollaston[1][:, np.newaxis, np.newaxis]
-                    # 3D datacube of point source by polarization state if wollaston is used
-                    point_source_image.append(np.array([np.sum(images_1, axis=0), np.sum(images_2, axis=0)]))
-                else:
-                    images *= counts[:, np.newaxis, np.newaxis]
-                    image = np.sum(images, axis=0)
-                    # singular unpolarized image if no wollaston
-                    point_source_image.append(image) 
+                # create the image array
+                image = self.construct_image_array(grid_dim_out_tem,images_tem, source_obs)
+                point_source_image.append(image) 
         elif self.cgi_mode == 'spec':
             
 
@@ -1411,14 +1419,12 @@ class CorgiOptics():
         Convolve 2D scene with a pre-computed off-axis PRF cube.
 
         This function reads a disk model from `input_scene.twoD_scene_info['disk_model_path']`,
-        normalizes it, and performs a field-dependent 2D convolution using a precomputed PRF cube
+        converts its pixel values to detector count rate, and performs a field-dependent 2D convolution using a precomputed PRF cube
         stored at `input_scene.twoD_scene_info['prf_path']`. The PRF sampling (radii in lambda/D and azimuthal angles)
         is reconstructed from the PRF cube metadata. The convolution can be done using either nearest-neighbor
         or interpolation between PRFs, controlled by the `interpolate_prfs` flag. 
 
-        After convolution, the result is scaled to a count rate integrated over the bandpass defined by 
-        `optics.bp` and `intput_scene.twoD_scene_spectrum`. The scaled convolved object is stored in 
-        `sim_scene.twoD_images` as an HDU with simulation metadata written as FITS COMMENT. 
+        The convolved object is stored in `sim_scene.twoD_image` as an HDU with simulation metadata written as FITS COMMENT.
 
         Parameters
         ----------
@@ -1436,7 +1442,7 @@ class CorgiOptics():
         Returns
         -------
         sim_scene : SimulatedImage
-            Output scene with `twoD_image` replaced by the convolved and scaled result.
+            Output scene with `twoD_image` containing the convolved count-rate result.
 
         Raises
         ------
@@ -1449,10 +1455,8 @@ class CorgiOptics():
         - The PRF cube is assumed to be normalised to unit input flux. Absolute flux
             scaling is applied in this function using the input scene spectrum and the
             optics bandpass.
-        - The disk model is normalised by its total flux prior to convolution.
-        - After convolution, the image is scaled using the integrated bandpass count
-            rate and converted to a per resolution element normalisation using an
-            estimate of the PSF FWHM area (pixels) and a thresholded disk region mask.
+        - The disk model is converted to count/s per pixel before convolution
+            and is not normalised by its total flux.
         - The output is intended to represent a count rate (photoelectrons per second),
             consistent with `Observation.countrate`.
         """
@@ -1462,15 +1466,48 @@ class CorgiOptics():
         if sim_scene is None:
             # No output format was specified - create a new SimulatedImage object
             sim_scene = SimulatedImage(input_scene)
-
-        # Check if roll angle is non-zero and raise NotImplementedError if so
-        # To be removed after implementing roll angle for the 2D scene. 
-        if self.roll_angle != 0:
-            raise NotImplementedError("Roll angle rotation is not implemented yet for 2D scene.")
-
+        
         # input disk model
         disk_model_data = fits.getdata(input_scene.twoD_scene_info['disk_model_path'])
-        disk_model_norm = disk_model_data/np.nansum(disk_model_data, axis=(0,1)) # normalisation of the disk
+
+        # raise a warning if the disk data dimension is not square 
+        if disk_model_data.ndim != 2 or disk_model_data.shape[0] != disk_model_data.shape[1]:
+            raise ValueError(f"Disk model must be a square 2D array, got shape {disk_model_data.shape}")
+
+        disk_model_data = np.nan_to_num(disk_model_data, nan=0.0, posinf=0.0, neginf=0.0)
+        roll_angle = getattr(self, 'roll_angle', 0.0)
+        
+
+        if roll_angle != 0:
+            #estimate sum of disk flux before roll
+            disk_sum_before_roll = np.nansum(disk_model_data)
+            #pad zeros for the scipy rotate function - the padding assumes that the disk model data is a square array
+            ny, nx = disk_model_data.shape
+            pad = int(np.ceil((np.hypot(ny, nx) - min(ny, nx)) / 2))
+            padded_disk = np.pad(disk_model_data, pad, mode='constant', constant_values=0.0)
+            # any kind of interpolation here produces negative values: order =3 has preserved the total flux and peak value
+            rotated_disk = rotate(padded_disk, angle=roll_angle, reshape=False, order=3, mode='constant', cval=0.0)
+            # resize the disk data to its original size
+            disk_model_data = rotated_disk[pad:pad + ny, pad:pad + nx]
+            #estimate sum of disk flux after roll
+            disk_sum_after_roll = np.nansum(disk_model_data) 
+            disk_model_data *= disk_sum_before_roll / disk_sum_after_roll 
+        total_flux = np.nansum(disk_model_data)
+        if not np.isfinite(total_flux) or total_flux <= 0:
+            raise ValueError(f"Disk model has non-positive total flux ({total_flux}); ""cannot normalise.")
+        
+        # Convert the input pixel values to detector count rate before convolution.
+        disk_model_countrate = disk_countrate.disk_to_countrate(
+            disk_image=disk_model_data,
+            surface_brightness_unit=input_scene.twoD_scene_info[
+                "surface_brightness_unit"
+            ],
+            bandpass=self.bp,
+            area_cm2=self.area,
+            pixel_scale_arcsec=constants.PIXEL_SCALE_ARCSEC,
+            wavelength_micron=self.lam0_um,
+            return_quantity=False,
+            input_scene=input_scene,)
 
         prf_sim_info = prf_simulation._get_prf_sim_info(prf_cube_path) # Get the simulation information 
 
@@ -1518,7 +1555,7 @@ class CorgiOptics():
 
         # 3. Perform convolution
         conv2d = conv._convolve_with_prfs(
-            obj=disk_model_norm, 
+            obj=disk_model_data, 
             prfs_array=prf_cube, 
             radii_lamD=radii_lamD , 
             azimuths_deg=azimuths_deg, 
@@ -1527,10 +1564,11 @@ class CorgiOptics():
             interpolate_prfs=interpolate_prfs
             )
 
-        # NOTE: An attempt to convert flux units to physical units after convolution
-        # NOTE: Should be remove in the future after we have a better way to track the units and perform the flux calibration in a more self-consistent way.
-        # 4. Flux calibration
-        flux_calibrated_conv2D = conv.flux_calibration_2D_scene(self, input_scene, conv2d)
+        # 4. Flux calibration (outdated, but still available in convolution.py)
+        # The legacy post-convolution flux_calibration_2D_scene function remains
+        # available in convolution.py, but it is not applied here because the disk
+        # model has already been converted to count/s before convolution.
+        # flux_calibrated_conv2D = conv.flux_calibration_2D_scene(self, input_scene, conv2d)
 
         if self.cgi_mode in ['spec', 'lowfs', 'excam_efield']:
             warnings.warn(f"This mode '{self.cgi_mode}' has not implmented yet!") # still allow the usage but warn the user about this
@@ -1538,7 +1576,7 @@ class CorgiOptics():
         sim_info = conv._set_2D_image_sim_info(self, input_scene)
 
         # Create the HDU object with the generated header information
-        sim_scene.twoD_image = outputs.create_hdu(flux_calibrated_conv2D, sim_info=sim_info)
+        sim_scene.twoD_image = outputs.create_hdu(conv2d, sim_info=sim_info)
 
         return sim_scene
 
@@ -1572,11 +1610,11 @@ class CorgiDetector():
 
         Arguments:
             - simulated_scene: a corgisim.scene.SimulatedScen object that contains the noise-free scene from CorgiOptics 
-            - full_frame: if generated full_frame image in detetor
+            - full_frame: if generated full_frame image in detector
             - loc_x (int): The horizontal coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True, and image from CorgiOptics has size is smaller than 1024×1024
             - loc_y (int): The vertical coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True, and image from CorgiOptics has size is smaller than 1024×1024
             - exptime: exptime in second
-            - cut_sub_frame: if generating a sub frame, this option ellows the user to generate a full frame and then cut it down, so as to avoid the issue of cosmic rays tails wrapping to the next row
+            - cut_sub_frame: if generating a sub frame, this option allows the user to generate a full frame and then cut it down, to avoid the issue of cosmic rays tails wrapping to the next row
 
         Returns:
             - A corgisim.scene.SimulatedImage object that contains the detector image in the 
@@ -1776,11 +1814,12 @@ class CorgiDetector():
             - row_read_time (float, optional): Row read time in seconds, needed to simulate smearing. Defaults to 223.5e-6.  For no smearing, set this to 0.
             - nonlin_path (str, optional): Path to the nonlinearity file for simulating nonlinearity. Defaults to None (no nonlinearity simulated).
             - flat_path (str, optional): Path to the flat field file for simulating flat field nonuniformity. Defaults to None (no flat field nonuniformity simulated).
-            - fast_gain_mode : bool or 'auto' If True, a faster but less accurate method (uses Erlang/Gamma distribution for EM gain) of simulating the gain register is used.  
+            - fast_gain_mode : (bool or 'auto',optional): If True, a faster but less accurate method (uses Erlang/Gamma distribution for EM gain) of simulating the gain register is used.  
             If False, a slower but more accurate method (marches each pixel through the gain register with binomial distribution) is used. The fast method is quite accurate 
             for em_gain > 200 if the number of incoming particles to the gain register is n > 1.  If 'auto', both speed and accuracy are prioritized:the fast method is used 
             if em_gain > 200 (and n>1) and 'roman' is used for gain_CIC_Q,and the slow method is used with gain_CIC_Q = 0 (since partial CIC is negligible for low gains) 
             for em_gain <= 200 (or if n=1 for any gain). Defaults to 'auto'.
+            - gain_CIC_Q: optional: The gain of the CIC (Clock-Induced Charge) in the EM register. Set gain_CIC_Q = 0 to disable it to have faster simulation. The value will be overwrite if fast_gain_mode = 'auto'. 
         Returns:
             - emccd (EMCCDDetectBase): A configured EMCCD detector object. If `use_traps` is True, the detector's CTI is updated using the corresponding trap model.
         
@@ -1806,14 +1845,19 @@ class CorgiDetector():
                                   'row_read_time': 223.5e-6,              # in seconds (needed to simulate smearing)
                                   'nonlin_path': None,                  # path to file containing non-linearity map; if None, no input nonlinearity used
                                   'flat_path': None,            # path to file containing flat field map; if None, no flat field correction used
-                                  'fast_gain_mode':'auto'}
+                                  'fast_gain_mode':'auto',
+                                  'gain_CIC_Q':'roman'}                 # gain of the CIC in the EM register; set to 0 to disable it to have faster simulation}
         if emccd_keywords is not None:                    
             if 'qe' in emccd_keywords.keys():
                 raise Warning("Quantum efficiency has been added in the bandpass throughput; it must be enforced as 1 here.")
+            
             # Override default parameters with user-specified ones
             for key, value in emccd_keywords.items():
                 if key in self.emccd_keywords_default:
                     self.emccd_keywords_default[key] = value
+
+            if 'gain_CIC_Q' in emccd_keywords and self.emccd_keywords_default.get('fast_gain_mode') == 'auto':
+                warnings.warn("gain_CIC_Q is set by default when fast_gain_mode='auto'. If you want to change gain_CIC_Q, please set fast_gain_mode to True or False.")
 
         if (self.emccd_keywords_default['fast_gain_mode'] and self.emccd_keywords_default['em_gain'] < 200):
             warnings.warn('Warning: Fast gain mode needs em_gain to be over 200 to be reasonably accurate')
@@ -1822,7 +1866,7 @@ class CorgiDetector():
                              dark_current=self.emccd_keywords_default['dark_rate'], cic=self.emccd_keywords_default['cic_noise'], read_noise=self.emccd_keywords_default['read_noise'], bias=self.emccd_keywords_default['bias'],
                              qe=1.0, cr_rate=self.emccd_keywords_default['cr_rate'], pixel_pitch=self.emccd_keywords_default['pixel_pitch'], eperdn=self.emccd_keywords_default['e_per_dn'],
                              numel_gain_register=self.emccd_keywords_default['numel_gain_register'], nbits=self.emccd_keywords_default['nbits'], row_read_time=self.emccd_keywords_default['row_read_time'], 
-                             nonlin_path=self.emccd_keywords_default['nonlin_path'], flat_path=self.emccd_keywords_default['flat_path'])
+                             nonlin_path=self.emccd_keywords_default['nonlin_path'], flat_path=self.emccd_keywords_default['flat_path'], fast_gain_mode=self.emccd_keywords_default['fast_gain_mode'], gain_CIC_Q=self.emccd_keywords_default['gain_CIC_Q'])
         
         if self.emccd_keywords_default['use_traps']: 
             raise ValueError(f"The part to simulate CTI effects using trap models has not been implemented yet!")

@@ -219,20 +219,53 @@ def save_hdu_to_fits( hdul, outdir=None, overwrite=False, write_as_L1=False, fil
             overwrite_pri_keywords = overwrite_pri_keywords or {}
             overwrite_ext_keywords = overwrite_ext_keywords or {}
 
-            visitid_keywords = {"PROGNUM", "EXECNUM", "SEGMENT", "OBSNUM", "VISNUM", "FILENAME"}
+            visitid_keywords = {"PROGNUM", "EXECNUM", "CAMPAIGN","SEGMENT", "OBSNUM", "VISNUM", "FILENAME"}
 
             if any(key in overwrite_pri_keywords for key in visitid_keywords):
-                raise ValueError(
-                    "The keywords PROGNUM, EXECNUM, SEGMENT, OBSNUM, VISNUM, and FILENAME "
-                    "are derived from VISITID and cannot be overwritten directly. "
-                    "Please overwrite VISITID instead."
-                )
+                # There are lines below that will update overwrite_pri_keys to
+                # include the PROGNUM, EXECNUM, CAMPAIGN, SEGMENT, OBSNUM, VISNUM, and FILENAME
+                # if the VISITID is included in the overwrite_pri_keywords.
+                # To prevent those lines from causing a simulation script from 
+                # crashing on a subsequent frame, check whether the specified 
+                # information is consistent with the definitions cited below,
+                # and only raise the ValueError if there is an inconsistency.
+                raise_visitid_error = False
+                if "VISITID" not in overwrite_pri_keywords.keys():
+                    raise_visitid_error = True # Raise the error if the VISITID isn't specified but any of PROGNUM, EXECNUM, CAMPAIGN, SEGMENT, OBSNUM, VISNUM, and FILENAME are
+                else:
+                    visit_id = overwrite_pri_keywords.get("VISITID", prihdr["VISITID"])
+                    
+                # Check that the PROGNUM, EXECNUM, CAMPAIGN, SEGMENT, OBSNUM, and VISNUM have the correct format if specified
+                if ("PROGNUM" in overwrite_pri_keywords.keys()) and (overwrite_pri_keywords["PROGNUM"] != visit_id[0:4]):
+                    raise_visitid_error = True
+                elif ("EXECNUM" in overwrite_pri_keywords.keys()) and (overwrite_pri_keywords["EXECNUM"] != visit_id[4:7]):
+                    raise_visitid_error = True
+                elif ("CAMPAIGN" in overwrite_pri_keywords.keys()) and (overwrite_pri_keywords["CAMPAIGN"] != visit_id[7:10]):
+                    raise_visitid_error = True
+                elif ("SEGMENT" in overwrite_pri_keywords.keys()) and (overwrite_pri_keywords["SEGMENT"] != visit_id[10:13]):
+                    raise_visitid_error = True
+                elif ("OBSNUM" in overwrite_pri_keywords.keys()) and (overwrite_pri_keywords["OBSNUM"] != visit_id[13:16]):
+                    raise_visitid_error = True
+                elif ("VISNUM" in overwrite_pri_keywords.keys()) and (overwrite_pri_keywords["VISNUM"] != visit_id[16:19]):
+                    raise_visitid_error = True
+                
+                # The filename should not be included in overwrite_pri_keywords at all
+                elif "FILENAME" in overwrite_pri_keywords.keys():
+                    raise_visitid_error = True
+                    
+                # Raise the ValueError if any of the conditions above are met
+                if raise_visitid_error == True:
+                    raise ValueError(
+                        "The keywords PROGNUM, EXECNUM, SEGMENT, OBSNUM, VISNUM, and FILENAME "
+                        "are derived from VISITID and cannot be overwritten directly. "
+                        "Please overwrite VISITID instead."
+                        )
         
             ###filename need to be updated if FTIMEUTC overwriten for L1 product
             ftimeutc = overwrite_ext_keywords.get("FTIMEUTC", exthdr["FTIMEUTC"])
             new_time_in_name = isotime_to_yyyymmddThhmmsss(ftimeutc)
 
-            visit_id = overwrite_pri_keywords.get("VISITID", prihdr["VISITID"])
+            visit_id = overwrite_pri_keywords.get("VISITID", prihdr["VISITID"])            
             if not isinstance(visit_id, str):
                     raise TypeError("VISITID must be a string.")
 
@@ -257,6 +290,9 @@ def save_hdu_to_fits( hdul, outdir=None, overwrite=False, write_as_L1=False, fil
 
             ###filename need to be updated if FTIMEUTC or VISITID overwriten for L1 product
             filename=f"cgi_{visit_id}_{new_time_in_name}_l1_.fits"
+            # The filename may be put in overwrite_pri_keywords, but it must be
+            # removed before the function ends. Otherwise it can cause the code
+            # to crash for simulations with multiple frames.
             overwrite_pri_keywords.update({"FILENAME": filename})
             
 
@@ -292,6 +328,12 @@ def save_hdu_to_fits( hdul, outdir=None, overwrite=False, write_as_L1=False, fil
         # Write the HDUList to file
         hdul.writeto(filepath, overwrite=overwrite)
         print(f"Saved FITS file to: {filepath}")
+        
+        # Remove information in overwrite_pri_keywords that is no longer needed
+        # and that can cause the code to crash for subsequent frames
+        if write_as_L1:
+            if "FILENAME" in overwrite_pri_keywords.keys():
+                del overwrite_pri_keywords["FILENAME"]
     
         return filepath
 

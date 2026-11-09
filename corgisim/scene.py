@@ -39,6 +39,9 @@ class Scene():
             - "ref_flag" (boolean):optional, whether the input scene is a reference star (True) or a science target (False). Default is false
             - "stellar_diam_mas" (float): The stellar diameter of the host star in mas.
             - "target_name" (str): optional, the name of the target star, used for headers. Default is UNKNOWN.
+            - "stokes_vector" (float array): optional, vector of length 4 consisting of the I, Q, U and V components of the stokes parameter
+                describing how the source light is polarized, default is unpolarized or [1,0,0,0]. Should be normalized so that the first
+                element Stokes I is 1. 
             - "RA" (float): optional, the ra of  star in degree. Default is 0.0
             - "DEC" (float): optional, the dec of  star in degree. Default is 0.0
 
@@ -53,8 +56,9 @@ class Scene():
                 A custom spectrum for the source. If provided, this spectrum will override the default spectrum generated based on Vmag.
             - "Rescale_Custom_Spectrum" (bool, optional):
                 Define if the custom spectrum needs to be rescaled. If set to True, the custom spectrum will be rescaled to match the provided Vmag. If False, the custom spectrum will be used as-is without scaling. Default is False.
-            - "pol_state" (float array): optional, vector of length 4 consisting of the I, Q, U and V components of the stokes parameter
-                describing how the source light is polarized, default is unpolarized or [1,0,0,0]
+            - "stokes_vector" (float array): optional, vector of length 4 consisting of the I, Q, U and V components of the stokes parameter
+                describing how the source light is polarized, default is unpolarized or [1,0,0,0]. Should be normalized so that the first
+                element Stokes I is 1. 
             Notes:
                 - The coordinates should be provided in the same reference frame and orientation as the background scene (typically North-up, East-left).
                 - All magnitudes must be consistent with their respective magnitude type.
@@ -62,18 +66,18 @@ class Scene():
 
         twoD_scene_info (dict): A dictionary containing information about an extended 2D scene, such as a disk or other extended structure. Required keys are:
 
-            - "contrast" (float): The contrast of the 2D scene relative to the host star in magnitudes (dMag). This value is currently used to generate a spectrum for the 2D scene based on the host star's spectrum, but in the future we may want to allow users to directly input the 2D scene spectrum or flux instead of relying on contrast with the host star.
+            - "surface_brightness_unit" (str): Unit convention for the disk-model image pixel values. Supported values are:
+                - "mJy/arcsec^2"
+                - "W.m^-2.pixel^-1" for an MCFOST lambda * F_lambda image
+                - "contrast/pixel"
 
-            - "disk_model_path" (str): The absolute file path to a FITS file containing the 2D scene image. The image data are treated as a spatial brightness template and are normalised internally so that the total scene flux sums to 1 before convolution. 
+            - "disk_model_path" (str): The absolute file path to a FITS file containing the 2D scene image. The pixel values are converted to detector count rate before convolution.
 
                 Assumptions:
                 - The FITS image must already be sampled on the same pixel scale used for convolution, currently 0.0218 arcsec/pixel, but in the future we may want to allow users to input the pixel scale as well.
                 - The image should be centred
                 - The image should be oriented in the same reference frame as the point source coordinates (typically North-up, East-left).
                 - The current implementation does not resample the input image, or infer the pixel scale from the FITS header. 
-
-            Notes:
-            -  The 2D scene flux calibration is provisional. Future versions may allow users to provide an absolute flux or custom spectrum directly instead of deriving the scene spectrum from the host star and the contrast. 
 
 
     Raises:
@@ -116,6 +120,9 @@ class Scene():
                 host_star_properties_internal['stellar_diam_mas'] = None
             self._stellar_diam_mas = host_star_properties_internal['stellar_diam_mas']
 
+            # stokes vector of the host star for polarimetric simulations
+            self._host_star_stokes_vector = host_star_properties_internal.get('stokes_vector', np.array([1,0,0,0]))
+
         #self._point_source_list = point_source_info
         # Extract V-band magnitude and magnitude type from point source info
         if point_source_info_internal is not None:
@@ -138,19 +145,19 @@ class Scene():
                                                                               rescale_spectrum=self.point_source_rescale_spectrum)
 
             #Set the polarization state of sources, default to [1,0,0,0] if none provided
-            self.point_source_pol_state = [source.get('pol_state', np.array([1,0,0,0])) for source in point_source_info]
+            self.point_source_stokes_vector = [source.get('stokes_vector', np.array([1,0,0,0])) for source in point_source_info]
 
             #check validity of source stoke vector and normalizes it
             for source in range(n_off_axis_source):
-                pol.check_stokes_vector_validity(self.point_source_pol_state[source])
-                self.point_source_pol_state[source] = np.divide(self.point_source_pol_state[source], self.point_source_pol_state[source][0])
+                pol.check_stokes_vector_validity(self.point_source_stokes_vector[source])
+                self.point_source_stokes_vector[source] = np.divide(self.point_source_stokes_vector[source], self.point_source_stokes_vector[source][0])
 
         # setting up the 2D scene
         self.twoD_scene_info = twoD_scene_info
         self.twoD_scene_spectrum = None
 
         # If a 2D scene is provided, generate its spectrum based on the host star's properties and the scene's contrast
-        if twoD_scene_info is not None:
+        if twoD_scene_info is not None and "contrast" in twoD_scene_info:
             self.twoD_scene_spectrum = self.get_stellar_spectrum(
                 self._host_star_sptype,
                 self._host_star_Vmag + twoD_scene_info['contrast'],
@@ -207,6 +214,25 @@ class Scene():
             magtype (str):  type of magnitude
         """
         return self._host_star_magtype
+
+    @property
+    def host_star_stokes_vector(self):
+        """
+        Getter for the host star Stokes vector
+        Returns:
+            stokes_vector (numpy.ndarray): length-4 Stokes vector of the host star
+        """
+        return self._host_star_stokes_vector
+
+    @host_star_stokes_vector.setter
+    def host_star_stokes_vector(self, value):
+        """
+        Setter for the host star Stokes vector
+        Args:
+            value (numpy.ndarray): length-4 Stokes vector of the host star
+        """
+        if pol.check_stokes_vector_validity(value):
+            self._host_star_stokes_vector = value
 
 
     @host_star_magtype.setter
@@ -389,11 +415,11 @@ class Scene():
                 # if not any(sptype.endswith(cls) for cls in ['I', 'II', 'III', 'IV', 'V','VI','VII','VIII']):
                 sptype += 'V'  # assume main sequence if no class specified
 
+        filename = sptype+'.txt'
         if sptype in sptype_list:
             # print('aaa',sptype)
             # v0, v1, v2 = sptype_teff_mapping[sptype]
             teff, metallicity, logg = sptype_teff_mapping[sptype]
-            filename = sptype+'.txt'
         else:
             # Interpolate values for undefined sptype
 
