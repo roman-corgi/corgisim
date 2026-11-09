@@ -425,10 +425,20 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, fast_gain_mode='auto', g
 
         elif coronograph_mask == '2':
             cor_type = 'spc-wide_band'+ bandpass[0]
-            cases = [3E-9,5E-9 ]
+            if bandpass[0] == '1':
+                root_prefix = 'spc-wide_band1_ni_'
+                cases = [5E-9,8E-9,2E-8]
+            elif bandpass[0] == '4':
+                root_prefix = 'spc-wide_ni_'
+                cases = [3E-9,5E-9,2E-8]
+            else:
+                raise NotImplementedError(
+                    f"No SPC-wide example DM solutions for bandpass {bandpass!r}; "
+                    "only Bands 1 and 4 are supported."
+                )
             contrast = str(min(cases, key=lambda x: abs(x - float(required_contrast))))
             # The operation inserts a 0 we need to get rid of
-            rootname = 'spc-wide_ni_' + contrast[:-2] + contrast[-1]
+            rootname = root_prefix + contrast[:-2] + contrast[-1]
 
     dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm1_v.fits' )
     dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm2_v.fits' )
