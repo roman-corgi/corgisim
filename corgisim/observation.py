@@ -230,7 +230,7 @@ def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, save_
                     angle_deg = custom_satspots_dict['angle_deg']
                     contrast = custom_satspots_dict['contrast']
                 else:
-                    raise KeyError('Custome satellite spots properties must be specified with the `custom_satspots_dict` keyword')
+                    raise KeyError('Custom satellite spots properties must be specified with the `custom_satspots_dict` keyword')
             case _:
                 raise KeyError('Unknown satellite spots configuration')
 
