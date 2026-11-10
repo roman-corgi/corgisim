@@ -144,8 +144,8 @@ def test_simulation_method():
     roll_angle  = 0.0
 
     rootname = 'hlc_ni_3e-8'
-    dm1 = proper.prop_fits_read(roman_preflight_proper.lib_dir + f'/examples/{rootname}_dm1_v.fits')
-    dm2 = proper.prop_fits_read(roman_preflight_proper.lib_dir + f'/examples/{rootname}_dm2_v.fits')
+    dm1 = proper.prop_fits_read(roman_preflight_proper.lib_dir + f'/examples/dm_solutions/{rootname}_dm1_v.fits')
+    dm2 = proper.prop_fits_read(roman_preflight_proper.lib_dir + f'/examples/dm_solutions/{rootname}_dm2_v.fits')
 
     base_optics_kw = {
         'cor_type': cor_type,
