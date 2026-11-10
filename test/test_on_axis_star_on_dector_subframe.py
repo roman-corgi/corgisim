@@ -84,6 +84,113 @@ def test_on_axis_star_on_detector_subframe():
     # Use pytest.approx to check similarity within a tolerance
     assert  image  == pytest.approx(a0_sim_allpol, rel=0.5)
     print("noise free image Pass")
+    
+    
+    # Add test teh setting of fastgain_mode to True and False
+    #############################################################################################################
+    emccd_keywords ={'em_gain':1000}
+    
+ 
+    detector = instrument.CorgiDetector( emccd_keywords)
+    
+    ## defult value of fast_gain_mode is auto
+    ## for em_gain>200, fast_gain_mode is True and gain_CIC_roman is 'Roman'
+    assert detector.emccd.fast_gain_mode == True, f"Expected FAST_GAIN_MODE='True', but got {detector.emccd.fast_gain_mode}"
+    assert detector.emccd.gain_CIC_Q == pytest.approx(detector.emccd.avg_gain_P/40, rel=0.05)
+    print(detector.emccd.fast_gain_mode, detector.emccd.gain_CIC_Q)
+
+    #############################################################################################################
+    emccd_keywords ={'em_gain':100}
+   
+
+    detector = instrument.CorgiDetector( emccd_keywords)
+    
+    ## defult value of fast_gain_mode is auto
+    ## for em_gain<200, fast_gain_mode is False and gain_CIC_roman is '0'
+    assert detector.emccd.fast_gain_mode == False, f"Expected FAST_GAIN_MODE='False', but got {detector.emccd.fast_gain_mode}"
+    assert detector.emccd.gain_CIC_Q == 0, f"Expected gain_CIC_Q='0', but got {detector.emccd.gain_CIC_Q}"
+
+
+    #############################################################################################################
+
+    emccd_keywords ={'em_gain':1000, 'gain_CIC_Q':0}
+   
+    
+    with pytest.warns(UserWarning, match='gain_CIC_Q is set by default'):
+        detector = instrument.CorgiDetector(emccd_keywords)
+    
+    ## defult value of fast_gain_mode is auto
+    ## for em_gain>200, fast_gain_mode is True and gain_CIC_roman is 'Roman'
+    ## the input 'gain_CIC_Q':0 will be overwrite if fast_gain_mode is Auto
+    assert detector.emccd.fast_gain_mode == True, f"Expected FAST_GAIN_MODE='True', but got {detector.emccd.fast_gain_mode}"
+    assert detector.emccd.gain_CIC_Q == pytest.approx(detector.emccd.avg_gain_P/40, rel=0.05)
+    
+    
+    
+    #############################################################################################################
+    emccd_keywords ={'em_gain':100, 'gain_CIC_Q':0}
+    
+
+    with pytest.warns(UserWarning, match='gain_CIC_Q is set by default'):
+        detector = instrument.CorgiDetector(emccd_keywords)
+
+    ## defult value of fast_gain_mode is auto
+    ## for em_gain<200, fast_gain_mode is False and gain_CIC_roman is '0'
+    ## the input 'gain_CIC_Q':0 will be overwrite if fast_gain_mode is Auto
+    assert detector.emccd.fast_gain_mode == False, f"Expected FAST_GAIN_MODE='False', but got {detector.emccd.fast_gain_mode}"
+    assert detector.emccd.gain_CIC_Q == 0, f"Expected gain_CIC_Q='0', but got {detector.emccd.gain_CIC_Q}"
+    
+
+    #############################################################################################################
+
+    emccd_keywords ={'em_gain':1000, 'fast_gain_mode':True, 'gain_CIC_Q':0}
+    
+
+    detector = instrument.CorgiDetector( emccd_keywords)
+    
+    ##test the emccd_keywords passed to emccd_detect
+
+    ## when fast_gain_mode is not auto, gain_CIC_Q got from  emccd_keywords 
+    assert detector.emccd.fast_gain_mode == True, f"Expected FAST_GAIN_MODE='True', but got {detector.emccd.fast_gain_mode}"
+    assert detector.emccd.gain_CIC_Q == 0, f"Expected gain_CIC_Q='0', but got {detector.emccd.gain_CIC_Q}"
+ 
+    
+    
+    #############################################################################################################
+    emccd_keywords ={'em_gain':100, 'fast_gain_mode':True,'gain_CIC_Q':'roman'}
+    exptime = 3000
+
+    detector = instrument.CorgiDetector( emccd_keywords)
+
+    ## when fast_gain_mode is not auto, gain_CIC_Q got from  emccd_keywords 
+    assert detector.emccd.fast_gain_mode == True, f"Expected FAST_GAIN_MODE='True', but got {detector.emccd.fast_gain_mode}"
+    assert detector.emccd.gain_CIC_Q == pytest.approx(detector.emccd.avg_gain_P/40, rel=0.05)
+
+    #############################################################################################################
+
+    emccd_keywords ={'em_gain':1000, 'fast_gain_mode':False, 'gain_CIC_Q':0}
+    exptime = 3000
+
+    detector = instrument.CorgiDetector( emccd_keywords)
+    
+    ##test the emccd_keywords passed to emccd_detect
+
+    ## when fast_gain_mode is not auto, gain_CIC_Q got from  emccd_keywords 
+    assert detector.emccd.fast_gain_mode == False, f"Expected FAST_GAIN_MODE='False', but got {detector.emccd.fast_gain_mode}"
+    assert detector.emccd.gain_CIC_Q == 0, f"Expected gain_CIC_Q='0', but got {detector.emccd.gain_CIC_Q}"
+ 
+    
+    
+    #############################################################################################################
+    emccd_keywords ={'em_gain':100, 'fast_gain_mode':False,'gain_CIC_Q':'roman'}
+    exptime = 3000
+
+    detector = instrument.CorgiDetector( emccd_keywords)
+
+    ## when fast_gain_mode is not auto, gain_CIC_Q got from  emccd_keywords 
+    assert detector.emccd.fast_gain_mode == False, f"Expected FAST_GAIN_MODE='False', but got {detector.emccd.fast_gain_mode}"
+    assert detector.emccd.gain_CIC_Q == pytest.approx(detector.emccd.avg_gain_P/40, rel=0.05)
+    
 
 
     

@@ -9,6 +9,10 @@ from corgisim.scene import Scene, SimulatedImage
 import pytest
 import numpy as np
 from unittest.mock import patch
+from scipy.ndimage import rotate as scipy_rotate
+ 
+
+DISK_VS_POINT_FLUX_RTOL = 0.10 # a few percent difference is expected.
 
 # TODO - we need to change the tests in here due to the change of definitions
 @pytest.fixture
@@ -313,19 +317,274 @@ def test_simulate_2d_scene_missing_prf_path():
     with pytest.raises(ValueError, match=r"No PRF cube path provided in the input:"):
         CorgiOptics.simulate_2d_scene(mock_optics, mock_scene, prf_cube_path=None)
 
-def test_roll_angle_not_implemented():
+def _simulate_2d_scene_disk_roll_before_convolution(disk, roll_angle):
+    
+    """Run simulate_2d_scene_disk_roll on disk and return the disk array it passes to convolution.
+ 
+    simulate_2d_scene loads a disk model from a FITS file, optionally rotates it by
+    the telescope roll angle, normalises the total flux, and then passes the results to
+    to _convolve_with_prfs as the ``obj`` keyword argument.
+    
+    Args:
+        disk (np.ndarray): 2-D disk brightness array in the sky frame, before
+            any roll-angle rotation is applied.
+        roll_angle (float): Telescope roll angle in degrees.  
+ 
+    Returns:
+        np.ndarray: The 2-D ``obj`` array that simulate_2d_scene passed to
+        _convolve_with_prfs — the disk after roll-angle rotation and flux
+        normalisation, ready for convolution with the PRF cube.
+    """
+
     from corgisim.instrument import CorgiOptics
-    """Test that NotImplementedError is raised for non-zero roll angle."""
-    mock_scene = Mock()
-    mock_scene.twoD_scene_info = {
-        "disk_model_path": "/fake/path/to/disk_model.fits",
-        "prf_cube_path": "/fake/path/to/prf_cube.fits"
+
+    # providing dict for prf sim info
+    prf_sim_info = {
+    'centred': 'True',
+    'iwa': 2.0, 'owa': 8.0,
+    'inner_step': 0.5, 'mid_step': 1.0, 'outer_step': 2.0,
+    'max_radius': 10.0, 'step_deg': 90.0,
     }
 
-    mock_optics = Mock()
-    mock_optics.res_mas = 1.0
-    mock_optics.cgi_mode = "excam_efield"
-    mock_optics.roll_angle = 10  # Non-zero roll angle
+    mock_scene = Mock()
+    mock_scene.twoD_scene_info = {"disk_model_path": "/fake/path/to/disk_model.fits", 
+                                  "surface_brightness_unit": "MJy/sr",}
 
-    with pytest.raises(NotImplementedError, match=r"Roll angle rotation is not implemented yet for 2D scene."):
-        CorgiOptics.simulate_2d_scene(mock_optics, mock_scene, prf_cube_path=mock_scene.twoD_scene_info["prf_cube_path"])
+    mock_optics = Mock()
+    mock_optics.res_mas = 100.0
+    mock_optics.cgi_mode = "excam"
+    mock_optics.roll_angle = roll_angle
+
+    def mock_getdata(path, *args, **kwargs):
+        """Return disk for disk-model loads; a valid-shaped PRF cube otherwise."""
+        if 'disk' in str(path).lower():
+            return disk
+        return np.zeros((45, disk.shape[0], disk.shape[1]))
+
+    with patch('corgisim.instrument.fits.getdata', side_effect=mock_getdata), \
+         patch('corgisim.instrument.disk_countrate.disk_to_countrate', return_value=disk.copy()), \
+         patch('corgisim.prf_simulation._get_prf_sim_info', return_value=prf_sim_info), \
+         patch('corgisim.convolution._convolve_with_prfs') as mock_conv, \
+         patch('corgisim.convolution.flux_calibration_2D_scene',
+         side_effect=lambda optics, scene, conv2d: conv2d), \
+         patch('corgisim.convolution._set_2D_image_sim_info', return_value={}), \
+         patch('corgisim.outputs.create_hdu', side_effect=lambda data, sim_info: data):
+
+        mock_conv.side_effect = lambda obj, **kwargs: obj
+        CorgiOptics.simulate_2d_scene(mock_optics, mock_scene,
+                  prf_cube_path="/fake/path/to/prf_cube.fits")
+    return mock_conv.call_args.kwargs['obj']
+
+def test_disk_and_point_source_rotate_in_same_direction():
+    """checking disk rotation in _simulate_2d_scene_disk_roll_before_convolution agrees in direction with skycoord_to_excamcoord.
+ 
+    generates a disk with a single bright pixel to the right of centre (3 pixel to the right) in the disk image
+    (dRA < 0, dDec = 0 in sky coordinates), then finds using skycoord_to_excamcoord where
+    a point source at the same sky position would land on the detector after a 90 deg
+    roll.  The disk peak after __simulate_2d_scene_disk_roll_before_convolution
+    must land at the same pixel.
+    """
+    from corgisim.instrument import skycoord_to_excamcoord
+ 
+    N = 11
+    cy = cx = N // 2  # centre pixel: (5, 5)
+    dcol = 3          # feature is 3 pixels to the right of centre
+ 
+    disk = np.zeros((N, N))
+    disk[cy, cx + dcol] = 1.0  # bright pixel at (5, 8)
+ 
+    # Sky position of that pixel (pixel units stand in for mas here)
+    dra  = -float(dcol)  # +col = -RA
+    ddec =  0.0
+ 
+    roll_angle = 90.0
+ 
+    # skycoord_to_excamcoord predict this sky position
+    excam_dx, excam_dy = skycoord_to_excamcoord(dra, ddec, roll_angle)
+    expected_col = round(cx + excam_dx)
+    expected_row = round(cy + excam_dy)  
+ 
+    #simulate_2d_scene disk peak location
+    rolled_disk = _simulate_2d_scene_disk_roll_before_convolution(disk, roll_angle)
+    peak_row, peak_col = np.unravel_index(np.argmax(rolled_disk), rolled_disk.shape)
+
+    # assert if the disk roll and skycoord_to_excamcoord peak pixel location are matching
+    assert (peak_row, peak_col) == (expected_row, expected_col), (
+        f"Disk peak at ({peak_row}, {peak_col}) but skycoord_to_excamcoord "
+        f"predicts ({expected_row}, {expected_col}). "
+    )
+
+def test_roll_angle_rotates_disk_model():
+
+    """Roll angle moves a disk feature off its original axis in the expected way.
+ 
+    Three sub-cases are checked:
+ 
+    roll_angle == 0
+        The disk must not rotate. The bright pixel must still be at the same location after the 0 rotation.
+ 
+    roll_angle == +90
+        CW rotation in the detector frame moves the feature that was above centre to the right: expected peak (4, 6). 
+ 
+    roll_angle == -90
+       CCW rotation moves the feature to the left: expected peak (4, 2).
+    """
+
+    disk = np.zeros((9, 9))
+    disk[6, 4] = 1.0  # bright pixel 2 rows below centre (centre is row=4, col=4)
+
+    # ------------------------------------------------------------------ roll=0
+    unrotated = _simulate_2d_scene_disk_roll_before_convolution(disk, roll_angle=0.0)
+    assert np.unravel_index(np.argmax(unrotated), unrotated.shape) == (6, 4), (
+    "roll_angle=0 should leave the disk unchanged"
+)
+
+    # ----------------------------------------------------------------- roll=+90
+    rotated_90_pos = _simulate_2d_scene_disk_roll_before_convolution(disk, roll_angle=90.0)
+    assert rotated_90_pos.shape == disk.shape, (
+        f"rotation changed the array size: {rotated_90_pos.shape} vs {disk.shape} "
+        "- the padded array was probably not cropped back"
+    )
+    row_pos, col_pos = np.unravel_index(np.argmax(rotated_90_pos), rotated_90_pos.shape)
+
+    assert (row_pos, col_pos) == (4, 6)
+
+    # ----------------------------------------------------------------- roll=-90
+    rotated_90_neg = _simulate_2d_scene_disk_roll_before_convolution(disk, roll_angle=-90.0)
+    assert rotated_90_neg.shape == disk.shape, (
+        f"rotation changed the array size: {rotated_90_neg.shape} vs {disk.shape}"
+    )
+    row_neg, col_neg = np.unravel_index(np.argmax(rotated_90_neg), rotated_90_neg.shape)
+
+    assert (row_neg, col_neg) == (4, 2)
+
+# testing the normalization
+@pytest.mark.parametrize("roll_angle", [0.0, 30.0, -30.0, 45.0, -45.0])
+def test_disk_model_is_normalised_after_rotation(roll_angle):
+    """The normalized disk flux before the convolution sums to 1 at every roll angle. 
+    checking to see if there are nans or inf from the rolling
+    """
+    ring = np.random.default_rng(42)
+    #disk with random values
+    disk = ring.random((21, 21))
+ 
+    #rolls the disk using the function
+    rolled_disk = _simulate_2d_scene_disk_roll_before_convolution(disk, roll_angle)
+ 
+    # check if any of the value is nan, inf in the rolled disk
+    assert np.isfinite(rolled_disk).all()
+    # fails if normalization is done before rolling or normalization is not handled correctly
+    assert np.isclose(np.sum(rolled_disk), np.sum(disk), rtol=1e-4)
+    
+@pytest.mark.parametrize("offset_pix", [(0, 0), (0, 8)])
+def test_one_pixel_disk_matches_point_source_flux(offset_pix):
+    """A one-pixel disk is physically a point source, so the 2D-scene path must
+    give the same image as inject_point_sources for the same source.
+
+    2D-scene path (same steps as simulate_2d_scene): a disk model that is zero
+    except one pixel holding the contrast (pixel flux / host star flux), converted
+    with disk_to_countrate('contrast/pixel') to ct/s, then convolved with the PRF
+    cube by _convolve_with_prfs.
+
+    Reference: a point source dmag fainter than the host at the same position,
+    from inject_point_sources.
+
+    Checks: total flux within DISK_VS_POINT_FLUX_RTOL, and the same peak pixel.
+
+    offset_pix is (dy, dx) in EXCAM pixels from the frame centre (n // 2):
+    (0, 0) is on-axis (on-axis PSF only), (0, 8) is off-axis (PRF cube of the
+    on-axis PSF plus the off-axis PSF generated at exactly that pixel).
+
+    Notes
+    -----
+    - The flux ratio is expected a few percent below 1
+    - The point source is given the host spectrum (rescaled to host Vmag + dmag)
+      so both paths use the same spectral shape; the default flat spectrum
+      would add an extra offset.
+
+    Example output (pytest -s, HLC band 1F, Vmag 8 host, dmag 16):
+        [offset (0, 0)] flux point=1.6830e-06  disk=1.6155e-06 ct/s  ratio=0.9599
+        peak (y, x) point=(25, 24)  disk=(25, 24)
+        [offset (0, 8)] flux point=4.6733e-01  disk=4.4239e-01 ct/s  ratio=0.9466
+        peak (y, x) point=(25, 33)  disk=(25, 33)
+    """
+    import warnings
+    import roman_preflight_proper
+    from corgisim import constants, instrument, scene
+    from corgisim.convolution import _convolve_with_prfs
+    from corgisim.disk_countrate import disk_to_countrate
+    from corgisim.prf_simulation import (centre_prf_cube, compute_single_off_axis_psf,
+                                         create_wavelength_grid_and_weights)
+
+    output_dim = 51
+    pix_scale_mas = constants.PIXEL_SCALE_ARCSEC * 1e3
+    host_vmag, dmag = 8, 16.0
+    contrast = 10 ** (-0.4 * dmag)
+    dy, dx = offset_pix
+    c = output_dim // 2
+
+    host_star_properties = {'Vmag': host_vmag, 'spectral_type': 'G0V', 'magtype': 'vegamag'}
+    host_spectrum = scene.Scene(host_star_properties).stellar_spectrum
+
+    # Point source at the disk pixel (EXCAM +x = -RA, +y = +Dec at roll 0)
+    point_source_info = [{'Vmag': host_vmag + dmag, 'magtype': 'vegamag',
+                          'position_x': -dx * pix_scale_mas, 'position_y': dy * pix_scale_mas,
+                          'Custom_Spectrum': host_spectrum, 'Rescale_Custom_Spectrum': True}]
+    twoD_scene_info = {'disk_model_path': None, 'surface_brightness_unit': 'contrast/pixel'}
+    base_scene = scene.Scene(host_star_properties, point_source_info=point_source_info,
+                             twoD_scene_info=twoD_scene_info)
+
+    rootname = 'hlc_ni_3e-8'
+    dm1 = proper.prop_fits_read(roman_preflight_proper.lib_dir + '/examples/' + rootname + '_dm1_v.fits')
+    dm2 = proper.prop_fits_read(roman_preflight_proper.lib_dir + '/examples/' + rootname + '_dm2_v.fits')
+    optics_keywords = {'cor_type': 'hlc', 'use_errors': 2, 'polaxis': 10,
+                       'output_dim': output_dim,
+                       'use_dm1': 1, 'dm1_v': dm1, 'use_dm2': 1, 'dm2_v': dm2,
+                       'use_fpm': 1, 'use_lyot_stop': 1, 'use_field_stop': 1}
+    optics = instrument.CorgiOptics('excam', '1F', optics_keywords=optics_keywords, if_quiet=True)
+
+    # 1. Point source (ct/s). Ignore the "outside coronagraph FOV" warning on-axis.
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        point_img = optics.inject_point_sources(base_scene).point_source_image.data.astype(float)
+
+    # 2. PRF cube: on-axis PSF, plus the off-axis PSF generated at the disk pixel
+    r_lamD = np.hypot(dx, dy) * pix_scale_mas / optics.res_mas
+    az = (np.degrees(np.arctan2(dy, dx)) % 360) * u.deg
+    wvl, wts = create_wavelength_grid_and_weights(optics.lam_um, None)
+    on_axis = compute_single_off_axis_psf(optics, 0.0, 0 * u.deg, wvl, wts).astype(float)
+    if r_lamD == 0:
+        cube, radii, azimuths, positions = on_axis[np.newaxis], np.array([0.0]), [0.0] * u.deg, [(0.0, 0 * u.deg)]
+    else:
+        off_axis = compute_single_off_axis_psf(optics, r_lamD, az, wvl, wts).astype(float)
+        cube = np.array([on_axis, off_axis])
+        radii, azimuths = np.array([0.0, r_lamD]), [az.value] * u.deg
+        positions = [(0.0, 0 * u.deg), (r_lamD, az)]
+    cube = centre_prf_cube(cube, method='source_position', positions=positions,
+                           res_mas=optics.res_mas, pix_scale_mas=pix_scale_mas)
+
+    # 3. One-pixel disk at the point-source position, contrast/pixel -> ct/s
+    #   (each pixel x the host star's count rate through the bandpass)
+    disk = np.zeros((output_dim, output_dim))
+    disk[c + dy, c + dx] = contrast
+    disk_countrate = disk_to_countrate(disk, 'contrast/pixel', bandpass=optics.bp, area_cm2=optics.area, pixel_scale_arcsec=constants.PIXEL_SCALE_ARCSEC, wavelength_micron=optics.lam0_um, return_quantity=False,input_scene=base_scene)
+
+    # 4. Convolve with the PRF cube
+    disk_img = _convolve_with_prfs(disk_countrate, cube, radii, azimuths, pix_scale_mas=pix_scale_mas, res_mas=optics.res_mas, interpolate_prfs=True)
+
+    # 5. Compare the two images (both ct/s, same pixel grid)
+    flux_ratio = disk_img.sum() / point_img.sum()
+    peak_point = np.unravel_index(np.argmax(point_img), point_img.shape)
+    peak_disk = np.unravel_index(np.argmax(disk_img), disk_img.shape)
+
+    # Shown with pytest -s
+    print(f"\n[offset {offset_pix}] flux point={point_img.sum():.4e}  disk={disk_img.sum():.4e} ct/s  "
+          f"ratio={flux_ratio:.4f}")
+    print(f"peak (y, x) point={peak_point}  disk={peak_disk}")
+
+    # Flux: total count rate over the frame
+    assert abs(flux_ratio - 1) <= DISK_VS_POINT_FLUX_RTOL, \
+        f"flux ratio disk/point = {flux_ratio:.4f} (allowed ±{DISK_VS_POINT_FLUX_RTOL:.0%})"
+
+    # Shift: same brightest pixel (off-axis the PSF core, on-axis the brightest speckle)
+    assert peak_disk == peak_point, f"peak pixel disk={peak_disk}, point={peak_point}"
