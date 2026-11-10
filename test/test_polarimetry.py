@@ -34,7 +34,7 @@ def test_polarimetry():
     output_dim = 51
     dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/hlc_nfov_band1_ni_3e-8_dm1_v.fits' )
     dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/hlc_nfov_band1_ni_3e-8_dm2_v.fits' )
-    
+    roll_angle = 26
 
     #Generate 0/90 image pair
     optics_keywords_0_90 = {'cor_type':cor_type, 'use_errors':2, 'polaxis':-10, 'output_dim':output_dim, 'prism':'POL0',\
