@@ -15,7 +15,7 @@ def test_generate_observation_sequence():
     cgi_mode = 'excam'
     bandpass_corgisim = '1F'
     cor_type = 'hlc_band1'
-    cases = ['3e-8']
+    cases = ['3e-8']       
     rootname = 'hlc_ni_' + cases[0]
     host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype': 'vegamag'}
     dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm1_v.fits' )
@@ -29,20 +29,20 @@ def test_generate_observation_sequence():
     base_scene = scene.Scene(host_star_properties)
     optics =  instrument.CorgiOptics(cgi_mode, bandpass_corgisim, optics_keywords=optics_keywords, if_quiet=True)
     detector = instrument.CorgiDetector( emccd_keywords, photon_counting=True)
-
+    
     exp_time = 20
     n_frames = 1
-
+    
     # Test a single frame
-    with pytest.warns(UserWarning):
+    with pytest.warns(UserWarning): 
         simulatedImage_list = observation.generate_observation_sequence(base_scene, optics, detector, exp_time, n_frames)
-
+    
     assert isinstance(simulatedImage_list, list)
     assert len(simulatedImage_list) == n_frames
     assert isinstance(simulatedImage_list[n_frames-1], SimulatedImage)
     assert isinstance(simulatedImage_list[n_frames-1].image_on_detector, fits.hdu.image.PrimaryHDU)
 
-    # Test a single full frame
+    # Test a single full frame 
     simulatedImage_list_fullframe = observation.generate_observation_sequence(base_scene, optics, detector, exp_time, n_frames,full_frame=True, loc_x=300, loc_y=300)
 
     assert isinstance(simulatedImage_list_fullframe, list)
@@ -60,7 +60,7 @@ def test_generate_observation_sequence():
     assert simulatedImage_list_fullframe[n_frames-1].image_on_detector[0].header['OPGAIN'] == gain
     assert simulatedImage_list_fullframe[n_frames-1].image_on_detector[0].header['FRAMET'] == exp_time
 
-    # Test satellite spots generation
+    # Test satellite spots generation 
     satellite_spots_frame_time = 10
     satellite_spots_number_of_frames = 3
     satellite_spots_gain = 500
@@ -80,7 +80,7 @@ def test_generate_observation_sequence():
 
     assert len(simulatedImage_list_fullframe[n_frames-1].image_on_detector) == 2 # Primary and Image HDU
     assert isinstance(simulatedImage_list_fullframe[n_frames-1].image_on_detector[1].data, np.ndarray)
-
+    
     wavelength = 0.575e-6 # meter, assuming band 1
     image_star = simulatedImage_list_fullframe[0].host_star_image.data
     lam_D = np.degrees(wavelength/2.3)*3600*1000 # in mas
@@ -121,8 +121,8 @@ def test_generate_observation_sequence():
             peak_satspots_ave = np.mean(np.array(fitresult)[:,0])
             peak_sat.append(peak_satspots_ave)
         if i == (3*satellite_spots_number_of_frames -1):
-            assert np.all(np.isclose(peak_sat, peak_sat[0], rtol=0.2))
-
+            assert np.all(np.isclose(peak_sat, peak_sat[0], rtol=0.2))        
+    
     assert simulatedImage_list_fullframe[-1].image_on_detector[1].header['EXPTIME'] == exp_time
     assert simulatedImage_list_fullframe[-1].image_on_detector[1].header['EMGAIN_C'] == gain
     assert simulatedImage_list_fullframe[-1].image_on_detector[1].header['SATSPOTS'] == 0
@@ -131,12 +131,12 @@ def test_generate_observation_sequence():
     assert simulatedImage_list_fullframe[-1].image_on_detector[0].header['OPGAIN'] == gain
     assert simulatedImage_list_fullframe[-1].image_on_detector[0].header['FRAMET'] == exp_time
 
-
+    
     # Test several frames
     n_frames = 10
     simulatedImage_list = observation.generate_observation_sequence(base_scene, optics, detector, exp_time, n_frames)
     assert isinstance(simulatedImage_list, list)
-    assert len(simulatedImage_list) == n_frames
+    assert len(simulatedImage_list) == n_frames 
     assert isinstance(simulatedImage_list[n_frames-1], SimulatedImage)
     assert isinstance(simulatedImage_list[n_frames-1].image_on_detector, fits.hdu.image.PrimaryHDU)
 
@@ -146,49 +146,49 @@ def test_generate_observation_scenario_from_cpgs():
     #Test with target and reference
     filepath = 'test/test_data/cpgs_ref_pol_satspots.xml'
     abs_path =  os.path.join(script_dir, filepath)
-
+   
     scene_target, scene_reference, optics, detector_target, detector_reference, visit_list, satellite_dict_target, satellite_dict_reference = inputs.load_cpgs_data(abs_path, output_dim=51, fast_gain_mode = True, gain_CIC_Q=0.0)
-    len_list = 0
+    len_list = 0 
     for visit in visit_list:
         len_list += visit['number_of_frames']
         if visit['isReference']:
             len_list+=(satellite_dict_reference['satellite_spots_number_of_frames']*3)
         else:
             len_list+=(satellite_dict_target['satellite_spots_number_of_frames']*3)
-
+            
     simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, output_dim=51, fast_gain_mode = True, gain_CIC_Q=0.0)
     assert isinstance(simulatedImage_list, list)
     assert len(simulatedImage_list) == len_list
     assert isinstance(simulatedImage_list[0], SimulatedImage)
 
     #Test with an off-axis light source
-    mag_companion = [10]
+    mag_companion = [10] 
     dx= [3*49.3]
     dy= [3*49.3]
     point_source_info = [{'Vmag': mag_companion[0], 'magtype': 'vegamag','position_x':dx[0] , 'position_y':dy[0]}]
     simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, point_source_info=point_source_info, output_dim=51, fast_gain_mode = True, gain_CIC_Q=0.0)
 
     for simulatedImage in simulatedImage_list:
-        #Check that the target has a point source and the target doesn't
+        #Check that the target has a point source and the target doesn't  
         if simulatedImage.input_scene.ref_flag :
             assert '_point_source_Vmag' not in simulatedImage.input_scene.__dict__
-            assert simulatedImage.point_source_image == None
+            assert simulatedImage.point_source_image == None  
         else:
             assert simulatedImage.input_scene._point_source_Vmag == mag_companion
             assert simulatedImage.input_scene._point_source_magtype == ['vegamag']
             assert simulatedImage.input_scene.point_source_dra == dx
             assert simulatedImage.input_scene.point_source_ddec == dy
-            assert isinstance(simulatedImage.point_source_image, fits.hdu.image.PrimaryHDU)
+            assert isinstance(simulatedImage.point_source_image, fits.hdu.image.PrimaryHDU)  
 
 
     #Test with only target
     filepath = 'test/test_data/cpgs_without_reference.xml'
     abs_path =  os.path.join(script_dir, filepath)
     scene_target, optics, detector_target, visit_list, satellite_dict_target = inputs.load_cpgs_data(abs_path, output_dim=51, fast_gain_mode = True, gain_CIC_Q=0.0)
-    len_list = 0
+    len_list = 0 
     for visit in visit_list:
         len_list += visit['number_of_frames']
-        len_list += (satellite_dict_target['satellite_spots_number_of_frames']*3)
+        len_list+=(satellite_dict_target['satellite_spots_number_of_frames']*3)
 
     simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, output_dim=51, fast_gain_mode = True, gain_CIC_Q=0.0)
     assert isinstance(simulatedImage_list, list)
@@ -214,5 +214,5 @@ def test_generate_observation_scenario_from_cpgs():
 
 
 if __name__ == '__main__':
-    # test_generate_observation_sequence()
+    test_generate_observation_sequence()
     test_generate_observation_scenario_from_cpgs()
