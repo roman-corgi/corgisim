@@ -13,17 +13,17 @@ class Input():
     """
     A class that holds all the information necessary for a simulation.
 
-    Input can be created without arguments (default values will be used), with individual arguments or with dictionnaries for host star, 
-    proper keywords and emccd keywords 
+    Input can be created without arguments (default values will be used), with individual arguments or with dictionnaries for host star,
+    proper keywords and emccd keywords
 
     Attribute Access:
         - All attributes are made read-only after initialization.
-        - Accessing an attribute (e.g., `input.source_x_offset`) will retrieve the corresponding 
+        - Accessing an attribute (e.g., `input.source_x_offset`) will retrieve the corresponding
           internal value (e.g., `_source_x_offset`).
 
     Raises:
         AttributeError: If an attempt is made to modify any attribute after initialization.
-    
+
     """
 
     def __init__(self, **kwargs ):
@@ -46,55 +46,55 @@ class Input():
                                                                    # Not populated by default because it necessissates another default value in roman_preflight
                                     'cor_type' : 'hlc',            # coronagraph type ('hlc', 'spc-spec_band2', 'spc-spec_band3', 'spc-wide', 'none')
                                     'source_x_offset_mas' : 0,     # source offset in mas (tilt applied at primary)
-                                    'source_y_offset_mas' : 0,                
+                                    'source_y_offset_mas' : 0,
                                     #'source_x_offset' : 0,   # source offset in lambda0_m/D radians (tilt applied at primary)
-                                    #'source_y_offset' : 0,          
+                                    #'source_y_offset' : 0,
                                     'cvs_source_z_offset_m' : 0,             # additional distance between CVS source and next optic, in meters
-                              
+
       'cvs_jitter_mirror_x_offset_mas' : 0,      # source offset in milliarcsec (tilt applied at CVS jitter mirror)
-                                    'cvs_jitter_mirror_y_offset_mas' : 0,      # 
-                                    #'cvs_jitter_mirror_x_offset' : 0,          # source offset in lambda0_m/D radians (tilt applied at CVS jitter mirror) 
+                                    'cvs_jitter_mirror_y_offset_mas' : 0,      #
+                                    #'cvs_jitter_mirror_x_offset' : 0,          # source offset in lambda0_m/D radians (tilt applied at CVS jitter mirror)
                                     #'cvs_jitter_mirror_y_offset' : 0,
-                                    'polaxis' : 0,                 # polarization axis aberrations: 
-                                                                #    -2 : -45d in, Y out 
-                                                                #    -1 : -45d in, X out 
-                                                                #     1 : +45d in, X out 
-                                                                #     2 : +45d in, Y out 
+                                    'polaxis' : 0,                 # polarization axis aberrations:
+                                                                #    -2 : -45d in, Y out
+                                                                #    -1 : -45d in, X out
+                                                                #     1 : +45d in, X out
+                                                                #     2 : +45d in, Y out
                                                                 #     5 : mean of modes -1 & +1 (X channel polarizer)
                                                                 #     6 : mean of modes -2 & +2 (Y channel polarizer)
                                                                 #    10 : mean of all modes (no polarization filtering)
-                                    'use_errors' : 1,              # use optical surface phase errors? 1 or 0 
+                                    'use_errors' : 1,              # use optical surface phase errors? 1 or 0
                                     'zindex' : np.array([0,0]),    # array of Zernike polynomial indices
                                     'zval_m' : np.array([0,0]),    # array of Zernike coefficients (meters RMS WFE)
-                                    'sm_despace_m' : 0,            # secondary mirror despace (meters) 
+                                    'sm_despace_m' : 0,            # secondary mirror despace (meters)
                                     'use_pupil_defocus' : 1,       # include pupil defocus
                                     'use_aperture' : 0,            # use apertures on all optics? 1 or 0
                                     #'cgi_x_shift_pupdiam' : 0,     # X,Y shear of wavefront at FSM (bulk displacement of CGI); normalized relative to pupil diameter
-                                    #'cgi_y_shift_pupdiam' : 0,          
+                                    #'cgi_y_shift_pupdiam' : 0,
                                     'cgi_x_shift_m' : 0,           # X,Y shear of wavefront at FSM (bulk displacement of CGI) in meters
-                                    'cgi_y_shift_m' : 0,          
+                                    'cgi_y_shift_m' : 0,
                                 #    'end_at_fsm' : 0,              # end propagation after propagating to FSM (no FSM errors)
                                     'fsm_x_offset_mas' : 0,       # offset in focal plane caused by tilt of FSM in mas
-                                    'fsm_y_offset_mas' : 0,         
+                                    'fsm_y_offset_mas' : 0,
                                     #'fsm_x_offset' : 0,            # offset in focal plane caused by tilt of FSM in lambda0/D
-                                    #'fsm_y_offset' : 0,            
+                                    #'fsm_y_offset' : 0,
                                     'fcm_z_shift_m' : 0,          # offset (meters) of focus correction mirror (+ increases path length)
                                     'use_dm1' : 0,                 # use DM1? 1 or 0
                                     'use_dm2' : 0,                 # use DM2? 1 or 0
                                 #   'dm_version' : rp.dm_version  # string, DM version
-                                    'dm_v_quant' : 110.0 / 2.**16, # DM DAC voltage quantization resolution 
+                                    'dm_v_quant' : 110.0 / 2.**16, # DM DAC voltage quantization resolution
                                     'dm_sampling_m' : 0.9906e-3,   # actuator spacing in meters
                                     'dm_temp_c' : 26.0,
                                     'dm1_v' : np.zeros((48,48)),
                                     'dm1_xc_act' : 23.5,           # for 48x48 DM, wavefront centered at actuator intersections: (0,0) : 1st actuator center
-                                    'dm1_yc_act' : 23.5,              
+                                    'dm1_yc_act' : 23.5,
                                     'dm1_xtilt_deg' : 9.65,        # effective DM tilt in deg including 9.65 deg actual tilt and pupil ellipticity
-                                    'dm1_ytilt_deg' : 0, 
-                                    'dm1_ztilt_deg' : 0, 
+                                    'dm1_ytilt_deg' : 0,
+                                    'dm1_ztilt_deg' : 0,
                                     'dm2_v' : np.zeros((48,48)),
                                     'dm2_xc_act' : 23.5 - 0.1,     # for 48x48 DM, wavefront centered at actuator intersections: (0,0) : 1st actuator center
-                                    'dm2_yc_act' : 23.5,               
-                                    'dm2_xtilt_deg' : 9.65, 
+                                    'dm2_yc_act' : 23.5,
+                                    'dm2_xtilt_deg' : 9.65,
                                     'dm2_ytilt_deg' : 0,
                                     'dm2_ztilt_deg' : 0,
                                     #'spam_x_shift_pupdiam' : 0,    # X,Y shift of wavefront at SPAM; normalized relative to pupil diameter
@@ -103,9 +103,9 @@ class Input():
                                     'spam_y_shift_m' : 0,
                                     'use_pupil_mask' : 1,          # SPC only: use SPC pupil mask (0 or 1)
                                     #'mask_x_shift_pupdiam' : 0,    # X,Y shear of shaped pupil mask; normalized relative to pupil diameter
-                                    #'mask_y_shift_pupdiam' : 0,          
+                                    #'mask_y_shift_pupdiam' : 0,
                                     'mask_x_shift_m' : 0,          # X,Y shear of shaped pupil mask in meters
-                                    'mask_y_shift_m' : 0,          
+                                    'mask_y_shift_m' : 0,
                                     'mask_rotation_deg' : 0,
                                     'use_fpm' : 1,                 # use occulter? 1 or 0
                                     #'fpm_x_offset' : 0,            # FPM x,y offset in lambda0/D
@@ -117,9 +117,9 @@ class Input():
                                 #    'end_at_fpm_exit_pupil' : 0,   # return field at FPM exit pupil?
                                     'use_lyot_stop' : 1,           # use Lyot stop? 1 or 0
                                     #'lyot_x_shift_pupdiam' : 0,    # X,Y shear of Lyot stop mask; normalized relative to pupil diameter
-                                    #'lyot_y_shift_pupdiam' : 0,  
+                                    #'lyot_y_shift_pupdiam' : 0,
                                     'lyot_x_shift_m' : 0,          # X,Y shear of Lyot stop mask in meters
-                                    'lyot_y_shift_m' : 0,  
+                                    'lyot_y_shift_m' : 0,
                                     'lyot_rotation_deg' : 0,
                                     'use_field_stop' : 1,          # use field stop (HLC)? 1 or 0
                                     'field_stop_radius_lam0' : 9.7,  # field stop radius in lambda0/D, default value with hlc
@@ -142,45 +142,45 @@ class Input():
                                   'dark_rate': 0.00056,                  # e-/pix/s; 1.0 is requirement, 0.00042/0.00056 is CBE for 0/5 years
                                   'cic_noise': 0.01,                    # e-/pix/frame; 0.1 is requirement, 0.01 is CBE
                                   'read_noise': 100.0,                  # e-/pix/frame; 125 is requirement, 100 is CBE
-                                  'cr_rate': 0,                         # hits/cm^2/s (0 for none, 5 for L2) 
+                                  'cr_rate': 0,                         # hits/cm^2/s (0 for none, 5 for L2)
                                   'em_gain': 1000.0 ,                      # EM gain
                                   'bias': 0,
                                   'pixel_pitch': 13e-6 ,                # detector pixel size in meters
-                                  'apply_smear': True ,                 # (LOWFS only) Apply fast readout smear?  
+                                  'apply_smear': True ,                 # (LOWFS only) Apply fast readout smear?
                                   'e_per_dn':1.0  ,                    # post-multiplied electrons per data unit
                                   'nbits': 14  ,                        # ADC bits
-                                  'numel_gain_register': 604,           # Number of gain register elements 
+                                  'numel_gain_register': 604,           # Number of gain register elements
                                   'use_traps': False,                    # include CTI impact of traps
-                                  'date4traps': 2028.0,                  # decimal year of observation     
+                                  'date4traps': 2028.0,                  # decimal year of observation
                                   'row_read_time': 223.5e-6,              # in seconds; needed to simulate smearing
                                   'nonlin_path': None,                  # path to file containing non-linearity map; if None, no input nonlinearity used
                                   'flat_path': None}                    # path to file containing flat field map; if None, no flat field correction used
-        
+
 
         host_star_properties_default = {'spectral_type' : 'G0V',
-                                        'Vmag' :  5  , 
+                                        'Vmag' :  5  ,
                                         'magtype' : 'vegamag',
                                         'ref_flag' : False}
 
 
         # To make attributes 'read-only'
         for key in list(optics_keywords_default):
-            optics_keywords_default['_'+key] = optics_keywords_default.pop(key)       
+            optics_keywords_default['_'+key] = optics_keywords_default.pop(key)
         vars(self).update(optics_keywords_default)
 
         for key in list(emccd_keywords_default):
-            emccd_keywords_default['_'+key] = emccd_keywords_default.pop(key) 
+            emccd_keywords_default['_'+key] = emccd_keywords_default.pop(key)
         vars(self).update(emccd_keywords_default)
 
         for key in list(host_star_properties_default):
-            host_star_properties_default['_'+key] = host_star_properties_default.pop(key) 
+            host_star_properties_default['_'+key] = host_star_properties_default.pop(key)
         vars(self).update(host_star_properties_default)
 
         for key in list(optics_keywords_default):
-            optics_keywords_default[key[1:]] = optics_keywords_default.pop(key)    
+            optics_keywords_default[key[1:]] = optics_keywords_default.pop(key)
 
         for key in list(emccd_keywords_default):
-            emccd_keywords_default[key[1:]] = emccd_keywords_default.pop(key) 
+            emccd_keywords_default[key[1:]] = emccd_keywords_default.pop(key)
 
         for key in list(host_star_properties_default):
             host_star_properties_default[key[1:]] = host_star_properties_default.pop(key)
@@ -190,7 +190,7 @@ class Input():
         __mutable_emccd_keywords = emccd_keywords_default.copy()
         __mutable_host_star_properties = host_star_properties_default.copy()
 
-        # Remaining Inputs for scene 
+        # Remaining Inputs for scene
         self._point_source_info = None
         self._twoD_scene_hdu = None
 
@@ -198,7 +198,7 @@ class Input():
         self._cgi_mode = 'excam'
         self._bandpass = '1B'
         self._diam =  236.3114
-        
+
         self._oversampling_factor = 7
         self._return_oversample = False
         self._nd = 0
@@ -211,40 +211,40 @@ class Input():
 
         # Update dictionaries
 
-        if 'optics_keywords' in kwargs : 
+        if 'optics_keywords' in kwargs :
             new_optics_keywords = kwargs['optics_keywords'].copy()
             __mutable_optics_keywords.update(new_optics_keywords)
             # Put dictionary value into attributes
             for key in list(kwargs['optics_keywords']):
-                new_optics_keywords['_'+key] = new_optics_keywords.pop(key)    
+                new_optics_keywords['_'+key] = new_optics_keywords.pop(key)
             vars(self).update(new_optics_keywords)
-                    
+
             del kwargs['optics_keywords']
 
-        if 'emccd_keywords' in kwargs : 
+        if 'emccd_keywords' in kwargs :
             new_emccd_keywords = kwargs['emccd_keywords'].copy()
             __mutable_emccd_keywords.update(kwargs['emccd_keywords'])
             # Put dictionary value into attributes
             for key in list(kwargs['emccd_keywords']):
-                new_emccd_keywords['_'+key] = new_emccd_keywords.pop(key)    
+                new_emccd_keywords['_'+key] = new_emccd_keywords.pop(key)
             vars(self).update(new_emccd_keywords)
 
             del kwargs['emccd_keywords']
 
-        if 'host_star_properties' in kwargs : 
+        if 'host_star_properties' in kwargs :
             new_host_star_properties = kwargs['host_star_properties'].copy()
             __mutable_host_star_properties.update(kwargs['host_star_properties'])
             # Put dictionary value into attributes
             for key in list(kwargs['host_star_properties']):
-                new_host_star_properties['_'+key] = new_host_star_properties.pop(key)    
+                new_host_star_properties['_'+key] = new_host_star_properties.pop(key)
             vars(self).update(new_host_star_properties)
             del kwargs['host_star_properties']
 
         # Update the rest of the values
         for key in list(kwargs):
-            kwargs['_'+key] = kwargs.pop(key) 
+            kwargs['_'+key] = kwargs.pop(key)
         vars(self).update(kwargs)
-        
+
         # Make sure there are no discrepancies between dictionnaries and individual values
         for key, val in kwargs.items():
             if key[1:] in __mutable_optics_keywords:
@@ -260,10 +260,10 @@ class Input():
         self._host_star_properties = types.MappingProxyType(__mutable_host_star_properties)
 
         self._initialized = True
-        
+
     #Make all attributes read-only
     def __setattr__(self, attr, value):
-        if '_initialized' not in self.__dict__: #If not initialized, 
+        if '_initialized' not in self.__dict__: #If not initialized,
             super().__setattr__(attr, value)
         else :
             raise AttributeError(f'Cannot set attribute {attr}')
@@ -275,7 +275,7 @@ class Input():
 
 def create_variation_input(old_input, **kwargs):
     """
-    This function creates a new input which is identical to the old input except for the specified keywords. 
+    This function creates a new input which is identical to the old input except for the specified keywords.
     This allows for easily creating variations of a simulation input without modifying the original object.
 
     Args:
@@ -305,7 +305,7 @@ def create_variation_input(old_input, **kwargs):
 
         else:
             raise NameError(key + ' is not an input parameter')
-    new_input = Input(**old_input_dict_intern) 
+    new_input = Input(**old_input_dict_intern)
     return new_input
 
 def load_cpgs_data(filepath, output_dim=201, polaxis=0, fast_gain_mode='auto', gain_CIC_Q = 'roman', return_input=False):
@@ -343,13 +343,13 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, fast_gain_mode='auto', g
         - Exception: For unsupported target IDs or other parsing issues within the CPGS structure.
         - NotImplementedError: If a specific configuration (e.g., polarization, filter, coronagraph mask) from the CPGS file is not yet implemented in the simulation.
     """
-    # Parse the file 
-    try: 
+    # Parse the file
+    try:
         tree = ET.parse(filepath)
     except FileNotFoundError:
         raise FileNotFoundError(f"{filepath} does not exists.")
-    except ParseError: 
-        raise TypeError(f"{filepath} is not an xml file.") 
+    except ParseError:
+        raise TypeError(f"{filepath} is not an xml file.")
 
 
     root = tree.getroot()
@@ -357,7 +357,7 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, fast_gain_mode='auto', g
 
     # # Create a host star and scene for each target
     target_v_mag = float(cpgs_input.find('target_v_mag').text)
-    target_sptype =  cpgs_input.find('target_spec_type').text + cpgs_input.find('target_sub_type').text[:1] 
+    target_sptype =  cpgs_input.find('target_spec_type').text + cpgs_input.find('target_sub_type').text[:1]
     target_name = cpgs_input.find('target_name').text
     host_star_properties_target = {'Vmag': target_v_mag, 'spectral_type': target_sptype, 'magtype':"vegamag", 'ref_flag': False, 'target_name': target_name}
     scene_target = scene.Scene(host_star_properties_target)
@@ -365,7 +365,7 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, fast_gain_mode='auto', g
 
     if reference_star_present:
         reference_v_mag = float(cpgs_input.find('reference_v_mag').text)
-        reference_sptype =  cpgs_input.find('reference_spec_type').text + cpgs_input.find('reference_sub_type').text[:1] 
+        reference_sptype =  cpgs_input.find('reference_spec_type').text + cpgs_input.find('reference_sub_type').text[:1]
         reference_name = cpgs_input.find('reference_name').text
         host_star_properties_reference = {'Vmag': reference_v_mag, 'spectral_type': reference_sptype, 'magtype':"vegamag", 'ref_flag': True, 'target_name': reference_name}
         scene_reference = scene.Scene(host_star_properties_reference)
@@ -373,15 +373,15 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, fast_gain_mode='auto', g
     if (cpgs_input.find('target_autogain').text == '0'):
         photon_counting = (cpgs_input.find('target_pcounting').text=='1')
         em_gain = float(cpgs_input.find('target_gain').text)
-        detector_target = instrument.CorgiDetector(emccd_keywords={'em_gain':em_gain, 'fast_gain_mode': fast_gain_mode, 'gain_CIC_Q': gain_CIC_Q}, photon_counting=photon_counting) 
+        detector_target = instrument.CorgiDetector(emccd_keywords={'em_gain':em_gain, 'fast_gain_mode': fast_gain_mode, 'gain_CIC_Q': gain_CIC_Q}, photon_counting=photon_counting)
     elif (cpgs_input.find('target_autogain').text == '1'):
         #TO DO use eetc for better gain approximation
         detector_target = instrument.CorgiDetector(emccd_keywords={'em_gain':1000, 'fast_gain_mode': fast_gain_mode, 'gain_CIC_Q': gain_CIC_Q}, photon_counting=True)        #TO DO: have a approximate autogain using eetc
     if reference_star_present :
         if (cpgs_input.find('reference_autogain').text == '0'):
             photon_counting = (cpgs_input.find('reference_pcounting').text=='1')
-            em_gain = float(cpgs_input.find('reference_gain').text)   
-            detector_reference = instrument.CorgiDetector(emccd_keywords={'em_gain':em_gain, 'fast_gain_mode': fast_gain_mode, 'gain_CIC_Q': gain_CIC_Q}, photon_counting=photon_counting) 
+            em_gain = float(cpgs_input.find('reference_gain').text)
+            detector_reference = instrument.CorgiDetector(emccd_keywords={'em_gain':em_gain, 'fast_gain_mode': fast_gain_mode, 'gain_CIC_Q': gain_CIC_Q}, photon_counting=photon_counting)
         elif (cpgs_input.find('reference_autogain').text == '1'):
             detector_target = instrument.CorgiDetector(emccd_keywords={'em_gain':1000, 'fast_gain_mode': fast_gain_mode, 'gain_CIC_Q': gain_CIC_Q}, photon_counting=True)        #TO DO: have a approximate autogain using eetc
             #TO DO: have a approximate autogain using eetc
@@ -394,7 +394,7 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, fast_gain_mode='auto', g
     coronograph_mask = cpgs_input.find('coronagraph_mask').text
     required_contrast = cpgs_input.find('initial_target_planet_star_flux_ratio').text
 
-    # CGI mode, cor_type and dm 
+    # CGI mode, cor_type and dm
     is_spectroscopy = (cpgs_input.find('is_spectroscopy').text == '1')
     if is_spectroscopy :
         cgi_mode = 'spec'
@@ -433,7 +433,7 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, fast_gain_mode='auto', g
     dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm1_v.fits' )
     dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm2_v.fits' )
 
-    # Satellite spots    
+    # Satellite spots
     obtain_satspots = (cpgs_input.find('obtain_satspot_image_every_visit').text == '1')
     satellite_dict_target = None
     satellite_dict_reference = None
@@ -445,8 +445,8 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, fast_gain_mode='auto', g
         satellite_dict_target = {'satellite_spot_conf':satellite_spot_conf,
                     'satellite_spots_gain':satellite_spots_gain_targ,
                     'satellite_spots_frame_time':satellite_spots_frame_time_targ,
-                    'satellite_spots_number_of_frames':satellite_spots_nframes_targ} 
-        if reference_star_present: 
+                    'satellite_spots_number_of_frames':satellite_spots_nframes_targ}
+        if reference_star_present:
             satellite_spots_gain_ref =  float(cpgs_input.find('satellite_spots_gain').text)
             satellite_spots_frame_time_ref =  float(cpgs_input.find('satellite_spots_exptime').text)
             satellite_spots_nframe_ref =  int(cpgs_input.find('satellite_spots_nframes').text)
@@ -455,7 +455,7 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, fast_gain_mode='auto', g
                                   'satellite_spots_frame_time':satellite_spots_frame_time_ref,
                                   'satellite_spots_number_of_frames':satellite_spots_nframe_ref}
     else:
-        satellite_dict = None    
+        satellite_dict = None
     # Create visits
     visits = root.find('visit_list')
     visit_list = []
@@ -479,7 +479,7 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, fast_gain_mode='auto', g
 
             elif is_spectroscopy:
                 prism = visit.find('cgi_mechanisms').find('dpampos_spec').text
- 
+
             else:
                 prism = 'None'
             if (excam.find('auto_gain').text == 'Y'):
@@ -492,25 +492,25 @@ def load_cpgs_data(filepath, output_dim=201, polaxis=0, fast_gain_mode='auto', g
                 exp_time =  float(excam.find('frame_time').text)
 
             visit_dict = {'number_of_frames': number_of_frames,
-            'exp_time': exp_time, 
-            'roll_angle':roll_angle, 
-            'visit_num':visit_num, 
+            'exp_time': exp_time,
+            'roll_angle':roll_angle,
+            'visit_num':visit_num,
             'isReference':isReference,
             'vistype': visit_type}
 
 
             visit_list.append(visit_dict)
 
-              
 
-    if is_spectroscopy: 
+
+    if is_spectroscopy:
         optics_keywords ={'cor_type':cor_type, 'polaxis':polaxis, 'output_dim':output_dim, 'slit':slit, 'slit_x_offset_mas':slit_x_offset_mas_orientation_a, 'slit_y_offset_mas':slit_y_offset_mas_orientation_a, 'prism':prism, 'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,}
     else:
         optics_keywords ={'cor_type':cor_type, 'polaxis':polaxis, 'output_dim':output_dim, 'prism':prism, 'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,}
-      
+
     optics = instrument.CorgiOptics(cgi_mode, bandpass, optics_keywords=optics_keywords, if_quiet=True)
     if return_input == True :
-        input = Input(cgi_mode=cgi_mode, bandpass=bandpass, optics_keywords=optics_keywords,host_star_properties=host_star_properties_target, cpgs_file = filepath) 
+        input = Input(cgi_mode=cgi_mode, bandpass=bandpass, optics_keywords=optics_keywords,host_star_properties=host_star_properties_target, cpgs_file = filepath)
         return input
     else:
         if reference_star_present :
