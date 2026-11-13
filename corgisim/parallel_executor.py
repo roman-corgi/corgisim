@@ -76,8 +76,9 @@ class NestablePool(mpp.Pool):
         super().__init__(*args, **kwargs)
 
 
-class WorkerDiedError(RuntimeError):
-    """A pool worker exited while tasks were pending (e.g. killed by the OOM killer)."""
+class WorkerProcessError(RuntimeError):
+    """A worker could not start or stopped unexpectedly before completing its task."""
+
 
 def _run_task(task):
     """func(*args) for pool.imap, which passes one argument per task. Module level, so it pickles under spawn."""
