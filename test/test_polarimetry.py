@@ -38,7 +38,7 @@ def test_polarimetry():
 
     #Generate 0/90 image pair
     optics_keywords_0_90 = {'cor_type':cor_type, 'use_errors':2, 'polaxis':-10, 'output_dim':output_dim, 'prism':'POL0',\
-                    'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
+                    'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':0, 'use_lyot_stop':1,  'use_field_stop':1 }
     optics_0_90 = instrument.CorgiOptics(cgi_mode, bandpass_corgisim, optics_keywords=optics_keywords_0_90, if_quiet=True, roll_angle=roll_angle)
     sim_scene_0_90 = optics_0_90.get_host_star_psf(base_scene)
     image_star_corgi_x = sim_scene_0_90.host_star_image.data[0]
@@ -72,7 +72,7 @@ def test_polarimetry():
         assert wrap==False
     #Generate 45/135 image pair
     optics_keywords_45_135 = {'cor_type':cor_type, 'use_errors':2, 'polaxis':-10, 'output_dim':output_dim, 'prism':'POL45',\
-                    'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
+                    'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':0, 'use_lyot_stop':1,  'use_field_stop':1 }
     optics_45_135 = instrument.CorgiOptics(cgi_mode, bandpass_corgisim, optics_keywords=optics_keywords_45_135, if_quiet=True, roll_angle=roll_angle)
     sim_scene_45_135 = optics_45_135.get_host_star_psf(base_scene)
     image_star_corgi_45 = sim_scene_45_135.host_star_image.data[0]
@@ -84,7 +84,7 @@ def test_polarimetry():
     #Generate unpolarized image
     #leave prism keyword blank to test that it autofills to None
     optics_keywords_unpol = {'cor_type':cor_type, 'use_errors':2, 'polaxis':-10, 'output_dim':output_dim,\
-                    'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
+                    'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':0, 'use_lyot_stop':1,  'use_field_stop':1 }
     optics_unpol = instrument.CorgiOptics(cgi_mode, bandpass_corgisim, optics_keywords=optics_keywords_unpol, if_quiet=True, roll_angle=roll_angle)
     sim_scene_unpol = optics_unpol.get_host_star_psf(base_scene)
     image_star_corgi_unpol = sim_scene_unpol.host_star_image.data
