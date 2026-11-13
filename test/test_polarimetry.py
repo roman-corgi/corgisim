@@ -13,7 +13,7 @@ def test_polarimetry():
     print('This test checks that the images from polarimetry mode is generated correctly')
 
     #define host star properties
-    Vmag = 8
+    Vmag = 19
     sptype = 'G0V'
     host_star_pol = np.array([1, 0.05, 0.02, 0])
     host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype':'vegamag', 'stokes_vector': host_star_pol}
@@ -31,7 +31,7 @@ def test_polarimetry():
     cgi_mode = 'excam'
     bandpass_corgisim = '1F'
     cor_type = 'hlc'
-    output_dim = 51
+    output_dim = 121
     dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/hlc_nfov_band1_ni_3e-8_dm1_v.fits' )
     dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/hlc_nfov_band1_ni_3e-8_dm2_v.fits' )
     roll_angle = 26
