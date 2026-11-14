@@ -195,6 +195,21 @@ def test_generate_observation_scenario_from_cpgs():
     assert len(simulatedImage_list) == len_list
     assert isinstance(simulatedImage_list[0], SimulatedImage)
 
+    #Test with custom satellite spots
+    filepath = 'test/test_data/cpgs_with_custom_satspots.xml'
+    abs_path =  os.path.join(script_dir, filepath)
+    scene_target, optics, detector_target, visit_list, satellite_dict_target = inputs.load_cpgs_data(abs_path, output_dim=51, fast_gain_mode = True, gain_CIC_Q=0.0)
+    len_list = 0
+    for visit in visit_list:
+        len_list += visit['number_of_frames']
+        len_list += (satellite_dict_target['satellite_spots_number_of_frames']*3)
+
+    custom_satspots_dict = {'sep_lamD': 6.25, 'angle_deg': [0, 90], 'contrast': 1e-6}
+
+    simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, output_dim=51, fast_gain_mode = True, gain_CIC_Q=0.0, custom_satspots_dict=custom_satspots_dict)
+    assert isinstance(simulatedImage_list, list)
+    assert len(simulatedImage_list) == len_list
+    assert isinstance(simulatedImage_list[0], SimulatedImage)
 
 
 
