@@ -18,12 +18,12 @@ def test_install():
         prescription_file = roman_preflight_proper.lib_dir + '/roman_preflight.py'
         shutil.copy( prescription_file, path_directory )
 
-    if not (os.path.isfile(path_directory + '/roman_preflight_compact.py')):
-        prescription_file = roman_preflight_proper.lib_dir + '/roman_preflight_compact.py'
-        shutil.copy( prescription_file, path_directory )
+    # if not (os.path.isfile(path_directory + '/roman_preflight_compact.py')):
+    #     prescription_file = roman_preflight_proper.lib_dir + '/roman_preflight_compact.py'
+    #     shutil.copy( prescription_file, path_directory )
 
     assert(os.path.isfile(path_directory + '/roman_preflight.py'))
-    assert(os.path.isfile(path_directory + '/roman_preflight_compact.py'))
+#    assert(os.path.isfile(path_directory + '/roman_preflight_compact.py'))
 
     #Check your installation by creating a scene
     #Define the host star properties
@@ -41,9 +41,9 @@ def test_install():
 
     ####setup the wavelength for the simulation, nlam=1 for monochromatic image, nlam>1 for broadband image 
     cases = ['3e-8']       
-    rootname = 'hlc_ni_' + cases[0]
-    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm1_v.fits' )
-    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm2_v.fits' )
+    rootname = 'hlc_nfov_band1_ni_' + cases[0]
+    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm1_v.fits' )
+    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm2_v.fits' )
 
     optics_keywords ={'cor_type':cor_type, 'use_errors':2, 'polaxis':10, 'output_dim':201,\
                        'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }

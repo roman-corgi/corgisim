@@ -534,9 +534,9 @@ def test_one_pixel_disk_matches_point_source_flux(offset_pix):
     base_scene = scene.Scene(host_star_properties, point_source_info=point_source_info,
                              twoD_scene_info=twoD_scene_info)
 
-    rootname = 'hlc_ni_3e-8'
-    dm1 = proper.prop_fits_read(roman_preflight_proper.lib_dir + '/examples/' + rootname + '_dm1_v.fits')
-    dm2 = proper.prop_fits_read(roman_preflight_proper.lib_dir + '/examples/' + rootname + '_dm2_v.fits')
+    rootname = 'hlc_nfov_band1_ni_3e-8'
+    dm1 = proper.prop_fits_read(roman_preflight_proper.lib_dir + '/examples/dm_solutions/' + rootname + '_dm1_v.fits')
+    dm2 = proper.prop_fits_read(roman_preflight_proper.lib_dir + '/examples/dm_solutions/' + rootname + '_dm2_v.fits')
     optics_keywords = {'cor_type': 'hlc', 'use_errors': 2, 'polaxis': 10,
                        'output_dim': output_dim,
                        'use_dm1': 1, 'dm1_v': dm1, 'use_dm2': 1, 'dm2_v': dm2,
