@@ -1555,7 +1555,7 @@ class CorgiOptics():
 
         # 3. Perform convolution
         conv2d = conv._convolve_with_prfs(
-            obj=disk_model_data, 
+            obj=disk_model_countrate, 
             prfs_array=prf_cube, 
             radii_lamD=radii_lamD , 
             azimuths_deg=azimuths_deg, 
