@@ -477,7 +477,7 @@ def test_disk_model_is_normalised_after_rotation(roll_angle):
     assert np.isclose(np.sum(rolled_disk), np.sum(disk), rtol=1e-4)
     
 @pytest.mark.parametrize("offset_pix", [(0, 0), (0, 8)])
-def test_one_pixel_disk_matches_point_source_flux(offset_pix):
+def test_one_pixel_disk_matches_point_source_flux(offset_pix, tmp_path):
     """A one-pixel disk is physically a point source, so the 2D-scene path must
     give the same image as inject_point_sources for the same source.
 
@@ -511,10 +511,10 @@ def test_one_pixel_disk_matches_point_source_flux(offset_pix):
     import warnings
     import roman_preflight_proper
     from corgisim import constants, instrument, scene
-    from corgisim.convolution import _convolve_with_prfs
-    from corgisim.disk_countrate import disk_to_countrate
-    from corgisim.prf_simulation import (centre_prf_cube, compute_single_off_axis_psf,
+    from corgisim.convolution import _convolve_with_prfs, build_radial_grid, build_azimuth_grid
+    from corgisim.prf_simulation import (make_prf_cube, centre_prf_cube, compute_single_off_axis_psf,
                                          create_wavelength_grid_and_weights)
+    from astropy.io import fits
 
     output_dim = 51
     pix_scale_mas = constants.PIXEL_SCALE_ARCSEC * 1e3
@@ -523,6 +523,12 @@ def test_one_pixel_disk_matches_point_source_flux(offset_pix):
     dy, dx = offset_pix
     c = output_dim // 2
 
+    disk_path = tmp_path / 'one_pixel_disk.fits'
+    prf_path = tmp_path / 'prf_cube.fits'
+    disk = np.zeros((output_dim, output_dim))
+    disk[c + dy, c + dx] = contrast
+    fits.writeto(disk_path, disk)
+
     host_star_properties = {'Vmag': host_vmag, 'spectral_type': 'G0V', 'magtype': 'vegamag'}
     host_spectrum = scene.Scene(host_star_properties).stellar_spectrum
 
@@ -530,7 +536,7 @@ def test_one_pixel_disk_matches_point_source_flux(offset_pix):
     point_source_info = [{'Vmag': host_vmag + dmag, 'magtype': 'vegamag',
                           'position_x': -dx * pix_scale_mas, 'position_y': dy * pix_scale_mas,
                           'Custom_Spectrum': host_spectrum, 'Rescale_Custom_Spectrum': True}]
-    twoD_scene_info = {'disk_model_path': None, 'surface_brightness_unit': 'contrast/pixel'}
+    twoD_scene_info = {'disk_model_path': str(disk_path), 'surface_brightness_unit': 'contrast/pixel'}
     base_scene = scene.Scene(host_star_properties, point_source_info=point_source_info,
                              twoD_scene_info=twoD_scene_info)
 
@@ -548,31 +554,26 @@ def test_one_pixel_disk_matches_point_source_flux(offset_pix):
         warnings.simplefilter("ignore", UserWarning)
         point_img = optics.inject_point_sources(base_scene).point_source_image.data.astype(float)
 
-    # 2. PRF cube: on-axis PSF, plus the off-axis PSF generated at the disk pixel
+    # 2. Generate a two-PRF cube and the metadata needed to reconstruct its grid.
     r_lamD = np.hypot(dx, dy) * pix_scale_mas / optics.res_mas
-    az = (np.degrees(np.arctan2(dy, dx)) % 360) * u.deg
-    wvl, wts = create_wavelength_grid_and_weights(optics.lam_um, None)
-    on_axis = compute_single_off_axis_psf(optics, 0.0, 0 * u.deg, wvl, wts).astype(float)
-    if r_lamD == 0:
-        cube, radii, azimuths, positions = on_axis[np.newaxis], np.array([0.0]), [0.0] * u.deg, [(0.0, 0 * u.deg)]
-    else:
-        off_axis = compute_single_off_axis_psf(optics, r_lamD, az, wvl, wts).astype(float)
-        cube = np.array([on_axis, off_axis])
-        radii, azimuths = np.array([0.0, r_lamD]), [az.value] * u.deg
-        positions = [(0.0, 0 * u.deg), (r_lamD, az)]
-    cube = centre_prf_cube(cube, method='source_position', positions=positions,
-                           res_mas=optics.res_mas, pix_scale_mas=pix_scale_mas)
+    grid_step = r_lamD if r_lamD > 0 else 1.0
+    radii, radial_info = build_radial_grid(
+        iwa=0.0, owa=grid_step, inner_step=grid_step, mid_step=grid_step,
+        outer_step=grid_step, max_radius=r_lamD,
+    )
+    azimuths, azimuthal_info = build_azimuth_grid(360.0)
+    make_prf_cube(
+        optics, radii, azimuths, {**radial_info, **azimuthal_info},
+        source_sed=None, centre_prf=False,
+        output_dir=str(tmp_path), prf_fname=prf_path.name,
+    )
 
-    # 3. One-pixel disk at the point-source position, contrast/pixel -> ct/s
-    #   (each pixel x the host star's count rate through the bandpass)
-    disk = np.zeros((output_dim, output_dim))
-    disk[c + dy, c + dx] = contrast
-    disk_countrate = disk_to_countrate(disk, 'contrast/pixel', bandpass=optics.bp, area_cm2=optics.area, pixel_scale_arcsec=constants.PIXEL_SCALE_ARCSEC, wavelength_micron=optics.lam0_um, return_quantity=False,input_scene=base_scene)
+    # 3. Run 2D-scene, including disk count-rate conversion, contrast/pixel -> ct/s.
+    disk_img = optics.simulate_2d_scene(
+        base_scene, prf_cube_path=str(prf_path), interpolate_prfs=True,
+    ).twoD_image.data.astype(float)
 
-    # 4. Convolve with the PRF cube
-    disk_img = _convolve_with_prfs(disk_countrate, cube, radii, azimuths, pix_scale_mas=pix_scale_mas, res_mas=optics.res_mas, interpolate_prfs=True)
-
-    # 5. Compare the two images (both ct/s, same pixel grid)
+    # 4. Compare the two images (both ct/s, same pixel grid)
     flux_ratio = disk_img.sum() / point_img.sum()
     peak_point = np.unravel_index(np.argmax(point_img), point_img.shape)
     peak_disk = np.unravel_index(np.argmax(disk_img), disk_img.shape)
