@@ -6,11 +6,11 @@ import numpy as np
 import proper
 from corgisim import outputs
 import roman_preflight_proper
-roman_preflight_proper.copy_here()
+
 
 
 if __name__ == '__main__':
-
+    roman_preflight_proper.copy_here()
     ################### Define the Target and Reference Star Properties ######################
     # --- Create the Astrophysical Scene for Target ---
     # VISTYPE = CGIVST_CAL_TGTREF_PHOT
