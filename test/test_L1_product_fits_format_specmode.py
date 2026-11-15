@@ -52,11 +52,11 @@ def test_L1_product_fits_format_specmode():
     cgi_mode = 'spec'
     cor_type = 'spc-spec_band3'
     bandpass = '3F'
-    cases = ['2e-8']      
+    cases = ['3e-8']      
     # cases = ['1e-9']      
-    rootname = 'spc-spec_ni_' + cases[0]
-    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm1_v.fits' )
-    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm2_v.fits' )
+    rootname = 'spc_spec_band3_ni_' + cases[0]
+    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm1_v.fits' )
+    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm2_v.fits' )
 
     ##  Define the polaxis parameter. Use 10 for non-polaxis cases only, as other options are not yet implemented.
     polaxis = 10

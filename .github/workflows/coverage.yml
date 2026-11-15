@@ -58,8 +58,8 @@ jobs:
         cd ..
     - name: Download and install Roman preflight
       run: |
-        git clone https://github.com/roman-corgi/cgisim_cpp
-        cd cgisim_cpp/
+        wget https://sourceforge.net/projects/cgisim/files/roman_preflight_proper_public_v3.0_python.zip && unzip roman_preflight_proper_public_v3.0_python.zip 
+        cd roman_preflight_proper_public_v3.0_python/
         python -m pip install .
         cd ..
     - name: Download and install eetc
