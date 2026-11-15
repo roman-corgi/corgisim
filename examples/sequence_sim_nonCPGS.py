@@ -50,10 +50,10 @@ if __name__ == '__main__':
     cor_type = 'hlc'
     bandpass = '1F'
 
-    cases = ['3e-8']       
-    rootname = 'hlc_ni_' + cases[0]
-    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm1_v.fits' )
-    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/'+rootname+'_dm2_v.fits' )
+    cases = ['1e-8']
+    rootname = 'hlc_nfov_band1_ni_' + cases[0]
+    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm1_v.fits' )
+    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/'+rootname+'_dm2_v.fits' )
     polaxis = 10 #no polarization
     output_dim = 101
     roll_angle = 0
@@ -71,7 +71,8 @@ if __name__ == '__main__':
 
 
     ################### Define Detector Parameters ###################
-
+    #### Note: you can set gain_CIC_Q=0 and fast_gain_mode= true in the to simulate in a ~5xfaster but less accurate method. 
+    #### Default is fast_gain_mode= auto, both speed and accuracy are prioritized. 
     target_emccd_keywords ={'em_gain':8000}
     detector_target = instrument.CorgiDetector(target_emccd_keywords, photon_counting=True)
 
@@ -86,7 +87,7 @@ if __name__ == '__main__':
     
     ################### Define some common parameters for the observation sequence ###################
     # --- Define the output directory for the simulated images ---
-    outdir ='/Users/jingwenzhang/Desktop/sim_script/upsAnd_sims_pc_full1'
+    outdir = PATH_TO_OUTPUT_DIR
     # --- Define the location of star on detector ---
     # here we assume the star is centered on the detector, so the location is (512, 512) for a 1024x1024 detector
     loc_x = 512
@@ -97,203 +98,214 @@ if __name__ == '__main__':
     
     # --- define exposure time and frame number for each visit  ---
     t_frame_target =  3.46 # seconds, Exposure Time per Frame for target
-    N_frames_target = 2415 # Number of frames for target #153
+    N_frames_target = 2415 # Number of frames for target 
+    #2415 is a big number, if just a test , use a much small number of frames, e.g. 10, 20, 50, 100, etc.
 
     t_frame_target_sat =  22.678 # seconds, Exposure Time per Frame for target
-    N_frames_target_sat = 33 # Number of frames for target #153
+    N_frames_target_sat = 11 # this is number of pair for satlliet splots, 
+    # each pair has 3 frames(negatve, positive, and background), so the total number of frames for satllite spots is 3*11=33
 
     t_frame_ref = 22.74 # seconds, Exposure Time per Frame for refence star
-    N_frames_ref = 97 #42 # Number of frames for reference star
+    N_frames_ref = 97  # Number of frames for reference star
 
     t_frame_ref_sat = 21.45 # seconds, Exposure Time per Frame for refence star
-    N_frames_ref_sat = 21 # Number of frames for reference star
+    N_frames_ref_sat = 7 # this is number of pair for satlliet splots, 
+    # each pair has 3 frames(negatve, positive, and background), so the total number of frames for satllite spots is 3*7=21
 
     ################### Visit 1: reference star roll A
     optics_ref.roll_angle = roll_angle_A
     visit_id_1 = '0020001001001901001'
-    optics_ref.visit_id = visit_id_1
-    # satllite spot frames
-    optics_ref.satspot_keywords = {'num_pairs':2, 'sep_lamD': 6.25, 'angle_deg': [0,90], 'contrast': 1e-7, 'wavelength_m': 0.575e-6}
-    visit1 = observation.generate_observation_sequence(ref_scene, optics_ref, detector_ref_sat, 
-                                                       t_frame_ref_sat, N_frames_ref_sat, save_as_fits=True, 
-                                                       output_dir=outdir, full_frame=True, loc_x=loc_x, loc_y=loc_y,n_satspot_frames=N_frames_ref_sat)
 
+    satspot_keywords = {'num_pairs':2, 'sep_lamD': 6.25, 'angle_deg': [0,90], 'contrast': 1e-7, 'wavelength_m': 0.575e-6}
+    visit1 = observation.generate_observation_sequence(
+        ref_scene, optics_ref, detector_ref,
+        t_frame_ref, N_frames_ref,
+        satspots_are_present=True,
+        satspots_detector=detector_ref_sat,
+        satspots_exptime=t_frame_ref_sat,
+        satspots_number_of_frames=N_frames_ref_sat,
+        satspot_keywords=satspot_keywords.copy(),
+        vistype=visit_type, visit_id=visit_id_1,
+        save_as_fits=True, output_dir=outdir,
+        full_frame=True, loc_x=loc_x, loc_y=loc_y,
+    )
 
-    # non-satelliet spot frames
-    optics_ref.satspot_keywords = None
-    visit1 = observation.generate_observation_sequence(ref_scene, optics_ref, detector_ref, 
-                                                       t_frame_ref,N_frames_ref, save_as_fits=True, 
-                                                       output_dir=outdir, full_frame=True, loc_x=loc_x, loc_y=loc_y,n_satspot_frames=None)
     ################### Visit 2: target star roll A
     optics_target.roll_angle = roll_angle_A
     visit_id_2 = '0020001001001901002'
-    optics_target.visit_id = visit_id_2
 
-    # satllite spot frames
-    optics_target.satspot_keywords = {'num_pairs':2, 'sep_lamD': 6.25, 'angle_deg': [0,90], 'contrast': 1e-7, 'wavelength_m': 0.575e-6}
-    visit2 = observation.generate_observation_sequence(target_scene, optics_target, detector_target_sat, 
-                                                       t_frame_target_sat, N_frames_target_sat, save_as_fits=True, 
-                                                       output_dir=outdir, full_frame=True, loc_x=loc_x, loc_y=loc_y,n_satspot_frames= N_frames_target_sat)
+    satspot_keywords = {'num_pairs':2, 'sep_lamD': 6.25, 'angle_deg': [0,90], 'contrast': 1e-7, 'wavelength_m': 0.575e-6}
+    visit2 = observation.generate_observation_sequence(
+        target_scene, optics_target, detector_target,
+        t_frame_target, N_frames_target,
+        satspots_are_present=True,
+        satspots_detector=detector_target_sat,
+        satspots_exptime=t_frame_target_sat,
+        satspots_number_of_frames=N_frames_target_sat,
+        satspot_keywords=satspot_keywords.copy(),
+        vistype=visit_type, visit_id=visit_id_2,
+        save_as_fits=True, output_dir=outdir,
+        full_frame=True, loc_x=loc_x, loc_y=loc_y,
+    )
 
-    # non-satelliet spot frames
-    optics_target.satspot_keywords = None
-    visit2 = observation.generate_observation_sequence(target_scene, optics_target, detector_target, 
-                                                       t_frame_target, N_frames_target, save_as_fits=True, 
-                                                       output_dir=outdir, full_frame=True, loc_x=loc_x, loc_y=loc_y,n_satspot_frames=None)
-    
     ################### Visit 3: target star roll B
     optics_target.roll_angle = roll_angle_B
     visit_id_3 = '0020001001001901003'
-    optics_target.visit_id = visit_id_3
 
-   # satllite spot frames
-    optics_target.satspot_keywords = {'num_pairs':2, 'sep_lamD': 6.25, 'angle_deg': [0,90], 'contrast': 1e-7, 'wavelength_m': 0.575e-6}
-    visit3 = observation.generate_observation_sequence(target_scene, optics_target, detector_target_sat, 
-                                                       t_frame_target_sat, N_frames_target_sat, save_as_fits=True, 
-                                                       output_dir=outdir, full_frame=True, loc_x=loc_x, loc_y=loc_y,n_satspot_frames= N_frames_target_sat)
-
-    # non-satelliet spot frames
-    optics_target.satspot_keywords = None
-    visit3 = observation.generate_observation_sequence(target_scene, optics_target, detector_target, 
-                                                       t_frame_target, N_frames_target, save_as_fits=True, 
-                                                       output_dir=outdir, full_frame=True, loc_x=loc_x, loc_y=loc_y,n_satspot_frames=None)
+    satspot_keywords = {'num_pairs':2, 'sep_lamD': 6.25, 'angle_deg': [0,90], 'contrast': 1e-7, 'wavelength_m': 0.575e-6}
+    visit3 = observation.generate_observation_sequence(
+        target_scene, optics_target, detector_target,
+        t_frame_target, N_frames_target,
+        satspots_are_present=True,
+        satspots_detector=detector_target_sat,
+        satspots_exptime=t_frame_target_sat,
+        satspots_number_of_frames=N_frames_target_sat,
+        satspot_keywords=satspot_keywords.copy(),
+        vistype=visit_type, visit_id=visit_id_3,
+        save_as_fits=True, output_dir=outdir,
+        full_frame=True, loc_x=loc_x, loc_y=loc_y,
+    )
 
     ################### Visit 4: target star roll A
     optics_target.roll_angle = roll_angle_A
     visit_id_4 = '0020001001001901004'
-    optics_target.visit_id = visit_id_4
 
-    # satllite spot frames
-    optics_target.satspot_keywords = {'num_pairs':2, 'sep_lamD': 6.25, 'angle_deg': [0,90], 'contrast': 1e-7, 'wavelength_m': 0.575e-6}
-    visit4 = observation.generate_observation_sequence(target_scene, optics_target, detector_target_sat, 
-                                                       t_frame_target_sat, N_frames_target_sat, save_as_fits=True, 
-                                                       output_dir=outdir, full_frame=True, loc_x=loc_x, loc_y=loc_y,n_satspot_frames= N_frames_target_sat)
+    satspot_keywords = {'num_pairs':2, 'sep_lamD': 6.25, 'angle_deg': [0,90], 'contrast': 1e-7, 'wavelength_m': 0.575e-6}
+    visit4 = observation.generate_observation_sequence(
+        target_scene, optics_target, detector_target,
+        t_frame_target, N_frames_target,
+        satspots_are_present=True,
+        satspots_detector=detector_target_sat,
+        satspots_exptime=t_frame_target_sat,
+        satspots_number_of_frames=N_frames_target_sat,
+        satspot_keywords=satspot_keywords.copy(),
+        vistype=visit_type, visit_id=visit_id_4,
+        save_as_fits=True, output_dir=outdir,
+        full_frame=True, loc_x=loc_x, loc_y=loc_y,
+    )
 
-    # non-satelliet spot frames
-    optics_target.satspot_keywords = None
-    visit4 = observation.generate_observation_sequence(target_scene, optics_target, detector_target, 
-                                                       t_frame_target, N_frames_target, save_as_fits=True, 
-                                                       output_dir=outdir, full_frame=True, loc_x=loc_x, loc_y=loc_y,n_satspot_frames=None)
-    
     ################### Visit 5: target star roll B
     optics_target.roll_angle = roll_angle_B
     visit_id_5 = '0020001001001901005'
-    optics_target.visit_id = visit_id_5
 
-   # satllite spot frames
-    optics_target.satspot_keywords = {'num_pairs':2, 'sep_lamD': 6.25, 'angle_deg': [0,90], 'contrast': 1e-7, 'wavelength_m': 0.575e-6}
-    visit5 = observation.generate_observation_sequence(target_scene, optics_target, detector_target_sat, 
-                                                       t_frame_target_sat, N_frames_target_sat, save_as_fits=True, 
-                                                       output_dir=outdir, full_frame=True, loc_x=loc_x, loc_y=loc_y,n_satspot_frames= N_frames_target_sat)
-
-    # non-satelliet spot frames
-    optics_target.satspot_keywords = None
-    visit5 = observation.generate_observation_sequence(target_scene, optics_target, detector_target, 
-                                                       t_frame_target, N_frames_target, save_as_fits=True, 
-                                                       output_dir=outdir, full_frame=True, loc_x=loc_x, loc_y=loc_y,n_satspot_frames=None)
-
-
+    satspot_keywords = {'num_pairs':2, 'sep_lamD': 6.25, 'angle_deg': [0,90], 'contrast': 1e-7, 'wavelength_m': 0.575e-6}
+    visit5 = observation.generate_observation_sequence(
+        target_scene, optics_target, detector_target,
+        t_frame_target, N_frames_target,
+        satspots_are_present=True,
+        satspots_detector=detector_target_sat,
+        satspots_exptime=t_frame_target_sat,
+        satspots_number_of_frames=N_frames_target_sat,
+        satspot_keywords=satspot_keywords.copy(),
+        vistype=visit_type, visit_id=visit_id_5,
+        save_as_fits=True, output_dir=outdir,
+        full_frame=True, loc_x=loc_x, loc_y=loc_y,
+    )
 
     ################### Visit 6: reference star roll B
     optics_ref.roll_angle = roll_angle_B
     visit_id_6 = '0020001001001901006'
-    optics_ref.visit_id = visit_id_6
 
-    # satllite spot frames
-    optics_ref.satspot_keywords = {'num_pairs':2, 'sep_lamD': 6.25, 'angle_deg': [0,90], 'contrast': 1e-7, 'wavelength_m': 0.575e-6}
-    visit6 = observation.generate_observation_sequence(ref_scene, optics_ref, detector_ref_sat, 
-                                                       t_frame_ref_sat, N_frames_ref_sat, save_as_fits=True, 
-                                                       output_dir=outdir, full_frame=True, loc_x=loc_x, loc_y=loc_y,n_satspot_frames=N_frames_ref_sat)
-
-    # non-satelliet spot frames
-    optics_ref.satspot_keywords = None
-    visit6 = observation.generate_observation_sequence(ref_scene, optics_ref, detector_ref, 
-                                                       t_frame_ref,N_frames_ref, save_as_fits=True, 
-                                                       output_dir=outdir, full_frame=True, loc_x=loc_x, loc_y=loc_y,n_satspot_frames=None)     
+    satspot_keywords = {'num_pairs':2, 'sep_lamD': 6.25, 'angle_deg': [0,90], 'contrast': 1e-7, 'wavelength_m': 0.575e-6}
+    visit6 = observation.generate_observation_sequence(
+        ref_scene, optics_ref, detector_ref,
+        t_frame_ref, N_frames_ref,
+        satspots_are_present=True,
+        satspots_detector=detector_ref_sat,
+        satspots_exptime=t_frame_ref_sat,
+        satspots_number_of_frames=N_frames_ref_sat,
+        satspot_keywords=satspot_keywords.copy(),
+        vistype=visit_type, visit_id=visit_id_6,
+        save_as_fits=True, output_dir=outdir,
+        full_frame=True, loc_x=loc_x, loc_y=loc_y,
+    )
 
     ################### Visit 7: target star roll B
     optics_target.roll_angle = roll_angle_B
     visit_id_7 = '0020001001001901007'
-    optics_target.visit_id = visit_id_7
 
-   # satllite spot frames
-    optics_target.satspot_keywords = {'num_pairs':2, 'sep_lamD': 6.25, 'angle_deg': [0,90], 'contrast': 1e-7, 'wavelength_m': 0.575e-6}
-    visit7 = observation.generate_observation_sequence(target_scene, optics_target, detector_target_sat, 
-                                                       t_frame_target_sat, N_frames_target_sat, save_as_fits=True, 
-                                                       output_dir=outdir, full_frame=True, loc_x=loc_x, loc_y=loc_y,n_satspot_frames= N_frames_target_sat)
-
-    # non-satelliet spot frames
-    optics_target.satspot_keywords = None
-    visit7 = observation.generate_observation_sequence(target_scene, optics_target, detector_target, 
-                                                       t_frame_target, N_frames_target, save_as_fits=True, 
-                                                       output_dir=outdir, full_frame=True, loc_x=loc_x, loc_y=loc_y,n_satspot_frames=None)
+    satspot_keywords = {'num_pairs':2, 'sep_lamD': 6.25, 'angle_deg': [0,90], 'contrast': 1e-7, 'wavelength_m': 0.575e-6}
+    visit7 = observation.generate_observation_sequence(
+        target_scene, optics_target, detector_target,
+        t_frame_target, N_frames_target,
+        satspots_are_present=True,
+        satspots_detector=detector_target_sat,
+        satspots_exptime=t_frame_target_sat,
+        satspots_number_of_frames=N_frames_target_sat,
+        satspot_keywords=satspot_keywords.copy(),
+        vistype=visit_type, visit_id=visit_id_7,
+        save_as_fits=True, output_dir=outdir,
+        full_frame=True, loc_x=loc_x, loc_y=loc_y,
+    )
 
     ################### Visit 8: target star roll A
     optics_target.roll_angle = roll_angle_A
     visit_id_8 = '0020001001001901008'
-    optics_target.visit_id = visit_id_8
 
-    # satllite spot frames
-    optics_target.satspot_keywords = {'num_pairs':2, 'sep_lamD': 6.25, 'angle_deg': [0,90], 'contrast': 1e-7, 'wavelength_m': 0.575e-6}
-    visit8 = observation.generate_observation_sequence(target_scene, optics_target, detector_target_sat, 
-                                                       t_frame_target_sat, N_frames_target_sat, save_as_fits=True, 
-                                                       output_dir=outdir, full_frame=True, loc_x=loc_x, loc_y=loc_y,n_satspot_frames= N_frames_target_sat)
-
-    # non-satelliet spot frames
-    optics_target.satspot_keywords = None
-    visit8 = observation.generate_observation_sequence(target_scene, optics_target, detector_target, 
-                                                       t_frame_target, N_frames_target, save_as_fits=True, 
-                                                       output_dir=outdir, full_frame=True, loc_x=loc_x, loc_y=loc_y,n_satspot_frames=None)
+    satspot_keywords = {'num_pairs':2, 'sep_lamD': 6.25, 'angle_deg': [0,90], 'contrast': 1e-7, 'wavelength_m': 0.575e-6}
+    visit8 = observation.generate_observation_sequence(
+        target_scene, optics_target, detector_target,
+        t_frame_target, N_frames_target,
+        satspots_are_present=True,
+        satspots_detector=detector_target_sat,
+        satspots_exptime=t_frame_target_sat,
+        satspots_number_of_frames=N_frames_target_sat,
+        satspot_keywords=satspot_keywords.copy(),
+        vistype=visit_type, visit_id=visit_id_8,
+        save_as_fits=True, output_dir=outdir,
+        full_frame=True, loc_x=loc_x, loc_y=loc_y,
+    )
 
     ################### Visit 9: target star roll B
     optics_target.roll_angle = roll_angle_B
     visit_id_9 = '0020001001001901009'
-    optics_target.visit_id = visit_id_9
 
-   # satllite spot frames
-    optics_target.satspot_keywords = {'num_pairs':2, 'sep_lamD': 6.25, 'angle_deg': [0,90], 'contrast': 1e-7, 'wavelength_m': 0.575e-6}
-    visit9 = observation.generate_observation_sequence(target_scene, optics_target, detector_target_sat, 
-                                                       t_frame_target_sat, N_frames_target_sat, save_as_fits=True, 
-                                                       output_dir=outdir, full_frame=True, loc_x=loc_x, loc_y=loc_y,n_satspot_frames= N_frames_target_sat)
-
-    # non-satelliet spot frames
-    optics_target.satspot_keywords = None
-    visit9 = observation.generate_observation_sequence(target_scene, optics_target, detector_target, 
-                                                       t_frame_target, N_frames_target, save_as_fits=True, 
-                                                       output_dir=outdir, full_frame=True, loc_x=loc_x, loc_y=loc_y,n_satspot_frames=None)
+    satspot_keywords = {'num_pairs':2, 'sep_lamD': 6.25, 'angle_deg': [0,90], 'contrast': 1e-7, 'wavelength_m': 0.575e-6}
+    visit9 = observation.generate_observation_sequence(
+        target_scene, optics_target, detector_target,
+        t_frame_target, N_frames_target,
+        satspots_are_present=True,
+        satspots_detector=detector_target_sat,
+        satspots_exptime=t_frame_target_sat,
+        satspots_number_of_frames=N_frames_target_sat,
+        satspot_keywords=satspot_keywords.copy(),
+        vistype=visit_type, visit_id=visit_id_9,
+        save_as_fits=True, output_dir=outdir,
+        full_frame=True, loc_x=loc_x, loc_y=loc_y,
+    )
 
     ################### Visit 10: target star roll A
     optics_target.roll_angle = roll_angle_A
     visit_id_10 = '0020001001001901010'
-    optics_target.visit_id = visit_id_10
 
-    # satllite spot frames
-    optics_target.satspot_keywords = {'num_pairs':2, 'sep_lamD': 6.25, 'angle_deg': [0,90], 'contrast': 1e-7, 'wavelength_m': 0.575e-6}
-    visit10 = observation.generate_observation_sequence(target_scene, optics_target, detector_target_sat, 
-                                                       t_frame_target_sat, N_frames_target_sat, save_as_fits=True, 
-                                                       output_dir=outdir, full_frame=True, loc_x=loc_x, loc_y=loc_y,n_satspot_frames= N_frames_target_sat)
+    satspot_keywords = {'num_pairs':2, 'sep_lamD': 6.25, 'angle_deg': [0,90], 'contrast': 1e-7, 'wavelength_m': 0.575e-6}
+    visit10 = observation.generate_observation_sequence(
+        target_scene, optics_target, detector_target,
+        t_frame_target, N_frames_target,
+        satspots_are_present=True,
+        satspots_detector=detector_target_sat,
+        satspots_exptime=t_frame_target_sat,
+        satspots_number_of_frames=N_frames_target_sat,
+        satspot_keywords=satspot_keywords.copy(),
+        vistype=visit_type, visit_id=visit_id_10,
+        save_as_fits=True, output_dir=outdir,
+        full_frame=True, loc_x=loc_x, loc_y=loc_y,
+    )
 
-    # non-satelliet spot frames
-    optics_target.satspot_keywords = None
-    visit10 = observation.generate_observation_sequence(target_scene, optics_target, detector_target, 
-                                                       t_frame_target, N_frames_target, save_as_fits=True, 
-                                                       output_dir=outdir, full_frame=True, loc_x=loc_x, loc_y=loc_y,n_satspot_frames=None)    
     ################### Visit 11: reference star roll A
     optics_ref.roll_angle = roll_angle_A
     visit_id_11 = '0020001001001901011'
-    optics_ref.visit_id = visit_id_11
-    # satllite spot frames
-    optics_ref.satspot_keywords = {'num_pairs':2, 'sep_lamD': 6.25, 'angle_deg': [0,90], 'contrast': 1e-7, 'wavelength_m': 0.575e-6}
-    visit11 = observation.generate_observation_sequence(ref_scene, optics_ref, detector_ref_sat, 
-                                                       t_frame_ref_sat, N_frames_ref_sat, save_as_fits=True, 
-                                                       output_dir=outdir, full_frame=True, loc_x=loc_x, loc_y=loc_y,n_satspot_frames=N_frames_ref_sat)
 
-
-    # non-satelliet spot frames
-    optics_ref.satspot_keywords = None
-    visit11 = observation.generate_observation_sequence(ref_scene, optics_ref, detector_ref, 
-                                                       t_frame_ref,N_frames_ref, save_as_fits=True, 
-                                                       output_dir=outdir, full_frame=True, loc_x=loc_x, loc_y=loc_y,n_satspot_frames=None)                                             
-
-
-                                                                               
+    satspot_keywords = {'num_pairs':2, 'sep_lamD': 6.25, 'angle_deg': [0,90], 'contrast': 1e-7, 'wavelength_m': 0.575e-6}
+    visit11 = observation.generate_observation_sequence(
+        ref_scene, optics_ref, detector_ref,
+        t_frame_ref, N_frames_ref,
+        satspots_are_present=True,
+        satspots_detector=detector_ref_sat,
+        satspots_exptime=t_frame_ref_sat,
+        satspots_number_of_frames=N_frames_ref_sat,
+        satspot_keywords=satspot_keywords.copy(),
+        vistype=visit_type, visit_id=visit_id_11,
+        save_as_fits=True, output_dir=outdir,
+        full_frame=True, loc_x=loc_x, loc_y=loc_y,
+    )
