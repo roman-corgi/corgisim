@@ -98,15 +98,14 @@ if __name__ == '__main__':
     
     # --- define exposure time and frame number for each visit  ---
     t_frame_target =  3.46 # seconds, Exposure Time per Frame for target
-    N_frames_target = 2415 # Number of frames for target 
-    #2415 is a big number, if just a test , use a much small number of frames, e.g. 10, 20, 50, 100, etc.
-
+    N_frames_target = 50 # Number of frames for target, set 50 here as a short test case
+    
     t_frame_target_sat =  22.678 # seconds, Exposure Time per Frame for target
     N_frames_target_sat = 11 # this is number of pair for satlliet splots, 
     # each pair has 3 frames(negatve, positive, and background), so the total number of frames for satllite spots is 3*11=33
 
     t_frame_ref = 22.74 # seconds, Exposure Time per Frame for refence star
-    N_frames_ref = 97  # Number of frames for reference star
+    N_frames_ref = 50 # Number of frames for reference star, set 50 here as a short test case
 
     t_frame_ref_sat = 21.45 # seconds, Exposure Time per Frame for refence star
     N_frames_ref_sat = 7 # this is number of pair for satlliet splots, 
