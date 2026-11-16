@@ -362,7 +362,7 @@ def _simulate_2d_scene_disk_roll_before_convolution(disk, roll_angle):
         return np.zeros((45, disk.shape[0], disk.shape[1]))
 
     with patch('corgisim.instrument.fits.getdata', side_effect=mock_getdata), \
-         patch('corgisim.instrument.disk_countrate.disk_to_countrate', return_value=disk.copy()), \
+         patch('corgisim.instrument.disk_countrate.disk_to_countrate',side_effect=lambda disk_image, **kwargs: disk_image), \
          patch('corgisim.prf_simulation._get_prf_sim_info', return_value=prf_sim_info), \
          patch('corgisim.convolution._convolve_with_prfs') as mock_conv, \
          patch('corgisim.convolution.flux_calibration_2D_scene',
