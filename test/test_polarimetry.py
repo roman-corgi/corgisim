@@ -13,7 +13,7 @@ def test_polarimetry():
     print('This test checks that the images from polarimetry mode is generated correctly')
 
     #define host star properties
-    Vmag = 8
+    Vmag = 19
     sptype = 'G0V'
     host_star_pol = np.array([1, 0.05, 0.02, 0])
     host_star_properties = {'Vmag': Vmag, 'spectral_type': sptype, 'magtype':'vegamag', 'stokes_vector': host_star_pol}
@@ -31,15 +31,14 @@ def test_polarimetry():
     cgi_mode = 'excam'
     bandpass_corgisim = '1F'
     cor_type = 'hlc'
-    output_dim = 51
-    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/hlc_ni_3e-8_dm1_v.fits' )
-    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/hlc_ni_3e-8_dm2_v.fits' )
+    output_dim = 121
+    dm1 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/hlc_nfov_band1_ni_3e-8_dm1_v.fits' )
+    dm2 = proper.prop_fits_read( roman_preflight_proper.lib_dir + '/examples/dm_solutions/hlc_nfov_band1_ni_3e-8_dm2_v.fits' )
     roll_angle = 26
-    
 
     #Generate 0/90 image pair
     optics_keywords_0_90 = {'cor_type':cor_type, 'use_errors':2, 'polaxis':-10, 'output_dim':output_dim, 'prism':'POL0',\
-                    'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
+                    'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':0, 'use_lyot_stop':1,  'use_field_stop':1 }
     optics_0_90 = instrument.CorgiOptics(cgi_mode, bandpass_corgisim, optics_keywords=optics_keywords_0_90, if_quiet=True, roll_angle=roll_angle)
     sim_scene_0_90 = optics_0_90.get_host_star_psf(base_scene)
     image_star_corgi_x = sim_scene_0_90.host_star_image.data[0]
@@ -73,7 +72,7 @@ def test_polarimetry():
         assert wrap==False
     #Generate 45/135 image pair
     optics_keywords_45_135 = {'cor_type':cor_type, 'use_errors':2, 'polaxis':-10, 'output_dim':output_dim, 'prism':'POL45',\
-                    'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
+                    'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':0, 'use_lyot_stop':1,  'use_field_stop':1 }
     optics_45_135 = instrument.CorgiOptics(cgi_mode, bandpass_corgisim, optics_keywords=optics_keywords_45_135, if_quiet=True, roll_angle=roll_angle)
     sim_scene_45_135 = optics_45_135.get_host_star_psf(base_scene)
     image_star_corgi_45 = sim_scene_45_135.host_star_image.data[0]
@@ -85,7 +84,7 @@ def test_polarimetry():
     #Generate unpolarized image
     #leave prism keyword blank to test that it autofills to None
     optics_keywords_unpol = {'cor_type':cor_type, 'use_errors':2, 'polaxis':-10, 'output_dim':output_dim,\
-                    'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':1, 'use_lyot_stop':1,  'use_field_stop':1 }
+                    'use_dm1':1, 'dm1_v':dm1, 'use_dm2':1, 'dm2_v':dm2,'use_fpm':0, 'use_lyot_stop':1,  'use_field_stop':1 }
     optics_unpol = instrument.CorgiOptics(cgi_mode, bandpass_corgisim, optics_keywords=optics_keywords_unpol, if_quiet=True, roll_angle=roll_angle)
     sim_scene_unpol = optics_unpol.get_host_star_psf(base_scene)
     image_star_corgi_unpol = sim_scene_unpol.host_star_image.data
@@ -144,9 +143,9 @@ def test_simulation_method():
     oversample  = 7
     roll_angle  = 0.0
 
-    rootname = 'hlc_ni_3e-8'
-    dm1 = proper.prop_fits_read(roman_preflight_proper.lib_dir + f'/examples/{rootname}_dm1_v.fits')
-    dm2 = proper.prop_fits_read(roman_preflight_proper.lib_dir + f'/examples/{rootname}_dm2_v.fits')
+    rootname = 'hlc_nfov_band1_ni_3e-8'
+    dm1 = proper.prop_fits_read(roman_preflight_proper.lib_dir + f'/examples/dm_solutions/{rootname}_dm1_v.fits')
+    dm2 = proper.prop_fits_read(roman_preflight_proper.lib_dir + f'/examples/dm_solutions/{rootname}_dm2_v.fits')
 
     base_optics_kw = {
         'cor_type': cor_type,
