@@ -145,7 +145,7 @@ def check_cpus(filepath, n_workers, mpi):
                                 n_frames=largest_visit, warn=False)
     log.info("CPUs: %d available (%s); per PSF PROPER opens %d processes (nlam=%d); "
              "peak %d processes in the PSF round, %d in the detector round%s",
-             report['available_cpu_count'], report['cpus_source'], report['proper_processes_per_psf'], nlam,
+             report['available_cpu_count'], report['cpu_source'], report['proper_processes_per_psf'], nlam,
              report['peak_cpu_count'], report['detector_peak'],
              " per MPI rank" if mpi else "")
 
