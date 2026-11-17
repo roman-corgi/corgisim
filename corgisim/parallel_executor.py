@@ -404,7 +404,7 @@ def raise_if_pool_worker_dies(poll_interval=0.5):
         # start a background thread to monitor this pool.
         # Use a weak reference to monitor the pool without keeping it alive (or caching it).
         threading.Thread(
-            target=_watch_pool_workers,
+            target=watch_pool_workers,
             args=(weakref.ref(self), poll_interval, initial_workers),
             daemon=True,
         ).start()
