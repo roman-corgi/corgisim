@@ -2,7 +2,7 @@ import traceback
 
 from mpi4py import MPI
 
-from corgisim.parallel_executor import _memory_report, install_pool_guards
+from corgisim.parallel_executor import memory_report, install_pool_guards
 
 log = logging.getLogger(__name__)
 
@@ -62,7 +62,7 @@ def worker_loop(comm):
                     "job_id": task["job_id"],
                     "traceback": (
                         f"{traceback.format_exc()}"
-                        f"Memory on this worker rank: {_memory_report()}\n"
+                        f"Memory on this worker rank: {memory_report()}\n"
                     ),
                 },
                 dest=0,
