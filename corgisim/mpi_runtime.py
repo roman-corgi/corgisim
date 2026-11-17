@@ -37,12 +37,9 @@ def worker_loop(comm):
     """
     Persistent loop for worker ranks.
 
-    Wait for a message from rank 0: a RUN task runs task['func'](*task['args'])
-    and sends the result back; STOP ends the loop. One incoming task always produces
-    exactly one outgoing message, same shape as corgihowfsc's mpi_runtime.worker_loop:
-    the result, or the traceback if the task raised, so the manager never waits for a
-    rank that has died. The loop persists across visits and rounds, so a worker rank
-    simply picks up the next task (a PSF or a frame) when it arrives.
+    Wait for a message from rank 0, execute the requested task, and send back either the result or an error traceback. A STOP message ends the loop.
+
+    Workers remain alive across visits and rounds, processing new tasks (PSF calculation or detector frames) as they arrive.
     """
     while True:
         message = comm.recv(source=0)
