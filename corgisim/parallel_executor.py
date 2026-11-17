@@ -439,7 +439,7 @@ def watch_pool_workers(pool_ref, poll_interval, initial_workers=None):
         # find workers that stopped with a non-zero exit code.
         dead_workers = []
 
-        for process_id, exit_code in dead_workers(pool, known_workers):
+        for process_id, exit_code in stopped_workers(pool, known_workers):
             if exit_code != 0:
                 dead_workers.append((process_id, exit_code))
 
@@ -586,15 +586,19 @@ def run_tasks_with_monitoring(pool, func, args_list, poll_interval=5.0, log_inte
             raise
 
         # Check whether any known workers have stopped.
-        dead =  stopped_workers(pool, known_workers)
+        dead_workers = []
 
-        if dead:
+        for process_id, exit_code in stopped_workers(pool, known_workers):
+            if exit_code != 0:
+                dead_workers.append((process_id, exit_code))
+
+        if dead_workers:
             memory = memory_report()
             pool.terminate()
 
-            # Build a description of the dead worker. 
+            # Build a description of the dead worker.
             failure_message = []
-            for process_id, exit_code in dead:
+            for process_id, exit_code in dead_workers:
                 message = f"process {process_id} exited with code {exit_code}"
                 if exit_code == -9:
                     message += " (SIGKILL; possible memory issue)"
