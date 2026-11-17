@@ -81,7 +81,7 @@ class WorkerProcessError(RuntimeError):
     task."""
 
 
-def _run_task(task):
+def run_task(task):
     """
     Run a function with the given arguments provided for one task.
 
@@ -96,7 +96,7 @@ def _run_task(task):
     return func(*args)
 
 
-def _memory_report():
+def memory_report():
     """
     Return a summary of memory usage without interrupting the simulation.
 
@@ -105,12 +105,12 @@ def _memory_report():
     another error.
     """
     try:
-        return _collect_memory_report()
+        return collect_memory_report()
     except Exception:
         return "RAM: unavailable"
 
 
-def _collect_memory_report():
+def collect_memory_report():
     """
     Report the memory used by this process and its subprocesses.
 
@@ -143,7 +143,7 @@ def _collect_memory_report():
 
     # On a cluster, the job's memory limit is more relevant than the avaliable
     # memory on the whole nodes. 
-    job_memory = _job_memory()
+    job_memory = get_job_memory()
     if job_memory is not None:
         limit, used, source = job_memory
         if used is None:
@@ -159,7 +159,7 @@ def _collect_memory_report():
     return f"{report}, device available {available_memory / 1e9:.2f} GB"
 
 
-def _job_memory():
+def get_job_memory():
     """
     Find how much memory a job is allowed to use and how much it is using.
 
@@ -414,7 +414,7 @@ def raise_if_pool_worker_dies(poll_interval=0.5):
     mpp.Pool._watch_workers = True
 
 
-def _watch_pool_workers(pool_ref, poll_interval, initial_workers=None):
+def watch_pool_workers(pool_ref, poll_interval, initial_workers=None):
     """
     Monitor a process pool for unexpected worker deaths.
 
@@ -477,7 +477,7 @@ def _watch_pool_workers(pool_ref, poll_interval, initial_workers=None):
                 result._event.set()
 
             try:
-                log.error("%s %s", worker_error, _memory_report())
+                log.error("%s %s", worker_error, memory_report())
             finally:
                 pool.terminate()
             return
@@ -507,7 +507,7 @@ def install_pool_guards():
     raise_if_pool_worker_dies() 
 
 
-def _stopped_workers(pool, known_workers):
+def stopped_workers(pool, known_workers):
     """
     Find workers that have stoppped running, including those have been replaced. 
 
@@ -543,7 +543,7 @@ def _stopped_workers(pool, known_workers):
     return stopped_workers
 
 
-def _run_tasks_with_monitoring(pool, func, args_list, poll_interval=5.0, log_interval=60.0):
+def run_tasks_with_monitoring(pool, func, args_list, poll_interval=5.0, log_interval=60.0):
     """
     Collect ordered task results while monitoring the worker pool.
 
@@ -565,13 +565,13 @@ def _run_tasks_with_monitoring(pool, func, args_list, poll_interval=5.0, log_int
 
     # imap returns results in input order and allows timed waiting.
     tasks = ((func, args) for args in args_list)
-    results_iter = pool.imap(_run_task, tasks, chunksize=1)
+    results_iter = pool.imap(run_task, tasks, chunksize=1)
 
     results = []
-    start_time = last_log = time.perf_counter()
+    start_time = time.perf_counter()
     last_log_time = start_time
 
-    log.info("%s: started %d tasks. %s", function_name, n_tasks, _memory_report())
+    log.info("%s: started %d tasks. %s", function_name, n_tasks, memory_report())
 
     while len(results) < n_tasks:
         # Wait up to poll_interval for the next result, then check the workers' status.
@@ -582,14 +582,14 @@ def _run_tasks_with_monitoring(pool, func, args_list, poll_interval=5.0, log_int
         except Exception:
             # Log the task failure and memory usage before raising the error.
             log.exception("%s: task %d/%d failed. %s", function_name, len(results) + 1, n_tasks,
-                          _memory_report())
+                          memory_report())
             raise
 
         # Check whether any known workers have stopped.
-        dead = _stopped_workers(pool, known_workers)
+        dead =  stopped_workers(pool, known_workers)
 
         if dead:
-            memory = _memory_report()
+            memory = memory_report()
             pool.terminate()
 
             # Build a description of the dead worker. 
@@ -612,7 +612,7 @@ def _run_tasks_with_monitoring(pool, func, args_list, poll_interval=5.0, log_int
         # The handler thread also dies, the new worker cannot be started.
         # In that case, waiting for the remaining imap results would hang.
         if not pool._worker_handler.is_alive():
-            memory = _memory_report()
+            memory = memory_report()
             pool.terminate()
             raise WorkerProcessError(
                 f"{function_name}: could not start a simulation worker (see the traceback above, e.g. "
@@ -630,7 +630,7 @@ def _run_tasks_with_monitoring(pool, func, args_list, poll_interval=5.0, log_int
                 len(results),
                 n_tasks,
                 current_time - start_time,
-                _memory_report(),
+                memory_report(),
             )
             last_log_time = current_time
 
@@ -639,13 +639,13 @@ def _run_tasks_with_monitoring(pool, func, args_list, poll_interval=5.0, log_int
         function_name,
         n_tasks,
         time.perf_counter() - start_time,
-        _memory_report(),
+        memory_report(),
     )
 
     return results
 
 
-def _log_progress_until_stopped(function_name, n_tasks, results, start_time, log_interval, stop_event):
+def log_progress_until_stopped(function_name, n_tasks, results, start_time, log_interval, stop_event):
     """
     Log progress and memory usage at every ``log_interval`` seconds until
     ``stop_event`` is set.
@@ -662,13 +662,13 @@ def _log_progress_until_stopped(function_name, n_tasks, results, start_time, log
                 len(results),
                 n_tasks,
                 time.perf_counter() - start_time,
-                _memory_report(),
+                memory_report(),
             )
         except Exception:
             pass  # Logging failtures should not interrupt the simulation.
 
 
-def _run_tasks_serially(func, args_list, log_interval=60.0):
+def run_tasks_serially(func, args_list, log_interval=60.0):
     """
     Run tasks one after another in this process, with progress messages.
     A background thread periodically reports progress and memory usage,
@@ -684,12 +684,12 @@ def _run_tasks_serially(func, args_list, log_interval=60.0):
     results = []
     start_time = time.perf_counter()
 
-    log.info("%s: started %d tasks in this process. %s", function_name, n_tasks, _memory_report())
+    log.info("%s: started %d tasks in this process. %s", function_name, n_tasks, memory_report())
 
     # start a background thread to log progress until the simulation finishes or fails.
     stop_event = threading.Event()
     progress_thread = threading.Thread(
-        target=_log_progress_until_stopped,
+        target=log_progress_until_stopped,
         args=(function_name, n_tasks, results, start_time, log_interval, stop_event),
         daemon=True,
     )
@@ -702,7 +702,7 @@ def _run_tasks_serially(func, args_list, log_interval=60.0):
             except Exception:
                 # Log the task 
                 log.exception("%s: task %d/%d failed. %s", function_name, len(results) + 1, n_tasks,
-                              _memory_report())
+                              memory_report())
                 raise
     finally:
         # stop the progress thread, even if a task fails.
@@ -714,7 +714,7 @@ def _run_tasks_serially(func, args_list, log_interval=60.0):
         function_name,
         n_tasks,
         time.perf_counter() - start_time,
-        _memory_report(),
+        memory_report(),
     )
     return results
 
@@ -763,7 +763,7 @@ def run_parallel(
 
     # Run tasks sequentially when one process is requested.
     if n_jobs == 1:
-        return _run_tasks_serially(func, args_list, log_interval)
+        return run_tasks_serially(func, args_list, log_interval)
 
     # Install the same guard in each worker process.
     pool_initializer = {"initializer": install_pool_guards}
@@ -772,7 +772,7 @@ def run_parallel(
         # Use a custom Pool subclass that allows workers to spawn their own
         # child processes.
         with NestablePool(processes=n_jobs, **pool_initializer) as pool:
-            return _run_tasks_with_monitoring(
+            return run_tasks_with_monitoring(
                 pool, func, args_list, poll_interval, log_interval
             )
     else:
@@ -970,4 +970,3 @@ def get_cpu_allocation(n_jobs=1, nlam=1, n_psf_states=1, zindex=False,
         "suggested_n_jobs": suggested_n_jobs,
         "problems": problems,
     }
-    
