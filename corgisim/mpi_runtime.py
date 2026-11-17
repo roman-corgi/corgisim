@@ -3,6 +3,7 @@ import traceback
 from mpi4py import MPI
 
 from corgisim.parallel_executor import memory_report, install_pool_guards
+import logging
 
 log = logging.getLogger(__name__)
 
