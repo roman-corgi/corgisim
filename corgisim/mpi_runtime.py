@@ -44,17 +44,17 @@ def worker_loop(comm):
     while True:
         message = comm.recv(source=0)
 
-        if message['message_type'] == TASK_STOP:
+        if message["message_type"] == TASK_STOP:
             break
 
-        task = message['task']
+        task = message["task"]
         try:
-            result = task['func'](*task['args'])
+            result = task["func"](*task["args"])
         except Exception:
-            comm.send({'message_type': TASK_ERROR, 'job_id': task['job_id'],
-                       'traceback': traceback.format_exc()}, dest=0)
+            comm.send({"message_type": TASK_ERROR, "job_id": task["job_id"],
+                       "traceback": traceback.format_exc()}, dest=0)
             continue
-        comm.send({'message_type': TASK_RESULT, 'job_id': task['job_id'], 'result': result}, dest=0)
+        comm.send({"message_type": TASK_RESULT, "job_id": task["job_id"], "result": result}, dest=0)
 
 
 def run_tasks_mpi(comm, func, args_list, max_workers=None):
@@ -65,10 +65,7 @@ def run_tasks_mpi(comm, func, args_list, max_workers=None):
     worker returns a result, it immediately sends that now-free worker the
     next pending task, until every task has been dispatched and collected. 
     
-    Blocks until all results are back (barrier). Same scheme as
-    corgihowfsc's mpi_runtime._run_manager_task_queue, and the same
-    (func, args_list) call shape as parallel_executor.run_parallel, so
-    functools.partial(run_tasks_mpi, comm) can be passed as observation.generate_observation_sequence's frame_runner.
+    Blocks until all dispatched tasks have completed.
 
     If a task raises on a worker, no new tasks are sent, the tasks still running are
     collected (so no worker is left blocked sending its result), and a RuntimeError with
@@ -90,60 +87,71 @@ def run_tasks_mpi(comm, func, args_list, max_workers=None):
     Raises:
         RuntimeError: if a task raised on a worker rank (message includes its traceback).
     """
-    # Nothing to do (e.g. a segment with no frames): return without touching the workers
+    # Rank 0 manages tasks; ranks 1 through size - 1 can do the work.
+    n_workers = comm.Get_size() - 1
+
+    if max_workers is not None and max_workers < 1:
+        raise ValueError(f"max_workers must be >= 1 or None, got {max_workers}")
+
+    # Nothing to do, for example when a segment contains no frames.
     if not args_list:
         return []
 
-    # Rank 0 is this manager, so the workers are ranks 1 .. size-1. Use at most max_workers of them, and never more than there are tasks (the extra ranks just stay idle in worker_loop).
-    n_workers = comm.Get_size() - 1
-    
     if max_workers is not None:
         n_workers = min(n_workers, max_workers)
     n_workers = min(n_workers, len(args_list))
 
-    # job_id is the task's position in args_list: workers may answer in any order, and the
-    # job_id in each answer tells where its result goes, so results come back in input order
-    tasks = [{'job_id': i, 'func': func, 'args': args} for i, args in enumerate(args_list)]
+    # Keep each task's input position so results can be reordered on arrival.
+    tasks = [
+        {"job_id": task_id, "func": func, "args": args}
+        for task_id, args in enumerate(args_list)
+    ]
     results = [None] * len(tasks)
-    n_sent = 0          # tasks sent so far; they go out in order, so tasks[n_sent] is the next one
-    n_answered = 0      # results or errors received so far
-    error = None        # (rank, job_id, traceback) of the first failed task
+    n_dispatched = 0
+    n_received = 0
+    first_error = None  # (rank, task_id, traceback)
 
-    # Fill the worker pool: one initial task per active worker rank (1, 2, ..., n_workers).
-    # n_workers <= len(tasks), so there is always a task for each of them.
+    # Start with one task per active worker rank.
     for rank in range(1, n_workers + 1):
-        comm.send({'message_type': TASK_RUN, 'task': tasks[n_sent]}, dest=rank)
-        n_sent += 1
+        comm.send({"message_type": TASK_RUN, "task": tasks[n_dispatched]}, dest=rank)
+        n_dispatched += 1
 
-    # Dynamic queue: wait for any worker to answer, then give that (now free) worker the next
-    # task. Fast workers take more tasks, so a slow task does not hold the others back.
-    # The loop ends when every task that was sent has been answered.
-    status = MPI.Status()   # filled in by recv with the rank that sent the message
-    
-    while n_answered < n_sent:
-        # Blocks until one worker answers; ANY_SOURCE takes whichever finishes first
+    # Receive each response, then refill that worker if tasks remain.
+    status = MPI.Status()
+
+    while n_received < n_dispatched:
+        # ANY_SOURCE lets the first worker to finish continue with the next task.
         message = comm.recv(source=MPI.ANY_SOURCE, status=status)
-        n_answered += 1
-        rank = status.Get_source()    # who answered: this worker is free now
+        n_received += 1
+        rank = status.Get_source()
 
-        if message['message_type'] == TASK_ERROR:
-            # Keep the first failure only; later ones are usually caused by the same problem
-            error = error or (rank, message['job_id'], message['traceback'])
+        if message["message_type"] == TASK_ERROR:
+            # Preserve the first traceback; it is usually the most informative.
+            if first_error is None:
+                first_error = (rank, message["job_id"], message["traceback"])
         else:
-            # Put the result at its task's position, whatever order the answers arrive in
-            results[message['job_id']] = message['result']
+            task_id = message["job_id"]
+            results[task_id] = message["result"]
 
-        # Refill the free worker with the next task, if any are left.
-        # After an error, only collect the tasks still running; send nothing new
-        if error is None and n_sent < len(tasks):
-            comm.send({'message_type': TASK_RUN, 'task': tasks[n_sent]}, dest=rank)
-            n_sent += 1
+        # Once an error occurs, let active tasks finish but start no new tasks.
+        if first_error is None and n_dispatched < len(tasks):
+            comm.send(
+                {"message_type": TASK_RUN, "task": tasks[n_dispatched]},
+                dest=rank,
+            )
+            n_dispatched += 1
 
-    # Every worker is idle again (back waiting in worker_loop), so it is safe to raise: 
-    # the caller's shutdown_workers can then reach all of them
-    if error is not None:
-        rank, job_id, worker_traceback = error
-        raise RuntimeError(f"Task {job_id} ({func.__name__}) failed on MPI rank {rank}:\n{worker_traceback}")
+    # All workers that received tasks are now idle and can be shut down safely.
+    if first_error is not None:
+        rank, task_id, worker_traceback = first_error
+        function_name = getattr(func, "__name__", repr(func))
+        message = (
+            f"Task {task_id} ({function_name}) failed on MPI rank {rank}:\n"
+            f"{worker_traceback}"
+        )
+        # Also log on rank 0 so the error reaches the manager's log file.
+        log.error("%s", message)
+        raise RuntimeError(message)
 
     return results
 
@@ -153,4 +161,4 @@ def shutdown_workers(comm):
     if comm is None:
         return
     for rank in range(1, comm.Get_size()):
-        comm.send({'message_type': TASK_STOP}, dest=rank)
+        comm.send({"message_type": TASK_STOP}, dest=rank)
