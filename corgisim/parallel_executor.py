@@ -439,7 +439,7 @@ def watch_pool_workers(pool_ref, poll_interval, initial_workers=None):
         # find workers that stopped with a non-zero exit code.
         dead_workers = []
 
-        for process_id, exit_code in _dead_workers(pool, known_workers):
+        for process_id, exit_code in dead_workers(pool, known_workers):
             if exit_code != 0:
                 dead_workers.append((process_id, exit_code))
 
