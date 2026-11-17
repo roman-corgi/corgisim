@@ -2,6 +2,8 @@ import traceback
 
 from mpi4py import MPI
 
+log = logging.getLogger(__name__)
+
 TASK_RUN = "RUN"
 TASK_STOP = "STOP"
 TASK_RESULT = "RESULT"
