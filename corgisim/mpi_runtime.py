@@ -1,6 +1,7 @@
 import traceback
 
 from mpi4py import MPI
+import logging
 
 log = logging.getLogger(__name__)
 
@@ -12,15 +13,16 @@ TASK_ERROR = "ERROR"
 
 def initialize_mpi_comm():
     """
-    Enter the MPI runtime and assign rank roles.
+    Initialize MPI with rank 0 as the manager and all other ranks as workers.
 
-    Rank 0 returns MPI.COMM_WORLD and continues into the caller's own
-    manager code. Every other rank immediately enters worker_loop() and
-    never returns -- same split as corgihowfsc's mpi_runtime.initialize_mpi_comm.
+    The manager receives the communicator. Workers enter worker_loop
+    and only exit after receiving a stop message.
+
+    Requires at least twon ranks: one manager and at least one worker.
 
     Raises:
-        ValueError: if MPI is started with fewer than two ranks.
-        SystemExit: on worker ranks, after worker_loop() returns.
+        ValueError: MPI was started with fewer than two ranks.
+        SystemExit: A worker rank exits after the manager sends its stop message.
     """
     comm = MPI.COMM_WORLD
     if comm.Get_rank() != 0:
