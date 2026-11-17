@@ -59,8 +59,8 @@ class NestablePool(mpp.Pool):
         AssertionError: daemonic processes are not allowed to have children
 
     NestablePool injects NoDaemonContext so all workers are non-daemonic,
-    enabling nested process pools. This is required for the corgisim
-    backend, where each worker calls PROPER's internal multiprocessing.Pool.
+    enabling nested process pools. This is required for the corgisim, where
+    each worker calls PROPER's internal multiprocessing.Pool.
 
     Usage:
         Use run_parallel(..., allow_nesting=True) to enable
@@ -77,11 +77,21 @@ class NestablePool(mpp.Pool):
 
 
 class WorkerProcessError(RuntimeError):
-    """A worker could not start or stopped unexpectedly before completing its task."""
+    """A worker could not start or stopped unexpectedly before completing its
+    task."""
 
 
 def _run_task(task):
-    """func(*args) for pool.imap, which passes one argument per task. Module level, so it pickles under spawn."""
+    """
+    Run a function with the given arguments provided for one task.
+
+    Pool.map() passes each task as a single argument. This function separates
+    the function and its arguments, then calls the function with the provided
+    arguments.
+
+    It is defined outside the run_parallel() function so that multiprocessing
+    can send it to worker process when using the 'spawn' start method.
+    """
     func, args = task
     return func(*args)
 
