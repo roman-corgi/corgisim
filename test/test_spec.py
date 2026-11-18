@@ -2,6 +2,7 @@ from corgisim import spec
 import numpy as np
 import pytest
 import json
+from types import SimpleNamespace
 # import matplotlib.pyplot as plt
 from importlib import resources
 
@@ -173,6 +174,41 @@ def test_apply_prism():
         
         # Assert that the longest wavelength is dispersed to a lower row number
         assert longest_wave_row < shortest_wave_row, "Longer wavelengths should be shifted to lower row numbers"
+
+@pytest.mark.parametrize("cor_type, lamref_um, slit_axis", [('spc-spec_band3_rotated', 0.73, 'x'),
+                                                             ('spc-spec_band3_rotated', 0.73, 'y'),
+                                                             ('spc-spec_band2_rotated', 0.65, 'x'),
+                                                             ('spc-spec_band2_rotated', 0.65, 'y')])
+def test_slit_source_alignment(tmp_path, cor_type, lamref_um, slit_axis):
+    """A source offset in the same direction as the FSAM slit transmits more light than the mirror offset.
+
+    Guards the FSAM array orientation against the PROPER model's SPECROT mask orientation.
+    """
+    import proper
+
+    slit_file = tmp_path / 'slit_params.json'
+    slit_file.write_text(json.dumps({'SQ': {'width': 60.0, 'height': 60.0}}))
+    offset_mas = 250.0
+
+    optics = SimpleNamespace(optics_keywords={'cor_type': cor_type}, cor_type=cor_type,
+                             slit_param_fname=str(slit_file), slit='SQ', lamref_um=lamref_um,
+                             slit_ra_offset_mas=0, slit_dec_offset_mas=0)
+    optics.slit_x_offset_mas = offset_mas if slit_axis == 'x' else 0
+    optics.slit_y_offset_mas = offset_mas if slit_axis == 'y' else 0
+    field_stop_array, field_stop_dx_m = spec.get_slit_mask(optics)
+
+    def transmitted_flux(source_sign):
+        keywords = {'cor_type': cor_type, 'use_fpm': 0, 'use_field_stop': 1,
+                    'field_stop_array': field_stop_array, 'field_stop_array_sampling_m': field_stop_dx_m,
+                    'polaxis': 0, 'output_dim': 201, 'final_sampling_m': 13E-6,
+                    f'source_{slit_axis}_offset_mas': source_sign * offset_mas}
+        field, _ = proper.prop_run('roman_preflight', lamref_um, 1024, PASSVALUE=keywords, QUIET=True)
+        return np.sum(np.abs(field) ** 2)
+
+    flux_aligned = transmitted_flux(+1)
+    flux_mirrored = transmitted_flux(-1)
+    assert flux_aligned > 10 * flux_mirrored, \
+        "The FSAM slit does not transmit the source at the matching offset: array orientation is mismatched"
 
 if __name__ == '__main__':
     pytest.main([__file__])
