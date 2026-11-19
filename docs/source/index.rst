@@ -18,6 +18,7 @@ Corgisim Documentation
    Satellite_spots_demo.ipynb
    finite_stellar_diam_tutorial.ipynb
    jitter_tutorial.ipynb
+   generate_observing_scenario
 
 
 
