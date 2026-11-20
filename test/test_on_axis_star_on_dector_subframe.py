@@ -46,7 +46,6 @@ def test_on_axis_star_on_detector_subframe():
     image = sim_scene.host_star_image.data
     
     emccd_keywords ={'em_gain':1, 'fast_gain_mode':True}
-    exptime = 30
     with pytest.warns(UserWarning):
         detector = instrument.CorgiDetector( emccd_keywords)
 
@@ -54,6 +53,11 @@ def test_on_axis_star_on_detector_subframe():
     emccd_keywords ={'em_gain':gain}
     detector = instrument.CorgiDetector( emccd_keywords)
     assert detector.emccd_keywords_default['bias'] == 1500 
+    with pytest.warns(UserWarning):
+        exptime = 0
+        sim_scene = detector.generate_detector_image(sim_scene,exptime, cut_sub_frame = True)  
+    exptime = 30
+
     sim_scene = detector.generate_detector_image(sim_scene,exptime, cut_sub_frame = True)
     image2 = sim_scene.image_on_detector.data
 
