@@ -44,12 +44,7 @@ Enter the directory that contains setup.py and run the following:
 python -m pip install .
 ```
 ### Install roman_preflight_proper, cgi-eetc and CGISIm
-In your working directory, first clone [roman_preflight_proper](https://github.com/roman-corgi/cgisim_cpp)(
-please note that this is not the official version, but a modified version needed to implement certain functions):
-```
-git clone https://github.com/roman-corgi/cgisim_cpp.git
-cd 
-```
+Go to the [roman_preflight_proper](https://sourceforge.net/projects/cgisim/files/roman_preflight_proper_public_v3.0_python.zip) website. Unzip it in your working directory
 Enter the directory that contains setup.py and run the following: 
 ```
 python -m pip install .
@@ -67,8 +62,11 @@ python -m pip install .
 CGISim itself is not required by the CorgiSim runtime: mode parameters and
 throughput reference data are bundled with CorgiSim. The throughput comparison
 test requires CGISim v4.1; some legacy tests and examples also import CGISim.
-To run those, install it from the
-[CGISim website](https://sourceforge.net/projects/cgisim/).
+To run those, go to the [CGISim website](https://sourceforge.net/projects/cgisim/) and download cgisim 
+Unzip it in your working directory. Enter the directory that contains setup.py and run the following: 
+```
+python -m pip install .
+```
 
 ### Install corgisim
 
