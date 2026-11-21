@@ -1,260 +1,265 @@
 <?xml version="1.0" ?>
 <obs_specification>
-   <!--Observation Specifications created with CPGS version 5.1.7-->
-   <observation_number>1</observation_number>
+   <!--Observation Specifications created with CPGS version 5.1.10-->
+   <observation_number>905</observation_number>
    <observation_information>
-      <label>CPGS_test_python</label>
-      <observer_firstname>Jim</observer_firstname>
-      <observer_lastname>Ingalls</observer_lastname>
-      <cpgs_filename>1785396107.xml</cpgs_filename>
+      <label>CGI_HLC_B1_C3</label>
+      <observer_firstname>Oscar</observer_firstname>
+      <observer_lastname>Carrion-Gonzalez</observer_lastname>
+      <cpgs_filename>1793701374.xml</cpgs_filename>
    </observation_information>
    <target_list>
       <target>
          <target_id>1</target_id>
-         <target_name>47 Uma</target_name>
-         <ra>10:59:27.97</ra>
+         <target_name>eta Uma</target_name>
+         <!--Standardized name of target (SIMBAD)-->
+         <standard_target_name>* eta UMa</standard_target_name>
+         <ra>13:47:32.43</ra>
          <!--Right Ascension in degrees:-->
-         <ra_computed>164.86654167</ra_computed>
-         <dec>40:25:48.9</dec>
+         <ra_computed>206.88512500</ra_computed>
+         <dec>+49:18:47.7</dec>
          <!--Declination in degrees:-->
-         <dec_computed>40.43025000</dec_computed>
+         <dec_computed>49.31325000</dec_computed>
          <!--Proper motion in arcseconds/yr:-->
-         <ra_proper_motion>-0.317642</ra_proper_motion>
-         <dec_proper_motion>0.055014</dec_proper_motion>
+         <ra_proper_motion>-0.121170</ra_proper_motion>
+         <dec_proper_motion>-0.014910</dec_proper_motion>
          <!--Parallax in milliarcseconds:-->
-         <parallax>72.007</parallax>
+         <parallax>31.380</parallax>
          <epoch>2000-01-01T12:00:00</epoch>
       </target>
    </target_list>
    <visit_list>
       <cgi_visit number="1">
-         <!--Visit is of type "Technology Demonstration Observation Block".-->
-         <cgi_visit_type>CGIVST_TDD_OBS</cgi_visit_type>
-         <observation_type>CGI_OBSERVE</observation_type>
-         <!--If visit starts at 2027-12-02T05:09:00 it will end on 2027-12-02T05:45:51.-->
-         <!--Est. visit duration: 0.6144 hr-->
+         <!--Visit is of type "Technology Demonstration Setup + HOWFSC + 1st Reference".-->
+         <cgi_visit_type>CGIVST_TDD_SETUP_HOWFSC</cgi_visit_type>
+         <observation_type>CGI_HOWFSC</observation_type>
+         <!--If visit starts at 2027-01-11T00:00:00 it will end on 2027-01-11T12:28:17.-->
+         <!--Est. visit duration: 12.4714 hr-->
          <!--Initial visit overhead duration (includes slew, settle, and WFI element wheel moves) (s)-->
          <initial_overhead_duration>1236.9900</initial_overhead_duration>
          <!--Science instrument time: estimated CGI data collection time, plus acquisition and internal overheads (s).-->
-         <science_duration>974.8077</science_duration>
-         <!--Approximate data volume (Bytes) (327.30 MB)-->
-         <data_volume>343200000</data_volume>
-         <realtime>N</realtime>
+         <science_duration>43660.0647</science_duration>
+         <!--CGI maximum possible target acquisition + data collection time + command overheads (s) (mainly relevant to HOWFSC/GITL)-->
+         <science_maximum_duration>69831.3596</science_maximum_duration>
+         <!--Approximate data volume (Bytes) (2824.86 MB)-->
+         <data_volume>2962080000</data_volume>
+         <realtime>Y</realtime>
+         <!--Number of seconds after slew completion for realtime portion to start-->
+         <realtime_start_offset>5296</realtime_start_offset>
+         <!--Seconds to allocate for realtime portion-->
+         <realtime_duration>57600</realtime_duration>
          <required>N</required>
          <parallels_allowed>Y</parallels_allowed>
-         <ground_in_the_loop>N</ground_in_the_loop>
-         <!--Start of visit roll Angle: 11.01 degrees-->
-         <!--Mid-visit roll Angle: 11.01 degrees-->
-         <!--End of visit roll Angle: 11.00 degrees-->
+         <ground_in_the_loop>Y</ground_in_the_loop>
+         <!--Start of visit roll Angle: -11.88 degrees-->
+         <!--Mid-visit roll Angle: -12.11 degrees-->
+         <!--End of visit roll Angle: -12.34 degrees-->
          <!--Absolute position angle for visit (deg):-->
-         <position_angle>100.99</position_angle>
-         <!--Is this the first in a series of visits to the same target?-->
-         <first_visit>Y</first_visit>
-         <coronagraph_configuration>NFOV</coronagraph_configuration>
-         <cgi_howfsc>
-            <is_howfsc_visit>N</is_howfsc_visit>
-         </cgi_howfsc>
-         <fixed_target>
-            <!--47 Uma-->
-            <target_id>1</target_id>
-            <reference_target>N</reference_target>
-         </fixed_target>
-         <cgi_excam>
-            <!--Use parameters/telemetry to set the gain/frame_time/photon_counting?-->
-            <auto_gain>N</auto_gain>
-            <gain>500.000</gain>
-            <!--Per-frame exposure time (s)-->
-            <frame_time>10.000</frame_time>
-            <!--Process using photon-counting mode?-->
-            <photon_counting>Y</photon_counting>
-            <!--Number of frames per exposure/raster (approximate)-->
-            <number_of_frames>62</number_of_frames>
-            <!--Total EXCAM (non-acq, non-satellite spots) exposure duration for the visit (s).-->
-            <!--(For continuous frame observations this affects commanding.  Otherwise this is purely informational.)-->
-            <!--Timed Obs Duration (EXCAM Continuous frame measurements):-->
-            <exposure_duration>638.16</exposure_duration>
-            <observe_satellite_spots>Y</observe_satellite_spots>
-            <!--Satellite Spot Pair ID for slot "CUSTOM_TBD"-->
-            <satellite_spots_pair_id>11</satellite_spots_pair_id>
-            <satellite_spots_gain>1.000</satellite_spots_gain>
-            <!--Satellite spots per-frame exposure time (s)-->
-            <satellite_spots_frame_time>0.000</satellite_spots_frame_time>
-            <!--Number of frames per satellite spot exposure (commanded)-->
-            <satellite_spots_number_of_frames>1</satellite_spots_number_of_frames>
-            <!--Total EXCAM satellite spot exposure duration for the visit (s)-->
-            <satellite_spots_exposure_duration>9.0000</satellite_spots_exposure_duration>
-            <!--Time to wait prior to kicking off the exposure (s)-->
-            <kickoff_time>16.0</kickoff_time>
-         </cgi_excam>
-         <cgi_locam>
-            <gain>1.000</gain>
-            <!--Number of frames to take per LOCAM exposure set-->
-            <number_of_frames>1</number_of_frames>
-            <close_focus>N</close_focus>
-            <close_zernike>N</close_zernike>
-         </cgi_locam>
-         <!--Estimated acquisition time: 232.6900s-->
-         <is_spectroscopy>N</is_spectroscopy>
-      </cgi_visit>
-      <cgi_visit number="2">
-         <!--Visit is of type "Technology Demonstration Observation Block".-->
-         <cgi_visit_type>CGIVST_TDD_OBS</cgi_visit_type>
-         <observation_type>CGI_OBSERVE</observation_type>
-         <!--If visit starts at 2027-12-02T05:45:51 it will end on 2027-12-02T06:15:03.-->
-         <!--Est. visit duration: 0.4867 hr-->
-         <!--Initial visit overhead duration (includes slew, settle, and WFI element wheel moves) (s)-->
-         <initial_overhead_duration>777.4316</initial_overhead_duration>
-         <!--Science instrument time: estimated CGI data collection time, plus acquisition and internal overheads (s).-->
-         <science_duration>974.8077</science_duration>
-         <!--Approximate data volume (Bytes) (327.30 MB)-->
-         <data_volume>343200000</data_volume>
-         <realtime>N</realtime>
-         <required>N</required>
-         <parallels_allowed>Y</parallels_allowed>
-         <ground_in_the_loop>N</ground_in_the_loop>
-         <!--Start of visit roll Angle: -11.00 degrees-->
-         <!--Mid-visit roll Angle: -11.01 degrees-->
-         <!--End of visit roll Angle: -11.01 degrees-->
-         <!--Absolute position angle for visit (deg):-->
-         <position_angle>122.99</position_angle>
+         <position_angle>120.05</position_angle>
          <!--Is this the first in a series of visits to the same target?-->
          <first_visit>N</first_visit>
-         <coronagraph_configuration>NFOV</coronagraph_configuration>
          <cgi_howfsc>
-            <is_howfsc_visit>N</is_howfsc_visit>
+            <is_howfsc_visit>Y</is_howfsc_visit>
+            <expected_iteration_duration>6285.74</expected_iteration_duration>
+            <contrast_threshold>2.50E-08</contrast_threshold>
+            <contrast_target>1.00E-08</contrast_target>
+            <contrast_abort>1.00E-03</contrast_abort>
+            <!--HOWFSC maximum duration (hr):-->
+            <time_out>16.00</time_out>
+            <ctrl_strategy>1</ctrl_strategy>
+            <max_iterations>10</max_iterations>
+            <howfsc_band>BAND1</howfsc_band>
          </cgi_howfsc>
          <fixed_target>
-            <!--47 Uma-->
+            <!--eta Uma-->
             <target_id>1</target_id>
-            <reference_target>N</reference_target>
+            <reference_target>Y</reference_target>
          </fixed_target>
          <cgi_excam>
             <!--Use parameters/telemetry to set the gain/frame_time/photon_counting?-->
             <auto_gain>N</auto_gain>
-            <gain>500.000</gain>
+            <gain>1121.687</gain>
             <!--Per-frame exposure time (s)-->
-            <frame_time>10.000</frame_time>
+            <frame_time>22.733</frame_time>
             <!--Process using photon-counting mode?-->
-            <photon_counting>Y</photon_counting>
+            <photon_counting>N</photon_counting>
             <!--Number of frames per exposure/raster (approximate)-->
-            <number_of_frames>62</number_of_frames>
+            <number_of_frames>0</number_of_frames>
             <!--Total EXCAM (non-acq, non-satellite spots) exposure duration for the visit (s).-->
             <!--(For continuous frame observations this affects commanding.  Otherwise this is purely informational.)-->
             <!--Timed Obs Duration (EXCAM Continuous frame measurements):-->
-            <exposure_duration>638.16</exposure_duration>
+            <exposure_duration>5261.83</exposure_duration>
             <observe_satellite_spots>Y</observe_satellite_spots>
             <!--Satellite Spot Pair ID for slot "CUSTOM_TBD"-->
-            <satellite_spots_pair_id>11</satellite_spots_pair_id>
-            <satellite_spots_gain>1.000</satellite_spots_gain>
+            <satellite_spots_pair_id>10</satellite_spots_pair_id>
+            <satellite_spots_gain>608.314</satellite_spots_gain>
             <!--Satellite spots per-frame exposure time (s)-->
-            <satellite_spots_frame_time>0.000</satellite_spots_frame_time>
+            <satellite_spots_frame_time>1.247</satellite_spots_frame_time>
             <!--Number of frames per satellite spot exposure (commanded)-->
-            <satellite_spots_number_of_frames>1</satellite_spots_number_of_frames>
+            <satellite_spots_number_of_frames>5</satellite_spots_number_of_frames>
             <!--Total EXCAM satellite spot exposure duration for the visit (s)-->
-            <satellite_spots_exposure_duration>9.0000</satellite_spots_exposure_duration>
+            <satellite_spots_exposure_duration>45.0000</satellite_spots_exposure_duration>
             <!--Time to wait prior to kicking off the exposure (s)-->
             <kickoff_time>16.0</kickoff_time>
          </cgi_excam>
          <cgi_locam>
-            <gain>1.000</gain>
+            <gain>83.900</gain>
             <!--Number of frames to take per LOCAM exposure set-->
             <number_of_frames>1</number_of_frames>
             <close_focus>N</close_focus>
             <close_zernike>N</close_zernike>
+            <gain_targ>428.5</gain_targ>
+            <chop_ncycles>1</chop_ncycles>
+            <chop_nframes>1</chop_nframes>
+            <chop_discard_extra>0</chop_discard_extra>
          </cgi_locam>
-         <!--Estimated acquisition time: 232.6900s-->
+         <cgi_mechanisms>
+            <reset_fsm>Y</reset_fsm>
+            <reset_fine_fcm>Y</reset_fine_fcm>
+            <fsam_do_fine_alignment>Y</fsam_do_fine_alignment>
+            <set_dms>N</set_dms>
+            <spampos>OPEN</spampos>
+            <fpampos>HLC12_C2R5</fpampos>
+            <fpampos_acq>ND475</fpampos_acq>
+            <fsampos>R1C1</fsampos>
+            <fsampos_coarse>NONE</fsampos_coarse>
+            <lsampos>NFOV</lsampos>
+            <cfampos>1F</cfampos>
+            <cfampos_acq>1F</cfampos_acq>
+            <dpampos>IMAGING</dpampos>
+            <fcmpos>OPEN</fcmpos>
+            <fpam_mask_type>SPOT</fpam_mask_type>
+            <fsm_raster>NFOV</fsm_raster>
+            <dm1_absolute>DM_DM1_CURRENT</dm1_absolute>
+            <dm2_absolute>DM_DM2_CURRENT</dm2_absolute>
+         </cgi_mechanisms>
+         <!--Estimated acquisition time: 198.5886s-->
+         <cgi_acquisition>
+            <gain>1.00</gain>
+            <!--Exposure time in seconds-->
+            <frame_time>4.100</frame_time>
+            <number_of_frames>3</number_of_frames>
+         </cgi_acquisition>
          <is_spectroscopy>N</is_spectroscopy>
+         <cgi_align_fpam>
+            <gain>1.00</gain>
+            <!--Exposure time in seconds-->
+            <frame_time>1.000</frame_time>
+            <number_of_frames>1</number_of_frames>
+         </cgi_align_fpam>
+         <cgi_align_fsam>
+            <gain>1.00</gain>
+            <!--Exposure time in seconds-->
+            <frame_time>1.000</frame_time>
+            <number_of_frames>1</number_of_frames>
+         </cgi_align_fsam>
       </cgi_visit>
    </visit_list>
    <cpgs_input>
-      <filename>/local2/rails/vmromancpgs1/releases/20260709063825/public/cpgs/1785396107.json</filename>
-      <observation_label>CPGS_test_python</observation_label>
-      <observation_number>1</observation_number>
-      <observer_firstname>Jim</observer_firstname>
-      <observer_lastname>Ingalls</observer_lastname>
-      <target_name>47 Uma</target_name>
-      <target_RA>10:59:27.97</target_RA>
-      <target_Dec>40:25:48.9</target_Dec>
-      <target_pmRA>-317.642</target_pmRA>
-      <target_pmDec>55.014</target_pmDec>
-      <target_parallax>72.007</target_parallax>
+      <filename></filename>
+      <observation_label>CGI_HLC_TEST</observation_label>
+      <observation_number>905</observation_number>
+      <observer_firstname>Arthur</observer_firstname>
+      <observer_lastname>Vigan</observer_lastname>
+      <target_name>test</target_name>
+      <target_standard_name>Test</target_standard_name>
+      <target_RA>00:36:47.84</target_RA>
+      <target_Dec>+00:24:19.6</target_Dec>
+      <target_pmRA>-171.892</target_pmRA>
+      <target_pmDec>-381.815</target_pmDec>
+      <target_parallax>74.194</target_parallax>
       <target_epoch>2000-01-01T12:00:00</target_epoch>
-      <target_v_mag>5.03</target_v_mag>
-      <target_spec_type>G</target_spec_type>
-      <target_sub_type>1.0</target_sub_type>
-      <observe_target_only>1</observe_target_only>
+      <target_v_mag>4.1</target_v_mag>
+      <target_spec_type>F</target_spec_type>
+      <target_sub_type>9.0</target_sub_type>
+      <observe_target_only>0</observe_target_only>
+      <reference_name>eta Uma</reference_name>
+      <reference_standard_name>* eta UMa</reference_standard_name>
+      <reference_RA>13:47:32.43</reference_RA>
+      <reference_Dec>+49:18:47.7</reference_Dec>
+      <reference_pmRA>-121.17</reference_pmRA>
+      <reference_pmDec>-14.91</reference_pmDec>
+      <reference_parallax>31.38</reference_parallax>
+      <reference_epoch>2000-01-01T12:00:00</reference_epoch>
+      <reference_v_mag>1.86</reference_v_mag>
+      <reference_spec_type>B</reference_spec_type>
+      <reference_sub_type>3.0</reference_sub_type>
       <coronagraph_mask>1</coronagraph_mask>
       <filter>1</filter>
       <with_polarization>0</with_polarization>
-      <dig_dark_hole>0</dig_dark_hole>
+      <dig_dark_hole>1</dig_dark_hole>
       <touchup_only>0</touchup_only>
-      <initial_threshold_planet_star_flux_ratio>0</initial_threshold_planet_star_flux_ratio>
-      <touchup_threshold_planet_star_flux_ratio>0</touchup_threshold_planet_star_flux_ratio>
-      <initial_target_planet_star_flux_ratio>0</initial_target_planet_star_flux_ratio>
-      <touchup_target_planet_star_flux_ratio>0</touchup_target_planet_star_flux_ratio>
+      <initial_threshold_planet_star_flux_ratio>2.5e-08</initial_threshold_planet_star_flux_ratio>
+      <touchup_threshold_planet_star_flux_ratio>2.5e-08</touchup_threshold_planet_star_flux_ratio>
+      <initial_target_planet_star_flux_ratio>1e-08</initial_target_planet_star_flux_ratio>
+      <touchup_target_planet_star_flux_ratio>1e-08</touchup_target_planet_star_flux_ratio>
       <initial_contrast_abort>0.001</initial_contrast_abort>
       <touchup_contrast_abort>0.001</touchup_contrast_abort>
-      <initial_timeout>0</initial_timeout>
-      <touchup_timeout>0</touchup_timeout>
+      <initial_timeout>16.0</initial_timeout>
+      <touchup_timeout>5.0</touchup_timeout>
       <control_strategy>1</control_strategy>
       <alternate_orientations>0</alternate_orientations>
-      <orientation_a>-11.0</orientation_a>
-      <orientation_b>11.0</orientation_b>
-      <orientation_constraint>constant_pa</orientation_constraint>
-      <Dseq>1.0000</Dseq>
-      <on_target_integration>0</on_target_integration>
+      <orientation_a>-12.11</orientation_a>
+      <orientation_b>12.16</orientation_b>
+      <orientation_constraint>constant_roll</orientation_constraint>
+      <Dseq>17.0000</Dseq>
+      <on_target_integration>1</on_target_integration>
       <do_cleanup>0</do_cleanup>
       <Nseq>1</Nseq>
-      <n_sub_seq>1</n_sub_seq>
-      <number_target_visits>2</number_target_visits>
-      <ratio_of_ref_to_tgt_duration>0.2</ratio_of_ref_to_tgt_duration>
+      <n_sub_seq>3</n_sub_seq>
+      <number_target_visits>4</number_target_visits>
+      <ratio_of_ref_to_tgt_duration>0.34</ratio_of_ref_to_tgt_duration>
       <obtain_satspot_image_every_visit>1</obtain_satspot_image_every_visit>
       <number_of_pairs>0</number_of_pairs>
       <target_autogain>0</target_autogain>
-      <target_gain>500.0</target_gain>
-      <target_exptime>10.0</target_exptime>
-      <target_pcounting>1</target_pcounting>
+      <target_gain>3860.162</target_gain>
+      <target_exptime>27.732</target_exptime>
+      <target_pcounting>0</target_pcounting>
       <reference_autogain>0</reference_autogain>
-      <requested_start>2027-12-02T05:09:00</requested_start>
+      <reference_gain>1121.687</reference_gain>
+      <reference_exptime>22.733</reference_exptime>
+      <reference_pcounting>0</reference_pcounting>
+      <requested_start>2027-01-11T00:00:00</requested_start>
       <howfsc_fsm_raster>NFOV</howfsc_fsm_raster>
       <howfsc_fsam_do_fine_alignment>1</howfsc_fsam_do_fine_alignment>
-      <howfsc_spam_pos>NONE</howfsc_spam_pos>
-      <howfsc_fpam_pos_acq>OPEN_12</howfsc_fpam_pos_acq>
-      <howfsc_fpam_pos>NONE</howfsc_fpam_pos>
+      <howfsc_spam_pos>OPEN</howfsc_spam_pos>
+      <howfsc_fpam_pos_acq>ND475</howfsc_fpam_pos_acq>
+      <howfsc_fpam_pos>HLC12_C2R5</howfsc_fpam_pos>
       <howfsc_fpam_mask_type>SPOT</howfsc_fpam_mask_type>
-      <howfsc_lsam_pos>NONE</howfsc_lsam_pos>
+      <howfsc_lsam_pos>NFOV</howfsc_lsam_pos>
       <howfsc_fsam_pos_coarse>NONE</howfsc_fsam_pos_coarse>
-      <howfsc_fsam_pos>NONE</howfsc_fsam_pos>
-      <howfsc_cfam_pos_acq>NONE</howfsc_cfam_pos_acq>
+      <howfsc_fsam_pos>R1C1</howfsc_fsam_pos>
+      <howfsc_cfam_pos_acq>1F</howfsc_cfam_pos_acq>
       <howfsc_cfam_pos>1F</howfsc_cfam_pos>
       <howfsc_dpam_pos>IMAGING</howfsc_dpam_pos>
-      <howfsc_fcm_pos>NONE</howfsc_fcm_pos>
-      <howfsc_locam_gain_targ>1.0</howfsc_locam_gain_targ>
+      <howfsc_fcm_pos>OPEN</howfsc_fcm_pos>
+      <howfsc_locam_gain_targ>428.5</howfsc_locam_gain_targ>
       <howfsc_chop_ncycles>1</howfsc_chop_ncycles>
       <howfsc_chop_nframes>1</howfsc_chop_nframes>
       <howfsc_chop_discard_extra>0</howfsc_chop_discard_extra>
       <howfsc_acq_gain>1.0</howfsc_acq_gain>
-      <howfsc_acq_exptime>0.0</howfsc_acq_exptime>
-      <howfsc_acq_nframes>1</howfsc_acq_nframes>
+      <howfsc_acq_exptime>4.1</howfsc_acq_exptime>
+      <howfsc_acq_nframes>3</howfsc_acq_nframes>
       <howfsc_align_fsam_gain>1.0</howfsc_align_fsam_gain>
-      <howfsc_align_fsam_exptime>0.0</howfsc_align_fsam_exptime>
+      <howfsc_align_fsam_exptime>1.0</howfsc_align_fsam_exptime>
       <howfsc_align_fsam_nframes>1</howfsc_align_fsam_nframes>
       <howfsc_align_fpam_gain>1.0</howfsc_align_fpam_gain>
-      <howfsc_align_fpam_exptime>0.0</howfsc_align_fpam_exptime>
+      <howfsc_align_fpam_exptime>1.0</howfsc_align_fpam_exptime>
       <howfsc_align_fpam_nframes>1</howfsc_align_fpam_nframes>
       <howfsc_max_iterations>10</howfsc_max_iterations>
       <howfsc_only>0</howfsc_only>
-      <locam_gain>1.0</locam_gain>
+      <locam_gain>83.9</locam_gain>
       <locam_nframes>1</locam_nframes>
       <locam_nframes_targ>1</locam_nframes_targ>
-      <satellite_spots_gain>1.0</satellite_spots_gain>
-      <satellite_spots_exptime>0.0</satellite_spots_exptime>
-      <satellite_spots_nframes>1</satellite_spots_nframes>
-      <satellite_spots_gain_targ>1.0</satellite_spots_gain_targ>
-      <satellite_spots_exptime_targ>0.0</satellite_spots_exptime_targ>
-      <satellite_spots_nframes_targ>1</satellite_spots_nframes_targ>
+      <satellite_spots_gain>608.314</satellite_spots_gain>
+      <satellite_spots_exptime>1.247</satellite_spots_exptime>
+      <satellite_spots_nframes>5</satellite_spots_nframes>
+      <satellite_spots_gain_targ>603.462</satellite_spots_gain_targ>
+      <satellite_spots_exptime_targ>9.002</satellite_spots_exptime_targ>
+      <satellite_spots_nframes_targ>5</satellite_spots_nframes_targ>
       <satellite_spots_pair_id>11</satellite_spots_pair_id>
       <satellite_spots_redefine>0</satellite_spots_redefine>
+      <satellite_spots_command_info>(sep1=6.25, angle1=0, fr1=1E-6, filt=1F) (sep2=6.25, angle2=90, fr2=1E-6, filt=1F); filename=TBD ; x pattern sat spots with non-standard amplitude </satellite_spots_command_info>
       <kickoff_time>16.0</kickoff_time>
       <close_focus>0</close_focus>
       <close_zernike>0</close_zernike>
@@ -267,6 +272,7 @@
       <fsam_dx_pix_b>0.0</fsam_dx_pix_b>
       <fsam_dy_pix_b>0.0</fsam_dy_pix_b>
       <nonpol_ref_duration>180.0</nonpol_ref_duration>
+      <cpgs_notes>We are requesting a custom satellite spot amplitude of 1e-6 to keep the sat spot integration time less than 10% of the science integration time. Manual EXCAM settings for simulation purposes.</cpgs_notes>
       <skip_final_reference>0</skip_final_reference>
       <do_advance_setup>0</do_advance_setup>
       <adv_set_dm1_on>0</adv_set_dm1_on>
@@ -311,7 +317,9 @@
       <do_tgtref>0</do_tgtref>
       <tgtref_parallax>0.0</tgtref_parallax>
       <tgtref_roll_angle>0</tgtref_roll_angle>
+      <tgtref_first_visit>0</tgtref_first_visit>
       <tgtref_locam_gain>1.0</tgtref_locam_gain>
+      <tgtref_locam_nframes>1</tgtref_locam_nframes>
       <tgtref_gain>1.0</tgtref_gain>
       <tgtref_time_gap>0.0</tgtref_time_gap>
       <do_bs_cal>0</do_bs_cal>
@@ -395,41 +403,42 @@
    </cpgs_input>
    <cpgs_output>
       <number_of_sequences>1</number_of_sequences>
-      <target_exposure_time>0.36342</target_exposure_time>
-      <reference_exposure_time>0.0</reference_exposure_time>
-      <slew_duration>0.55956</slew_duration>
-      <WFC_max_duration>0.0</WFC_max_duration>
-      <satellite_spot_duration>0.005</satellite_spot_duration>
-      <total_duration>1.10083</total_duration>
+      <target_exposure_time>16.91652</target_exposure_time>
+      <reference_exposure_time>5.75903</reference_exposure_time>
+      <slew_duration>5.93777</slew_duration>
+      <WFC_max_duration>16.0</WFC_max_duration>
+      <satellite_spot_duration>0.51358</satellite_spot_duration>
+      <total_duration>41.59194</total_duration>
       <error>false</error>
       <RDI_only>false</RDI_only>
-      <ADI_only>true</ADI_only>
-      <Dseq>1.0</Dseq>
-      <target_name>47 Uma</target_name>
-      <initial_target_planet_star_flux_ratio>0</initial_target_planet_star_flux_ratio>
-      <SchedMessage>SUCCESS. Your target is visible within the following windows. Your requested start time (2027-12-02T05:09:00) puts your observation (of duration 0.05 days) within the 3rd window. Approximate end of observation: 2027-12-02T06:15:03.</SchedMessage>
+      <ADI_only>false</ADI_only>
+      <Dseq>35.02022</Dseq>
+      <target_name>Ups And</target_name>
+      <reference_name>eta Uma</reference_name>
+      <initial_target_planet_star_flux_ratio>1e-08</initial_target_planet_star_flux_ratio>
+      <SchedMessage>SUCCESS. Your targets are visible within the following windows. Your requested start time (2027-01-11T00:00:00) puts your observation (of duration 1.73 days) within the 2nd window. Approximate end of observation: 2027-01-12T17:35:31.</SchedMessage>
       <ObsWindows>Field of regard intervals (#intervals = 11)
-        START                   END
+        START                   END            
 ---------------------------------------------------------
-   2026-10-10T22:40:08 - 2027-01-04T16:00:53
-   2027-04-07T00:53:10 - 2027-07-05T17:59:37
-*  2027-10-11T04:13:47 - 2028-01-04T21:27:08
-   2028-04-06T07:30:16 - 2028-07-04T22:55:52
-   2028-10-10T10:15:52 - 2029-01-04T02:56:01
-   2029-04-06T13:55:58 - 2029-07-05T03:55:10
-   2029-10-10T16:20:17 - 2030-01-04T08:38:41
-   2030-04-06T20:24:23 - 2030-07-05T09:07:29
-   2030-10-10T22:10:50 - 2031-01-04T14:31:03
-   2031-04-07T02:40:11 - 2031-07-05T14:20:03
-   2031-10-11T03:50:24 - 2031-12-05T00:00:00
+   2026-09-01T00:00:00 - 2026-09-14T08:23:00
+*  2026-12-18T07:50:41 - 2027-03-11T15:16:09
+   2027-06-18T07:17:43 - 2027-09-14T14:11:31
+   2027-12-18T12:52:14 - 2028-03-10T22:15:34
+   2028-06-17T12:47:22 - 2028-09-13T20:59:07
+   2028-12-17T18:12:00 - 2029-03-11T05:11:20
+   2029-06-17T18:30:33 - 2029-09-14T03:53:52
+   2029-12-17T23:32:54 - 2030-03-11T12:10:57
+   2030-06-18T00:10:37 - 2030-09-14T10:38:14
+   2030-12-18T04:52:24 - 2031-03-11T19:00:03
+   2031-06-18T06:03:05 - 2031-08-29T00:00:00
 
 For this observation:
 
-47 Uma     Constant PA: (100.99,122.99)
-
- Name        Roll @Start      Roll @End (of observation)
------------------------------------------------------------
-47 Uma     ( 11.01,-10.99)  ( 10.99,-11.01)
+Constant Roll Angles: (-12.11,12.16)
+ Name         PA @Start        PA @End (of observation)
+-------------------------------------------------------
+eta Uma    (120.05, 95.78)  (118.79, 94.52)
+Ups And    (266.55,242.28)  (265.79,241.52)
 </ObsWindows>
    </cpgs_output>
 </obs_specification>
