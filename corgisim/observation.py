@@ -149,7 +149,7 @@ def generate_observation_sequence ( scene, optics, detector, exp_time, n_frames,
 
     return simulatedImage_list
 
-def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, save_as_list=False, output_dir=None, full_frame=False, loc_x=None, loc_y=None, point_source_info=None, output_dim=201, polaxis=0, fast_gain_mode='auto', gain_CIC_Q='roman' ):
+def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, save_as_list=False, output_dir=None, full_frame=False, loc_x=None, loc_y=None, point_source_info=None, output_dim=201, polaxis=0, fast_gain_mode='auto', gain_CIC_Q='roman', custom_satspots_dict=None):
     """Generates an observation scenario by loading instrument, scene, and visit
     information from a CPGS file.
 
@@ -165,6 +165,7 @@ def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, save_
         - loc_x (int): The horizontal coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True, and image from CorgiOptics has size is smaller than 1024×1024
         - loc_y (int): The vertical coordinate (in pixels) of the center where the sub_frame will be inserted, needed when full_frame=True, and image from CorgiOptics has size is smaller than 1024×1024
         - point_sources_info (list): A list of dictionaries, each representing an off-axis point source in the scene.
+        - custom_satspots_dict (dict): Dictionnary providing the properties of custom satellite spots when this option was set in CPGS (satellite_spot_conf = 11). Necessary keys are `sep_lamD`, `contrast` and `angle_deg` ([0,90] or [45, 135]).
                              
     Returns:
         - list[corgisim.scene.SimulatedImage]: A list of SimulatedImage objects, representing the complete observation scenario across all visits defined in the CPGS file.
@@ -222,6 +223,14 @@ def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, save_
                 sep_lamD = sep2
                 angle_deg = [45,135]
                 contrast = contrast2
+            case 11:
+                if custom_satspots_dict is not None:
+                    print("Using custom satellite spots dictionary", custom_satspots_dict)
+                    sep_lamD = custom_satspots_dict['sep_lamD']
+                    angle_deg = custom_satspots_dict['angle_deg']
+                    contrast = custom_satspots_dict['contrast']
+                else:
+                    raise KeyError('Custom satellite spots properties must be specified with the `custom_satspots_dict` keyword')
             case _:
                 raise KeyError('Unknown satellite spots configuration')
 
@@ -259,4 +268,3 @@ def generate_observation_scenario_from_cpgs(filepath, save_as_fits= False, save_
 
     return simulatedImage_list
 
-    

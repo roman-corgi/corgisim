@@ -195,6 +195,29 @@ def test_generate_observation_scenario_from_cpgs():
     assert len(simulatedImage_list) == len_list
     assert isinstance(simulatedImage_list[0], SimulatedImage)
 
+    #Test with custom satellite spots
+    filepath = 'test/test_data/cpgs_with_custom_satspots.xml'
+    abs_path =  os.path.join(script_dir, filepath)
+
+    sep_lamD = 6.25
+    custom_satspots_dict = {'sep_lamD': sep_lamD, 'angle_deg': [0, 90], 'contrast': 1e-5}
+
+    simulatedImage_list = observation.generate_observation_scenario_from_cpgs(abs_path, output_dim=51, fast_gain_mode = True, gain_CIC_Q=0.0, custom_satspots_dict=custom_satspots_dict)
+
+    ext = 5
+    sep_pixel = sep_lamD*49.3/21.8
+    image_data_nospots = simulatedImage_list[0].host_star_image.data
+    image_data_spots   = simulatedImage_list[10].host_star_image.data
+    image_mask = np.zeros_like(image_data_nospots)
+    center = image_data_nospots.shape[0] / 2
+    image_mask[int(center-sep_pixel-ext):int(center-sep_pixel+ext), int(center-ext):int(center+ext)] = 1
+    image_mask[int(center+sep_pixel-ext):int(center+sep_pixel+ext), int(center-ext):int(center+ext)] = 1
+    image_mask[int(center-ext):int(center+ext), int(center-sep_pixel-ext):int(center-sep_pixel+ext)] = 1
+    image_mask[int(center-ext):int(center+ext), int(center+sep_pixel-ext):int(center+sep_pixel+ext)] = 1
+
+    assert isinstance(simulatedImage_list, list)
+    assert isinstance(simulatedImage_list[0], SimulatedImage)
+    assert np.nanmax(image_data_nospots[image_mask == 1]) < 100*np.nanmax(image_data_spots[image_mask == 1])
 
 
 
