@@ -7,6 +7,12 @@ import proper
 from corgisim import outputs
 import roman_preflight_proper
 
+##############################################
+# This script simulate the sequence of observations for a target star and a reference star, including the satellite spots.
+# The script does not take input from a CPGS file, but instead uses the parameters defined in the script.
+# The script does not use parellel processing, but instead runs the simulation sequentially for each visit.
+# The script worls by time of writing (Nov.2026),but may need to be updated in the future if the CorgiSim package is updated.
+###############################################
 
 
 if __name__ == '__main__':
