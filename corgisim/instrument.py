@@ -1612,6 +1612,9 @@ class CorgiDetector():
         '''
         # List of possible image components (in order of addition)
 
+        if exptime == 0.0 :
+            warnings.warn("Your exposure time is zero seconds.")
+
         img = None
         sim_info = {}
         components = [simulated_scene.host_star_image,
