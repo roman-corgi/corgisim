@@ -1,0 +1,166 @@
+############################################################
+
+# EXCAM 10% bandpass at 575 nm (HLC)
+1   = bandpass name
+0.575 = reference wavelength
+7     = number of wavelengths
+0.54625000  0.60375000  = min, max wavelengths (microns)
+
+# EXCAM all available wavelengths for HLC design
+1_all = bandpass name
+0.575   = reference wavelength
+13      = number of wavelengths
+0.54625000  0.60375000  = min, max wavelengths (microns)
+
+# EXCAM 3.5% engineering bandpass for Band 1
+1a   = bandpass name
+0.575 = reference wavelength
+5     = number of wavelengths
+0.54627000  0.56573000  = min, max wavelengths (microns)
+
+# EXCAM 3.3% engineering bandpass for Band 1
+1b   = bandpass name
+0.575 = reference wavelength
+5     = number of wavelengths
+0.56551200  0.58448700  = min, max wavelengths (microns)
+
+# EXCAM 3.3% engineering bandpass for Band 1
+1c   = bandpass name
+0.575 = reference wavelength
+5     = number of wavelengths
+0.58449600  0.60350400  = min, max wavelengths (microns)
+
+############################################################
+
+# spectral 17% secondary bandpass centered at 660 nm
+2_spec   = bandpass name
+0.660 = reference wavelength (lam0, microns)
+30    = number of wavelengths
+0.603900  0.716100   = min, max wavelengths (um)
+
+############################################################
+
+# EXCAM 17% secondary bandpass centered at 660 nm
+2   = bandpass name
+0.660 = reference wavelength (lam0, microns)
+11    = number of wavelengths
+0.604000  0.716000   = min, max wavelengths (um)
+
+# EXCAM 3.6% engineering bandpass for Band 2 
+2a   = bandpass name
+0.660 = reference wavelength (lam0, microns)
+5    = number of wavelengths
+0.60400000  0.62600000   = min, max wavelengths (um)
+
+# EXCAM 2.8% engineering bandpass for Band 2 
+2b   = bandpass name
+0.660 = reference wavelength (lam0, microns)
+5    = number of wavelengths
+0.62900000  0.64700000   = min, max wavelengths (um)
+
+# EXCAM 1.0% engineering bandpass for Band 2 
+2c   = bandpass name
+0.660 = reference wavelength (lam0, microns)
+5    = number of wavelengths
+0.653000  0.659000   = min, max wavelengths (um)
+
+############################################################
+
+# spectral 16.7% primary bandpass centered at 730 nm
+3_spec   = bandpass name
+0.730 = reference wavelength (lam0, microns)
+30    = number of wavelengths
+0.669000  0.791000   = min, max wavelengths (um)
+
+############################################################
+
+# EXCAM 16.7% primary bandpass centered at 730 nm
+3   = bandpass name
+0.730 = reference wavelength (lam0, microns)
+11    = number of wavelengths
+0.669000  0.791000   = min, max wavelengths (um)
+
+# EXCAM 3.5% engineering bandpass for Band 3 
+3a   = bandpass name
+0.730 = reference wavelength (lam0, microns)
+5    = number of wavelengths
+0.669000  0.693000   = min, max wavelengths (um)
+
+# EXCAM 3.4% engineering bandpass for Band 3 
+3b   = bandpass name
+0.730 = reference wavelength (lam0, microns)
+5    = number of wavelengths
+0.692000  0.716000   = min, max wavelengths (um)
+
+# EXCAM 2.8% engineering bandpass for Band 3 
+3c   = bandpass name
+0.730 = reference wavelength (lam0, microns)
+5    = number of wavelengths
+0.717000  0.737000   = min, max wavelengths (um)
+
+# EXCAM 1.0% engineering bandpass for Band 3 
+3d   = bandpass name
+0.730 = reference wavelength (lam0, microns)
+5    = number of wavelengths
+0.750000  0.758000   = min, max wavelengths (um)
+
+# EXCAM engineering bandpass for Band 3 
+3e   = bandpass name
+0.730 = reference wavelength (lam0, microns)
+5    = number of wavelengths
+0.764000  0.791000   = min, max wavelengths (um)
+
+# EXCAM 3.4% engineering bandpass for Band 3 
+3g   = bandpass name
+0.730 = reference wavelength (lam0, microns)
+5    = number of wavelengths
+0.740000  0.765000   = min, max wavelengths (um)
+
+############################################################
+
+# 11.4% 825 nm bandpass for SPC wide field of view
+4   = bandpass name
+0.825 = reference wavelength (lam0, microns)
+7     = number of wavelengths
+0.77800000  0.87200000  = min, max wavelengths (microns)
+
+# 11.4% 825 nm bandpass for SPC wide field of view (19 wavelengths)
+4_all  = bandpass name
+0.825 = reference wavelength (lam0, microns)
+19    = number of wavelengths
+0.77800000  0.87200000  = min, max wavelengths (microns)
+
+# EXCAM 3.5% engineering bandpass for Band 4 
+4a   = bandpass name
+0.825 = reference wavelength (lam0, microns)
+5    = number of wavelengths
+0.778000  0.806000   = min, max wavelengths (um)
+
+# EXCAM 3.6% engineering bandpass for Band 4 
+4b   = bandpass name
+0.825 = reference wavelength (lam0, microns)
+5    = number of wavelengths
+0.810000  0.840000   = min, max wavelengths (um)
+
+# EXCAM 3.5% engineering bandpass for Band 4 
+4c   = bandpass name
+0.825 = reference wavelength (lam0, microns)
+5    = number of wavelengths
+0.842000  0.872000   = min, max wavelengths (um)
+
+############################################################
+
+# 128 nm-wide bandpass for LOWFS 
+lowfs   = bandpass name
+0.575 = reference wavelength (lam0, microns)
+13     = number of wavelengths
+0.511  0.639  = min, max wavelengths (microns)
+
+############################################################
+
+# full-range bandpass for LOWFS 
+none    = bandpass name
+0.725 = reference wavelength (lam0, microns)
+27     = number of wavelengths
+0.450  1.000  = min, max wavelengths (microns)
+

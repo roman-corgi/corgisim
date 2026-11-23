@@ -1,0 +1,17 @@
+# HLC 20200614b
+
+name
+hlc_20200614b
+
+owa (lam0/D)
+9.7 
+
+bandpasses
+3
+3a
+3b
+3c
+3d
+3e
+3g
+lowfs

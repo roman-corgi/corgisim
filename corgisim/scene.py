@@ -8,7 +8,6 @@ from synphot.units import validate_wave_unit, convert_flux, VEGAMAG
 from synphot.models import Empirical1D
 
 from corgisim import pol
-import cgisim
 from pathlib import Path
 
 import os
