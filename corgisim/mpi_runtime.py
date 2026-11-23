@@ -1,6 +1,8 @@
 import traceback
 
 from mpi4py import MPI
+
+from corgisim.parallel_executor import memory_report, install_pool_guards
 import logging
 
 log = logging.getLogger(__name__)
@@ -41,6 +43,8 @@ def worker_loop(comm):
 
     Workers remain alive across visits and rounds, processing new tasks (PSF calculation or detector frames) as they arrive.
     """
+    install_pool_guards()
+
     while True:
         message = comm.recv(source=0)
 
@@ -48,13 +52,31 @@ def worker_loop(comm):
             break
 
         task = message["task"]
+
         try:
             result = task["func"](*task["args"])
-        except Exception:
-            comm.send({"message_type": TASK_ERROR, "job_id": task["job_id"],
-                       "traceback": traceback.format_exc()}, dest=0)
+        except BaseException:
+            # Add this rank's memory use, so it appears in rank 0's log with the error.
+            comm.send(
+                {
+                    "message_type": TASK_ERROR,
+                    "job_id": task["job_id"],
+                    "traceback": (
+                        f"{traceback.format_exc()}"
+                        f"Memory on this worker rank: {memory_report()}\n"
+                    ),
+                },
+                dest=0,
+            )
             continue
-        comm.send({"message_type": TASK_RESULT, "job_id": task["job_id"], "result": result}, dest=0)
+        comm.send(
+            {
+                "message_type": TASK_RESULT,
+                "job_id": task["job_id"],
+                "result": result,
+            },
+            dest=0,
+        )
 
 
 def run_tasks_mpi(comm, func, args_list, max_workers=None):
