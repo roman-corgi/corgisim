@@ -85,7 +85,13 @@ jobs:
       uses: pierotofy/set-swap-space@master
       with:
         swap-size-gb: 10
-
+    - name: Watch memory
+      run: (while true; do echo "$(date +%T) $(free -m | awk 'NR==2 {print $3}') MB used"; sleep 10; done) &
     - name: Test with pytest (${{ matrix.shard }})
       run: |
         pytest ${{ matrix.pytest_args }}
+    - name: Memory
+      if: failure()
+      run: |
+        free -h
+        sudo dmesg | grep -i -E 'killed process|out of memory' || true
