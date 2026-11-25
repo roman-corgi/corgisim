@@ -35,10 +35,6 @@ jobs:
           - shard: minimal
             pytest_args: >-
               ./test/test_minimal.py
-          - shard: twoDscene
-            pytest_args: >-
-              ./test/test_2D_scene.py
-              ./test/test_output_size_1024.py
           - shard: rest
             pytest_args: >-
               ./test
@@ -47,8 +43,6 @@ jobs:
               --ignore=./test/test_L1_product_fits_format_specmode.py
               --ignore=./test/test_observation_sequence.py
               --ignore=./test/test_minimal.py
-              --ignore=./test/test_2D_scene.py
-              --ignore=./test/test_output_size_1024.py
 
     steps:
     - uses: actions/checkout@v7
@@ -91,7 +85,7 @@ jobs:
       with:
         swap-size-gb: 10
     - name: Watch memory
-      run: (while true; do echo "$(date +%T) $(free -m | awk 'NR==2 {print $3}') MB used"; sleep 10; done)
+      run: (while true; do echo "$(date +%T) $(free -m | awk 'NR==2 {print $3}') MB used $(free -m | awk 'NR==2 {print $4}') MB free"; sleep 10; done)
       background: true
     - name: Test with pytest (${{ matrix.shard }})
       run: |
